@@ -1,7 +1,3 @@
-//! `casr`  Coredump Analysis and Severity Report
-//! Could be used in online mode (intercept crashes in real time)
-//! or in offline mode (process coredump file).
-
 extern crate anyhow;
 #[macro_use]
 extern crate log;
@@ -40,7 +36,7 @@ use casr::report::*;
 fn main() -> Result<()> {
     let matches = App::new("casr")
         .version("2.0.0")
-        .author("ISP RAS")
+        .author("Andrey Fedotov  <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Analyze coredump for security goals and provide detailed report with severity estimation")
         .term_width(90)
         .arg(Arg::new("mode")
