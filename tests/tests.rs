@@ -2079,6 +2079,7 @@ fn test_casr_san() {
         assert!(false, "Couldn't parse json report file.");
     }
 
+    let _ = std::fs::remove_file(&paths[1]);
     // Stack-buffer-overflow test
     let paths = [
         abs_path("tests/casr_tests/test_asan_sbo.cpp"),
@@ -2138,6 +2139,7 @@ fn test_casr_san() {
         assert!(false, "Couldn't parse json report file.");
     }
 
+    let _ = std::fs::remove_file(&paths[1]);
     // Memory leaks test
     let paths = [
         abs_path("tests/casr_tests/test_asan_leak.cpp"),
@@ -2197,6 +2199,7 @@ fn test_casr_san() {
         assert!(false, "Couldn't parse json report file.");
     }
 
+    let _ = std::fs::remove_file(&paths[1]);
     // Test casr_san stdin
     let paths = [
         abs_path("tests/casr_tests/test_asan_stdin.cpp"),
@@ -2259,6 +2262,7 @@ fn test_casr_san() {
         assert!(false, "Couldn't parse json report file.");
     }
 
+    let _ = std::fs::remove_file(&paths[1]);
     // Test casr_san ASLR
     let paths = [
         abs_path("tests/casr_tests/test_asan_sbo.cpp"),
@@ -2292,6 +2296,7 @@ fn test_casr_san() {
         r"==[0-9]+==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x([0-9a-f]+)",
     )
     .unwrap();
+    let _ = std::fs::remove_file(&paths[1]);
 
     let report1: Result<Value, _> = serde_json::from_slice(&output1.stdout);
     let report2: Result<Value, _> = serde_json::from_slice(&output2.stdout);
