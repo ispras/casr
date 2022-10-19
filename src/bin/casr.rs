@@ -47,7 +47,7 @@ fn main() -> Result<()> {
             .possible_values(&["online", "offline"])
             .default_value("offline")
             .help("Offline mode analyzes collected coredumps, online mode intercepts coredumps via core_pattern")
-            .required(true))
+)
         .arg(Arg::new("file")
             .short('f')
             .long("file")

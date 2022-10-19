@@ -11,29 +11,32 @@ use std::process::Command;
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
-    pub static ref EXE_DIR: RwLock<PathBuf> = RwLock::new( match std::env::current_exe() {
-        Ok(cur_exe) => match cur_exe.parent() {
-                    Some(cur_dir) => {
-                                    match cur_dir.parent() {
-                                        Some(parent) => parent.to_path_buf(),
-                                        None =>  PathBuf::from(".."),
-                                    }
-                                    },
-                    None => PathBuf::from(".."),
-                   }
-        Err(_) => PathBuf::from(".."),
-    });
+    pub static ref EXE_CASR: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr"));
+    pub static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
+    pub static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
+    pub static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
+    pub static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
+}
+
+fn abs_path<'a>(rpath: &'a str) -> String {
+    // Define paths.
+    let project_dir = PathBuf::from(*PROJECT_DIR.read().unwrap());
+    let mut path = PathBuf::new();
+    path.push(&project_dir);
+    path.push(rpath);
+
+    path.as_os_str().to_str().unwrap().to_string()
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc() {
     let paths = [
-        "tests/casr_tests/core.test_segFaultOnPc",
-        "tests/casr_tests/test_segFaultOnPc",
+        abs_path("tests/casr_tests/core.test_segFaultOnPc"),
+        abs_path("tests/casr_tests/test_segFaultOnPc"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -61,11 +64,11 @@ fn test_segfault_on_pc() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av() {
     let paths = [
-        "tests/casr_tests/core.test_destAv",
-        "tests/casr_tests/test_destAv",
+        abs_path("tests/casr_tests/core.test_destAv"),
+        abs_path("tests/casr_tests/test_destAv"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -93,11 +96,11 @@ fn test_dest_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null() {
     let paths = [
-        "tests/casr_tests/core.test_destAvNearNull",
-        "tests/casr_tests/test_destAvNearNull",
+        abs_path("tests/casr_tests/core.test_destAvNearNull"),
+        abs_path("tests/casr_tests/test_destAvNearNull"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -124,11 +127,11 @@ fn test_dest_av_near_null() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av() {
     let paths = [
-        "tests/casr_tests/core.test_returnAv",
-        "tests/casr_tests/test_returnAv",
+        abs_path("tests/casr_tests/core.test_returnAv"),
+        abs_path("tests/casr_tests/test_returnAv"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -156,11 +159,11 @@ fn test_return_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av() {
     let paths = [
-        "tests/casr_tests/core.test_callAv",
-        "tests/casr_tests/test_callAv",
+        abs_path("tests/casr_tests/core.test_callAv"),
+        abs_path("tests/casr_tests/test_callAv"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -188,11 +191,11 @@ fn test_call_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_tainted() {
     let paths = [
-        "tests/casr_tests/core.test_callAvTainted",
-        "tests/casr_tests/test_callAvTainted",
+        abs_path("tests/casr_tests/core.test_callAvTainted"),
+        abs_path("tests/casr_tests/test_callAvTainted"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -220,11 +223,11 @@ fn test_call_av_tainted() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av() {
     let paths = [
-        "tests/casr_tests/core.test_sourceAv",
-        "tests/casr_tests/test_sourceAv",
+        abs_path("tests/casr_tests/core.test_sourceAv"),
+        abs_path("tests/casr_tests/test_sourceAv"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -252,11 +255,11 @@ fn test_source_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null() {
     let paths = [
-        "tests/casr_tests/core.test_sourceAvNearNull",
-        "tests/casr_tests/test_sourceAvNearNull",
+        abs_path("tests/casr_tests/core.test_sourceAvNearNull"),
+        abs_path("tests/casr_tests/test_sourceAvNearNull"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -284,11 +287,11 @@ fn test_source_av_near_null() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort() {
     let paths = [
-        "tests/casr_tests/core.test_abort",
-        "tests/casr_tests/test_abort",
+        abs_path("tests/casr_tests/core.test_abort"),
+        abs_path("tests/casr_tests/test_abort"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -317,11 +320,11 @@ fn test_abort() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary() {
     let paths = [
-        "tests/casr_tests/core.test_canary",
-        "tests/casr_tests/test_canary",
+        abs_path("tests/casr_tests/core.test_canary"),
+        abs_path("tests/casr_tests/test_canary"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -349,11 +352,11 @@ fn test_canary() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func() {
     let paths = [
-        "tests/casr_tests/core.test_safeFunc",
-        "tests/casr_tests/test_safeFunc",
+        abs_path("tests/casr_tests/core.test_safeFunc"),
+        abs_path("tests/casr_tests/test_safeFunc"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -381,11 +384,11 @@ fn test_safe_func() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction() {
     let paths = [
-        "tests/casr_tests/core.test_badInstruction",
-        "tests/casr_tests/test_badInstruction",
+        abs_path("tests/casr_tests/core.test_badInstruction"),
+        abs_path("tests/casr_tests/test_badInstruction"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -413,11 +416,11 @@ fn test_bad_instruction() {
 #[cfg(target_arch = "x86_64")]
 fn test_stack_overflow() {
     let paths = [
-        "tests/casr_tests/core.test_stackOverflow",
-        "tests/casr_tests/test_stackOverflow",
+        abs_path("tests/casr_tests/core.test_stackOverflow"),
+        abs_path("tests/casr_tests/test_stackOverflow"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -445,11 +448,11 @@ fn test_stack_overflow() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_tainted() {
     let paths = [
-        "tests/casr_tests/core.test_destAvTainted",
-        "tests/casr_tests/test_destAvTainted",
+        abs_path("tests/casr_tests/core.test_destAvTainted"),
+        abs_path("tests/casr_tests/test_destAvTainted"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -477,11 +480,11 @@ fn test_dest_av_tainted() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero() {
     let paths = [
-        "tests/casr_tests/core.test_DivByZero",
-        "tests/casr_tests/test_DivByZero",
+        abs_path("tests/casr_tests/core.test_DivByZero"),
+        abs_path("tests/casr_tests/test_DivByZero"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -509,11 +512,11 @@ fn test_div_by_zero() {
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc32() {
     let paths = [
-        "tests/casr_tests/core.test_segFaultOnPc32",
-        "tests/casr_tests/test_segFaultOnPc32",
+        abs_path("tests/casr_tests/core.test_segFaultOnPc32"),
+        abs_path("tests/casr_tests/test_segFaultOnPc32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -541,11 +544,11 @@ fn test_segfault_on_pc32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av32() {
     let paths = [
-        "tests/casr_tests/core.test_destAv32",
-        "tests/casr_tests/test_destAv32",
+        abs_path("tests/casr_tests/core.test_destAv32"),
+        abs_path("tests/casr_tests/test_destAv32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -573,11 +576,11 @@ fn test_dest_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null32() {
     let paths = [
-        "tests/casr_tests/core.test_destAvNearNull32",
-        "tests/casr_tests/test_destAvNearNull32",
+        abs_path("tests/casr_tests/core.test_destAvNearNull32"),
+        abs_path("tests/casr_tests/test_destAvNearNull32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -605,11 +608,11 @@ fn test_dest_av_near_null32() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av32() {
     let paths = [
-        "tests/casr_tests/core.test_returnAv32",
-        "tests/casr_tests/test_returnAv32",
+        abs_path("tests/casr_tests/core.test_returnAv32"),
+        abs_path("tests/casr_tests/test_returnAv32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -637,11 +640,11 @@ fn test_return_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av32() {
     let paths = [
-        "tests/casr_tests/core.test_callAv32",
-        "tests/casr_tests/test_callAv32",
+        abs_path("tests/casr_tests/core.test_callAv32"),
+        abs_path("tests/casr_tests/test_callAv32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -669,11 +672,11 @@ fn test_call_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av32() {
     let paths = [
-        "tests/casr_tests/core.test_sourceAv32",
-        "tests/casr_tests/test_sourceAv32",
+        abs_path("tests/casr_tests/core.test_sourceAv32"),
+        abs_path("tests/casr_tests/test_sourceAv32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -701,11 +704,11 @@ fn test_source_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null32() {
     let paths = [
-        "tests/casr_tests/core.test_sourceAvNearNull32",
-        "tests/casr_tests/test_sourceAvNearNull32",
+        abs_path("tests/casr_tests/core.test_sourceAvNearNull32"),
+        abs_path("tests/casr_tests/test_sourceAvNearNull32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -733,11 +736,11 @@ fn test_source_av_near_null32() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort32() {
     let paths = [
-        "tests/casr_tests/core.test_abort32",
-        "tests/casr_tests/test_abort32",
+        abs_path("tests/casr_tests/core.test_abort32"),
+        abs_path("tests/casr_tests/test_abort32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -766,11 +769,11 @@ fn test_abort32() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary32() {
     let paths = [
-        "tests/casr_tests/core.test_canary32",
-        "tests/casr_tests/test_canary32",
+        abs_path("tests/casr_tests/core.test_canary32"),
+        abs_path("tests/casr_tests/test_canary32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -799,11 +802,11 @@ fn test_canary32() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func32() {
     let paths = [
-        "tests/casr_tests/core.test_safeFunc32",
-        "tests/casr_tests/test_safeFunc32",
+        abs_path("tests/casr_tests/core.test_safeFunc32"),
+        abs_path("tests/casr_tests/test_safeFunc32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -831,11 +834,11 @@ fn test_safe_func32() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction32() {
     let paths = [
-        "tests/casr_tests/core.test_badInstruction32",
-        "tests/casr_tests/test_badInstruction32",
+        abs_path("tests/casr_tests/core.test_badInstruction32"),
+        abs_path("tests/casr_tests/test_badInstruction32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -863,11 +866,11 @@ fn test_bad_instruction32() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero32() {
     let paths = [
-        "tests/casr_tests/core.test_DivByZero32",
-        "tests/casr_tests/test_DivByZero32",
+        abs_path("tests/casr_tests/core.test_DivByZero32"),
+        abs_path("tests/casr_tests/test_DivByZero32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -895,8 +898,13 @@ fn test_div_by_zero32() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
-        .args(&["--stdout", "--", "tests/casr_tests/test_abort", "A"])
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/test_abort"),
+            "A",
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
@@ -923,11 +931,11 @@ fn test_abort_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_segFaultOnPc",
+            &abs_path("tests/casr_tests/test_segFaultOnPc"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -956,11 +964,11 @@ fn test_segfault_on_pc_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAv",
+            &abs_path("tests/casr_tests/test_destAv"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -989,17 +997,17 @@ fn test_dest_av_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAvNearNull",
+            &abs_path("tests/casr_tests/test_destAvNearNull"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
         .expect("failed to start casr-gdb");
 
-    // Test if casr got results.
+    // Test if casr got result.
     assert!(output.status.success());
 
     // Test report.
@@ -1022,11 +1030,11 @@ fn test_dest_av_near_null_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_returnAv",
+            &abs_path("tests/casr_tests/test_returnAv"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1055,11 +1063,11 @@ fn test_return_av_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_callAv",
+            &abs_path("tests/casr_tests/test_callAv"),
             "-11111111",
         ])
         .output()
@@ -1088,11 +1096,11 @@ fn test_call_av_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_tainted_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_callAvTainted",
+            &abs_path("tests/casr_tests/test_callAvTainted"),
             "-11111111",
         ])
         .output()
@@ -1121,11 +1129,11 @@ fn test_call_av_tainted_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_sourceAv",
+            &abs_path("tests/casr_tests/test_sourceAv"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1154,11 +1162,11 @@ fn test_source_av_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_sourceAvNearNull",
+            &abs_path("tests/casr_tests/test_sourceAvNearNull"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1187,11 +1195,11 @@ fn test_source_av_near_null_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_canary",
+            &abs_path("tests/casr_tests/test_canary"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1219,11 +1227,11 @@ fn test_canary_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_safeFunc",
+            &abs_path("tests/casr_tests/test_safeFunc"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1252,11 +1260,11 @@ fn test_safe_func_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_badInstruction",
+            &abs_path("tests/casr_tests/test_badInstruction"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1285,11 +1293,11 @@ fn test_bad_instruction_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_stack_overflow_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_stackOverflow",
+            &abs_path("tests/casr_tests/test_stackOverflow"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1318,11 +1326,11 @@ fn test_stack_overflow_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_tainted_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAvTainted",
+            &abs_path("tests/casr_tests/test_destAvTainted"),
             "-111111111",
         ])
         .output()
@@ -1351,8 +1359,12 @@ fn test_dest_av_tainted_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
-        .args(&["--stdout", "--", "tests/casr_tests/test_DivByZero"])
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/test_DivByZero"),
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
@@ -1379,8 +1391,13 @@ fn test_div_by_zero_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
-        .args(&["--stdout", "--", "tests/casr_tests/test_abort32", "A"])
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/test_abort32"),
+            "A",
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
@@ -1407,11 +1424,11 @@ fn test_abort_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_segFaultOnPc32",
+            &abs_path("tests/casr_tests/test_segFaultOnPc32"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1440,11 +1457,11 @@ fn test_segfault_on_pc_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAv32",
+            &abs_path("tests/casr_tests/test_destAv32"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1473,11 +1490,11 @@ fn test_dest_av_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAvNearNull32",
+            &abs_path("tests/casr_tests/test_destAvNearNull32"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1506,11 +1523,11 @@ fn test_dest_av_near_null_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_returnAv32",
+            &abs_path("tests/casr_tests/test_returnAv32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1539,11 +1556,11 @@ fn test_return_av_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_callAv32",
+            &abs_path("tests/casr_tests/test_callAv32"),
             "-11111111",
         ])
         .output()
@@ -1572,11 +1589,11 @@ fn test_call_av_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_sourceAv32",
+            &abs_path("tests/casr_tests/test_sourceAv32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1605,11 +1622,11 @@ fn test_source_av_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_sourceAvNearNull32",
+            &abs_path("tests/casr_tests/test_sourceAvNearNull32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1638,11 +1655,11 @@ fn test_source_av_near_null_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_canary32",
+            &abs_path("tests/casr_tests/test_canary32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1670,11 +1687,11 @@ fn test_canary_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_safeFunc32",
+            &abs_path("tests/casr_tests/test_safeFunc32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1703,11 +1720,11 @@ fn test_safe_func_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_badInstruction32",
+            &abs_path("tests/casr_tests/test_badInstruction32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1736,8 +1753,12 @@ fn test_bad_instruction_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
-        .args(&["--stdout", "--", "tests/casr_tests/test_DivByZero32"])
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/test_DivByZero32"),
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
@@ -1763,13 +1784,13 @@ fn test_div_by_zero_gdb32() {
 #[test]
 fn test_casr_cluster_s() {
     let paths = [
-        "tests/casr_tests/casrep/test1/3.casrep",
-        "tests/casr_tests/casrep/test1/4.casrep",
+        abs_path("tests/casr_tests/casrep/test1/3.casrep"),
+        abs_path("tests/casr_tests/casrep/test1/4.casrep"),
     ];
-    let mut output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let mut output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-s", &paths[0], &paths[1]])
         .output()
-        .expect("failed to start casr-cluster");
+        .expect("failed to start casr_cluster");
 
     assert!(output.status.success());
 
@@ -1790,13 +1811,13 @@ fn test_casr_cluster_s() {
     }
 
     let paths = [
-        "tests/casr_tests/casrep/test1/1.casrep",
-        "tests/casr_tests/casrep/test1/2.casrep",
+        abs_path("tests/casr_tests/casrep/test1/1.casrep"),
+        abs_path("tests/casr_tests/casrep/test1/2.casrep"),
     ];
-    let mut output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let mut output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-s", &paths[0], &paths[1]])
         .output()
-        .expect("failed to start casr-cluster");
+        .expect("failed to start casr_cluster");
 
     assert!(output.status.success());
 
@@ -1820,16 +1841,16 @@ fn test_casr_cluster_s() {
 #[test]
 fn test_casr_cluster_c() {
     let paths = [
-        "tests/casr_tests/casrep/in",
-        "tmp_tests_casr/clustering_out",
+        abs_path("tests/casr_tests/casrep/in"),
+        abs_path("tests/tmp_tests_casr/clustering_out"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-c", &paths[0], &paths[1]])
         .output()
-        .expect("failed to start casr-cluster");
+        .expect("failed to start casr_cluster");
 
     assert!(output.status.success());
 
@@ -1848,28 +1869,30 @@ fn test_casr_cluster_c() {
         .unwrap();
 
     assert_eq!(clusters_cnt, 9, "Clusters count mismatch.");
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
 }
 
 #[test]
 fn test_casr_cluster_c_huge_san() {
     let paths = [
-        "tests/casr_tests/casrep/test_clustering_san",
-        "tmp_tests_casr/clustering_huge_out_san",
+        abs_path("tests/casr_tests/casrep/test_clustering_san"),
+        abs_path("tests/tmp_tests_casr/clustering_huge_out_san"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-d", &paths[0], &paths[1]])
         .output()
-        .expect("failed to start casr-cluster");
+        .expect("failed to start casr_cluster");
 
     assert!(output.status.success());
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-j", "6", "-c", &paths[1], &paths[1]])
         .output()
-        .expect("failed to start casr-cluster");
+        .expect("failed to start casr_cluster");
 
     assert!(output.status.success());
 
@@ -1902,28 +1925,30 @@ fn test_casr_cluster_c_huge_san() {
         1,
         "Invalid number of reports in cluster 12"
     );
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
 }
 
 #[test]
 fn test_casr_cluster_c_huge_gdb() {
     let paths = [
-        "tests/casr_tests/casrep/test_clustering_gdb",
-        "tmp_tests_casr/clustering_huge_out_gdb",
+        abs_path("tests/casr_tests/casrep/test_clustering_gdb"),
+        abs_path("tests/tmp_tests_casr/clustering_huge_out_gdb"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-d", &paths[0], &paths[1]])
         .output()
-        .expect("failed to start casr-cluster");
+        .expect("failed to start casr_cluster");
 
     assert!(output.status.success());
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-j", "6", "-c", &paths[1], &paths[1]])
         .output()
-        .expect("failed to start casr-cluster");
+        .expect("failed to start casr_cluster");
 
     assert!(output.status.success());
 
@@ -1956,21 +1981,23 @@ fn test_casr_cluster_c_huge_gdb() {
         2,
         "Invalid number of reports in cluster 12"
     );
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
 }
 
 #[test]
 fn test_casr_cluster_d() {
     let paths = [
-        "tests/casr_tests/casrep/dedup/in",
-        "tmp_tests_casr/dedup_out",
+        abs_path("tests/casr_tests/casrep/dedup/in"),
+        abs_path("tests/tmp_tests_casr/dedup_out"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-d", &paths[0], &paths[1]])
         .output()
-        .expect("failed to start casr-cluster");
+        .expect("failed to start casr_cluster");
 
     assert!(output.status.success());
 
@@ -1986,6 +2013,8 @@ fn test_casr_cluster_d() {
     if counter != 2 {
         assert!(false, "Bad deduplication, casreps: {}", counter);
     }
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
 }
 
 #[test]
@@ -1993,13 +2022,25 @@ fn test_casr_cluster_d() {
 fn test_casr_san() {
     // Double free test
     let paths = [
-        "tests/casr_tests/test_asan_df",
-        "tests/casr_tests/test_asan_df",
+        abs_path("tests/casr_tests/test_asan_df.cpp"),
+        abs_path("tests/casr_tests/test_asan_df"),
     ];
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr_san");
 
     assert!(output.status.success());
 
@@ -2040,13 +2081,25 @@ fn test_casr_san() {
 
     // Stack-buffer-overflow test
     let paths = [
-        "tests/casr_tests/test_asan_sbo",
-        "tests/casr_tests/test_asan_sbo",
+        abs_path("tests/casr_tests/test_asan_sbo.cpp"),
+        abs_path("tests/casr_tests/test_asan_sbo"),
     ];
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr_san");
 
     assert!(output.status.success());
 
@@ -2087,13 +2140,25 @@ fn test_casr_san() {
 
     // Memory leaks test
     let paths = [
-        "tests/casr_tests/test_asan_leak",
-        "tests/casr_tests/test_asan_leak",
+        abs_path("tests/casr_tests/test_asan_leak.cpp"),
+        abs_path("tests/casr_tests/test_asan_leak"),
     ];
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr_san");
 
     assert!(output.status.success());
 
@@ -2132,17 +2197,29 @@ fn test_casr_san() {
         assert!(false, "Couldn't parse json report file.");
     }
 
-    // Test casr-san stdin
+    // Test casr_san stdin
     let paths = [
-        "tests/casr_tests/test_asan_stdin",
-        "tests/casr_tests/test_asan_stdin",
+        abs_path("tests/casr_tests/test_asan_stdin.cpp"),
+        abs_path("tests/casr_tests/test_asan_stdin"),
     ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
     let mut tempfile = fs::File::create("/tmp/CasrSanTemp").unwrap();
     tempfile.write_all(b"2").unwrap();
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr_san");
 
     assert!(output.status.success());
     fs::remove_file("/tmp/CasrSanTemp").unwrap();
@@ -2182,19 +2259,31 @@ fn test_casr_san() {
         assert!(false, "Couldn't parse json report file.");
     }
 
-    // Test casr-san ASLR
+    // Test casr_san ASLR
     let paths = [
-        "tests/casr_tests/test_asan_sbo",
-        "tests/casr_tests/test_asan_sbo",
+        abs_path("tests/casr_tests/test_asan_sbo.cpp"),
+        abs_path("tests/casr_tests/test_asan_sbo"),
     ];
-    let output1 = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output1 = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
-    let output2 = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+        .expect("failed to start casr_san");
+    let output2 = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr_san");
 
     assert!(output1.status.success());
     assert!(output2.status.success());
