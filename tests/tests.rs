@@ -11,11 +11,11 @@ use std::process::Command;
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
-    pub static ref EXE_CASR: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr"));
-    pub static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
-    pub static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
-    pub static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
-    pub static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
+    static ref EXE_CASR: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr"));
+    static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
+    static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
+    static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
+    static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
 }
 
 fn abs_path<'a>(rpath: &'a str) -> String {
