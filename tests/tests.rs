@@ -18,7 +18,7 @@ lazy_static::lazy_static! {
     static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
 }
 
-fn abs_path<'a>(rpath: &'a str) -> String {
+fn abs_path(rpath: &str) -> String {
     // Define paths.
     let project_dir = PathBuf::from(*PROJECT_DIR.read().unwrap());
     let mut path = PathBuf::new();
@@ -56,7 +56,7 @@ fn test_segfault_on_pc() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "SegFaultOnPc");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -88,7 +88,7 @@ fn test_dest_av() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -120,7 +120,7 @@ fn test_dest_av_near_null() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 #[test]
@@ -151,7 +151,7 @@ fn test_return_av() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -183,7 +183,7 @@ fn test_call_av() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -215,7 +215,7 @@ fn test_call_av_tainted() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAvTainted");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -247,7 +247,7 @@ fn test_source_av() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -279,7 +279,7 @@ fn test_source_av_near_null() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -311,7 +311,7 @@ fn test_abort() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AbortSignal");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -343,7 +343,7 @@ fn test_canary() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "StackGuard");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -376,7 +376,7 @@ fn test_safe_func() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SafeFunctionCheck");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -408,7 +408,7 @@ fn test_bad_instruction() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "BadInstruction");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -440,7 +440,7 @@ fn test_stack_overflow() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "StackOverflow");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -472,7 +472,7 @@ fn test_dest_av_tainted() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvTainted");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -504,7 +504,7 @@ fn test_div_by_zero() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -536,7 +536,7 @@ fn test_segfault_on_pc32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "SegFaultOnPc");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -568,7 +568,7 @@ fn test_dest_av32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -600,7 +600,7 @@ fn test_dest_av_near_null32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -632,7 +632,7 @@ fn test_return_av32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -664,7 +664,7 @@ fn test_call_av32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -696,7 +696,7 @@ fn test_source_av32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -728,7 +728,7 @@ fn test_source_av_near_null32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -760,7 +760,7 @@ fn test_abort32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AbortSignal");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -793,7 +793,7 @@ fn test_canary32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "StackGuard");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -826,7 +826,7 @@ fn test_safe_func32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SafeFunctionCheck");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -858,7 +858,7 @@ fn test_bad_instruction32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "BadInstruction");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -890,7 +890,7 @@ fn test_div_by_zero32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -923,7 +923,7 @@ fn test_abort_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AbortSignal");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -956,7 +956,7 @@ fn test_segfault_on_pc_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "SegFaultOnPc");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -989,7 +989,7 @@ fn test_dest_av_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1022,7 +1022,7 @@ fn test_dest_av_near_null_gdb() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1055,7 +1055,7 @@ fn test_return_av_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1088,7 +1088,7 @@ fn test_call_av_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1121,7 +1121,7 @@ fn test_call_av_tainted_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAvTainted");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1154,7 +1154,7 @@ fn test_source_av_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1187,7 +1187,7 @@ fn test_source_av_near_null_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1219,7 +1219,7 @@ fn test_canary_gdb() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "StackGuard");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1252,7 +1252,7 @@ fn test_safe_func_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SafeFunctionCheck");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1285,7 +1285,7 @@ fn test_bad_instruction_gdb() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "BadInstruction");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1318,7 +1318,7 @@ fn test_stack_overflow_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "StackOverflow");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1351,7 +1351,7 @@ fn test_dest_av_tainted_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvTainted");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1383,7 +1383,7 @@ fn test_div_by_zero_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1416,7 +1416,7 @@ fn test_abort_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AbortSignal");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1449,7 +1449,7 @@ fn test_segfault_on_pc_gdb32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "SegFaultOnPc");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1482,7 +1482,7 @@ fn test_dest_av_gdb32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1515,7 +1515,7 @@ fn test_dest_av_near_null_gdb32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1548,7 +1548,7 @@ fn test_return_av_gdb32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1581,7 +1581,7 @@ fn test_call_av_gdb32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1614,7 +1614,7 @@ fn test_source_av_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1647,7 +1647,7 @@ fn test_source_av_near_null_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1679,7 +1679,7 @@ fn test_canary_gdb32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "StackGuard");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1712,7 +1712,7 @@ fn test_safe_func_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SafeFunctionCheck");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1745,7 +1745,7 @@ fn test_bad_instruction_gdb32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "BadInstruction");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1777,7 +1777,7 @@ fn test_div_by_zero_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1802,8 +1802,7 @@ fn test_casr_cluster_s() {
         .parse::<f64>()
         .unwrap();
     if res > 0.35 {
-        assert!(
-            false,
+        panic!(
             "Too high similarity, mistake. Stdout:{:?}\nDigit: {}\n",
             output.stdout.as_slice(),
             res
@@ -1829,8 +1828,7 @@ fn test_casr_cluster_s() {
         .parse::<f64>()
         .unwrap();
     if res < 0.70 {
-        assert!(
-            false,
+        panic!(
             "Too small similarity, mistake. Stdout:{:?}\nDigit: {}\n",
             output.stdout.as_slice(),
             res
@@ -2004,14 +2002,13 @@ fn test_casr_cluster_d() {
     let dirvec = match fs::read_dir(&paths[1]) {
         Ok(vec) => vec,
         Err(why) => {
-            assert!(false, "{:?}", why.kind());
-            return;
+            panic!("{:?}", why.kind());
         }
     };
 
     let counter = dirvec.count();
     if counter != 2 {
-        assert!(false, "Bad deduplication, casreps: {}", counter);
+        panic!("Bad deduplication, casreps: {}", counter);
     }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
@@ -2051,17 +2048,11 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
 
-        assert_eq!(4, stacktrace.len());
+        assert_eq!(4, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
-        assert_eq!(
+        assert!(
             report["CrashLine"]
                 .as_str()
                 .unwrap()
@@ -2071,12 +2062,10 @@ fn test_casr_san() {
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_asan_df+0x"),
-            // We can't hardcode the offset because we rebuild tests every time.
-            true
+                    .contains("test_asan_df+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 
     let _ = std::fs::remove_file(&paths[1]);
@@ -2111,17 +2100,11 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
 
-        assert_eq!(3, stacktrace.len());
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
-        assert_eq!(
+        assert!(
             report["CrashLine"]
                 .as_str()
                 .unwrap()
@@ -2131,12 +2114,10 @@ fn test_casr_san() {
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_asan_sbo+0x"),
-            // We can't hardcode the offset because we rebuild tests every time.
-            true
+                    .contains("test_asan_sbo+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 
     let _ = std::fs::remove_file(&paths[1]);
@@ -2171,17 +2152,11 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
 
-        assert_eq!(3, stacktrace.len());
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "memory-leaks");
-        assert_eq!(
+        assert!(
             report["CrashLine"]
                 .as_str()
                 .unwrap()
@@ -2191,12 +2166,10 @@ fn test_casr_san() {
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_asan_leak+0x"),
-            // We can't hardcode the offset because we rebuild tests every time.
-            true
+                    .contains("test_asan_leak+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 
     let _ = std::fs::remove_file(&paths[1]);
@@ -2234,17 +2207,11 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
 
-        assert_eq!(3, stacktrace.len());
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "heap-buffer-overflow(write)");
-        assert_eq!(
+        assert!(
             report["CrashLine"]
                 .as_str()
                 .unwrap()
@@ -2254,12 +2221,10 @@ fn test_casr_san() {
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_asan_stdin+0x"),
-            // We can't hardcode the offset because we rebuild tests every time.
-            true
+                    .contains("test_asan_stdin+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 
     let _ = std::fs::remove_file(&paths[1]);
@@ -2307,7 +2272,7 @@ fn test_casr_san() {
                 .unwrap()
                 .iter()
                 .map(|x| x.to_string())
-                .nth(0)
+                .next()
                 .unwrap();
             let first_addr = re
                 .captures(&asan1)
@@ -2321,7 +2286,7 @@ fn test_casr_san() {
                 .unwrap()
                 .iter()
                 .map(|x| x.to_string())
-                .nth(0)
+                .next()
                 .unwrap();
             let second_addr = re
                 .captures(&asan2)
@@ -2338,7 +2303,7 @@ fn test_casr_san() {
             return;
         }
     }
-    assert!(false, "Couldn't parse json report file.");
+    panic!("Couldn't parse json report file.");
 }
 
 #[test]
@@ -2364,12 +2329,12 @@ fn test_asan_stacktrace() {
     ];
 
     let trace = raw_stacktrace
-        .into_iter()
+        .iter()
         .map(|e| e.to_string())
         .collect::<Vec<String>>();
     let sttr = casr::asan::stacktrace_from_asan(&trace);
     if sttr.is_err() {
-        assert!(false, "{}", sttr.err().unwrap());
+        panic!("{}", sttr.err().unwrap());
     }
 
     let stacktrace = sttr.unwrap();
