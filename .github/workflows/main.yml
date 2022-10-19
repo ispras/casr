@@ -21,5 +21,6 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: |
-        sudo apt update && sudo apt install -y clang-11
+        sudo apt update && sudo apt install -y gdb pip
+        pip3 install numpy scipy
         cargo test --release --verbose
