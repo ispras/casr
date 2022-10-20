@@ -78,33 +78,28 @@ pub fn severity<'a>(
             if report
                 .stacktrace
                 .iter()
-                .find(|entry| entry.contains("cfree"))
-                .is_some()
+                .any(|entry| entry.contains("cfree"))
             {
                 return ExecutionClass::find("HeapError");
             }
             if report
                 .stacktrace
                 .iter()
-                .find(|entry| entry.contains("__chk_fail"))
-                .is_some()
+                .any(|entry| entry.contains("__chk_fail"))
             {
                 return ExecutionClass::find("SafeFunctionCheck");
             }
             if report
                 .stacktrace
                 .iter()
-                .find(|entry| entry.contains("_stack_chk_fail"))
-                .is_some()
+                .any(|entry| entry.contains("_stack_chk_fail"))
             {
                 return ExecutionClass::find("StackGuard");
             }
 
-            return ExecutionClass::find("AbortSignal");
+            ExecutionClass::find("AbortSignal")
         }
-        SIGINFO_SIGILL => {
-            return ExecutionClass::find("BadInstruction");
-        }
+        SIGINFO_SIGILL => ExecutionClass::find("BadInstruction"),
         SIGINFO_SIGSEGV | SIGINFO_SIGFPE => {
             // Get program counter.
             let pc = context.pc();
@@ -128,7 +123,7 @@ pub fn severity<'a>(
             let file = context.mappings.find(*pc);
 
             if context.siginfo.si_signo == SIGINFO_SIGSEGV
-                && !file.is_some()
+                && file.is_none()
                 && context.siginfo.si_code == SI_KERNEL
             {
                 return ExecutionClass::find("SegFaultOnPc");
@@ -138,7 +133,7 @@ pub fn severity<'a>(
                 let offset = *pc - file.start + file.offset;
 
                 // Read file part for disassembly.
-                let mut f = File::open(file.name.clone())?;
+                let mut f = File::open(file.name)?;
                 f.seek(SeekFrom::Start(offset))?;
 
                 let mut buffer = [0; 64];
@@ -195,7 +190,7 @@ pub fn severity<'a>(
                         let mut disassembly = Vec::new();
                         insns
                             .iter()
-                            .for_each(|i| disassembly.push(format!("    {}", i.to_string())));
+                            .for_each(|i| disassembly.push(format!("    {}", i)));
                         if let Some(insn) = disassembly.get(0) {
                             let new_insn = format!("==> {}", insn.trim_start());
                             let _ = std::mem::replace(&mut disassembly[0], new_insn);
@@ -204,14 +199,14 @@ pub fn severity<'a>(
                         report.disassembly = disassembly;
 
                         if context.siginfo.si_signo == SIGINFO_SIGSEGV {
-                            return analyze_instructions(&cs, &insns, &context);
+                            analyze_instructions(&cs, &insns, context)
                         } else {
-                            return ExecutionClass::find("FPE");
+                            ExecutionClass::find("FPE")
                         }
                     } else {
-                        return Err(Error::Casr(
+                        Err(Error::Casr(
                             "Unable to get Capstone Instructions.".to_string(),
-                        ));
+                        ))
                     }
                 } else {
                     return Err(Error::Casr(format!(
@@ -220,9 +215,9 @@ pub fn severity<'a>(
                     )));
                 }
             } else {
-                return Err(Error::Casr(
+                Err(Error::Casr(
                     "Unable to find file to be disassembled".to_string(),
-                ));
+                ))
             }
         }
         _ => Err(Error::Casr(format!(
@@ -256,8 +251,8 @@ fn analyze_instructions<'a>(
     context: &CrashContext,
 ) -> Result<ExecutionClass<'a>> {
     match context.machine.arch {
-        header::EM_386 | header::EM_X86_64 => analyze_instructions_x86(cs, &insns, &context),
-        header::EM_ARM => analyze_instructions_arm(cs, &insns, &context.siginfo),
+        header::EM_386 | header::EM_X86_64 => analyze_instructions_x86(cs, insns, context),
+        header::EM_ARM => analyze_instructions_arm(cs, insns, &context.siginfo),
         _ => Err(Error::Casr(format!(
             "Unsupported machine arch: {}",
             context.machine.arch
@@ -532,7 +527,7 @@ fn process_instruction(
     index: usize,
     taint_set: &mut HashSet<RegId>,
 ) -> InstructionType {
-    let detail = cs.insn_detail(&insn);
+    let detail = cs.insn_detail(insn);
     if detail.is_err() {
         return InstructionType::Unknown;
     }
@@ -544,7 +539,7 @@ fn process_instruction(
             match insn_type_arm(insn.id()) {
                 InstructionType::ControlFlowTransfer => {
                     // Only BX, BLX with registers could lead to hijack.
-                    if let Some(first_op) = arm_detail.operands().nth(0) {
+                    if let Some(first_op) = arm_detail.operands().next() {
                         match first_op.op_type {
                             arm::ArmOperandType::Reg(t1) => {
                                 if taint_set.contains(&t1) {
@@ -561,7 +556,7 @@ fn process_instruction(
                 }
                 InstructionType::Arithmetic => {
                     // Propagate registers.
-                    let first_op: arm::ArmOperand = arm_detail.operands().nth(0).unwrap();
+                    let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
                     let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
                     match (first_op.op_type, second_op.op_type) {
                         (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Reg(t2)) => {
@@ -592,7 +587,7 @@ fn process_instruction(
                     match insn.id() {
                         ARM_INS_MOV => {
                             // Propagate, check pc
-                            let first_op: arm::ArmOperand = arm_detail.operands().nth(0).unwrap();
+                            let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
                             let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
                             match (first_op.op_type, second_op.op_type) {
                                 (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Reg(t2)) => {
@@ -630,7 +625,7 @@ fn process_instruction(
                             }
                         }
                         ARM_INS_LDR => {
-                            let first_op: arm::ArmOperand = arm_detail.operands().nth(0).unwrap();
+                            let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
                             let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
                             match (first_op.op_type, second_op.op_type) {
                                 (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Mem(t2)) => {
@@ -653,7 +648,7 @@ fn process_instruction(
                             }
                         }
                         ARM_INS_STR => {
-                            let first_op: arm::ArmOperand = arm_detail.operands().nth(0).unwrap();
+                            let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
                             let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
                             match (first_op.op_type, second_op.op_type) {
                                 (arm::ArmOperandType::Reg(_), arm::ArmOperandType::Mem(t1)) => {
@@ -689,7 +684,7 @@ fn process_instruction(
                             InstructionType::ControlFlowTransfer
                         }
                     } else if insn.id() == X86_INS_JMP || insn.id() == X86_INS_CALL {
-                        let first_op: x86::X86Operand = x86_detail.operands().nth(0).unwrap();
+                        let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                         match first_op.op_type {
                             x86::X86OperandType::Reg(t1) => {
                                 if taint_set.contains(&t1) {
@@ -723,7 +718,7 @@ fn process_instruction(
                 InstructionType::DataTransfer => {
                     let mut t = InstructionType::DataTransfer;
                     // Get 1st and 2nd operand.
-                    let first_op: x86::X86Operand = x86_detail.operands().nth(0).unwrap();
+                    let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                     let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
                     match insn.id() {
                         X86_INS_MOV => {
@@ -766,7 +761,7 @@ fn process_instruction(
                             }
                         }
                         X86_INS_XCHG => {
-                            let first_op: x86::X86Operand = x86_detail.operands().nth(0).unwrap();
+                            let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                             let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
                             match (first_op.op_type, second_op.op_type) {
                                 (x86::X86OperandType::Reg(t1), x86::X86OperandType::Reg(t2)) => {
@@ -789,7 +784,7 @@ fn process_instruction(
                             }
                         }
                         X86_INS_LEA => {
-                            let first_op: x86::X86Operand = x86_detail.operands().nth(0).unwrap();
+                            let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                             let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
                             match (first_op.op_type, second_op.op_type) {
                                 (x86::X86OperandType::Reg(t1), x86::X86OperandType::Mem(t2)) => {
@@ -806,7 +801,7 @@ fn process_instruction(
                         }
                         X86_INS_MOVZX | X86_INS_MOVSX => {
                             // Always kill.
-                            let first_op: x86::X86Operand = x86_detail.operands().nth(0).unwrap();
+                            let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                             match first_op.op_type {
                                 x86::X86OperandType::Reg(t1) => {
                                     taint_set.remove(&t1);
@@ -825,7 +820,7 @@ fn process_instruction(
                 InstructionType::Unary => {
                     // POP clears register if it is tainted.
                     if insn.id() == X86_INS_POP {
-                        let first_op: x86::X86Operand = x86_detail.operands().nth(0).unwrap();
+                        let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                         match first_op.op_type {
                             x86::X86OperandType::Reg(t1) => {
                                 taint_set.remove(&t1);
@@ -837,7 +832,7 @@ fn process_instruction(
                 }
                 InstructionType::Arithmetic => {
                     // Get 1st and 2nd operand.
-                    let first_op: x86::X86Operand = x86_detail.operands().nth(0).unwrap();
+                    let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                     let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
                     match (first_op.op_type, second_op.op_type) {
                         (x86::X86OperandType::Reg(t1), x86::X86OperandType::Reg(t2)) => {
@@ -1045,7 +1040,7 @@ mod tests {
             .build();
 
         if let Ok(cs) = cs {
-            if let Ok(insns) = cs.disasm_all(&data, 0) {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
@@ -1066,7 +1061,7 @@ mod tests {
             .build();
 
         if let Ok(cs) = cs {
-            if let Ok(insns) = cs.disasm_all(&data, 0) {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
@@ -1087,7 +1082,7 @@ mod tests {
             .build();
 
         if let Ok(cs) = cs {
-            if let Ok(insns) = cs.disasm_all(&data, 0) {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
@@ -1109,7 +1104,7 @@ mod tests {
             .build();
 
         if let Ok(cs) = cs {
-            if let Ok(insns) = cs.disasm_all(&data, 0) {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
@@ -1130,7 +1125,7 @@ mod tests {
             .build();
 
         if let Ok(cs) = cs {
-            if let Ok(insns) = cs.disasm_all(&data, 0) {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
                 if let Ok(_result) = check_taint(&cs, &insns) {
                     assert!(false)
                 } else {
@@ -1156,7 +1151,7 @@ mod tests {
             .build();
 
         if let Ok(cs) = cs {
-            if let Ok(insns) = cs.disasm_all(&data, 0) {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
@@ -1181,7 +1176,7 @@ mod tests {
             .build();
 
         if let Ok(cs) = cs {
-            if let Ok(insns) = cs.disasm_all(&data, 0) {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
@@ -1206,7 +1201,7 @@ mod tests {
             .build();
 
         if let Ok(cs) = cs {
-            if let Ok(insns) = cs.disasm_all(&data, 0) {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
                 if let Ok(_) = check_taint(&cs, &insns) {
                     assert!(false);
                 } else {
@@ -1246,7 +1241,7 @@ mod tests {
                 machine,
             };
             let data: &[u8] = &[0x8b, 0x00, 0x01, 0xc2, 0x89, 0x02];
-            let insns = cs.disasm_all(&data, 0).unwrap();
+            let insns = cs.disasm_all(data, 0).unwrap();
             let expected_class = ExecutionClass::find("DestAvTainted").unwrap();
             if let Ok(res) = analyze_instructions(&cs, &insns, &context) {
                 assert_eq!(res, expected_class);
@@ -1284,7 +1279,7 @@ mod tests {
                 machine,
             };
             let data: &[u8] = &[0x8b, 0x00, 0x8b, 0x00, 0xff, 0xd0];
-            let insns = cs.disasm_all(&data, 0).unwrap();
+            let insns = cs.disasm_all(data, 0).unwrap();
             let expected_class = ExecutionClass::find("CallAvTainted").unwrap();
             if let Ok(res) = analyze_instructions(&cs, &insns, &context) {
                 assert_eq!(res, expected_class);

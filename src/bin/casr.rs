@@ -307,7 +307,7 @@ fn check_lock() -> Result<File> {
         .open(project_dir)?;
     let fd = file.as_raw_fd();
     flock(fd, FlockArg::LockExclusive).unwrap();
-    return Ok(file);
+    Ok(file)
 }
 
 /// Analyze coredump and put information to report.
@@ -331,14 +331,14 @@ fn analyze_coredump(
     };
 
     // Parse coredump.
-    let elf = Elf::parse(&core)?;
+    let elf = Elf::parse(core)?;
 
     // Type should be CORE.
     if elf.header.e_type != header::ET_CORE {
         return Err(Error::Casr("Core should be an ELF file.".to_string()));
     }
 
-    let notes_iter = elf.iter_note_headers(&core);
+    let notes_iter = elf.iter_note_headers(core);
 
     if notes_iter.is_none() {
         return Err(Error::Casr(
@@ -427,10 +427,10 @@ fn analyze_coredump(
     .regs()
     .launch()?;
 
-    report.stacktrace = result[0].split("\n").map(|x| x.to_string()).collect();
+    report.stacktrace = result[0].split('\n').map(|x| x.to_string()).collect();
     if report.proc_maps.is_empty() {
         report.proc_maps = result[2]
-            .split("\n")
+            .split('\n')
             .skip(3)
             .map(|x| x.to_string())
             .collect();
@@ -454,13 +454,12 @@ fn analyze_coredump(
             .cloned()
             .map(|f| {
                 if f.name.contains(name) {
-                    let mf = gdb_command::mappings::File::new(
+                    gdb_command::mappings::File::new(
                         f.start,
                         f.end,
                         f.offset,
                         &report.executable_path,
-                    );
-                    mf
+                    )
                 } else {
                     f
                 }

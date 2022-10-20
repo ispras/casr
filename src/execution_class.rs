@@ -19,7 +19,7 @@ pub struct ExecutionClass<'a> {
     pub explanation: Cow<'a, str>,
 }
 
-pub const CLASSES: &'static [(&'static str, &'static str, &'static str, &'static str); 70] = &[
+pub const CLASSES: &[(&str, &str, &str, &str); 70] = &[
     ("EXPLOITABLE", "SegFaultOnPc", "Segmentation fault on program counter", "The target tried to access data at an address that matches the program counter. This likely indicates that the program counter contents are tainted and can be controlled by an attacker."),
     ("EXPLOITABLE", "ReturnAv", "Access violation during return instruction", "The target crashed on a return instruction, which likely indicates stack corruption."),
     ("EXPLOITABLE", "BranchAv", "Access violation during branch instruction", "The target crashed on a branch instruction, which may indicate that the control flow is tainted."),
@@ -133,7 +133,7 @@ impl<'a> ExecutionClass<'a> {
     /// * `rw` - access information.
     pub fn san_find(short_desc: &'a str, rw: Option<&'a str>) -> error::Result<Self> {
         match short_desc {
-            "SEGV" => match rw.unwrap_or(&"UNDEF") {
+            "SEGV" => match rw.unwrap_or("UNDEF") {
                 "READ" => ExecutionClass::find("SourceAv"),
                 "WRITE" => ExecutionClass::find("DestAv"),
                 _ => ExecutionClass::find("AccessViolation"),
@@ -141,7 +141,7 @@ impl<'a> ExecutionClass<'a> {
             "stack-overflow" => ExecutionClass::find("StackOverflow"),
             "deadly" => ExecutionClass::find("AbortSignal"), // hack: regexp matches word without spaces
             _ => {
-                let pattern = match rw.unwrap_or(&"UNDEF") {
+                let pattern = match rw.unwrap_or("UNDEF") {
                     "READ" => format!("{}(read)", short_desc),
                     "WRITE" => format!("{}(write)", short_desc),
                     _ => short_desc.to_string(),

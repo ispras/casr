@@ -48,12 +48,7 @@ impl From<gdb_command::error::Error> for Error {
 
 impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Error {
-        Error::Cluster(
-            err.chain()
-                .rev()
-                .map(|s| s.to_string() + &". ".to_owned())
-                .collect(),
-        )
+        Error::Cluster(err.chain().rev().map(|s| s.to_string() + ". ").collect())
     }
 }
 

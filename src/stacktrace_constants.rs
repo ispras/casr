@@ -15,7 +15,7 @@ limitations under the License.
 */
 //! Module contains constants for parsing stack traces.
 
-pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &'static [&'static str] = &[
+pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     // Function names (exact match).
     r"^abort$",
     r"^exit$",
@@ -179,7 +179,7 @@ pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &'static [&'static str] = &[
     r".*v8::base::OS::Abort",
 ];
 
-pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &'static [&'static str] = &[
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     // File paths.
     r".*/usr/include/c\+\+/",
     r".*\-gnu/c\+\+/",

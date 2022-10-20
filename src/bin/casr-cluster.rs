@@ -135,7 +135,7 @@ fn stacktrace(path: &Path) -> error::Result<Stacktrace> {
                 rawtrace.drain(pos + 1..);
             }
 
-            if rawtrace.len() == 0 {
+            if rawtrace.is_empty() {
                 return Err(Error::Cluster(
                     "Current stack trace length is null".to_string(),
                 ));
@@ -228,7 +228,7 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> erro
     let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
 
     (0..len).into_par_iter().for_each(|i| {
-        if let Ok(trace) = stacktrace(&casreps[i].as_path()) {
+        if let Ok(trace) = stacktrace(casreps[i].as_path()) {
             traces.write().unwrap().push(trace);
             filtered_casreps.write().unwrap().push(casreps[i].clone());
         } else {
@@ -349,7 +349,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
         if let Ok(entry) = path {
             if entry.metadata()?.is_dir() {
                 let res = dedup(
-                    &entry.path().as_path(),
+                    entry.path().as_path(),
                     outdir
                         .as_ref()
                         .map(|outdir| Path::new(&outdir).join(&entry.file_name())),
@@ -372,7 +372,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
         fs::create_dir_all(outdir)?;
 
         for x in &paths {
-            let trace = match stacktrace(&x.path().as_path()) {
+            let trace = match stacktrace(x.path().as_path()) {
                 Ok(tr) => tr,
                 Err(_) => {
                     badreports.push(x.path());
@@ -388,7 +388,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
         }
     } else {
         for x in &paths {
-            let trace = match stacktrace(&x.path().as_path()) {
+            let trace = match stacktrace(x.path().as_path()) {
                 Ok(tr) => tr,
                 Err(_) => {
                     badreports.push(x.path());
@@ -415,7 +415,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
     before += paths.len();
     after += casreps.len();
 
-    return Ok((before, after));
+    Ok((before, after))
 }
 
 fn main() -> error::Result<()> {
@@ -476,17 +476,17 @@ fn main() -> error::Result<()> {
         let casreps: Vec<&Path> = matches
             .values_of("similarity")
             .unwrap()
-            .map(|x| Path::new(x))
+            .map(Path::new)
             .collect();
         println!(
             "{0:.5}",
-            similarity(&stacktrace(&casreps[0])?, &stacktrace(&casreps[1])?)
+            similarity(&stacktrace(casreps[0])?, &stacktrace(casreps[1])?)
         );
     } else if matches.is_present("clustering") {
         let paths: Vec<&Path> = matches
             .values_of("clustering")
             .unwrap()
-            .map(|x| Path::new(x))
+            .map(Path::new)
             .collect();
 
         let jobs = if let Some(jobs) = matches.value_of("jobs") {
@@ -495,15 +495,15 @@ fn main() -> error::Result<()> {
             std::cmp::max(1, (num_cpus::get() / 2) as usize)
         };
 
-        let result = make_clusters(&paths[0], paths.get(1).cloned(), jobs)?;
+        let result = make_clusters(paths[0], paths.get(1).cloned(), jobs)?;
         println!("Number of clusters: {}", result);
     } else if matches.is_present("deduplication") {
         let paths: Vec<&Path> = matches
             .values_of("deduplication")
             .unwrap()
-            .map(|x| Path::new(x))
+            .map(Path::new)
             .collect();
-        let (before, after) = dedup(&paths[0], paths.get(1).map(|x| x.to_path_buf()))?;
+        let (before, after) = dedup(paths[0], paths.get(1).map(|x| x.to_path_buf()))?;
         println!("Number of reports before deduplication: {}", before);
         println!("Number of reports after deduplication: {}", after);
     }

@@ -45,7 +45,7 @@ impl fmt::Display for CrashLine {
 ///
 /// * 'report' - crash report
 pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
-    let trace = if report.asan_report.len() > 0 {
+    let trace = if !report.asan_report.is_empty() {
         asan::stacktrace_from_asan(&report.stacktrace)?
     } else {
         // Get stack trace and update it from mappings.
@@ -58,14 +58,14 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
 
     // Compile function regexp.
     let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES
-        .into_iter()
+        .iter()
         .map(|s| format!("({})|", s))
         .collect::<String>();
     let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
     // Compile file regexp.
     let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
-        .into_iter()
+        .iter()
         .map(|s| format!("({})|", s))
         .collect::<String>();
     let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
@@ -84,7 +84,7 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
             }
             true
         })
-        .nth(0);
+        .next();
 
     if let Some(crash_entry) = crash_entry {
         if !crash_entry.debug.file.is_empty() {
