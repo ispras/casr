@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This file is needed for coredump generation and online testing of the Casr
+
 # test returnAV
 ./test_returnAv $(printf 'A%.s' {1..140})
 
