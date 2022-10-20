@@ -293,19 +293,11 @@ fn analyze_instructions_x86<'a>(
     let detail = detail.unwrap();
 
     // Check for return.
-    if detail
-        .groups()
-        .find(|x| cs.group_name(*x).unwrap() == "ret")
-        .is_some()
-    {
+    if detail.groups().any(|x| cs.group_name(x).unwrap() == "ret") {
         return ExecutionClass::find("ReturnAv");
     }
     // Check for call.
-    if detail
-        .groups()
-        .find(|x| cs.group_name(*x).unwrap() == "call")
-        .is_some()
-    {
+    if detail.groups().any(|x| cs.group_name(x).unwrap() == "call") {
         // Check for exceeded stack.
         if let Some(sp) = context.sp() {
             if (*sp - context.machine.byte_width as u64) == context.siginfo.si_addr {
@@ -322,11 +314,7 @@ fn analyze_instructions_x86<'a>(
         }
     }
     // Check for jump.
-    if detail
-        .groups()
-        .find(|x| cs.group_name(*x).unwrap() == "jump")
-        .is_some()
-    {
+    if detail.groups().any(|x| cs.group_name(x).unwrap() == "jump") {
         // Check for Jump reg, Jump [reg].
         if detail.regs_read_count() > 0 {
             if !is_near_null(context.siginfo.si_addr) || context.siginfo.si_code == SI_KERNEL {
@@ -359,31 +347,28 @@ fn analyze_instructions_x86<'a>(
             };
 
             // Check mem operand.
-            match operand.op_type {
-                capstone::arch::x86::X86OperandType::Mem(_) => {
-                    match (
-                        context.siginfo.si_code,
-                        num,
-                        is_near_null(context.siginfo.si_addr),
-                    ) {
-                        (SI_KERNEL, 0, _) | (_, 0, false) => {
-                            return ExecutionClass::find("DestAv");
-                        }
-                        (_, 0, true) => {
-                            return ExecutionClass::find("DestAvNearNull");
-                        }
-                        (SI_KERNEL, 1, _) | (_, 1, false) => {
-                            if let Ok(new_class) = check_taint(cs, insns) {
-                                return Ok(new_class);
-                            } else {
-                                return ExecutionClass::find("SourceAv");
-                            }
-                        }
-                        (_, 1, true) => return ExecutionClass::find("SourceAvNearNull"),
-                        _ => return ExecutionClass::find("AccessViolation"),
+            if let capstone::arch::x86::X86OperandType::Mem(_) = operand.op_type {
+                match (
+                    context.siginfo.si_code,
+                    num,
+                    is_near_null(context.siginfo.si_addr),
+                ) {
+                    (SI_KERNEL, 0, _) | (_, 0, false) => {
+                        return ExecutionClass::find("DestAv");
                     }
+                    (_, 0, true) => {
+                        return ExecutionClass::find("DestAvNearNull");
+                    }
+                    (SI_KERNEL, 1, _) | (_, 1, false) => {
+                        if let Ok(new_class) = check_taint(cs, insns) {
+                            return Ok(new_class);
+                        } else {
+                            return ExecutionClass::find("SourceAv");
+                        }
+                    }
+                    (_, 1, true) => return ExecutionClass::find("SourceAvNearNull"),
+                    _ => return ExecutionClass::find("AccessViolation"),
                 }
-                _ => {}
             }
         }
     }
@@ -442,30 +427,27 @@ fn analyze_instructions_arm<'a>(
             ));
         };
         // Check mem operand.
-        match operand.op_type {
-            capstone::arch::arm::ArmOperandType::Mem(_) => {
-                match (
-                    info.si_code,
-                    m.contains("str"),
-                    m.contains("ldr"),
-                    is_near_null(info.si_addr),
-                ) {
-                    (SI_KERNEL, true, false, _) | (_, true, false, false) => {
-                        return ExecutionClass::find("DestAv")
+        if let capstone::arch::arm::ArmOperandType::Mem(_) = operand.op_type {
+            match (
+                info.si_code,
+                m.contains("str"),
+                m.contains("ldr"),
+                is_near_null(info.si_addr),
+            ) {
+                (SI_KERNEL, true, false, _) | (_, true, false, false) => {
+                    return ExecutionClass::find("DestAv")
+                }
+                (_, true, false, true) => return ExecutionClass::find("DestAvNearNull"),
+                (SI_KERNEL, false, true, _) | (_, false, true, false) => {
+                    if let Ok(new_class) = check_taint(cs, insns) {
+                        return Ok(new_class);
+                    } else {
+                        return ExecutionClass::find("SourceAv");
                     }
-                    (_, true, false, true) => return ExecutionClass::find("DestAvNearNull"),
-                    (SI_KERNEL, false, true, _) | (_, false, true, false) => {
-                        if let Ok(new_class) = check_taint(cs, insns) {
-                            return Ok(new_class);
-                        } else {
-                            return ExecutionClass::find("SourceAv");
-                        }
-                    }
-                    (_, false, true, true) => return ExecutionClass::find("SourceAvNearNull"),
-                    _ => return ExecutionClass::find("AccessViolation"),
-                };
-            }
-            _ => {}
+                }
+                (_, false, true, true) => return ExecutionClass::find("SourceAvNearNull"),
+                _ => return ExecutionClass::find("AccessViolation"),
+            };
         }
     }
     ExecutionClass::find("AccessViolation")
@@ -558,27 +540,26 @@ fn process_instruction(
                     // Propagate registers.
                     let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
                     let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
-                    match (first_op.op_type, second_op.op_type) {
-                        (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Reg(t2)) => {
-                            // Check shifter.
-                            match second_op.shift {
-                                arm::ArmShift::AsrReg(r)
-                                | arm::ArmShift::LsrReg(r)
-                                | arm::ArmShift::LslReg(r)
-                                | arm::ArmShift::RorReg(r)
-                                | arm::ArmShift::RrxReg(r) => {
-                                    if taint_set.contains(&r) {
-                                        taint_set.insert(t2);
-                                    }
+                    if let (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Reg(t2)) =
+                        (first_op.op_type, second_op.op_type)
+                    {
+                        // Check shifter.
+                        match second_op.shift {
+                            arm::ArmShift::AsrReg(r)
+                            | arm::ArmShift::LsrReg(r)
+                            | arm::ArmShift::LslReg(r)
+                            | arm::ArmShift::RorReg(r)
+                            | arm::ArmShift::RrxReg(r) => {
+                                if taint_set.contains(&r) {
+                                    taint_set.insert(t2);
                                 }
-                                _ => {}
                             }
-                            // Propagate t2 -> t1.
-                            if taint_set.contains(&t2) {
-                                taint_set.insert(t1);
-                            }
+                            _ => {}
                         }
-                        _ => {}
+                        // Propagate t2 -> t1.
+                        if taint_set.contains(&t2) {
+                            taint_set.insert(t1);
+                        }
                     }
                     InstructionType::Arithmetic
                 }
@@ -627,38 +608,35 @@ fn process_instruction(
                         ARM_INS_LDR => {
                             let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
                             let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
-                            match (first_op.op_type, second_op.op_type) {
-                                (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Mem(t2)) => {
-                                    // Read data from memory. If address is tainted, then value is tainted.
-                                    // If this is a first instruction in list, value is tainted.
-                                    if taint_set.contains(&t2.base())
-                                        || taint_set.contains(&t2.index())
-                                        || index == 0
-                                    {
-                                        taint_set.insert(t1);
-                                        // Ldr to PC.
-                                        if t1 == RegId(11) {
-                                            t = InstructionType::TaintedPc;
-                                        }
-                                    } else {
-                                        taint_set.remove(&t1);
+                            if let (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Mem(t2)) =
+                                (first_op.op_type, second_op.op_type)
+                            {
+                                // Read data from memory. If address is tainted, then value is tainted.
+                                // If this is a first instruction in list, value is tainted.
+                                if taint_set.contains(&t2.base())
+                                    || taint_set.contains(&t2.index())
+                                    || index == 0
+                                {
+                                    taint_set.insert(t1);
+                                    // Ldr to PC.
+                                    if t1 == RegId(11) {
+                                        t = InstructionType::TaintedPc;
                                     }
+                                } else {
+                                    taint_set.remove(&t1);
                                 }
-                                _ => {}
                             }
                         }
                         ARM_INS_STR => {
                             let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
                             let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
-                            match (first_op.op_type, second_op.op_type) {
-                                (arm::ArmOperandType::Reg(_), arm::ArmOperandType::Mem(t1)) => {
-                                    if taint_set.contains(&t1.base())
-                                        || taint_set.contains(&t1.index())
-                                    {
-                                        t = InstructionType::TaintedMemStore;
-                                    }
+                            if let (arm::ArmOperandType::Reg(_), arm::ArmOperandType::Mem(t1)) =
+                                (first_op.op_type, second_op.op_type)
+                            {
+                                if taint_set.contains(&t1.base()) || taint_set.contains(&t1.index())
+                                {
+                                    t = InstructionType::TaintedMemStore;
                                 }
-                                _ => {}
                             }
                         }
                         _ => {}
@@ -786,27 +764,22 @@ fn process_instruction(
                         X86_INS_LEA => {
                             let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                             let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
-                            match (first_op.op_type, second_op.op_type) {
-                                (x86::X86OperandType::Reg(t1), x86::X86OperandType::Mem(t2)) => {
-                                    if taint_set.contains(&t2.base())
-                                        || taint_set.contains(&t2.index())
-                                    {
-                                        taint_set.insert(t1);
-                                    } else {
-                                        taint_set.remove(&t1);
-                                    }
+                            if let (x86::X86OperandType::Reg(t1), x86::X86OperandType::Mem(t2)) =
+                                (first_op.op_type, second_op.op_type)
+                            {
+                                if taint_set.contains(&t2.base()) || taint_set.contains(&t2.index())
+                                {
+                                    taint_set.insert(t1);
+                                } else {
+                                    taint_set.remove(&t1);
                                 }
-                                _ => {}
                             }
                         }
                         X86_INS_MOVZX | X86_INS_MOVSX => {
                             // Always kill.
                             let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                            match first_op.op_type {
-                                x86::X86OperandType::Reg(t1) => {
-                                    taint_set.remove(&t1);
-                                }
-                                _ => {}
+                            if let x86::X86OperandType::Reg(t1) = first_op.op_type {
+                                taint_set.remove(&t1);
                             }
                         }
                         _ => {}
@@ -821,11 +794,8 @@ fn process_instruction(
                     // POP clears register if it is tainted.
                     if insn.id() == X86_INS_POP {
                         let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                        match first_op.op_type {
-                            x86::X86OperandType::Reg(t1) => {
-                                taint_set.remove(&t1);
-                            }
-                            _ => {}
+                        if let x86::X86OperandType::Reg(t1) = first_op.op_type {
+                            taint_set.remove(&t1);
                         }
                     }
                     InstructionType::Unary
@@ -834,15 +804,13 @@ fn process_instruction(
                     // Get 1st and 2nd operand.
                     let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
                     let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
-                    match (first_op.op_type, second_op.op_type) {
-                        (x86::X86OperandType::Reg(t1), x86::X86OperandType::Reg(t2)) => {
-                            // Propagate t2 -> t1.
-                            if taint_set.contains(&t2) {
-                                taint_set.insert(t1);
-                            }
-                        }
-                        _ => {
-                            // Do nothing. Suppose memory always untainted.
+                    // Suppose memory always untainted. Track only registers.
+                    if let (x86::X86OperandType::Reg(t1), x86::X86OperandType::Reg(t2)) =
+                        (first_op.op_type, second_op.op_type)
+                    {
+                        // Propagate t2 -> t1.
+                        if taint_set.contains(&t2) {
+                            taint_set.insert(t1);
                         }
                     }
                     InstructionType::Arithmetic

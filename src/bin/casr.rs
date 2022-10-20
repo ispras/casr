@@ -375,44 +375,42 @@ fn analyze_coredump(
 
     let notes_iter = notes_iter.unwrap();
 
-    for note in notes_iter {
-        if let Ok(note) = note {
-            if note.n_type == note::NT_PRPSINFO {
-                // Get run command.
-                let mut run_line = String::new();
-                match elf.header.e_machine {
-                    header::EM_386 | header::EM_ARM => {
-                        if note.desc.len() < 45 {
-                            warn!("Prpsinfo is less than 45 bytes.");
+    for note in notes_iter.flatten() {
+        if note.n_type == note::NT_PRPSINFO {
+            // Get run command.
+            let mut run_line = String::new();
+            match elf.header.e_machine {
+                header::EM_386 | header::EM_ARM => {
+                    if note.desc.len() < 45 {
+                        warn!("Prpsinfo is less than 45 bytes.");
+                        break;
+                    }
+                    for b in &note.desc[44..note.desc.len()] {
+                        if *b != 0x0 {
+                            run_line.push(*b as char);
+                        } else {
                             break;
                         }
-                        for b in &note.desc[44..note.desc.len()] {
-                            if *b != 0x0 {
-                                run_line.push(*b as char);
-                            } else {
-                                break;
-                            }
-                        }
                     }
-                    header::EM_X86_64 => {
-                        if note.desc.len() < 57 {
-                            warn!("Prpsinfo is less than 57 bytes.");
-                            break;
-                        }
-                        for b in &note.desc[56..note.desc.len()] {
-                            if *b != 0x0 {
-                                run_line.push(*b as char);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    _ => {}
-                };
-
-                if report.proc_cmdline.is_empty() {
-                    report.proc_cmdline = run_line.clone();
                 }
+                header::EM_X86_64 => {
+                    if note.desc.len() < 57 {
+                        warn!("Prpsinfo is less than 57 bytes.");
+                        break;
+                    }
+                    for b in &note.desc[56..note.desc.len()] {
+                        if *b != 0x0 {
+                            run_line.push(*b as char);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                _ => {}
+            };
+
+            if report.proc_cmdline.is_empty() {
+                report.proc_cmdline = run_line.clone();
             }
         }
     }

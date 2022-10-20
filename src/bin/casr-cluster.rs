@@ -345,24 +345,22 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
     })?;
     let mut paths: Vec<fs::DirEntry> = Vec::new();
     let (mut before, mut after) = (0usize, 0usize);
-    for path in dir {
-        if let Ok(entry) = path {
-            if entry.metadata()?.is_dir() {
-                let res = dedup(
-                    entry.path().as_path(),
-                    outdir
-                        .as_ref()
-                        .map(|outdir| Path::new(&outdir).join(&entry.file_name())),
-                )?;
-                before += res.0;
-                after += res.1;
-                continue;
-            }
-            if entry.path().extension().is_none() || entry.path().extension().unwrap() != "casrep" {
-                continue;
-            }
-            paths.push(entry);
+    for entry in dir.flatten() {
+        if entry.metadata()?.is_dir() {
+            let res = dedup(
+                entry.path().as_path(),
+                outdir
+                    .as_ref()
+                    .map(|outdir| Path::new(&outdir).join(&entry.file_name())),
+            )?;
+            before += res.0;
+            after += res.1;
+            continue;
         }
+        if entry.path().extension().is_none() || entry.path().extension().unwrap() != "casrep" {
+            continue;
+        }
+        paths.push(entry);
     }
 
     let mut casreps = HashSet::new();
@@ -402,7 +400,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
     }
 
     if !badreports.is_empty() {
-        let clerr = outdir.unwrap_or(indir.to_path_buf()).join("clerr");
+        let clerr = outdir.unwrap_or_else(|| indir.to_path_buf()).join("clerr");
         fs::create_dir_all(&clerr)?;
         for report in badreports {
             fs::copy(

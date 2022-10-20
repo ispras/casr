@@ -167,8 +167,7 @@ fn main() -> Result<()> {
                     _ => {
                         // AddressSanitizer
                         let san_type = caps.get(2).unwrap().as_str();
-                        let mem_access = if let Some(second_line) = report.asan_report.iter().nth(1)
-                        {
+                        let mem_access = if let Some(second_line) = report.asan_report.get(1) {
                             let raccess = Regex::new(r"(READ|WRITE|ACCESS)").unwrap();
                             raccess
                                 .captures(second_line)

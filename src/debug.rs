@@ -70,21 +70,11 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
         .collect::<String>();
     let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
-    let crash_entry = trace
-        .iter()
-        .filter(|entry| {
-            if !entry.function.is_empty() && rfunction.is_match(&entry.function) {
-                return false;
-            }
-            if !entry.module.is_empty() && rfile.is_match(&entry.module) {
-                return false;
-            }
-            if !entry.debug.file.is_empty() && rfile.is_match(&entry.debug.file) {
-                return false;
-            }
-            true
-        })
-        .next();
+    let crash_entry = trace.iter().find(|entry| {
+        (entry.function.is_empty() || !rfunction.is_match(&entry.function))
+            && (entry.module.is_empty() || !rfile.is_match(&entry.module))
+            && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+    });
 
     if let Some(crash_entry) = crash_entry {
         if !crash_entry.debug.file.is_empty() {
