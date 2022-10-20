@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt;
 /// Classified information about program's execution.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ExecutionClass<'a> {
     /// Severity type.
     #[serde(rename(serialize = "Type", deserialize = "Type"))]

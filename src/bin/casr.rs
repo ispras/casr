@@ -254,21 +254,24 @@ fn main() -> Result<()> {
         libc::setgid(gid);
     }
 
-    let mut core: Vec<u8> = Vec::new();
-    if culimit < 0 || (core.len() as i32) < culimit {
-        // Ulimit is unlimited or core is smaller.
-        io::stdin().read_to_end(&mut core)?;
-        File::create(&core_path)?.write_all(&core)?;
-    } else {
-        // Core is larger then ulimit is set.
-        core = vec![0u8; culimit as usize];
-        io::stdin().read_exact(&mut core)?;
-        File::create(&core_path)?.write_all(&core)?;
-    }
-
     if culimit == 0 {
         error!("Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}", &casr_cmd);
+        bail!("Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}", &casr_cmd);
     }
+
+    let core = if culimit < 0 {
+        // Ulimit is unlimited or core is smaller.
+        let mut core = Vec::new();
+        io::stdin().read_to_end(&mut core)?;
+        File::create(&core_path)?.write_all(&core)?;
+        core
+    } else {
+        // Core is larger then ulimit is set.
+        let mut core = vec![0u8; culimit as usize];
+        io::stdin().read_exact(&mut core)?;
+        File::create(&core_path)?.write_all(&core)?;
+        core
+    };
     let result = analyze_coredump(&mut report, &core, &core_path);
     if result.is_err() {
         error!(

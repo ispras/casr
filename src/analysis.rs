@@ -209,10 +209,10 @@ pub fn severity<'a>(
                         ))
                     }
                 } else {
-                    return Err(Error::Casr(format!(
+                    Err(Error::Casr(format!(
                         "Unable to initialize architecture disassembler: {}",
                         context.machine.arch
-                    )));
+                    )))
                 }
             } else {
                 Err(Error::Casr(
@@ -1012,7 +1012,7 @@ mod tests {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
-                    assert!(false);
+                    unreachable!();
                 }
             }
         }
@@ -1033,7 +1033,7 @@ mod tests {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
-                    assert!(false);
+                    unreachable!();
                 }
             }
         }
@@ -1054,7 +1054,7 @@ mod tests {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
-                    assert!(false);
+                    unreachable!();
                 }
             }
         }
@@ -1076,7 +1076,7 @@ mod tests {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
-                    assert!(false);
+                    unreachable!();
                 }
             }
         }
@@ -1094,10 +1094,8 @@ mod tests {
 
         if let Ok(cs) = cs {
             if let Ok(insns) = cs.disasm_all(data, 0) {
-                if let Ok(_result) = check_taint(&cs, &insns) {
-                    assert!(false)
-                } else {
-                    assert!(true);
+                if check_taint(&cs, &insns).is_ok() {
+                    unreachable!()
                 }
             }
         }
@@ -1123,7 +1121,7 @@ mod tests {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
-                    assert!(false);
+                    unreachable!();
                 }
             }
         }
@@ -1148,7 +1146,7 @@ mod tests {
                 if let Ok(result) = check_taint(&cs, &insns) {
                     assert_eq!(expected_class, result);
                 } else {
-                    assert!(false);
+                    unreachable!();
                 }
             }
         }
@@ -1170,10 +1168,8 @@ mod tests {
 
         if let Ok(cs) = cs {
             if let Ok(insns) = cs.disasm_all(data, 0) {
-                if let Ok(_) = check_taint(&cs, &insns) {
-                    assert!(false);
-                } else {
-                    assert!(true);
+                if check_taint(&cs, &insns).is_ok() {
+                    unreachable!();
                 }
             }
         }
@@ -1214,7 +1210,7 @@ mod tests {
             if let Ok(res) = analyze_instructions(&cs, &insns, &context) {
                 assert_eq!(res, expected_class);
             } else {
-                assert!(false);
+                unreachable!();
             }
         }
     }
@@ -1252,7 +1248,7 @@ mod tests {
             if let Ok(res) = analyze_instructions(&cs, &insns, &context) {
                 assert_eq!(res, expected_class);
             } else {
-                assert!(false);
+                unreachable!();
             }
         }
     }
