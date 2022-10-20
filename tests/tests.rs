@@ -32,7 +32,7 @@ fn abs_path(rpath: &str) -> String {
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_segFaultOnPc"),
+        abs_path("tests/casr_tests/bin/core.test_segFaultOnPc"),
         abs_path("tests/casr_tests/bin/test_segFaultOnPc"),
     ];
     // Run casr.
@@ -64,7 +64,7 @@ fn test_segfault_on_pc() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_destAv"),
+        abs_path("tests/casr_tests/bin/core.test_destAv"),
         abs_path("tests/casr_tests/bin/test_destAv"),
     ];
     // Run casr.
@@ -96,7 +96,7 @@ fn test_dest_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_destAvNearNull"),
+        abs_path("tests/casr_tests/bin/core.test_destAvNearNull"),
         abs_path("tests/casr_tests/bin/test_destAvNearNull"),
     ];
     // Run casr.
@@ -127,7 +127,7 @@ fn test_dest_av_near_null() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_returnAv"),
+        abs_path("tests/casr_tests/bin/core.test_returnAv"),
         abs_path("tests/casr_tests/bin/test_returnAv"),
     ];
     // Run casr.
@@ -159,7 +159,7 @@ fn test_return_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_callAv"),
+        abs_path("tests/casr_tests/bin/core.test_callAv"),
         abs_path("tests/casr_tests/bin/test_callAv"),
     ];
     // Run casr.
@@ -191,7 +191,7 @@ fn test_call_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_tainted() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_callAvTainted"),
+        abs_path("tests/casr_tests/bin/core.test_callAvTainted"),
         abs_path("tests/casr_tests/bin/test_callAvTainted"),
     ];
     // Run casr.
@@ -223,7 +223,7 @@ fn test_call_av_tainted() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_sourceAv"),
+        abs_path("tests/casr_tests/bin/core.test_sourceAv"),
         abs_path("tests/casr_tests/bin/test_sourceAv"),
     ];
     // Run casr.
@@ -255,7 +255,7 @@ fn test_source_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_sourceAvNearNull"),
+        abs_path("tests/casr_tests/bin/core.test_sourceAvNearNull"),
         abs_path("tests/casr_tests/bin/test_sourceAvNearNull"),
     ];
     // Run casr.
@@ -287,7 +287,7 @@ fn test_source_av_near_null() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_abort"),
+        abs_path("tests/casr_tests/bin/core.test_abort"),
         abs_path("tests/casr_tests/bin/test_abort"),
     ];
     // Run casr.
@@ -320,7 +320,7 @@ fn test_abort() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_canary"),
+        abs_path("tests/casr_tests/bin/core.test_canary"),
         abs_path("tests/casr_tests/bin/test_canary"),
     ];
     // Run casr.
@@ -352,7 +352,7 @@ fn test_canary() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_safeFunc"),
+        abs_path("tests/casr_tests/bin/core.test_safeFunc"),
         abs_path("tests/casr_tests/bin/test_safeFunc"),
     ];
     // Run casr.
@@ -384,7 +384,7 @@ fn test_safe_func() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_badInstruction"),
+        abs_path("tests/casr_tests/bin/core.test_badInstruction"),
         abs_path("tests/casr_tests/bin/test_badInstruction"),
     ];
     // Run casr.
@@ -416,7 +416,7 @@ fn test_bad_instruction() {
 #[cfg(target_arch = "x86_64")]
 fn test_stack_overflow() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_stackOverflow"),
+        abs_path("tests/casr_tests/bin/core.test_stackOverflow"),
         abs_path("tests/casr_tests/bin/test_stackOverflow"),
     ];
     // Run casr.
@@ -448,7 +448,7 @@ fn test_stack_overflow() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_tainted() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_destAvTainted"),
+        abs_path("tests/casr_tests/bin/core.test_destAvTainted"),
         abs_path("tests/casr_tests/bin/test_destAvTainted"),
     ];
     // Run casr.
@@ -480,7 +480,7 @@ fn test_dest_av_tainted() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_DivByZero"),
+        abs_path("tests/casr_tests/bin/core.test_DivByZero"),
         abs_path("tests/casr_tests/bin/test_DivByZero"),
     ];
     // Run casr.
@@ -512,7 +512,7 @@ fn test_div_by_zero() {
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_segFaultOnPc32"),
+        abs_path("tests/casr_tests/bin/core.test_segFaultOnPc32"),
         abs_path("tests/casr_tests/bin/test_segFaultOnPc32"),
     ];
     // Run casr.
@@ -544,7 +544,7 @@ fn test_segfault_on_pc32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_destAv32"),
+        abs_path("tests/casr_tests/bin/core.test_destAv32"),
         abs_path("tests/casr_tests/bin/test_destAv32"),
     ];
     // Run casr.
@@ -576,7 +576,7 @@ fn test_dest_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_destAvNearNull32"),
+        abs_path("tests/casr_tests/bin/core.test_destAvNearNull32"),
         abs_path("tests/casr_tests/bin/test_destAvNearNull32"),
     ];
     // Run casr.
@@ -608,7 +608,7 @@ fn test_dest_av_near_null32() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_returnAv32"),
+        abs_path("tests/casr_tests/bin/core.test_returnAv32"),
         abs_path("tests/casr_tests/bin/test_returnAv32"),
     ];
     // Run casr.
@@ -640,7 +640,7 @@ fn test_return_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_callAv32"),
+        abs_path("tests/casr_tests/bin/core.test_callAv32"),
         abs_path("tests/casr_tests/bin/test_callAv32"),
     ];
     // Run casr.
@@ -672,7 +672,7 @@ fn test_call_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_sourceAv32"),
+        abs_path("tests/casr_tests/bin/core.test_sourceAv32"),
         abs_path("tests/casr_tests/bin/test_sourceAv32"),
     ];
     // Run casr.
@@ -704,7 +704,7 @@ fn test_source_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_sourceAvNearNull32"),
+        abs_path("tests/casr_tests/bin/core.test_sourceAvNearNull32"),
         abs_path("tests/casr_tests/bin/test_sourceAvNearNull32"),
     ];
     // Run casr.
@@ -736,7 +736,7 @@ fn test_source_av_near_null32() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_abort32"),
+        abs_path("tests/casr_tests/bin/core.test_abort32"),
         abs_path("tests/casr_tests/bin/test_abort32"),
     ];
     // Run casr.
@@ -769,7 +769,7 @@ fn test_abort32() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_canary32"),
+        abs_path("tests/casr_tests/bin/core.test_canary32"),
         abs_path("tests/casr_tests/bin/test_canary32"),
     ];
     // Run casr.
@@ -802,7 +802,7 @@ fn test_canary32() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_safeFunc32"),
+        abs_path("tests/casr_tests/bin/core.test_safeFunc32"),
         abs_path("tests/casr_tests/bin/test_safeFunc32"),
     ];
     // Run casr.
@@ -834,7 +834,7 @@ fn test_safe_func32() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_badInstruction32"),
+        abs_path("tests/casr_tests/bin/core.test_badInstruction32"),
         abs_path("tests/casr_tests/bin/test_badInstruction32"),
     ];
     // Run casr.
@@ -866,7 +866,7 @@ fn test_bad_instruction32() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero32() {
     let paths = [
-        abs_path("tests/casr_tests/core.test_DivByZero32"),
+        abs_path("tests/casr_tests/bin/core.test_DivByZero32"),
         abs_path("tests/casr_tests/bin/test_DivByZero32"),
     ];
     // Run casr.
