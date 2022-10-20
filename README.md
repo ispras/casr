@@ -23,7 +23,7 @@ stored in JSON format. `casr-cli` is meant to provide TUI for viewing reports.
 Reports triage (deduplication, clustering) is done by `casr-cluster`.
 Triage is based on stack trace comparison from [gdb-command](https://github.com/anfedotoff/gdb-command).
 
-For an explanation of severity classes, go to [docs/classes.md](docs/classes.md).
+Explanation of severity classes could be found [here](docs/classes.md).
 
 ## Getting started
 

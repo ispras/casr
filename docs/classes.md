@@ -4,7 +4,7 @@ In this section crash severity classes are described. Crash Classes are gathered
 
 ### EXPLOITABLE
 
-Critical classes are most dangerous. This crash could be easily control flow hijecked by attackers to transfer control flow. List of classes:
+Critical classes are most dangerous. This crash could be easily control flow hijecked by attackers. List of classes:
 
 1. **SegFaultOnPc**. The target tried to access data at an address that matches the program counter. This likely indicates that the program counter contents are tainted and can be controlled by an attacker.
 2. **ReturnAv**. The target crashed on a return instruction, which likely indicates stack corruption.
