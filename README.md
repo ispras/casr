@@ -36,6 +36,12 @@ $ git clone https://github.com/ispras/casr
 ```
 $ cargo build --release
 ```
+4. Install runtime dependencies:
+
+```
+$ sudo apt install gdb python3 python3-pip lsb-release
+$ sudo -H python3 -m pip install numpy scipy
+```
 
 ## Usage
 
