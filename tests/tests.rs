@@ -11,29 +11,32 @@ use std::process::Command;
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
-    pub static ref EXE_DIR: RwLock<PathBuf> = RwLock::new( match std::env::current_exe() {
-        Ok(cur_exe) => match cur_exe.parent() {
-                    Some(cur_dir) => {
-                                    match cur_dir.parent() {
-                                        Some(parent) => parent.to_path_buf(),
-                                        None =>  PathBuf::from(".."),
-                                    }
-                                    },
-                    None => PathBuf::from(".."),
-                   }
-        Err(_) => PathBuf::from(".."),
-    });
+    static ref EXE_CASR: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr"));
+    static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
+    static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
+    static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
+    static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
+}
+
+fn abs_path(rpath: &str) -> String {
+    // Define paths.
+    let project_dir = PathBuf::from(*PROJECT_DIR.read().unwrap());
+    let mut path = PathBuf::new();
+    path.push(&project_dir);
+    path.push(rpath);
+
+    path.as_os_str().to_str().unwrap().to_string()
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc() {
     let paths = [
-        "tests/casr_tests/core.test_segFaultOnPc",
-        "tests/casr_tests/test_segFaultOnPc",
+        abs_path("tests/casr_tests/bin/core.test_segFaultOnPc"),
+        abs_path("tests/casr_tests/bin/test_segFaultOnPc"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -53,7 +56,7 @@ fn test_segfault_on_pc() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "SegFaultOnPc");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -61,11 +64,11 @@ fn test_segfault_on_pc() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av() {
     let paths = [
-        "tests/casr_tests/core.test_destAv",
-        "tests/casr_tests/test_destAv",
+        abs_path("tests/casr_tests/bin/core.test_destAv"),
+        abs_path("tests/casr_tests/bin/test_destAv"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -85,7 +88,7 @@ fn test_dest_av() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -93,11 +96,11 @@ fn test_dest_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null() {
     let paths = [
-        "tests/casr_tests/core.test_destAvNearNull",
-        "tests/casr_tests/test_destAvNearNull",
+        abs_path("tests/casr_tests/bin/core.test_destAvNearNull"),
+        abs_path("tests/casr_tests/bin/test_destAvNearNull"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -117,18 +120,18 @@ fn test_dest_av_near_null() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_return_av() {
     let paths = [
-        "tests/casr_tests/core.test_returnAv",
-        "tests/casr_tests/test_returnAv",
+        abs_path("tests/casr_tests/bin/core.test_returnAv"),
+        abs_path("tests/casr_tests/bin/test_returnAv"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -148,7 +151,7 @@ fn test_return_av() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -156,11 +159,11 @@ fn test_return_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av() {
     let paths = [
-        "tests/casr_tests/core.test_callAv",
-        "tests/casr_tests/test_callAv",
+        abs_path("tests/casr_tests/bin/core.test_callAv"),
+        abs_path("tests/casr_tests/bin/test_callAv"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -180,7 +183,7 @@ fn test_call_av() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -188,11 +191,11 @@ fn test_call_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_tainted() {
     let paths = [
-        "tests/casr_tests/core.test_callAvTainted",
-        "tests/casr_tests/test_callAvTainted",
+        abs_path("tests/casr_tests/bin/core.test_callAvTainted"),
+        abs_path("tests/casr_tests/bin/test_callAvTainted"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -212,7 +215,7 @@ fn test_call_av_tainted() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAvTainted");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -220,11 +223,11 @@ fn test_call_av_tainted() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av() {
     let paths = [
-        "tests/casr_tests/core.test_sourceAv",
-        "tests/casr_tests/test_sourceAv",
+        abs_path("tests/casr_tests/bin/core.test_sourceAv"),
+        abs_path("tests/casr_tests/bin/test_sourceAv"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -244,7 +247,7 @@ fn test_source_av() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -252,11 +255,11 @@ fn test_source_av() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null() {
     let paths = [
-        "tests/casr_tests/core.test_sourceAvNearNull",
-        "tests/casr_tests/test_sourceAvNearNull",
+        abs_path("tests/casr_tests/bin/core.test_sourceAvNearNull"),
+        abs_path("tests/casr_tests/bin/test_sourceAvNearNull"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -276,7 +279,7 @@ fn test_source_av_near_null() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -284,11 +287,11 @@ fn test_source_av_near_null() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort() {
     let paths = [
-        "tests/casr_tests/core.test_abort",
-        "tests/casr_tests/test_abort",
+        abs_path("tests/casr_tests/bin/core.test_abort"),
+        abs_path("tests/casr_tests/bin/test_abort"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -308,7 +311,7 @@ fn test_abort() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AbortSignal");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -317,11 +320,11 @@ fn test_abort() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary() {
     let paths = [
-        "tests/casr_tests/core.test_canary",
-        "tests/casr_tests/test_canary",
+        abs_path("tests/casr_tests/bin/core.test_canary"),
+        abs_path("tests/casr_tests/bin/test_canary"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -340,7 +343,7 @@ fn test_canary() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "StackGuard");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -349,11 +352,11 @@ fn test_canary() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func() {
     let paths = [
-        "tests/casr_tests/core.test_safeFunc",
-        "tests/casr_tests/test_safeFunc",
+        abs_path("tests/casr_tests/bin/core.test_safeFunc"),
+        abs_path("tests/casr_tests/bin/test_safeFunc"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -373,7 +376,7 @@ fn test_safe_func() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SafeFunctionCheck");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -381,11 +384,11 @@ fn test_safe_func() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction() {
     let paths = [
-        "tests/casr_tests/core.test_badInstruction",
-        "tests/casr_tests/test_badInstruction",
+        abs_path("tests/casr_tests/bin/core.test_badInstruction"),
+        abs_path("tests/casr_tests/bin/test_badInstruction"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -405,7 +408,7 @@ fn test_bad_instruction() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "BadInstruction");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -413,11 +416,11 @@ fn test_bad_instruction() {
 #[cfg(target_arch = "x86_64")]
 fn test_stack_overflow() {
     let paths = [
-        "tests/casr_tests/core.test_stackOverflow",
-        "tests/casr_tests/test_stackOverflow",
+        abs_path("tests/casr_tests/bin/core.test_stackOverflow"),
+        abs_path("tests/casr_tests/bin/test_stackOverflow"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -437,7 +440,7 @@ fn test_stack_overflow() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "StackOverflow");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -445,11 +448,11 @@ fn test_stack_overflow() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_tainted() {
     let paths = [
-        "tests/casr_tests/core.test_destAvTainted",
-        "tests/casr_tests/test_destAvTainted",
+        abs_path("tests/casr_tests/bin/core.test_destAvTainted"),
+        abs_path("tests/casr_tests/bin/test_destAvTainted"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -469,7 +472,7 @@ fn test_dest_av_tainted() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvTainted");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -477,11 +480,11 @@ fn test_dest_av_tainted() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero() {
     let paths = [
-        "tests/casr_tests/core.test_DivByZero",
-        "tests/casr_tests/test_DivByZero",
+        abs_path("tests/casr_tests/bin/core.test_DivByZero"),
+        abs_path("tests/casr_tests/bin/test_DivByZero"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -501,7 +504,7 @@ fn test_div_by_zero() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -509,11 +512,11 @@ fn test_div_by_zero() {
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc32() {
     let paths = [
-        "tests/casr_tests/core.test_segFaultOnPc32",
-        "tests/casr_tests/test_segFaultOnPc32",
+        abs_path("tests/casr_tests/bin/core.test_segFaultOnPc32"),
+        abs_path("tests/casr_tests/bin/test_segFaultOnPc32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -533,7 +536,7 @@ fn test_segfault_on_pc32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "SegFaultOnPc");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -541,11 +544,11 @@ fn test_segfault_on_pc32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av32() {
     let paths = [
-        "tests/casr_tests/core.test_destAv32",
-        "tests/casr_tests/test_destAv32",
+        abs_path("tests/casr_tests/bin/core.test_destAv32"),
+        abs_path("tests/casr_tests/bin/test_destAv32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -565,7 +568,7 @@ fn test_dest_av32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -573,11 +576,11 @@ fn test_dest_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null32() {
     let paths = [
-        "tests/casr_tests/core.test_destAvNearNull32",
-        "tests/casr_tests/test_destAvNearNull32",
+        abs_path("tests/casr_tests/bin/core.test_destAvNearNull32"),
+        abs_path("tests/casr_tests/bin/test_destAvNearNull32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -597,7 +600,7 @@ fn test_dest_av_near_null32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -605,11 +608,11 @@ fn test_dest_av_near_null32() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av32() {
     let paths = [
-        "tests/casr_tests/core.test_returnAv32",
-        "tests/casr_tests/test_returnAv32",
+        abs_path("tests/casr_tests/bin/core.test_returnAv32"),
+        abs_path("tests/casr_tests/bin/test_returnAv32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -629,7 +632,7 @@ fn test_return_av32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -637,11 +640,11 @@ fn test_return_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av32() {
     let paths = [
-        "tests/casr_tests/core.test_callAv32",
-        "tests/casr_tests/test_callAv32",
+        abs_path("tests/casr_tests/bin/core.test_callAv32"),
+        abs_path("tests/casr_tests/bin/test_callAv32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -661,7 +664,7 @@ fn test_call_av32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -669,11 +672,11 @@ fn test_call_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av32() {
     let paths = [
-        "tests/casr_tests/core.test_sourceAv32",
-        "tests/casr_tests/test_sourceAv32",
+        abs_path("tests/casr_tests/bin/core.test_sourceAv32"),
+        abs_path("tests/casr_tests/bin/test_sourceAv32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -693,7 +696,7 @@ fn test_source_av32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -701,11 +704,11 @@ fn test_source_av32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null32() {
     let paths = [
-        "tests/casr_tests/core.test_sourceAvNearNull32",
-        "tests/casr_tests/test_sourceAvNearNull32",
+        abs_path("tests/casr_tests/bin/core.test_sourceAvNearNull32"),
+        abs_path("tests/casr_tests/bin/test_sourceAvNearNull32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -725,7 +728,7 @@ fn test_source_av_near_null32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -733,11 +736,11 @@ fn test_source_av_near_null32() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort32() {
     let paths = [
-        "tests/casr_tests/core.test_abort32",
-        "tests/casr_tests/test_abort32",
+        abs_path("tests/casr_tests/bin/core.test_abort32"),
+        abs_path("tests/casr_tests/bin/test_abort32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -757,7 +760,7 @@ fn test_abort32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AbortSignal");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -766,11 +769,11 @@ fn test_abort32() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary32() {
     let paths = [
-        "tests/casr_tests/core.test_canary32",
-        "tests/casr_tests/test_canary32",
+        abs_path("tests/casr_tests/bin/core.test_canary32"),
+        abs_path("tests/casr_tests/bin/test_canary32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -790,7 +793,7 @@ fn test_canary32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "StackGuard");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -799,11 +802,11 @@ fn test_canary32() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func32() {
     let paths = [
-        "tests/casr_tests/core.test_safeFunc32",
-        "tests/casr_tests/test_safeFunc32",
+        abs_path("tests/casr_tests/bin/core.test_safeFunc32"),
+        abs_path("tests/casr_tests/bin/test_safeFunc32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -823,7 +826,7 @@ fn test_safe_func32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SafeFunctionCheck");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -831,11 +834,11 @@ fn test_safe_func32() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction32() {
     let paths = [
-        "tests/casr_tests/core.test_badInstruction32",
-        "tests/casr_tests/test_badInstruction32",
+        abs_path("tests/casr_tests/bin/core.test_badInstruction32"),
+        abs_path("tests/casr_tests/bin/test_badInstruction32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -855,7 +858,7 @@ fn test_bad_instruction32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "BadInstruction");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -863,11 +866,11 @@ fn test_bad_instruction32() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero32() {
     let paths = [
-        "tests/casr_tests/core.test_DivByZero32",
-        "tests/casr_tests/test_DivByZero32",
+        abs_path("tests/casr_tests/bin/core.test_DivByZero32"),
+        abs_path("tests/casr_tests/bin/test_DivByZero32"),
     ];
     // Run casr.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr"))
+    let output = Command::new(*EXE_CASR.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -887,7 +890,7 @@ fn test_div_by_zero32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -895,8 +898,13 @@ fn test_div_by_zero32() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
-        .args(&["--stdout", "--", "tests/casr_tests/test_abort", "A"])
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/bin/test_abort"),
+            "A",
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
@@ -915,7 +923,7 @@ fn test_abort_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AbortSignal");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -923,11 +931,11 @@ fn test_abort_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_segFaultOnPc",
+            &abs_path("tests/casr_tests/bin/test_segFaultOnPc"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -948,7 +956,7 @@ fn test_segfault_on_pc_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "SegFaultOnPc");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -956,11 +964,11 @@ fn test_segfault_on_pc_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAv",
+            &abs_path("tests/casr_tests/bin/test_destAv"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -981,7 +989,7 @@ fn test_dest_av_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -989,17 +997,17 @@ fn test_dest_av_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAvNearNull",
+            &abs_path("tests/casr_tests/bin/test_destAvNearNull"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
         .expect("failed to start casr-gdb");
 
-    // Test if casr got results.
+    // Test if casr got result.
     assert!(output.status.success());
 
     // Test report.
@@ -1014,7 +1022,7 @@ fn test_dest_av_near_null_gdb() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1022,11 +1030,11 @@ fn test_dest_av_near_null_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_returnAv",
+            &abs_path("tests/casr_tests/bin/test_returnAv"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1047,7 +1055,7 @@ fn test_return_av_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1055,11 +1063,11 @@ fn test_return_av_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_callAv",
+            &abs_path("tests/casr_tests/bin/test_callAv"),
             "-11111111",
         ])
         .output()
@@ -1080,7 +1088,7 @@ fn test_call_av_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1088,11 +1096,11 @@ fn test_call_av_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_tainted_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_callAvTainted",
+            &abs_path("tests/casr_tests/bin/test_callAvTainted"),
             "-11111111",
         ])
         .output()
@@ -1113,7 +1121,7 @@ fn test_call_av_tainted_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAvTainted");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1121,11 +1129,11 @@ fn test_call_av_tainted_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_sourceAv",
+            &abs_path("tests/casr_tests/bin/test_sourceAv"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1146,7 +1154,7 @@ fn test_source_av_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1154,11 +1162,11 @@ fn test_source_av_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_sourceAvNearNull",
+            &abs_path("tests/casr_tests/bin/test_sourceAvNearNull"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1179,7 +1187,7 @@ fn test_source_av_near_null_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1187,11 +1195,11 @@ fn test_source_av_near_null_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_canary",
+            &abs_path("tests/casr_tests/bin/test_canary"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1211,7 +1219,7 @@ fn test_canary_gdb() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "StackGuard");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1219,11 +1227,11 @@ fn test_canary_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_safeFunc",
+            &abs_path("tests/casr_tests/bin/test_safeFunc"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1244,7 +1252,7 @@ fn test_safe_func_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SafeFunctionCheck");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1252,11 +1260,11 @@ fn test_safe_func_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_badInstruction",
+            &abs_path("tests/casr_tests/bin/test_badInstruction"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1277,7 +1285,7 @@ fn test_bad_instruction_gdb() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "BadInstruction");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1285,11 +1293,11 @@ fn test_bad_instruction_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_stack_overflow_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_stackOverflow",
+            &abs_path("tests/casr_tests/bin/test_stackOverflow"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1310,7 +1318,7 @@ fn test_stack_overflow_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "StackOverflow");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1318,11 +1326,11 @@ fn test_stack_overflow_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_tainted_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAvTainted",
+            &abs_path("tests/casr_tests/bin/test_destAvTainted"),
             "-111111111",
         ])
         .output()
@@ -1343,7 +1351,7 @@ fn test_dest_av_tainted_gdb() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvTainted");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1351,8 +1359,12 @@ fn test_dest_av_tainted_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero_gdb() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
-        .args(&["--stdout", "--", "tests/casr_tests/test_DivByZero"])
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/bin/test_DivByZero"),
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
@@ -1371,7 +1383,7 @@ fn test_div_by_zero_gdb() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1379,8 +1391,13 @@ fn test_div_by_zero_gdb() {
 #[cfg(target_arch = "x86_64")]
 fn test_abort_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
-        .args(&["--stdout", "--", "tests/casr_tests/test_abort32", "A"])
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/bin/test_abort32"),
+            "A",
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
@@ -1399,7 +1416,7 @@ fn test_abort_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AbortSignal");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1407,11 +1424,11 @@ fn test_abort_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_segFaultOnPc32",
+            &abs_path("tests/casr_tests/bin/test_segFaultOnPc32"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1432,7 +1449,7 @@ fn test_segfault_on_pc_gdb32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "SegFaultOnPc");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1440,11 +1457,11 @@ fn test_segfault_on_pc_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAv32",
+            &abs_path("tests/casr_tests/bin/test_destAv32"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1465,7 +1482,7 @@ fn test_dest_av_gdb32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1473,11 +1490,11 @@ fn test_dest_av_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_dest_av_near_null_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_destAvNearNull32",
+            &abs_path("tests/casr_tests/bin/test_destAvNearNull32"),
             &(0..125).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1498,7 +1515,7 @@ fn test_dest_av_near_null_gdb32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1506,11 +1523,11 @@ fn test_dest_av_near_null_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_return_av_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_returnAv32",
+            &abs_path("tests/casr_tests/bin/test_returnAv32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1531,7 +1548,7 @@ fn test_return_av_gdb32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1539,11 +1556,11 @@ fn test_return_av_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_call_av_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_callAv32",
+            &abs_path("tests/casr_tests/bin/test_callAv32"),
             "-11111111",
         ])
         .output()
@@ -1564,7 +1581,7 @@ fn test_call_av_gdb32() {
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "CallAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1572,11 +1589,11 @@ fn test_call_av_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_sourceAv32",
+            &abs_path("tests/casr_tests/bin/test_sourceAv32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1597,7 +1614,7 @@ fn test_source_av_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1605,11 +1622,11 @@ fn test_source_av_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_source_av_near_null_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_sourceAvNearNull32",
+            &abs_path("tests/casr_tests/bin/test_sourceAvNearNull32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1630,7 +1647,7 @@ fn test_source_av_near_null_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1638,11 +1655,11 @@ fn test_source_av_near_null_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_canary_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_canary32",
+            &abs_path("tests/casr_tests/bin/test_canary32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1662,7 +1679,7 @@ fn test_canary_gdb32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "StackGuard");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1670,11 +1687,11 @@ fn test_canary_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_safe_func_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_safeFunc32",
+            &abs_path("tests/casr_tests/bin/test_safeFunc32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1695,7 +1712,7 @@ fn test_safe_func_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SafeFunctionCheck");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1703,11 +1720,11 @@ fn test_safe_func_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_bad_instruction_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
         .args(&[
             "--stdout",
             "--",
-            "tests/casr_tests/test_badInstruction32",
+            &abs_path("tests/casr_tests/bin/test_badInstruction32"),
             &(0..150).map(|_| "A").collect::<String>(),
         ])
         .output()
@@ -1728,7 +1745,7 @@ fn test_bad_instruction_gdb32() {
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "BadInstruction");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
@@ -1736,8 +1753,12 @@ fn test_bad_instruction_gdb32() {
 #[cfg(target_arch = "x86_64")]
 fn test_div_by_zero_gdb32() {
     // Run casr-gdb.
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-gdb"))
-        .args(&["--stdout", "--", "tests/casr_tests/test_DivByZero32"])
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/bin/test_DivByZero32"),
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
@@ -1756,17 +1777,17 @@ fn test_div_by_zero_gdb32() {
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 }
 
 #[test]
 fn test_casr_cluster_s() {
     let paths = [
-        "tests/casr_tests/casrep/test1/3.casrep",
-        "tests/casr_tests/casrep/test1/4.casrep",
+        abs_path("tests/casr_tests/casrep/similarity_test/3.casrep"),
+        abs_path("tests/casr_tests/casrep/similarity_test/4.casrep"),
     ];
-    let mut output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let mut output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-s", &paths[0], &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
@@ -1781,8 +1802,7 @@ fn test_casr_cluster_s() {
         .parse::<f64>()
         .unwrap();
     if res > 0.35 {
-        assert!(
-            false,
+        panic!(
             "Too high similarity, mistake. Stdout:{:?}\nDigit: {}\n",
             output.stdout.as_slice(),
             res
@@ -1790,10 +1810,10 @@ fn test_casr_cluster_s() {
     }
 
     let paths = [
-        "tests/casr_tests/casrep/test1/1.casrep",
-        "tests/casr_tests/casrep/test1/2.casrep",
+        abs_path("tests/casr_tests/casrep/similarity_test/1.casrep"),
+        abs_path("tests/casr_tests/casrep/similarity_test/2.casrep"),
     ];
-    let mut output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let mut output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-s", &paths[0], &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
@@ -1808,8 +1828,7 @@ fn test_casr_cluster_s() {
         .parse::<f64>()
         .unwrap();
     if res < 0.70 {
-        assert!(
-            false,
+        panic!(
             "Too small similarity, mistake. Stdout:{:?}\nDigit: {}\n",
             output.stdout.as_slice(),
             res
@@ -1820,13 +1839,13 @@ fn test_casr_cluster_s() {
 #[test]
 fn test_casr_cluster_c() {
     let paths = [
-        "tests/casr_tests/casrep/in",
-        "tmp_tests_casr/clustering_out",
+        abs_path("tests/casr_tests/casrep/test_clustering_small"),
+        abs_path("tests/tmp_tests_casr/clustering_out"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-c", &paths[0], &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
@@ -1848,25 +1867,27 @@ fn test_casr_cluster_c() {
         .unwrap();
 
     assert_eq!(clusters_cnt, 9, "Clusters count mismatch.");
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
 }
 
 #[test]
 fn test_casr_cluster_c_huge_san() {
     let paths = [
-        "tests/casr_tests/casrep/test_clustering_san",
-        "tmp_tests_casr/clustering_huge_out_san",
+        abs_path("tests/casr_tests/casrep/test_clustering_san"),
+        abs_path("tests/tmp_tests_casr/clustering_huge_out_san"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-d", &paths[0], &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
 
     assert!(output.status.success());
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-j", "6", "-c", &paths[1], &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
@@ -1902,25 +1923,27 @@ fn test_casr_cluster_c_huge_san() {
         1,
         "Invalid number of reports in cluster 12"
     );
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
 }
 
 #[test]
 fn test_casr_cluster_c_huge_gdb() {
     let paths = [
-        "tests/casr_tests/casrep/test_clustering_gdb",
-        "tmp_tests_casr/clustering_huge_out_gdb",
+        abs_path("tests/casr_tests/casrep/test_clustering_gdb"),
+        abs_path("tests/tmp_tests_casr/clustering_huge_out_gdb"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-d", &paths[0], &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
 
     assert!(output.status.success());
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-j", "6", "-c", &paths[1], &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
@@ -1956,18 +1979,20 @@ fn test_casr_cluster_c_huge_gdb() {
         2,
         "Invalid number of reports in cluster 12"
     );
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
 }
 
 #[test]
 fn test_casr_cluster_d() {
     let paths = [
-        "tests/casr_tests/casrep/dedup/in",
-        "tmp_tests_casr/dedup_out",
+        abs_path("tests/casr_tests/casrep/dedup/in"),
+        abs_path("tests/tmp_tests_casr/dedup_out"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-cluster"))
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(&["-d", &paths[0], &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
@@ -1977,15 +2002,16 @@ fn test_casr_cluster_d() {
     let dirvec = match fs::read_dir(&paths[1]) {
         Ok(vec) => vec,
         Err(why) => {
-            assert!(false, "{:?}", why.kind());
-            return;
+            panic!("{:?}", why.kind());
         }
     };
 
     let counter = dirvec.count();
     if counter != 2 {
-        assert!(false, "Bad deduplication, casreps: {}", counter);
+        panic!("Bad deduplication, casreps: {}", counter);
     }
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
 }
 
 #[test]
@@ -1993,10 +2019,22 @@ fn test_casr_cluster_d() {
 fn test_casr_san() {
     // Double free test
     let paths = [
-        "tests/casr_tests/test_asan_df",
-        "tests/casr_tests/test_asan_df",
+        abs_path("tests/casr_tests/test_asan_df.cpp"),
+        abs_path("tests/casr_tests/bin/test_asan_df"),
     ];
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
@@ -2010,17 +2048,11 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
 
-        assert_eq!(4, stacktrace.len());
+        assert_eq!(4, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
-        assert_eq!(
+        assert!(
             report["CrashLine"]
                 .as_str()
                 .unwrap()
@@ -2030,20 +2062,31 @@ fn test_casr_san() {
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_asan_df+0x"),
-            // We can't hardcode the offset because we rebuild tests every time.
-            true
+                    .contains("test_asan_df+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 
+    let _ = std::fs::remove_file(&paths[1]);
     // Stack-buffer-overflow test
     let paths = [
-        "tests/casr_tests/test_asan_sbo",
-        "tests/casr_tests/test_asan_sbo",
+        abs_path("tests/casr_tests/test_asan_sbo.cpp"),
+        abs_path("tests/casr_tests/bin/test_asan_sbo"),
     ];
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
@@ -2057,17 +2100,11 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
 
-        assert_eq!(3, stacktrace.len());
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
-        assert_eq!(
+        assert!(
             report["CrashLine"]
                 .as_str()
                 .unwrap()
@@ -2077,20 +2114,31 @@ fn test_casr_san() {
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_asan_sbo+0x"),
-            // We can't hardcode the offset because we rebuild tests every time.
-            true
+                    .contains("test_asan_sbo+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 
+    let _ = std::fs::remove_file(&paths[1]);
     // Memory leaks test
     let paths = [
-        "tests/casr_tests/test_asan_leak",
-        "tests/casr_tests/test_asan_leak",
+        abs_path("tests/casr_tests/test_asan_leak.cpp"),
+        abs_path("tests/casr_tests/bin/test_asan_leak"),
     ];
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
@@ -2104,17 +2152,11 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
 
-        assert_eq!(3, stacktrace.len());
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "memory-leaks");
-        assert_eq!(
+        assert!(
             report["CrashLine"]
                 .as_str()
                 .unwrap()
@@ -2124,22 +2166,33 @@ fn test_casr_san() {
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_asan_leak+0x"),
-            // We can't hardcode the offset because we rebuild tests every time.
-            true
+                    .contains("test_asan_leak+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 
+    let _ = std::fs::remove_file(&paths[1]);
     // Test casr-san stdin
     let paths = [
-        "tests/casr_tests/test_asan_stdin",
-        "tests/casr_tests/test_asan_stdin",
+        abs_path("tests/casr_tests/test_asan_stdin.cpp"),
+        abs_path("tests/casr_tests/bin/test_asan_stdin"),
     ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
     let mut tempfile = fs::File::create("/tmp/CasrSanTemp").unwrap();
     tempfile.write_all(b"2").unwrap();
-    let output = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
@@ -2154,17 +2207,11 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
 
-        assert_eq!(3, stacktrace.len());
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "heap-buffer-overflow(write)");
-        assert_eq!(
+        assert!(
             report["CrashLine"]
                 .as_str()
                 .unwrap()
@@ -2174,24 +2221,35 @@ fn test_casr_san() {
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_asan_stdin+0x"),
-            // We can't hardcode the offset because we rebuild tests every time.
-            true
+                    .contains("test_asan_stdin+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
-        assert!(false, "Couldn't parse json report file.");
+        panic!("Couldn't parse json report file.");
     }
 
+    let _ = std::fs::remove_file(&paths[1]);
     // Test casr-san ASLR
     let paths = [
-        "tests/casr_tests/test_asan_sbo",
-        "tests/casr_tests/test_asan_sbo",
+        abs_path("tests/casr_tests/test_asan_sbo.cpp"),
+        abs_path("tests/casr_tests/bin/test_asan_sbo"),
     ];
-    let output1 = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output1 = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
-    let output2 = Command::new((*EXE_DIR.read().unwrap()).clone().join("casr-san"))
+    let output2 = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(&["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
@@ -2203,6 +2261,7 @@ fn test_casr_san() {
         r"==[0-9]+==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x([0-9a-f]+)",
     )
     .unwrap();
+    let _ = std::fs::remove_file(&paths[1]);
 
     let report1: Result<Value, _> = serde_json::from_slice(&output1.stdout);
     let report2: Result<Value, _> = serde_json::from_slice(&output2.stdout);
@@ -2213,7 +2272,7 @@ fn test_casr_san() {
                 .unwrap()
                 .iter()
                 .map(|x| x.to_string())
-                .nth(0)
+                .next()
                 .unwrap();
             let first_addr = re
                 .captures(&asan1)
@@ -2227,7 +2286,7 @@ fn test_casr_san() {
                 .unwrap()
                 .iter()
                 .map(|x| x.to_string())
-                .nth(0)
+                .next()
                 .unwrap();
             let second_addr = re
                 .captures(&asan2)
@@ -2244,7 +2303,7 @@ fn test_casr_san() {
             return;
         }
     }
-    assert!(false, "Couldn't parse json report file.");
+    panic!("Couldn't parse json report file.");
 }
 
 #[test]
@@ -2270,12 +2329,12 @@ fn test_asan_stacktrace() {
     ];
 
     let trace = raw_stacktrace
-        .into_iter()
+        .iter()
         .map(|e| e.to_string())
         .collect::<Vec<String>>();
     let sttr = casr::asan::stacktrace_from_asan(&trace);
     if sttr.is_err() {
-        assert!(false, "{}", sttr.err().unwrap());
+        panic!("{}", sttr.err().unwrap());
     }
 
     let stacktrace = sttr.unwrap();
