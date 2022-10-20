@@ -254,21 +254,24 @@ fn main() -> Result<()> {
         libc::setgid(gid);
     }
 
-    let mut core: Vec<u8> = Vec::new();
-    if culimit < 0 || (core.len() as i32) < culimit {
-        // Ulimit is unlimited or core is smaller.
-        io::stdin().read_to_end(&mut core)?;
-        File::create(&core_path)?.write_all(&core)?;
-    } else {
-        // Core is larger then ulimit is set.
-        core = vec![0u8; culimit as usize];
-        io::stdin().read_exact(&mut core)?;
-        File::create(&core_path)?.write_all(&core)?;
-    }
-
     if culimit == 0 {
         error!("Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}", &casr_cmd);
+        bail!("Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}", &casr_cmd);
     }
+
+    let core = if culimit < 0 {
+        // Ulimit is unlimited or core is smaller.
+        let mut core = Vec::new();
+        io::stdin().read_to_end(&mut core)?;
+        File::create(&core_path)?.write_all(&core)?;
+        core
+    } else {
+        // Core is larger then ulimit is set.
+        let mut core = vec![0u8; culimit as usize];
+        io::stdin().read_exact(&mut core)?;
+        File::create(&core_path)?.write_all(&core)?;
+        core
+    };
     let result = analyze_coredump(&mut report, &core, &core_path);
     if result.is_err() {
         error!(
@@ -307,7 +310,7 @@ fn check_lock() -> Result<File> {
         .open(project_dir)?;
     let fd = file.as_raw_fd();
     flock(fd, FlockArg::LockExclusive).unwrap();
-    return Ok(file);
+    Ok(file)
 }
 
 /// Analyze coredump and put information to report.
@@ -331,14 +334,14 @@ fn analyze_coredump(
     };
 
     // Parse coredump.
-    let elf = Elf::parse(&core)?;
+    let elf = Elf::parse(core)?;
 
     // Type should be CORE.
     if elf.header.e_type != header::ET_CORE {
         return Err(Error::Casr("Core should be an ELF file.".to_string()));
     }
 
-    let notes_iter = elf.iter_note_headers(&core);
+    let notes_iter = elf.iter_note_headers(core);
 
     if notes_iter.is_none() {
         return Err(Error::Casr(
@@ -375,44 +378,42 @@ fn analyze_coredump(
 
     let notes_iter = notes_iter.unwrap();
 
-    for note in notes_iter {
-        if let Ok(note) = note {
-            if note.n_type == note::NT_PRPSINFO {
-                // Get run command.
-                let mut run_line = String::new();
-                match elf.header.e_machine {
-                    header::EM_386 | header::EM_ARM => {
-                        if note.desc.len() < 45 {
-                            warn!("Prpsinfo is less than 45 bytes.");
+    for note in notes_iter.flatten() {
+        if note.n_type == note::NT_PRPSINFO {
+            // Get run command.
+            let mut run_line = String::new();
+            match elf.header.e_machine {
+                header::EM_386 | header::EM_ARM => {
+                    if note.desc.len() < 45 {
+                        warn!("Prpsinfo is less than 45 bytes.");
+                        break;
+                    }
+                    for b in &note.desc[44..note.desc.len()] {
+                        if *b != 0x0 {
+                            run_line.push(*b as char);
+                        } else {
                             break;
                         }
-                        for b in &note.desc[44..note.desc.len()] {
-                            if *b != 0x0 {
-                                run_line.push(*b as char);
-                            } else {
-                                break;
-                            }
-                        }
                     }
-                    header::EM_X86_64 => {
-                        if note.desc.len() < 57 {
-                            warn!("Prpsinfo is less than 57 bytes.");
-                            break;
-                        }
-                        for b in &note.desc[56..note.desc.len()] {
-                            if *b != 0x0 {
-                                run_line.push(*b as char);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    _ => {}
-                };
-
-                if report.proc_cmdline.is_empty() {
-                    report.proc_cmdline = run_line.clone();
                 }
+                header::EM_X86_64 => {
+                    if note.desc.len() < 57 {
+                        warn!("Prpsinfo is less than 57 bytes.");
+                        break;
+                    }
+                    for b in &note.desc[56..note.desc.len()] {
+                        if *b != 0x0 {
+                            run_line.push(*b as char);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                _ => {}
+            };
+
+            if report.proc_cmdline.is_empty() {
+                report.proc_cmdline = run_line.clone();
             }
         }
     }
@@ -427,10 +428,10 @@ fn analyze_coredump(
     .regs()
     .launch()?;
 
-    report.stacktrace = result[0].split("\n").map(|x| x.to_string()).collect();
+    report.stacktrace = result[0].split('\n').map(|x| x.to_string()).collect();
     if report.proc_maps.is_empty() {
         report.proc_maps = result[2]
-            .split("\n")
+            .split('\n')
             .skip(3)
             .map(|x| x.to_string())
             .collect();
@@ -454,13 +455,12 @@ fn analyze_coredump(
             .cloned()
             .map(|f| {
                 if f.name.contains(name) {
-                    let mf = gdb_command::mappings::File::new(
+                    gdb_command::mappings::File::new(
                         f.start,
                         f.end,
                         f.offset,
                         &report.executable_path,
-                    );
-                    mf
+                    )
                 } else {
                     f
                 }

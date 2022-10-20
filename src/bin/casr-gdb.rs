@@ -151,9 +151,9 @@ fn main() -> Result<()> {
         .regs()
         .launch()?;
 
-    report.stacktrace = result[0].split("\n").map(|x| x.to_string()).collect();
+    report.stacktrace = result[0].split('\n').map(|x| x.to_string()).collect();
     report.proc_maps = result[2]
-        .split("\n")
+        .split('\n')
         .skip(3)
         .map(|x| x.to_string())
         .collect();

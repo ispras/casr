@@ -45,7 +45,7 @@ impl fmt::Display for CrashLine {
 ///
 /// * 'report' - crash report
 pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
-    let trace = if report.asan_report.len() > 0 {
+    let trace = if !report.asan_report.is_empty() {
         asan::stacktrace_from_asan(&report.stacktrace)?
     } else {
         // Get stack trace and update it from mappings.
@@ -58,33 +58,23 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
 
     // Compile function regexp.
     let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES
-        .into_iter()
+        .iter()
         .map(|s| format!("({})|", s))
         .collect::<String>();
     let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
     // Compile file regexp.
     let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
-        .into_iter()
+        .iter()
         .map(|s| format!("({})|", s))
         .collect::<String>();
     let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
-    let crash_entry = trace
-        .iter()
-        .filter(|entry| {
-            if !entry.function.is_empty() && rfunction.is_match(&entry.function) {
-                return false;
-            }
-            if !entry.module.is_empty() && rfile.is_match(&entry.module) {
-                return false;
-            }
-            if !entry.debug.file.is_empty() && rfile.is_match(&entry.debug.file) {
-                return false;
-            }
-            true
-        })
-        .nth(0);
+    let crash_entry = trace.iter().find(|entry| {
+        (entry.function.is_empty() || !rfunction.is_match(&entry.function))
+            && (entry.module.is_empty() || !rfile.is_match(&entry.module))
+            && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+    });
 
     if let Some(crash_entry) = crash_entry {
         if !crash_entry.debug.file.is_empty() {

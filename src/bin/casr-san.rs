@@ -90,7 +90,7 @@ fn main() -> Result<()> {
         if !asan_options_str.contains("hard_rss_limit_mb") {
             asan_options = [asan_options.as_str(), "hard_rss_limit_mb=2048"].join(",");
         }
-        if asan_options.starts_with(",") {
+        if asan_options.starts_with(',') {
             asan_options.remove(0);
         }
         asan_options = asan_options.replace("symbolize=0", "symbolize=1");
@@ -167,14 +167,11 @@ fn main() -> Result<()> {
                     _ => {
                         // AddressSanitizer
                         let san_type = caps.get(2).unwrap().as_str();
-                        let mem_access = if let Some(second_line) = report.asan_report.iter().nth(1)
-                        {
+                        let mem_access = if let Some(second_line) = report.asan_report.get(1) {
                             let raccess = Regex::new(r"(READ|WRITE|ACCESS)").unwrap();
-                            if let Some(access_type) = raccess.captures(second_line) {
-                                Some(access_type.get(1).unwrap().as_str())
-                            } else {
-                                None
-                            }
+                            raccess
+                                .captures(second_line)
+                                .map(|access_type| access_type.get(1).unwrap().as_str())
                         } else {
                             None
                         };
@@ -237,11 +234,11 @@ fn main() -> Result<()> {
                 .with_context(|| "Unable to get results from gdb")?;
 
             report.stacktrace = gdb_result[0]
-                .split("\n")
+                .split('\n')
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>();
             report.proc_maps = gdb_result[1]
-                .split("\n")
+                .split('\n')
                 .skip(4)
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>();

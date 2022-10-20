@@ -120,7 +120,7 @@ fn main() -> Result<()> {
         _ => println!(
             "{}\n{}",
             &mut String::from(header_content.get_content().source()),
-            report.to_string()
+            report
         ),
     }
 
@@ -579,7 +579,6 @@ fn change_text_view(layout1: &mut LinearLayout, act: Action) -> Option<EventResu
         }
         Action::Mouse(ref e) => {
             select.on_event(e.clone());
-            ()
         }
     };
 

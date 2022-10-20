@@ -9,7 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  build:
+  ubuntu:
 
     runs-on: ubuntu-latest
 
@@ -17,6 +17,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Code Style
       run: cargo fmt -- --check
+    - name: Clippy
+      run: RUSTFLAGS="-Dwarnings" cargo clippy --all
     - name: Build
       run: cargo build --verbose
     - name: Run tests

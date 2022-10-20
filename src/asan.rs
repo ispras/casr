@@ -11,7 +11,7 @@ use regex::Regex;
 /// # Return value
 ///
 /// Stack trace as a `Stacktrace` struct
-pub fn stacktrace_from_asan(entries: &Vec<String>) -> gdb_command::error::Result<Stacktrace> {
+pub fn stacktrace_from_asan(entries: &[String]) -> gdb_command::error::Result<Stacktrace> {
     let mut stacktrace = Stacktrace::new();
 
     for entry in entries.iter() {

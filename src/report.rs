@@ -222,7 +222,7 @@ impl<'a> CrashReport<'a> {
             .map(|e| if *e == 0 { 0x20 } else { *e })
             .collect();
         self.proc_cmdline = String::from_utf8(buffer)
-            .unwrap_or(String::new())
+            .unwrap_or_default()
             .trim()
             .to_string();
         path.pop();
@@ -234,7 +234,7 @@ impl<'a> CrashReport<'a> {
         file.read_to_string(&mut s)?;
         s.split_terminator('\n')
             .map(|x| {
-                let x = x.replacen("-", " ", 1);
+                let x = x.replacen('-', " ", 1);
                 x.split(' ')
                     .map(|x| x.trim().to_string())
                     .collect::<Vec<String>>()
@@ -271,10 +271,10 @@ impl<'a> CrashReport<'a> {
         file.read_to_end(&mut buffer)?;
         buffer = buffer
             .iter()
-            .map(|e| if *e == 0 { '\n' as u8 } else { *e })
+            .map(|e| if *e == 0 { b'\n' } else { *e })
             .collect();
         s = String::from_utf8(buffer)
-            .unwrap_or(String::new())
+            .unwrap_or_default()
             .trim()
             .to_string();
         self.proc_environ = s
@@ -306,7 +306,7 @@ impl<'a> CrashReport<'a> {
             let dpkg_out = dpkg_cmd.output()?;
             if dpkg_out.status.success() {
                 if let Ok(mut package) = String::from_utf8(dpkg_out.stdout) {
-                    if let Some(index) = package.find(":") {
+                    if let Some(index) = package.find(':') {
                         package.truncate(index);
                         self.package = package;
 
@@ -420,10 +420,7 @@ impl<'a> fmt::Display for CrashReport<'a> {
             }
         }
 
-        report += &format!(
-            "\n===CrashSeverity===\n{}\n",
-            self.execution_class.to_string()
-        );
+        report += &format!("\n===CrashSeverity===\n{}\n", self.execution_class);
 
         // Stacktrace
         if !self.stacktrace.is_empty() {
