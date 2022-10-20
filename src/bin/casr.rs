@@ -256,19 +256,31 @@ fn main() -> Result<()> {
 
     if culimit == 0 {
         error!("Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}", &casr_cmd);
+        drop(lockfile.unwrap());
         bail!("Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}", &casr_cmd);
     }
 
     let core = if culimit < 0 {
-        // Ulimit is unlimited or core is smaller.
+        // Ulimit is unlimited.
         let mut core = Vec::new();
         io::stdin().read_to_end(&mut core)?;
         File::create(&core_path)?.write_all(&core)?;
         core
     } else {
-        // Core is larger then ulimit is set.
-        let mut core = vec![0u8; culimit as usize];
-        io::stdin().read_exact(&mut core)?;
+        // Ulimit is set.
+        let mut core = Vec::new();
+        let stdin = io::stdin();
+        let mut stdin = stdin.lock();
+        let mut total_bytes = 0_usize;
+        while total_bytes < culimit as usize {
+            let buffer = stdin.fill_buf().unwrap();
+            let len = buffer.len();
+            if len == 0 {
+                break;
+            }
+            core.extend_from_slice(buffer);
+            total_bytes += len;
+        }
         File::create(&core_path)?.write_all(&core)?;
         core
     };
@@ -279,6 +291,7 @@ fn main() -> Result<()> {
             result.as_ref().err().unwrap(),
             &casr_cmd
         );
+        drop(lockfile.unwrap());
         bail!(
             "Coredump analysis error: {}. Casr command line: {}",
             result.as_ref().err().unwrap(),
