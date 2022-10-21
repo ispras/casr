@@ -26,6 +26,8 @@ Triage is based on stack trace comparison from [gdb-command](https://github.com/
 Explanation of severity classes could be found [here](docs/classes.md).
 You could take a closer look at usage details [here](docs/usage.md).
 
+![casr_report](docs/images/casr_report.png)
+
 ## Getting started
 
 1. Install Rust. Instructions can be found [here](https://www.rust-lang.org/tools/install).
