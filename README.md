@@ -52,19 +52,20 @@ $ sudo -H python3 -m pip install numpy scipy
 
 Create report from coredump:
 
-    $ casr -f core -e bin -o core.casrep
+    $ casr -f tests/casr_tests/bin/core.test_destAv -e tests/casr_tests/bin/test_destAv -o destAv.casrep
 
 Create report from sanitizers output:
 
-    $ casr-san -o san_bin.casrep -- ./san_bin seed
+    $ clang++ -fsanitize=address -O0 -g tests/casr_tests/test_asan_df.cpp -o test_asan_df
+    $ casr-san -o asan.casrep -- ./test_asan_df
 
 Create report from gdb:
 
-    $ casr-gdb -o bin.gdb.casrep -- ./bin seed
+    $ casr-gdb -o destAv.gdb.casrep -- tests/casr_tests/bin/test_destAv $(printf 'A%.s' {1..200})
 
 View report:
 
-    $ casr-cli san_bin.casrep
+    $ casr-cli tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
 
 Create report for program that reads stdin:
 
@@ -72,11 +73,11 @@ Create report for program that reads stdin:
 
 Deduplicate reports:
 
-    $ casr-cluster -d crash_reports
+    $ casr-cluster -d tests/casr_tests/casrep/test_clustering_gdb out-dedup
 
 Cluster reports:
 
-    $ casr-cluster -c crash_reports crash_clusters
+    $ casr-cluster -c out-dedup out-cluster
 
 ## Fuzzing Crash Triage Pipeline
 

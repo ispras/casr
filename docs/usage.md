@@ -1,4 +1,5 @@
-# Usage details
+# Usage
+
 CASR is a set of tools that allows you to collect crash reports in different
 ways. Use `casr` binary to deal with coredumps. Use `casr-san` to analyze ASAN
 reports. Try `casr-gdb` to get reports from gdb. `casr-cli` is meant to provide
@@ -25,7 +26,7 @@ Create CASR reports (.casrep) from gdb execution
 
 Example:
 
-    $ casr-gdb -o test.casrep -- casr/tests/casr_tests/bin/test_destAv $(printf 'A%.s' {1..200})
+    $ casr-gdb -o destAv.gdb.casrep -- tests/casr_tests/bin/test_destAv $(printf 'A%.s' {1..200})
 
 ## casr-san
 
@@ -47,11 +48,11 @@ Create CASR reports (.casrep) from sanitizer reports
 
 Compile binary with ASAN:
 
-    $ clang++ -fsanitize=address -O0 -g casr/tests/casr_tests/test_asan_df.cpp -o test_asan_df
+    $ clang++ -fsanitize=address -O0 -g tests/casr_tests/test_asan_df.cpp -o test_asan_df
 
 Run casr-san:
 
-    $ casr-san -o test.casrep -- ./test_asan_df
+    $ casr-san -o asan.casrep -- ./test_asan_df
 
 ## casr
 
@@ -72,21 +73,21 @@ estimation
             --stdout               Print CASR report to stdout
         -V, --version              Print version information
 
-`casr` have two modes: offline and online. Offline mode is used by default. It is
-needed to create report when you already have a coredump file.
+`casr` have two modes: offline and online. Offline mode is used by default. You
+may create report when you already have a coredump file.
 
 Example:
 
-    $ casr -f casr/tests/casr_tests/bin/core.test_destAv -e casr/tests/casr_tests/bin/bin/test_destAv -o test.casrep
+    $ casr -f tests/casr_tests/bin/core.test_destAv -e tests/casr_tests/bin/test_destAv -o destAv.casrep
 
-In online mode `casr` could intercept crashes via core_pattern. To try you
+In online mode `casr` could intercept crashes via core\_pattern. You
 should do the following steps.
 
 Create directory `/var/crash` and set permissions for it:
 
     $ sudo mkdir -m 777 /var/crash
 
-Update core_pattern:
+Update core\_pattern:
 
     $ echo "|<path_to_casr_binary> -m online -c %c -p %p  -P %P -u %u -g %g -e %E" | sudo tee /proc/sys/kernel/core_pattern
 
@@ -96,9 +97,9 @@ Set core ulimit to unlimited or another non-zero value:
 
 To test just crash some programs:
 
-    $ cd casr/tests/casr_tests/bin && ./run.sh
+    $ cd tests/casr_tests/bin && ./run.sh
 
-Reports and coredumps would be stored in `/var/crash` directory.
+Reports and coredumps will be stored in `/var/crash` directory.
 
 ## casr-cluster
 
@@ -132,13 +133,12 @@ Tool for clustering CASR reports
 
 Report deduplication and clustering is based on stack trace comparison from
 [gdb-command](https://github.com/anfedotoff/gdb-command). The idea is to run
-deduplication first to remove equal reports, than run clustering on remaining
+deduplication first to remove equal reports, then run clustering on remaining
 reports.
 
 Example:
 
-    $ casr-cluster -d casr/tests/casr_tests/casrep/test_clustering_gdb/ out-dedup
-
+    $ casr-cluster -d tests/casr_tests/casrep/test_clustering_gdb out-dedup
     $ casr-cluster -c out-dedup out-cluster
 
 After clustering result directory will have the following structure:
@@ -177,7 +177,7 @@ After clustering result directory will have the following structure:
     └── cl9
         └── crash-76f90b8ba0ee1e10f04692607a2aae17a1ced499.casrep
 
-There are similar CASR reports inside one cluster.
+Similar CASR reports are inside one cluster.
 
 ## casr-cli
 
@@ -194,9 +194,9 @@ App provides text-based user interface to view CASR reports
         -v, --view <MODE>    View mode [default: tree] [possible values: tree, slider, stdout]
         -V, --version        Print version information
 
-There are three view modes: tree, slider (list) and stdout. In stdout mode
+There are three view modes: tree, slider (list), and stdout. In stdout mode
 `casr-cli` prints text-based CASR report to stdout.
 
 Example:
 
-    $ casr-cli casr/tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
+    $ casr-cli tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
