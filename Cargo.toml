@@ -6,7 +6,7 @@ authors = ["Andrey Fedotov  <fedotoff@ispras.ru>", "Alexey Vishnyakov <vishnya@i
 edition = "2021"
 
 description = "Collect crash reports, triage, and estimate severity."
-keywords = ["gdb", "crash", "stacktrace", "crash triage", "coredump"]
+keywords = ["gdb", "crash", "stacktrace", "triage", "coredump"]
 readme = "README.md"
 repository = "https://github.com/ispras/casr.git"
 homepage = "https://github.com/ispras/casr.git"
