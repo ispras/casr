@@ -103,10 +103,14 @@ pub struct CrashReport<'a> {
     /// Timestamp.
     #[serde(skip_deserializing)]
     pub timestamp: i64,
-    /// asan report
+    /// Asan report.
     #[serde(rename(serialize = "AsanReport", deserialize = "AsanReport"))]
     #[serde(default)]
     pub asan_report: Vec<String>,
+    /// Python report.
+    #[serde(rename(serialize = "PythonReport", deserialize = "PythonReport"))]
+    #[serde(default)]
+    pub python_report: Vec<String>,
     #[serde(rename(serialize = "CrashLine", deserialize = "CrashLine"))]
     #[serde(default)]
     pub crashline: String,
@@ -475,6 +479,14 @@ impl<'a> fmt::Display for CrashReport<'a> {
         if !self.asan_report.is_empty() {
             report += "\n===AsanReport===\n";
             for e in self.asan_report.iter() {
+                report += &format!("{}\n", e);
+            }
+        }
+
+        // PythonReport
+        if !self.python_report.is_empty() {
+            report += "\n===PythonReport===\n";
+            for e in self.python_report.iter() {
                 report += &format!("{}\n", e);
             }
         }

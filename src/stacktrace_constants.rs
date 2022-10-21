@@ -217,4 +217,7 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*libstdc\+\+\.so",
     r".*libc-.*\.so",
     r".*libpthread\.so",
+    r".*libasan\.so",
+    r".*libubsan\.so",
+    r".*asan_with_fuzzer\.so",
 ];

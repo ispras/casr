@@ -3,6 +3,7 @@ extern crate regex;
 use crate::asan;
 use crate::error;
 use crate::error::Error;
+use crate::python;
 use crate::report::CrashReport;
 use crate::stacktrace_constants::*;
 
@@ -47,6 +48,8 @@ impl fmt::Display for CrashLine {
 pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
     let trace = if !report.asan_report.is_empty() {
         asan::stacktrace_from_asan(&report.stacktrace)?
+    } else if !report.python_report.is_empty() {
+        python::stacktrace_from_python(&report.stacktrace)?
     } else {
         // Get stack trace and update it from mappings.
         let mut gdbtrace = Stacktrace::from_gdb(&report.stacktrace.join("\n"))?;

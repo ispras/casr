@@ -99,18 +99,33 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
                     trace.push(entry.to_string());
                 }
             });
-            let mut rawtrace = if let Some(asan_array) = u.get("AsanReport") {
-                if let Some(asan_array) = asan_array.as_array() {
-                    if asan_array.iter().next().is_some() {
-                        casr::asan::stacktrace_from_asan(&trace)
-                            .with_context(|| format!("File: {}", path.display()))?
-                    } else {
-                        Stacktrace::from_gdb(&trace.join("\n"))
-                            .with_context(|| format!("File: {}", path.display()))?
-                    }
+
+            let asan_report_handle = if let Some(array) = u.get("AsanReport") {
+                if let Some(array) = array.as_array() {
+                    !array.is_empty()
                 } else {
                     bail!("Error while parsing AsanReport. File: {}", path.display());
                 }
+            } else {
+                false
+            };
+
+            let python_report_handle = if let Some(array) = u.get("PythonReport") {
+                if let Some(array) = array.as_array() {
+                    !array.is_empty()
+                } else {
+                    bail!("Error while parsing PythonReport. File: {}", path.display());
+                }
+            } else {
+                false
+            };
+
+            let mut rawtrace = if asan_report_handle {
+                casr::asan::stacktrace_from_asan(&trace)
+                    .with_context(|| format!("File: {}", path.display()))?
+            } else if python_report_handle {
+                casr::python::stacktrace_from_python(&trace)
+                    .with_context(|| format!("File: {}", path.display()))?
             } else {
                 Stacktrace::from_gdb(&trace.join("\n"))
                     .with_context(|| format!("File: {}", path.display()))?

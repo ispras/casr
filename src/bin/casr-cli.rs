@@ -249,11 +249,13 @@ fn build_tree_report(
         Placement::LastChild,
         row,
     );
-    tree.insert_item(
-        report.execution_class.explanation.to_string(),
-        Placement::LastChild,
-        row,
-    );
+    if !report.execution_class.explanation.is_empty() {
+        tree.insert_item(
+            report.execution_class.explanation.to_string(),
+            Placement::LastChild,
+            row,
+        );
+    }
 
     if !report.proc_maps.is_empty() {
         row = tree
@@ -321,6 +323,16 @@ fn build_tree_report(
             .insert_container_item("AsanReport".to_string(), Placement::After, row)
             .unwrap();
         report.asan_report.iter().for_each(|e| {
+            tree.insert_item(e.clone(), Placement::LastChild, row);
+        });
+        tree.expand_item(row);
+    }
+
+    if !report.python_report.is_empty() {
+        row = tree
+            .insert_container_item("PythonReport".to_string(), Placement::After, row)
+            .unwrap();
+        report.python_report.iter().for_each(|e| {
             tree.insert_item(e.clone(), Placement::LastChild, row);
         });
         tree.expand_item(row);
@@ -437,15 +449,19 @@ fn build_slider_report(
     if !report.network_connections.is_empty() {
         select.add_item("NetworkConnections", report.network_connections.join("\n"));
     }
-
+    let explanation = if !report.execution_class.explanation.is_empty() {
+        format!("{}\n", report.execution_class.explanation)
+    } else {
+        "".to_string()
+    };
     select.add_item(
         "CrashSeverity",
         format!(
-            "{}\n{}\n{}\n{}\n",
+            "{}\n{}\n{}\n{}",
             report.execution_class.severity,
             report.execution_class.short_description,
             report.execution_class.description,
-            report.execution_class.explanation
+            explanation
         ),
     );
 
@@ -480,6 +496,10 @@ fn build_slider_report(
 
     if !report.asan_report.is_empty() {
         select.add_item("AsanReport", report.asan_report.join("\n"));
+    }
+
+    if !report.python_report.is_empty() {
+        select.add_item("PythonReport", report.python_report.join("\n"));
     }
 
     if !report.source.is_empty() {
