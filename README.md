@@ -1,3 +1,6 @@
+[![CI](https://github.com/ispras/casr/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/main.yml)
+[![Crates.io](https://img.shields.io/crates/v/casr)](https://crates.io/crates/casr)
+
 # CASR: Crash Analysis and Severity Report
 
 CASR &ndash; collect crash reports, triage, and estimate severity.
