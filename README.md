@@ -24,6 +24,7 @@ Reports triage (deduplication, clustering) is done by `casr-cluster`.
 Triage is based on stack trace comparison from [gdb-command](https://github.com/anfedotoff/gdb-command).
 
 Explanation of severity classes could be found [here](docs/classes.md).
+You could take a closer look at usage details [here](docs/usage.md).
 
 ## Getting started
 
