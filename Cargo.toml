@@ -4,6 +4,16 @@ version = "2.0.0"
 authors = ["Andrey Fedotov  <fedotoff@ispras.ru>", "Alexey Vishnyakov <vishnya@ispras.ru>", "Georgy Savidov <avgor46@ispras.ru>"]
 
 edition = "2021"
+
+description = "Collect crash reports, triage, and estimate severity."
+keywords = ["gdb", "crash", "stacktrace", "crash triage", "coredump"]
+readme = "README.md"
+repository = "https://github.com/ispras/casr.git"
+homepage = "https://github.com/ispras/casr.git"
+license = "Apache-2.0"
+license-file = "LICENSE"
+exclude = ["/tests", ".gitignore", ".github", "update_version.sh"]
+
 [dependencies]
 anyhow = "1.0"
 regex = "1.5.4"
