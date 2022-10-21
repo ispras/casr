@@ -54,7 +54,7 @@ determine whether control flow hijack is possible or not. List of classes:
 20. **pvalloc-overflow**. Overflow in pvalloc parameters.
 21. **overwrites-const-input**. Fuzz target overwrites its constant input.
 
-### NOT\_EXPLOITABLE
+## NOT\_EXPLOITABLE
 
 Not exploitable classes need extra manual analysis to determine whether control
 flow hijack is possible or not. Also, it could be a denial-of-service crash.
