@@ -98,6 +98,7 @@ Please follow the next recommendations for your pull requests:
 - compile with *stable* rust
 - use `cargo fmt`
 - check the output of `cargo clippy --all`
+- run tests `cargo test`
 
 ## Cite Us
 
