@@ -1051,6 +1051,50 @@ fn test_return_av_gdb() {
             .as_str()
             .unwrap()
             .to_string();
+        let disasm = report["Disassembly"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_returnAv.c:33")
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_returnAv+0x"),
+            // We can't hardcode the offset because we rebuild tests every time.
+        );
+
+        // Disassembly test
+        assert!(disasm[0].contains("ret "), "Bad disassembly");
+        assert!(
+            disasm[1].contains("nop word ptr cs:[rax + rax]"),
+            "Bad disassembly"
+        );
+        assert!(disasm[2].contains("nop "), "Bad disassembly");
+        assert!(disasm[3].contains("push r15"), "Bad disassembly");
+        assert!(disasm[4].contains("push r14"), "Bad disassembly");
+        assert!(disasm[5].contains("mov r15, rdx"), "Bad disassembly");
+        assert!(disasm[6].contains("push r13"), "Bad disassembly");
+        assert!(disasm[7].contains("push r12"), "Bad disassembly");
+        assert!(
+            disasm[8].contains("lea r12, [rip + 0x200656]"),
+            "Bad disassembly"
+        );
+        assert!(disasm[9].contains("push rbp"), "Bad disassembly");
+        assert!(
+            disasm[10].contains("lea rbp, [rip + 0x200656]"),
+            "Bad disassembly"
+        );
+        assert!(disasm[11].contains("push rbx"), "Bad disassembly");
+        assert!(disasm[12].contains("mov r13d, edi"), "Bad disassembly");
+        assert!(disasm[13].contains("mov r14, rsi"), "Bad disassembly");
+        assert!(disasm[14].contains("sub rbp, r12"), "Bad disassembly");
+        assert!(disasm[15].contains("sub rsp, 8"), "Bad disassembly");
 
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
@@ -2100,8 +2144,45 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
+        let asan_report = report["AsanReport"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+        let sources = report["Source"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
 
         assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+
+        // Sources test
+        assert!(sources[0].contains("    5      {"), "Bad sources");
+        assert!(
+            sources[1].contains("    6          int a[3];"),
+            "Bad sources"
+        );
+        assert!(
+            sources[2].contains("    7          for (int i = 0; i < 4; ++i)"),
+            "Bad sources"
+        );
+        assert!(sources[3].contains("    8          {"), "Bad sources");
+        assert!(
+            sources[4].contains("--->9              a[i] = 1;"),
+            "Bad sources"
+        );
+        assert!(sources[5].contains("    10         }"), "Bad sources");
+        assert!(
+            sources[6].contains("    11         return a[2];"),
+            "Bad sources"
+        );
+        assert!(sources[7].contains("    12     }"), "Bad sources");
+
+        assert!(!asan_report.is_empty() && asan_report[1].contains("WRITE"));
+
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
         assert!(
