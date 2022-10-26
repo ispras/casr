@@ -126,8 +126,11 @@ pub fn sources(debug: &DebugInfo) -> Option<Vec<String>> {
                 }
             })
             .collect::<Vec<String>>();
-        lines[debug.line as usize - start - 1].replace_range(..4, "--->");
-        return Some(lines);
+        let crash_line = debug.line as usize - start - 1;
+        if crash_line < lines.len() {
+            lines[crash_line].replace_range(..4, "--->");
+            return Some(lines);
+        }
     }
 
     None
