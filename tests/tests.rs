@@ -1051,12 +1051,6 @@ fn test_return_av_gdb() {
             .as_str()
             .unwrap()
             .to_string();
-        let stacktrace = report["Stacktrace"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
         let disasm = report["Disassembly"]
             .as_array()
             .unwrap()
@@ -1073,10 +1067,6 @@ fn test_return_av_gdb() {
                     .unwrap()
                     .contains("test_returnAv+0x"),
             // We can't hardcode the offset because we rebuild tests every time.
-        );
-        assert!(
-            stacktrace[0].contains(" main "),
-            "Cannot recognize first entry in stack trace."
         );
 
         // Disassembly test
