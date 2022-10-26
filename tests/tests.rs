@@ -1872,6 +1872,7 @@ fn test_casr_cluster_c() {
 }
 
 #[test]
+#[ignore]
 fn test_casr_cluster_c_huge_san() {
     let paths = [
         abs_path("tests/casr_tests/casrep/test_clustering_san"),
@@ -2307,6 +2308,7 @@ fn test_casr_san() {
 }
 
 #[test]
+#[ignore]
 fn test_asan_stacktrace() {
     let raw_stacktrace = &[ "#10 0x55ebfbfa0707 (/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0xfe2707) (BuildId: d2918819a864502448a61485c4b20818b0778ac2)",
         "#6 0x55ebfc1cabbc in rz_bin_open_buf (/home/user/Desk top/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0x120cbbc)",
