@@ -138,7 +138,7 @@ fn main() -> Result<()> {
     // Get ASAN report.
     let san_stderr_list: Vec<String> = sanitizers_stderr
         .split('\n')
-        .map(|l| l.to_string())
+        .map(|l| l.trim_end().to_string())
         .collect();
     let rasan_start =
         Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();

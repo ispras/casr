@@ -120,7 +120,7 @@ pub fn sources(debug: &DebugInfo) -> Option<Vec<String>> {
             .take_while(|(i, _)| *i < 10)
             .map(|(i, l)| {
                 if let Ok(l) = l {
-                    format!("    {:<6} {}", start + i + 1, l)
+                    format!("    {:<6} {}", start + i + 1, l.trim_end())
                 } else {
                     format!("    {:<6} Corrupted line", start + i + 1)
                 }
