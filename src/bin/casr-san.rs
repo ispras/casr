@@ -85,6 +85,7 @@ fn main() -> Result<()> {
     };
 
     // Set rss limit.
+    let stacktrace_format = "stack_trace_format=\" #%n %p in %f at %S module %m+%o\"";
     if let Ok(asan_options_str) = env::var("ASAN_OPTIONS") {
         let mut asan_options = asan_options_str.clone();
         if !asan_options_str.contains("hard_rss_limit_mb") {
@@ -93,10 +94,14 @@ fn main() -> Result<()> {
         if asan_options.starts_with(',') {
             asan_options.remove(0);
         }
+        asan_options = [asan_options.as_str(), stacktrace_format].join(",");
         asan_options = asan_options.replace("symbolize=0", "symbolize=1");
         std::env::set_var("ASAN_OPTIONS", asan_options);
     } else {
-        std::env::set_var("ASAN_OPTIONS", "hard_rss_limit_mb=2048");
+        std::env::set_var(
+            "ASAN_OPTIONS",
+            ["hard_rss_limit_mb=2048", stacktrace_format].join(","),
+        );
     }
 
     // Run program with sanitizers.
