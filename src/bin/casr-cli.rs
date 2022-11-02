@@ -205,6 +205,14 @@ fn build_tree_report(
             .unwrap();
     }
 
+    if !report.stdin.is_empty() {
+        row = tree
+            .insert_item("Stdin".to_string(), Placement::After, row)
+            .unwrap();
+        tree.insert_item(report.stdin.clone(), Placement::LastChild, row)
+            .unwrap();
+    }
+
     if !report.proc_fd.is_empty() {
         row = tree
             .insert_item("ProcFiles".to_string(), Placement::After, row)
@@ -416,6 +424,10 @@ fn build_slider_report(
 
     if !report.proc_cmdline.is_empty() {
         select.add_item("ProcCmdline", report.proc_cmdline.clone());
+    }
+
+    if !report.stdin.is_empty() {
+        select.add_item("Stdin", report.stdin.clone());
     }
 
     if !report.proc_fd.is_empty() {

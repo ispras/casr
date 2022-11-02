@@ -48,6 +48,10 @@ pub struct CrashReport<'a> {
     #[serde(rename(serialize = "ProcCmdline", deserialize = "ProcCmdline"))]
     #[serde(default)]
     pub proc_cmdline: String,
+    /// Path to stdin for target
+    #[serde(rename(serialize = "Stdin", deserialize = "Stdin"))]
+    #[serde(default)]
+    pub stdin: String,
     /// Contents of /proc/pid/status.
     #[serde(rename(serialize = "ProcStatus", deserialize = "ProcStatus"))]
     #[serde(default)]
