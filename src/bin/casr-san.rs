@@ -187,8 +187,7 @@ fn main() -> Result<()> {
                             None
                         };
 
-                        let rcrash_address =
-                            Regex::new("on (?:unknown )?address 0x([0-9a-f]+)").unwrap();
+                        let rcrash_address = Regex::new("on.*address 0x([0-9a-f]+)").unwrap();
                         let near_null = if let Some(crash_address) =
                             rcrash_address.captures(&report.asan_report[0])
                         {

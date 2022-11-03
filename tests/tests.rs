@@ -2438,6 +2438,138 @@ fn test_casr_san() {
 }
 
 #[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_san_segf_near_null() {
+    let paths = [
+        abs_path("tests/casr_tests/test_asan_segf.cpp"),
+        abs_path("tests/casr_tests/bin/test_asan_segfnearnull"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(&["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "SourceAvNearNull");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(&["--stdout", "--", &paths[1], "1"])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
+        assert_eq!(severity_desc, "DestAvNearNull");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_san_segf() {
+    let paths = [
+        abs_path("tests/casr_tests/test_asan_segf.cpp"),
+        abs_path("tests/casr_tests/bin/test_asan_segf"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(&["--stdout", "--", &paths[1], "1", "1"])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "SourceAv");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(&["--stdout", "--", &paths[1], "1", "1", "1"])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "EXPLOITABLE");
+        assert_eq!(severity_desc, "DestAv");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+}
+
+#[test]
 fn test_asan_stacktrace() {
     let raw_stacktrace = &[ "#10 0x55ebfbfa0707 (/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0xfe2707) (BuildId: d2918819a864502448a61485c4b20818b0778ac2)",
         "#6 0x55ebfc1cabbc in rz_bin_open_buf (/home/user/Desk top/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0x120cbbc)",

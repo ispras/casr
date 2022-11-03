@@ -131,6 +131,8 @@ impl<'a> ExecutionClass<'a> {
     /// * `short_desc` - short description of execution class.
     ///
     /// * `rw` - access information.
+    ///
+    /// * `near_null` - is crash address near null
     pub fn san_find(
         short_desc: &'a str,
         rw: Option<&'a str>,
