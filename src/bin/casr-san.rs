@@ -134,6 +134,10 @@ fn main() -> Result<()> {
     report.executable_path = argv[0].to_string();
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
+    if let Some(mut file_path) = stdin_file.clone() {
+        file_path = file_path.canonicalize().unwrap_or(file_path);
+        report.stdin = file_path.display().to_string();
+    }
 
     // Get ASAN report.
     let san_stderr_list: Vec<String> = sanitizers_stderr

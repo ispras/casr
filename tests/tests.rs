@@ -1433,6 +1433,54 @@ fn test_div_by_zero_gdb() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
+fn test_div_by_zero_stdin_gdb() {
+    // Test casr-san stdin
+    let paths = [
+        abs_path("tests/casr_tests/test_asan_stdin.cpp"),
+        abs_path("tests/casr_tests/bin/test_stdin"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!("clang++ -O0 -g {} -o {}", &paths[0], &paths[1]))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let mut tempfile = fs::File::create("/tmp/CasrSanTemp").unwrap();
+    tempfile.write_all(b"1").unwrap();
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&["--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-gdb");
+
+    // Test if casr got results.
+    assert!(output.status.success());
+    fs::remove_file("/tmp/CasrSanTemp").unwrap();
+
+    // Test report.
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let stdin = report["Stdin"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert!(stdin.contains("/tmp/CasrSanTemp"));
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "FPE");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
 fn test_abort_gdb32() {
     // Run casr-gdb.
     let output = Command::new(*EXE_CASR_GDB.read().unwrap())
@@ -2284,11 +2332,13 @@ fn test_casr_san() {
     let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
     if let Ok(report) = report {
         let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let stdin = report["Stdin"].as_str().unwrap();
         let severity_desc = report["CrashSeverity"]["ShortDescription"]
             .as_str()
             .unwrap()
             .to_string();
 
+        assert!(stdin.contains("/tmp/CasrSanTemp"));
         assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "heap-buffer-overflow(write)");
