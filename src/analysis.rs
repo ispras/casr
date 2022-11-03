@@ -232,7 +232,7 @@ pub fn severity<'a>(
 ///  # Arguments
 ///
 /// * `value` -  address value to check.
-fn is_near_null(value: u64) -> bool {
+pub fn is_near_null(value: u64) -> bool {
     value < 64 * 1024
 }
 

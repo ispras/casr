@@ -131,12 +131,18 @@ impl<'a> ExecutionClass<'a> {
     /// * `short_desc` - short description of execution class.
     ///
     /// * `rw` - access information.
-    pub fn san_find(short_desc: &'a str, rw: Option<&'a str>) -> error::Result<Self> {
+    pub fn san_find(
+        short_desc: &'a str,
+        rw: Option<&'a str>,
+        near_null: bool,
+    ) -> error::Result<Self> {
         match short_desc {
-            "SEGV" => match rw.unwrap_or("UNDEF") {
-                "READ" => ExecutionClass::find("SourceAv"),
-                "WRITE" => ExecutionClass::find("DestAv"),
-                _ => ExecutionClass::find("AccessViolation"),
+            "SEGV" => match (rw.unwrap_or("UNDEF"), near_null) {
+                ("READ", false) => ExecutionClass::find("SourceAv"),
+                ("READ", true) => ExecutionClass::find("SourceAvNearNull"),
+                ("WRITE", false) => ExecutionClass::find("DestAv"),
+                ("WRITE", true) => ExecutionClass::find("DestAvNearNull"),
+                (_, _) => ExecutionClass::find("AccessViolation"),
             },
             "stack-overflow" => ExecutionClass::find("StackOverflow"),
             "deadly" => ExecutionClass::find("AbortSignal"), // hack: regexp matches word without spaces
