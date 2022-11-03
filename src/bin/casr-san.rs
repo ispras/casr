@@ -111,18 +111,18 @@ fn main() -> Result<()> {
         sanitizers_cmd
             .pre_exec(|| {
                 if personality(linux_personality::ADDR_NO_RANDOMIZE).is_err() {
-                    Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        "Cannot set personality",
-                    ))
-                } else {
-                    Ok(())
+                    panic!("Cannot set personality");
                 }
+                Ok(())
             })
             .output()
             .with_context(|| "Couldn't run target program with sanitizers")?
     };
     let sanitizers_stderr = String::from_utf8_lossy(&sanitizers_result.stderr);
+
+    if sanitizers_stderr.contains("Cannot set personality") {
+        bail!("Cannot set personality (if you are running docker, use --privileged)");
+    }
 
     // Detect OOMs.
     if sanitizers_stderr.contains("AddressSanitizer: hard rss limit exhausted") {
