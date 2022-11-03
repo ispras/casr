@@ -5,6 +5,7 @@ extern crate gdb_command;
 extern crate linux_personality;
 extern crate regex;
 
+use casr::analysis;
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::execution_class::*;
@@ -163,7 +164,7 @@ fn main() -> Result<()> {
                 match caps.get(1).unwrap().as_str() {
                     "libFuzzer" => {
                         if let Ok(class) =
-                            ExecutionClass::san_find(caps.get(2).unwrap().as_str(), None)
+                            ExecutionClass::san_find(caps.get(2).unwrap().as_str(), None, false)
                         {
                             report.execution_class = class.clone();
                         }
@@ -173,14 +174,32 @@ fn main() -> Result<()> {
                         let san_type = caps.get(2).unwrap().as_str();
                         let mem_access = if let Some(second_line) = report.asan_report.get(1) {
                             let raccess = Regex::new(r"(READ|WRITE|ACCESS)").unwrap();
-                            raccess
-                                .captures(second_line)
-                                .map(|access_type| access_type.get(1).unwrap().as_str())
+                            if let Some(access_type) = raccess.captures(second_line) {
+                                Some(access_type.get(1).unwrap().as_str())
+                            } else if let Some(third_line) = report.asan_report.get(2) {
+                                raccess
+                                    .captures(third_line)
+                                    .map(|access_type| access_type.get(1).unwrap().as_str())
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         };
 
-                        if let Ok(class) = ExecutionClass::san_find(san_type, mem_access) {
+                        let rcrash_address = Regex::new("on.*address 0x([0-9a-f]+)").unwrap();
+                        let near_null = if let Some(crash_address) =
+                            rcrash_address.captures(&report.asan_report[0])
+                        {
+                            analysis::is_near_null(u64::from_str_radix(
+                                crash_address.get(1).unwrap().as_str(),
+                                16,
+                            )?)
+                        } else {
+                            false
+                        };
+                        if let Ok(class) = ExecutionClass::san_find(san_type, mem_access, near_null)
+                        {
                             report.execution_class = class.clone();
                         }
                     }
