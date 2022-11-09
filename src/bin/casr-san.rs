@@ -263,8 +263,10 @@ fn main() -> Result<()> {
                 .launch()
                 .with_context(|| "Unable to get results from gdb")?;
 
+            let frame = Regex::new(r"^ *#[0-9]+").unwrap();
             report.stacktrace = gdb_result[0]
                 .split('\n')
+                .filter(|x| frame.is_match(x))
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>();
             report.proc_maps = gdb_result[1]
