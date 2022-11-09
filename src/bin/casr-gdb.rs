@@ -155,7 +155,12 @@ fn main() -> Result<()> {
         .regs()
         .launch()?;
 
-    report.stacktrace = result[0].split('\n').map(|x| x.to_string()).collect();
+    let frame = Regex::new(r"^ *#[0-9]+").unwrap();
+    report.stacktrace = result[0]
+        .split('\n')
+        .filter(|x| frame.is_match(x))
+        .map(|x| x.to_string())
+        .collect();
     report.proc_maps = result[2]
         .split('\n')
         .skip(3)
