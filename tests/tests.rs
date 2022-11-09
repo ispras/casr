@@ -2635,6 +2635,7 @@ fn test_casr_san_segf() {
 }
 
 #[test]
+#[ignore]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_sigbus() {
     let paths = [
