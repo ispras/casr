@@ -231,16 +231,23 @@ fn main() -> Result<()> {
     } else {
         // Get termination signal.
         if let Some(signal) = sanitizers_result.status.signal() {
+            // Get stack trace and mappings from gdb.
             match signal {
-                4 => {
+                4 | 31 => {
                     report.execution_class =
                         ExecutionClass::find("BadInstruction").unwrap().clone();
+                }
+                5 => {
+                    report.execution_class = ExecutionClass::find("TrapSignal").unwrap().clone();
                 }
                 6 => {
                     report.execution_class = ExecutionClass::find("AbortSignal").unwrap().clone();
                 }
-                11 => {
-                    report.execution_class = ExecutionClass::find("SEGV").unwrap().clone();
+                7 | 11 => {
+                    println!("Segmentation fault occured, but there is not enough information availibale to determine \
+                    exploitability. Try using casr-gdb instead.");
+                    report.execution_class =
+                        ExecutionClass::find("AccessViolation").unwrap().clone();
                 }
                 _ => {
                     // "Undefined" is by default in report.

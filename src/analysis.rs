@@ -99,8 +99,9 @@ pub fn severity<'a>(
 
             ExecutionClass::find("AbortSignal")
         }
-        SIGINFO_SIGILL => ExecutionClass::find("BadInstruction"),
-        SIGINFO_SIGSEGV | SIGINFO_SIGFPE => {
+        SIGINFO_SIGTRAP => ExecutionClass::find("TrapSignal"),
+        SIGINFO_SIGILL | SIGINFO_SIGSYS => ExecutionClass::find("BadInstruction"),
+        SIGINFO_SIGSEGV | SIGINFO_SIGFPE | SIGINFO_SIGBUS => {
             // Get program counter.
             let pc = context.pc();
 
@@ -198,7 +199,9 @@ pub fn severity<'a>(
                         disassembly.truncate(16);
                         report.disassembly = disassembly;
 
-                        if context.siginfo.si_signo == SIGINFO_SIGSEGV {
+                        if context.siginfo.si_signo == SIGINFO_SIGSEGV
+                            || context.siginfo.si_signo == SIGINFO_SIGBUS
+                        {
                             analyze_instructions(&cs, &insns, context)
                         } else {
                             ExecutionClass::find("FPE")
@@ -455,9 +458,12 @@ fn analyze_instructions_arm<'a>(
 
 // Signal numbers.
 const SIGINFO_SIGILL: u32 = 4;
+const SIGINFO_SIGTRAP: u32 = 5;
 const SIGINFO_SIGABRT: u32 = 6;
+const SIGINFO_SIGBUS: u32 = 7;
 const SIGINFO_SIGFPE: u32 = 8;
 const SIGINFO_SIGSEGV: u32 = 11;
+const SIGINFO_SIGSYS: u32 = 31;
 
 const SI_KERNEL: u32 = 0x80;
 
