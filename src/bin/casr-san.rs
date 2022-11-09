@@ -5,7 +5,7 @@ extern crate gdb_command;
 extern crate linux_personality;
 extern crate regex;
 
-use casr::analysis;
+use casr::analysis::*;
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::execution_class::*;
@@ -191,7 +191,7 @@ fn main() -> Result<()> {
                         let near_null = if let Some(crash_address) =
                             rcrash_address.captures(&report.asan_report[0])
                         {
-                            analysis::is_near_null(u64::from_str_radix(
+                            is_near_null(u64::from_str_radix(
                                 crash_address.get(1).unwrap().as_str(),
                                 16,
                             )?)
@@ -232,19 +232,19 @@ fn main() -> Result<()> {
         // Get termination signal.
         if let Some(signal) = sanitizers_result.status.signal() {
             // Get stack trace and mappings from gdb.
-            match signal {
-                4 | 31 => {
+            match signal as u32 {
+                SIGINFO_SIGILL | SIGINFO_SIGSYS => {
                     report.execution_class =
                         ExecutionClass::find("BadInstruction").unwrap().clone();
                 }
-                5 => {
+                SIGINFO_SIGTRAP => {
                     report.execution_class = ExecutionClass::find("TrapSignal").unwrap().clone();
                 }
-                6 => {
+                SIGINFO_SIGABRT => {
                     report.execution_class = ExecutionClass::find("AbortSignal").unwrap().clone();
                 }
-                7 | 11 => {
-                    println!("Segmentation fault occured, but there is not enough information availibale to determine \
+                SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
+                    eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
                     exploitability. Try using casr-gdb instead.");
                     report.execution_class =
                         ExecutionClass::find("AccessViolation").unwrap().clone();
