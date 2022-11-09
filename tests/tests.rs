@@ -929,6 +929,71 @@ fn test_abort_gdb() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
+fn test_sigbus() {
+    // Run casr-gdb.
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/bin/test_sigbus"),
+        ])
+        .output()
+        .expect("failed to start casr-gdb");
+
+    // Test if casr got results.
+    assert!(output.status.success());
+
+    // Test report.
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(severity_type, "EXPLOITABLE");
+        assert_eq!(severity_desc, "DestAv");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_sigtrap() {
+    // Run casr-gdb.
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&[
+            "--stdout",
+            "--",
+            &abs_path("tests/casr_tests/bin/test_sig_me"),
+            "5",
+        ])
+        .output()
+        .expect("failed to start casr-gdb");
+
+    // Test if casr got results.
+    assert!(output.status.success());
+
+    // Test report.
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "TrapSignal");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
 fn test_segfault_on_pc_gdb() {
     // Run casr-gdb.
     let output = Command::new(*EXE_CASR_GDB.read().unwrap())
@@ -2562,6 +2627,51 @@ fn test_casr_san_segf() {
         assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+}
+
+#[test]
+#[ignore]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_san_sigbus() {
+    let paths = [
+        abs_path("tests/casr_tests/test_sigbus.c"),
+        abs_path("tests/casr_tests/bin/test_asan_sigbus"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(&["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(1, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "AccessViolation");
     } else {
         panic!("Couldn't parse json report file.");
     }

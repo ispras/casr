@@ -99,8 +99,9 @@ pub fn severity<'a>(
 
             ExecutionClass::find("AbortSignal")
         }
-        SIGINFO_SIGILL => ExecutionClass::find("BadInstruction"),
-        SIGINFO_SIGSEGV | SIGINFO_SIGFPE => {
+        SIGINFO_SIGTRAP => ExecutionClass::find("TrapSignal"),
+        SIGINFO_SIGILL | SIGINFO_SIGSYS => ExecutionClass::find("BadInstruction"),
+        SIGINFO_SIGSEGV | SIGINFO_SIGFPE | SIGINFO_SIGBUS => {
             // Get program counter.
             let pc = context.pc();
 
@@ -198,7 +199,9 @@ pub fn severity<'a>(
                         disassembly.truncate(16);
                         report.disassembly = disassembly;
 
-                        if context.siginfo.si_signo == SIGINFO_SIGSEGV {
+                        if context.siginfo.si_signo == SIGINFO_SIGSEGV
+                            || context.siginfo.si_signo == SIGINFO_SIGBUS
+                        {
                             analyze_instructions(&cs, &insns, context)
                         } else {
                             ExecutionClass::find("FPE")
@@ -349,24 +352,28 @@ fn analyze_instructions_x86<'a>(
             // Check mem operand.
             if let capstone::arch::x86::X86OperandType::Mem(_) = operand.op_type {
                 match (
+                    context.siginfo.si_signo,
                     context.siginfo.si_code,
                     num,
                     is_near_null(context.siginfo.si_addr),
                 ) {
-                    (SI_KERNEL, 0, _) | (_, 0, false) => {
+                    (SIGINFO_SIGBUS, _, 1, _) => {
+                        return ExecutionClass::find("SourceAv");
+                    }
+                    (_, SI_KERNEL, 0, _) | (_, _, 0, false) | (SIGINFO_SIGBUS, _, 0, _) => {
                         return ExecutionClass::find("DestAv");
                     }
-                    (_, 0, true) => {
+                    (_, _, 0, true) => {
                         return ExecutionClass::find("DestAvNearNull");
                     }
-                    (SI_KERNEL, 1, _) | (_, 1, false) => {
+                    (_, SI_KERNEL, 1, _) | (_, _, 1, false) => {
                         if let Ok(new_class) = check_taint(cs, insns) {
                             return Ok(new_class);
                         } else {
                             return ExecutionClass::find("SourceAv");
                         }
                     }
-                    (_, 1, true) => return ExecutionClass::find("SourceAvNearNull"),
+                    (_, _, 1, true) => return ExecutionClass::find("SourceAvNearNull"),
                     _ => return ExecutionClass::find("AccessViolation"),
                 }
             }
@@ -454,12 +461,15 @@ fn analyze_instructions_arm<'a>(
 }
 
 // Signal numbers.
-const SIGINFO_SIGILL: u32 = 4;
-const SIGINFO_SIGABRT: u32 = 6;
-const SIGINFO_SIGFPE: u32 = 8;
-const SIGINFO_SIGSEGV: u32 = 11;
+pub const SIGINFO_SIGILL: u32 = 4;
+pub const SIGINFO_SIGTRAP: u32 = 5;
+pub const SIGINFO_SIGABRT: u32 = 6;
+pub const SIGINFO_SIGBUS: u32 = 7;
+pub const SIGINFO_SIGFPE: u32 = 8;
+pub const SIGINFO_SIGSEGV: u32 = 11;
+pub const SIGINFO_SIGSYS: u32 = 31;
 
-const SI_KERNEL: u32 = 0x80;
+pub const SI_KERNEL: u32 = 0x80;
 
 // The goal is to find taint registers in call/jump or in memory address for store instructions.
 // Limitations: 1. Track only registers not memory cells.
