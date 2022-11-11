@@ -408,10 +408,67 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
     Ok((before, after))
 }
 
+/// Merge sub directory to main
+///
+/// # Arguments
+///
+/// * `sdir` - path to sub directory
+///
+/// * `mdir` - path to main directory
+///
+/// # Return value
+///
+/// Number of merged reports
+fn merge_dirs(sdir: &Path, mdir: &Path) -> error::Result<u64> {
+    let dir = fs::read_dir(mdir).with_context(|| {
+        format!(
+            "Error occurred while opening directory with Casr reports. File: {}",
+            mdir.display()
+        )
+    })?;
+
+    let mut mainhash = HashSet::new();
+    for entry in dir.flatten() {
+        if entry.path().extension().is_some() && entry.path().extension().unwrap() == "casrep" {
+            if let Ok(trace) = stacktrace(entry.path().as_path()) {
+                mainhash.insert(trace);
+            } else {
+                // return err?
+            }
+        }
+    }
+
+    let dir = fs::read_dir(sdir).with_context(|| {
+        format!(
+            "Error occurred while opening directory with Casr reports. File: {}",
+            sdir.display()
+        )
+    })?;
+
+    let mut new: u64 = 0;
+    for entry in dir.flatten() {
+        if entry.path().extension().is_some() && entry.path().extension().unwrap() == "casrep" {
+            if let Ok(trace) = stacktrace(entry.path().as_path()) {
+                if mainhash.insert(trace) {
+                    fs::copy(
+                        &entry.path().as_path(),
+                        &Path::new(&mdir).join(entry.file_name()),
+                    )?;
+                    new += 1;
+                }
+            } else {
+                // return err?
+            }
+        }
+    }
+    Ok(new)
+}
+
 fn main() -> Result<()> {
     let matches = App::new("casr-cluster")
         .version("2.2.0")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .author("Andrey Fedotov <fedotoff@ispras.ru>, \
+            Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Tool for clustering CASR reports")
         .term_width(90)
         .arg(
@@ -432,7 +489,12 @@ fn main() -> Result<()> {
                 .min_values(1)
                 .max_values(2)
                 .value_name("INPUT_DIR> <OUTPUT_DIR")
-                .help("Cluster CASR reports. If two directories are set, clusters will be placed in the second directory. If one directory is provided, clusters will be placed there, but reports in this directory will not be deleted."),
+                .help(
+                    "Cluster CASR reports. If two directories are set, \
+                    clusters will be placed in the second directory. If one \
+                    directory is provided, clusters will be placed there, but \
+                    reports in this directory will not be deleted.",
+                ),
         )
         .arg(
             Arg::new("deduplication")
@@ -442,7 +504,24 @@ fn main() -> Result<()> {
                 .min_values(1)
                 .max_values(2)
                 .value_name("INPUT_DIR> <OUTPUT_DIR")
-                .help("Deduplicate CASR reports. If two directories are set, deduplicated reports are copied to the second directory. If one directory is provided, duplicated reports are deleted."),
+                .help(
+                    "Deduplicate CASR reports. If two directories are set, \
+                    deduplicated reports are copied to the second directory. \
+                    If one directory is provided, duplicated reports are deleted.",
+                ),
+        )
+        .arg(
+            Arg::new("merge")
+                .short('m')
+                .long("merge")
+                .takes_value(true)
+                .min_values(2)
+                .max_values(2)
+                .value_names(&["SUB_DIR", "MAIN_DIR"]) // Maybe rename SUB_DIR into ?
+                .help(
+                    "Merge SUB_DIR into MAIN_DIR. Only new instances from \
+                    SUB_DIR will be added to MAIN_DIR.",
+                ),
         )
         .arg(
             Arg::new("jobs")
@@ -496,6 +575,14 @@ fn main() -> Result<()> {
         let (before, after) = dedup(paths[0], paths.get(1).map(|x| x.to_path_buf()))?;
         println!("Number of reports before deduplication: {}", before);
         println!("Number of reports after deduplication: {}", after);
+    } else if matches.is_present("merge") {
+        let paths: Vec<&Path> = matches.values_of("merge").unwrap().map(Path::new).collect();
+        let new = merge_dirs(paths[0], paths[1])?;
+        println!(
+            "Added {} new reports to {} directory",
+            new,
+            paths[1].display()
+        );
     }
 
     Ok(())
