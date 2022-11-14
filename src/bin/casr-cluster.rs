@@ -68,7 +68,7 @@ fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
     simatrix[n - 1][k - 1] / sum
 }
 
-/// Extract stack trace from casr(caesar) report
+/// Extract stack trace from casr (casr-san/casr-gdb) report
 ///
 /// # Arguments
 ///
