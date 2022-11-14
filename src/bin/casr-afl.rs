@@ -28,7 +28,7 @@ struct AflCrashInfo {
 }
 
 fn main() -> error::Result<()> {
-    let matches = App::new("casr-cluster")
+    let matches = App::new("casr-afl")
         .version("2.1.1")
         .author("Andrey Fedotov  <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Triage crashes found by AFL++")
