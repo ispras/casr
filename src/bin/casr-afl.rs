@@ -177,6 +177,7 @@ fn main() -> error::Result<()> {
     }
 
     // Generate CASR reports.
+    info!("Generating CASR reports...");
     let output_dir = Path::new(matches.value_of("output").unwrap());
     if !output_dir.exists() {
         fs::create_dir(&output_dir).with_context(|| {
@@ -206,7 +207,8 @@ fn main() -> error::Result<()> {
             args.push("--".to_string());
             args.extend_from_slice(&crash.target_args);
             if let Some(at_index) = args.iter().position(|s| s.contains("@@")) {
-                let _ = args[at_index].replace("@@", crash.path.to_str().unwrap());
+                let input = args[at_index].replace("@@", crash.path.to_str().unwrap());
+                args[at_index] = input;
             }
         }
         let tool = if crash.is_asan {
@@ -215,29 +217,86 @@ fn main() -> error::Result<()> {
             "casr-gdb"
         };
         debug!("{} {}", tool, args.join(" "));
-        let _casr_cmd = Command::new(tool).args(&args).output();
-        //TODO: Handle errors.
+        let casr_cmd = Command::new(tool)
+            .args(&args)
+            .output()
+            .with_context(|| format!("Couldn't launch {}", tool))?;
+        if !casr_cmd.status.success() {
+            let err = String::from_utf8_lossy(&casr_cmd.stderr)
+                .lines()
+                .collect::<Vec<&str>>()
+                .join(" ");
+            if err.contains("Program terminated (no crash)") {
+                warn!("{}: no crash on input {}", tool, crash.path.display());
+            } else {
+                error!("{} for input: {}", err, crash.path.display());
+            }
+        }
     }
 
     // Deduplicate reports.
+    info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
         .arg("-d")
         .arg(matches.value_of("output").unwrap())
-        .output();
-
-    if casr_cluster_d.is_err() {
-        //TODO: handle error
-    }
-
-    let casr_cluster_d = casr_cluster_d.unwrap();
+        .output()
+        .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 
     if casr_cluster_d.status.success() {
-        info!("{}", String::from_utf8_lossy(&casr_cluster_d.stdout));
+        info!(
+            "{}",
+            String::from_utf8_lossy(&casr_cluster_d.stdout)
+                .lines()
+                .collect::<Vec<&str>>()
+                .join(". ")
+        );
     } else {
-        //TODO: handle error
+        error!(
+            "{}",
+            String::from_utf8_lossy(&casr_cluster_d.stderr)
+                .lines()
+                .collect::<Vec<&str>>()
+                .join(" ")
+        );
     }
 
-    //TODO: cluster reports.
+    if !matches.is_present("no-cluster") {
+        info!("Clustering CASR reports...");
+        let casr_cluster_c = Command::new("casr-cluster")
+            .arg("-c")
+            .arg(matches.value_of("output").unwrap())
+            .arg(matches.value_of("output").unwrap())
+            .output()
+            .with_context(|| "Couldn't launch casr-cluster".to_string())?;
+
+        if casr_cluster_c.status.success() {
+            info!(
+                "{}",
+                String::from_utf8_lossy(&casr_cluster_c.stdout)
+                    .lines()
+                    .collect::<Vec<&str>>()
+                    .join(" ")
+            );
+        } else {
+            error!(
+                "{}",
+                String::from_utf8_lossy(&casr_cluster_c.stderr)
+                    .lines()
+                    .collect::<Vec<&str>>()
+                    .join(" ")
+            );
+        }
+
+        // Remove reports from deduplication phase. They are in clusters now.
+        for casrep in fs::read_dir(&output_dir)? {
+            let casrep_path = casrep?.path();
+            if let Some(ext) = casrep_path.extension() {
+                if ext == "casrep" {
+                    let _ = fs::remove_file(casrep_path);
+                }
+            }
+        }
+    }
 
     Ok(())
 }
