@@ -101,7 +101,7 @@ fn main() -> Result<()> {
     }
 
     // Run program with sanitizers.
-    let mut sanitizers_cmd = Command::new(&argv[0]);
+    let mut sanitizers_cmd = Command::new(argv[0]);
     if let Some(ref file) = stdin_file {
         sanitizers_cmd.stdin(std::fs::File::open(file).unwrap());
     }

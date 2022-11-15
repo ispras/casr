@@ -44,7 +44,7 @@ fn main() -> Result<()> {
             .long("mode")
             .takes_value(true)
             .value_name("MODE")
-            .possible_values(&["online", "offline"])
+            .possible_values(["online", "offline"])
             .default_value("offline")
             .help("Offline mode analyzes collected coredumps, online mode intercepts coredumps via core_pattern")
 )

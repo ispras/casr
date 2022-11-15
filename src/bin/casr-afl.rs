@@ -39,7 +39,7 @@ fn main() -> error::Result<()> {
                 .short('l')
                 .takes_value(true)
                 .default_value("info")
-                .possible_values(&["info", "debug"])
+                .possible_values(["info", "debug"])
                 .help("Logging level")
         )
         .arg(
@@ -180,7 +180,7 @@ fn main() -> error::Result<()> {
     info!("Generating CASR reports...");
     let output_dir = Path::new(matches.value_of("output").unwrap());
     if !output_dir.exists() {
-        fs::create_dir(&output_dir).with_context(|| {
+        fs::create_dir(output_dir).with_context(|| {
             format!("Couldn't create output directory {}", output_dir.display())
         })?;
     }
@@ -288,7 +288,7 @@ fn main() -> error::Result<()> {
         }
 
         // Remove reports from deduplication phase. They are in clusters now.
-        for casrep in fs::read_dir(&output_dir)? {
+        for casrep in fs::read_dir(output_dir)? {
             let casrep_path = casrep?.path();
             if let Some(ext) = casrep_path.extension() {
                 if ext == "casrep" {
