@@ -6,7 +6,7 @@ use regex::Regex;
 use serde_json::Value;
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::RwLock;
 
@@ -2692,8 +2692,13 @@ fn test_casr_afl() {
     let _ = fs::copy(abs_path("tests/casr_tests/bin/load_afl"), "/tmp/load_afl");
     let _ = fs::copy(abs_path("tests/casr_tests/bin/load_sydr"), "/tmp/load_sydr");
 
+    let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
     let output = Command::new(*EXE_CASR_AFL.read().unwrap())
         .args(&["-i", &paths[0], "-o", &paths[1]])
+        .env(
+            "PATH",
+            format!("{}:{}", std::env::var("PATH").unwrap(), bins.display()),
+        )
         .output()
         .expect("failed to start casr-afl");
 
