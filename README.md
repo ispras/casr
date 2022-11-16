@@ -25,6 +25,7 @@ disassembly, and even source code fragment where crash appeared. Reports are
 stored in JSON format. `casr-cli` is meant to provide TUI for viewing reports.
 Reports triage (deduplication, clustering) is done by `casr-cluster`.
 Triage is based on stack trace comparison from [gdb-command](https://github.com/anfedotoff/gdb-command).
+`casr-afl` is used to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
 
 Explanation of severity classes could be found [here](docs/classes.md).
 You could take a closer look at usage details [here](docs/usage.md).
@@ -86,6 +87,10 @@ Cluster reports:
 
     $ casr-cluster -c out-dedup out-cluster
 
+Triage crashes with casr-afl:
+
+    $ casr-afl -i afl-out -o casr-out
+
 ## Fuzzing Crash Triage Pipeline
 
 When you have crashes from fuzzing you may do the following steps:
@@ -95,6 +100,9 @@ When you have crashes from fuzzing you may do the following steps:
 2. Deduplicate collected reports via `casr-cluster -d`.
 3. Cluster deduplicated reports via `casr-cluster -c`.
 4. View reports from clusters using `casr-cli`.
+
+If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus) steps from 1 to 3
+could be done automatically by `casr-afl`.
 
 ## Contributing
 

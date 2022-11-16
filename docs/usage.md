@@ -200,3 +200,33 @@ There are three view modes: tree, slider (list), and stdout. In stdout mode
 Example:
 
     $ casr-cli tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
+
+## casr-afl
+
+Triage crashes found by AFL++
+
+    USAGE:
+        casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR>
+
+    OPTIONS:
+        -h, --help                     Print help information
+        -i, --input <INPUT_DIR>        AFL++ work directory
+        -l, --log-level <log-level>    Logging level [default: info] [possible values: info,
+                                       debug]
+            --no-cluster               Do not cluster CASR reports
+        -o, --output <OUTPUT_DIR>      Output directory with triaged reports
+        -V, --version                  Print version information
+
+`casr-afl` provides easy CASR integration  with AFL++. Walking through afl
+instances, `casr-afl` generates crash reports depending on target binary. For
+binary with ASAN `casr-san` is used, otherwise `casr-gdb`. The next step report
+deduplication is done by `casr-cluster`. Finally, reports are traiged into
+clusters.
+
+**NOTE:** `casr-gdb` and `casr-san` should be in PATH to make `casr-afl` works.
+
+Example (Ubuntu 20.04+):
+
+    $ cp tests/casr_tests/bin/load_afl /tmp/load_afl
+    $ cp tests/casr_tests/bin/load_sydr /tmp/load_sydr
+    $ casr-afl -i tests/casr_tests/bin/afl-out-xlnt -o tests/tmp_tests_casr/casr_afl_out
