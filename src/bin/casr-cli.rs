@@ -46,7 +46,7 @@ fn main() -> Result<()> {
                 .value_name("MODE")
                 .default_value("tree")
                 .help("View mode")
-                .possible_values(&["tree", "slider", "stdout"]),
+                .possible_values(["tree", "slider", "stdout"]),
         )
         .arg(
             Arg::new("report")

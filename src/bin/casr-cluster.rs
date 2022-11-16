@@ -260,7 +260,7 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> erro
         print(*fcluster(linkage([a] if type(a.tolist()) is float else a, method=\"complete\"), 0.3, criterion=\"distance\"))";
 
     let mut python = Command::new("python3")
-        .args(&["-c", python_cluster_script])
+        .args(["-c", python_cluster_script])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -378,10 +378,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
                 }
             };
             if casreps.insert(trace) {
-                fs::copy(
-                    &x.path().as_path(),
-                    &Path::new(&outdir).join(&x.file_name()),
-                )?;
+                fs::copy(x.path().as_path(), &Path::new(&outdir).join(&x.file_name()))?;
             }
         }
     } else {
@@ -394,7 +391,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
                 }
             };
             if !casreps.insert(trace) {
-                fs::remove_file(&x.path().as_path())?;
+                fs::remove_file(x.path().as_path())?;
             }
         }
     }
@@ -405,7 +402,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
         for report in badreports {
             fs::copy(
                 &report,
-                clerr.join(&report.file_name().unwrap().to_str().unwrap()),
+                clerr.join(report.file_name().unwrap().to_str().unwrap()),
             )?;
         }
     }
