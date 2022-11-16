@@ -99,64 +99,37 @@ fn main() -> error::Result<()> {
 
         // Get crashes from one node.
         let mut crash_info = AflCrashInfo::default();
-        let fuzzer_stats_path = path.join("fuzzer_stats");
-        if let Ok(fuzzer_stats) = fs::read_to_string(&fuzzer_stats_path) {
-            let mut rev_lines = fuzzer_stats.lines().rev();
-            if let Some(cmd_line) = rev_lines.next() {
-                if cmd_line.starts_with("command_line") {
-                    if let Some((_, target_cmd)) = cmd_line.split_once("--") {
-                        crash_info.target_args = target_cmd
-                            .split_whitespace()
-                            .map(|s| s.to_string())
-                            .collect();
-                        crash_info.is_stdin = !target_cmd.contains("@@");
-                        // Check if binary with ASAN
-                        if let Some(target_mode) = rev_lines.next() {
-                            if target_mode.contains("unicorn") {
-                                error!("casr-afl doesn't support unicorn mode.");
-                                continue;
-                            }
-                            if !target_mode.contains("qemu") {
-                                // Check for ASAN symbols.
-                                if let Some(target) = crash_info.target_args.first() {
-                                    if let Ok(buffer) = fs::read(Path::new(target)) {
-                                        if let Ok(elf) = goblin::elf::Elf::parse(&buffer) {
-                                            for sym in elf.syms.iter() {
-                                                if let Some(name) = elf.strtab.get_at(sym.st_name) {
-                                                    if name.contains("__asan") {
-                                                        crash_info.is_asan = true;
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            error!(
-                                                "Fuzz target: {} must be an ELF executable.",
-                                                target
-                                            );
-                                            continue;
-                                        }
-                                    } else {
-                                        error!("Couldn't read fuzz target binary: {}.", target);
-                                        continue;
-                                    }
+        let cmdline_path = path.join("cmdline");
+        if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
+            crash_info.target_args = cmdline.split_whitespace().map(|s| s.to_string()).collect();
+            crash_info.is_stdin = !cmdline.contains("@@");
+
+            // Check for ASAN symbols.
+            if let Some(target) = crash_info.target_args.first() {
+                if let Ok(buffer) = fs::read(Path::new(target)) {
+                    if let Ok(elf) = goblin::elf::Elf::parse(&buffer) {
+                        for sym in elf.syms.iter() {
+                            if let Some(name) = elf.strtab.get_at(sym.st_name) {
+                                if name.contains("__asan") {
+                                    crash_info.is_asan = true;
+                                    break;
                                 }
                             }
                         }
+                    } else {
+                        error!("Fuzz target: {} must be an ELF executable.", target);
+                        continue;
                     }
                 } else {
-                    error!(
-                        "Couldn't find command_line: in {}.",
-                        fuzzer_stats_path.display()
-                    );
+                    error!("Couldn't read fuzz target binary: {}.", target);
                     continue;
                 }
             } else {
-                error!("{} is empty.", fuzzer_stats_path.display());
+                error!("{} is empty.", cmdline);
                 continue;
             }
         } else {
-            error!("Couldn't read {}.", fuzzer_stats_path.display());
+            error!("Couldn't read {}.", cmdline_path.display());
             continue;
         }
 
