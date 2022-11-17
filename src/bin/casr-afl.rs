@@ -238,7 +238,6 @@ fn main() -> error::Result<()> {
         let casr_cluster_c = Command::new("casr-cluster")
             .arg("-c")
             .arg(matches.value_of("output").unwrap())
-            .arg(matches.value_of("output").unwrap())
             .output()
             .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 
