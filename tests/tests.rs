@@ -2720,8 +2720,8 @@ fn test_casr_afl() {
 
     assert_eq!(clusters_cnt, 20, "Invalid number of clusters");
 
-    let _ = fs::remove_dir_all("/tmp/load_sydr");
-    let _ = fs::remove_dir_all("/tmp/load_afl");
+    let _ = fs::remove_file("/tmp/load_sydr");
+    let _ = fs::remove_file("/tmp/load_afl");
 }
 #[test]
 fn test_asan_stacktrace() {
