@@ -264,7 +264,8 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> erro
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()?;
+        .spawn()
+        .with_context(|| "Failed to launch python3")?;
     {
         let python_stdin = python.stdin.as_mut().unwrap();
         python_stdin
