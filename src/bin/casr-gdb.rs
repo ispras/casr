@@ -153,7 +153,8 @@ fn main() -> Result<()> {
         .siginfo()
         .mappings()
         .regs()
-        .launch()?;
+        .launch()
+        .with_context(|| "Unable to get results from gdb")?;
 
     let frame = Regex::new(r"^ *#[0-9]+").unwrap();
     report.stacktrace = result[0]

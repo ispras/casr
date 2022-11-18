@@ -7,9 +7,7 @@ extern crate rayon;
 extern crate regex;
 extern crate serde_json;
 
-use anyhow::Context;
-use casr::error;
-use casr::error::Error;
+use anyhow::{bail, Context, Result};
 use clap::{App, Arg};
 use gdb_command::mappings::*;
 use gdb_command::stacktrace::*;
@@ -77,24 +75,18 @@ fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
 /// # Return value
 ///
 /// Stack trace as a `Stacktrace` struct
-fn stacktrace(path: &Path) -> error::Result<Stacktrace> {
+fn stacktrace(path: &Path) -> Result<Stacktrace> {
     // Opening file and reading it
     let file = std::fs::File::open(path);
     if file.is_err() {
-        return Err(Error::Cluster(format!(
-            "Error with opening Casr report: {}",
-            path.display()
-        )));
+        bail!("Error with opening Casr report: {}", path.display());
     }
     let file = file.unwrap();
     let reader = BufReader::new(file);
 
     let u = serde_json::from_reader(reader);
     if u.is_err() {
-        return Err(Error::Cluster(format!(
-            "Json parse error. File: {}",
-            path.display()
-        )));
+        bail!("Json parse error. File: {}", path.display());
     }
     let u: serde_json::Value = u.unwrap();
 
@@ -117,10 +109,7 @@ fn stacktrace(path: &Path) -> error::Result<Stacktrace> {
                             .with_context(|| format!("File: {}", path.display()))?
                     }
                 } else {
-                    return Err(Error::Cluster(format!(
-                        "Error while parsing AsanReport. File: {}",
-                        path.display()
-                    )));
+                    bail!("Error while parsing AsanReport. File: {}", path.display());
                 }
             } else {
                 Stacktrace::from_gdb(&trace.join("\n"))
@@ -136,9 +125,7 @@ fn stacktrace(path: &Path) -> error::Result<Stacktrace> {
             }
 
             if rawtrace.is_empty() {
-                return Err(Error::Cluster(
-                    "Current stack trace length is null".to_string(),
-                ));
+                bail!("Current stack trace length is null".to_string());
             }
 
             // Get Proc mappings from Casr report
@@ -173,10 +160,7 @@ fn stacktrace(path: &Path) -> error::Result<Stacktrace> {
             return Ok(rawtrace);
         }
     }
-    Err(Error::Cluster(format!(
-        "Json parse error, file: {}",
-        path.display()
-    )))
+    bail!("Json parse error, file: {}", path.display());
 }
 
 /// Perform the clustering of casreps
@@ -192,7 +176,7 @@ fn stacktrace(path: &Path) -> error::Result<Stacktrace> {
 /// # Return value
 ///
 /// Number of clusters
-pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> error::Result<u32> {
+pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u32> {
     // if outpath is "None" we consider that outpath and inpath are the same
     let outpath = outpath.unwrap_or(inpath);
     let dir = fs::read_dir(inpath).with_context(|| format!("File: {}", inpath.display()))?;
@@ -203,10 +187,7 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> erro
         .collect();
     let len = casreps.len();
     if len < 2 {
-        return Err(Error::Cluster(format!(
-            "{} reports, nothing to cluster...",
-            len
-        )));
+        bail!("{} reports, nothing to cluster...", len);
     }
 
     // Start thread pool.
@@ -264,7 +245,8 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> erro
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()?;
+        .spawn()
+        .with_context(|| "Failed to launch python3")?;
     {
         let python_stdin = python.stdin.as_mut().unwrap();
         python_stdin
@@ -274,10 +256,10 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> erro
     let python = python.wait_with_output()?;
 
     if !python.status.success() {
-        return Err(Error::Cluster(format!(
+        bail!(
             "Failed to start python script. Error: {}",
             String::from_utf8_lossy(&python.stderr)
-        )));
+        );
     }
     let output = String::from_utf8_lossy(&python.stdout);
     let clusters = output
@@ -286,11 +268,11 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> erro
         .collect::<Vec<u32>>();
 
     if clusters.len() != len {
-        return Err(Error::Cluster(format!(
+        bail!(
             "Number of casreps({}) differs from array length({}) from python",
             len,
             clusters.len()
-        )));
+        );
     }
 
     // Cluster formation
@@ -336,7 +318,7 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> erro
 /// # Return value
 ///
 /// Number of reports before/after deduplication
-fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)> {
+fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
     let dir = fs::read_dir(indir).with_context(|| {
         format!(
             "Error occurred while opening directory with Casr reports. File: {}",
@@ -413,7 +395,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> error::Result<(usize, usize)>
     Ok((before, after))
 }
 
-fn main() -> error::Result<()> {
+fn main() -> Result<()> {
     let matches = App::new("casr-cluster")
         .version("2.1.1")
         .author("Andrey Fedotov  <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")

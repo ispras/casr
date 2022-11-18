@@ -6,12 +6,13 @@ use regex::Regex;
 use serde_json::Value;
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
     static ref EXE_CASR: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr"));
+    static ref EXE_CASR_AFL: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-afl"));
     static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
     static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
     static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
@@ -2679,6 +2680,61 @@ fn test_casr_san_sigbus() {
     let _ = std::fs::remove_file(&paths[1]);
 }
 
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_afl() {
+    let paths = [
+        abs_path("tests/casr_tests/bin/afl-out-xlnt"),
+        abs_path("tests/tmp_tests_casr/casr_afl_out"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    let _ = fs::copy(abs_path("tests/casr_tests/bin/load_afl"), "/tmp/load_afl");
+    let _ = fs::copy(abs_path("tests/casr_tests/bin/load_sydr"), "/tmp/load_sydr");
+
+    let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
+    let output = Command::new(*EXE_CASR_AFL.read().unwrap())
+        .args(&["-i", &paths[0], "-o", &paths[1]])
+        .env(
+            "PATH",
+            format!("{}:{}", std::env::var("PATH").unwrap(), bins.display()),
+        )
+        .output()
+        .expect("failed to start casr-afl");
+
+    assert!(output.status.success());
+    let res = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 34, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 20, "Invalid number of clusters");
+
+    let _ = fs::remove_file("/tmp/load_sydr");
+    let _ = fs::remove_file("/tmp/load_afl");
+}
 #[test]
 fn test_asan_stacktrace() {
     let raw_stacktrace = &[ "#10 0x55ebfbfa0707 (/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0xfe2707) (BuildId: d2918819a864502448a61485c4b20818b0778ac2)",
