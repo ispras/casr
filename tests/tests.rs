@@ -2708,6 +2708,18 @@ fn test_casr_afl() {
 
     assert!(!res.is_empty());
 
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 34, "Invalid number of deduplicated reports");
+
     let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
     let clusters_cnt = re
         .captures(&res)

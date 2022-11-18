@@ -11,3 +11,4 @@ sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-cli.rs
 sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-cluster.rs
 sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-san.rs
 sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-gdb.rs
+sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-afl.rs

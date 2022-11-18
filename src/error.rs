@@ -11,8 +11,6 @@ pub enum Error {
     IO(io::Error),
     /// Casr-cluster error
     Cluster(String),
-    /// Casr-san error
-    San(String),
     /// gdb-command error
     GdbCommand(gdb_command::error::Error),
     /// Casr error (coredump analysis or report error)
@@ -27,7 +25,6 @@ impl fmt::Display for Error {
             Error::IO(ref err) => write!(f, "{}", err),
             Error::GdbCommand(ref err) => write!(f, "{}", err),
             Error::Cluster(ref msg) => write!(f, "Casr-cluster: {}", msg),
-            Error::San(ref msg) => write!(f, "Casr-san: {}", msg),
             Error::Casr(ref msg) => write!(f, "Casr: {}", msg),
             Error::Goblin(ref msg) => write!(f, "Goblin: {}", msg),
         }
@@ -45,13 +42,6 @@ impl From<gdb_command::error::Error> for Error {
         Error::GdbCommand(err)
     }
 }
-
-impl From<anyhow::Error> for Error {
-    fn from(err: anyhow::Error) -> Error {
-        Error::Cluster(err.chain().rev().map(|s| s.to_string() + ". ").collect())
-    }
-}
-
 impl From<goblin::error::Error> for Error {
     fn from(err: goblin::error::Error) -> Error {
         Error::Goblin(err)
