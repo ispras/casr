@@ -2704,7 +2704,7 @@ fn test_casr_afl() {
         .expect("failed to start casr-afl");
 
     assert!(output.status.success());
-    let res = String::from_utf8_lossy(&output.stdout);
+    let res = String::from_utf8_lossy(&output.stderr);
 
     assert!(!res.is_empty());
 

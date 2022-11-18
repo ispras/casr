@@ -87,9 +87,11 @@ Cluster reports:
 
     $ casr-cluster -c out-dedup out-cluster
 
-Triage crashes with casr-afl:
+Triage crashes after AFL++ fuzzing with casr-afl:
 
-    $ casr-afl -i afl-out -o casr-out
+    $ cp tests/casr_tests/bin/load_afl /tmp/load_afl
+    $ cp tests/casr_tests/bin/load_sydr /tmp/load_sydr
+    $ casr-afl -i tests/casr_tests/bin/afl-out-xlnt -o tests/tmp_tests_casr/casr_afl_out
 
 ## Fuzzing Crash Triage Pipeline
 

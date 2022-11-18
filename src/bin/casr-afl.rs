@@ -52,7 +52,7 @@ fn main() -> Result<()> {
                 .validator(|arg| {
                     let i_dir = Path::new(arg);
                     if !i_dir.exists() {
-                        bail!("Input directory doesn't exists.");
+                        bail!("Input directory doesn't exist.");
                     }
                     if !i_dir.is_dir() {
                         bail!("Input path should be an AFL++ work directory.");
@@ -85,7 +85,7 @@ fn main() -> Result<()> {
     let _ = TermLogger::init(
         log_level,
         ConfigBuilder::new().set_time_to_local(true).build(),
-        TerminalMode::Mixed,
+        TerminalMode::Stderr,
     );
 
     let output_dir = Path::new(matches.value_of("output").unwrap());
@@ -94,7 +94,7 @@ fn main() -> Result<()> {
             format!("Couldn't create output directory {}", output_dir.display())
         })?;
     } else if output_dir.read_dir()?.next().is_some() {
-        error!("Output directory is not empty.");
+        bail!("Output directory is not empty.");
     }
 
     // Get all crashes.
@@ -220,7 +220,10 @@ fn main() -> Result<()> {
         .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 
     if casr_cluster_d.status.success() {
-        info!("{}", String::from_utf8_lossy(&casr_cluster_d.stdout));
+        info!(
+            "{}",
+            String::from_utf8_lossy(&casr_cluster_d.stdout).trim_end()
+        );
     } else {
         bail!("{}", String::from_utf8_lossy(&casr_cluster_d.stderr));
     }
@@ -238,7 +241,10 @@ fn main() -> Result<()> {
             .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 
         if casr_cluster_c.status.success() {
-            info!("{}", String::from_utf8_lossy(&casr_cluster_c.stdout));
+            info!(
+                "{}",
+                String::from_utf8_lossy(&casr_cluster_c.stdout).trim_end()
+            );
         } else {
             error!("{}", String::from_utf8_lossy(&casr_cluster_c.stderr));
         }
