@@ -9,11 +9,9 @@ use thiserror::Error;
 pub enum Error {
     /// An IO based error
     IO(io::Error),
-    /// Casr-cluster error
-    Cluster(String),
     /// gdb-command error
     GdbCommand(gdb_command::error::Error),
-    /// Casr error (coredump analysis or report error)
+    /// Casr error (any analysis or report error)
     Casr(String),
     /// Goblin error
     Goblin(goblin::error::Error),
@@ -24,7 +22,6 @@ impl fmt::Display for Error {
         match *self {
             Error::IO(ref err) => write!(f, "{}", err),
             Error::GdbCommand(ref err) => write!(f, "{}", err),
-            Error::Cluster(ref msg) => write!(f, "Casr-cluster: {}", msg),
             Error::Casr(ref msg) => write!(f, "Casr: {}", msg),
             Error::Goblin(ref msg) => write!(f, "Goblin: {}", msg),
         }

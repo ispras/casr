@@ -90,7 +90,7 @@ fn main() -> Result<()> {
 
     let output_dir = Path::new(matches.value_of("output").unwrap());
     if !output_dir.exists() {
-        fs::create_dir(output_dir).with_context(|| {
+        fs::create_dir_all(output_dir).with_context(|| {
             format!("Couldn't create output directory {}", output_dir.display())
         })?;
     } else if output_dir.read_dir()?.next().is_some() {
@@ -164,16 +164,11 @@ fn main() -> Result<()> {
     info!("Generating CASR reports...");
     for crash in crashes {
         let mut args: Vec<String> = vec!["-o".to_string()];
+        let report_path = output_dir.join(crash.path.file_name().unwrap());
         if crash.is_asan {
-            args.push(format!(
-                "{}.casrep",
-                output_dir.join(crash.path.file_name().unwrap()).display()
-            ));
+            args.push(format!("{}.casrep", report_path.display()));
         } else {
-            args.push(format!(
-                "{}.gdb.casrep",
-                output_dir.join(crash.path.file_name().unwrap()).display()
-            ));
+            args.push(format!("{}.gdb.casrep", report_path.display()));
         }
 
         if let Some(at_index) = crash.at_index {
@@ -192,13 +187,14 @@ fn main() -> Result<()> {
         } else {
             "casr-gdb"
         };
-        debug!("{} {:?}", tool, args);
-        let casr_cmd = Command::new(tool)
-            .args(&args)
+        let mut casr_cmd = Command::new(tool);
+        casr_cmd.args(&args);
+        debug!("{:?}", casr_cmd);
+        let casr_output = casr_cmd
             .output()
             .with_context(|| format!("Couldn't launch {} {:?}", tool, args))?;
-        if !casr_cmd.status.success() {
-            let err = String::from_utf8_lossy(&casr_cmd.stderr);
+        if !casr_output.status.success() {
+            let err = String::from_utf8_lossy(&casr_output.stderr);
             if err.contains("Program terminated (no crash)") {
                 warn!("{}: no crash on input {}", tool, crash.path.display());
             } else {
@@ -222,7 +218,10 @@ fn main() -> Result<()> {
     if casr_cluster_d.status.success() {
         info!(
             "{}",
-            String::from_utf8_lossy(&casr_cluster_d.stdout).trim_end()
+            String::from_utf8_lossy(&casr_cluster_d.stdout)
+                .lines()
+                .collect::<Vec<&str>>()
+                .join(". ")
         );
     } else {
         bail!("{}", String::from_utf8_lossy(&casr_cluster_d.stderr));

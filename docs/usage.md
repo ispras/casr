@@ -232,8 +232,8 @@ Example (Ubuntu 20.04+):
     $ cp tests/casr_tests/bin/load_sydr /tmp/load_sydr
     $ casr-afl -i tests/casr_tests/bin/afl-out-xlnt -o tests/tmp_tests_casr/casr_afl_out
 
-    $ tree casr_afl_out
-    casr_afl_out
+    $ tree tests/tmp_tests_casr/casr_afl_out
+    tests/tmp_tests_casr/casr_afl_out
     ├── cl1
     │   └──id:000029,sig:00,src:000260,time:5748120,execs:122586,op:havoc,rep:8.casrep
     ├── cl10

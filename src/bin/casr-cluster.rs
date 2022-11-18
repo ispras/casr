@@ -481,10 +481,8 @@ fn main() -> Result<()> {
             .map(Path::new)
             .collect();
         let (before, after) = dedup(paths[0], paths.get(1).map(|x| x.to_path_buf()))?;
-        println!(
-            "Number of reports before deduplication: {}. Number of reports after deduplication: {}",
-            before, after
-        );
+        println!("Number of reports before deduplication: {}", before);
+        println!("Number of reports after deduplication: {}", after);
     }
 
     Ok(())
