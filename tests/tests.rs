@@ -2698,7 +2698,7 @@ fn test_casr_afl() {
         .args(&["-i", &paths[0], "-o", &paths[1]])
         .env(
             "PATH",
-            format!("{}:{}", std::env::var("PATH").unwrap(), bins.display()),
+            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
         )
         .output()
         .expect("failed to start casr-afl");
