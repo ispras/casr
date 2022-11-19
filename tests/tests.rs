@@ -2730,7 +2730,7 @@ fn test_casr_afl() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 20, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 21, "Invalid number of clusters");
 
     let _ = fs::remove_file("/tmp/load_sydr");
     let _ = fs::remove_file("/tmp/load_afl");
