@@ -1,7 +1,7 @@
 # Usage
 
 CASR is a set of tools that allows you to collect crash reports in different
-ways. Use `casr` binary to deal with coredumps. Use `casr-san` to analyze ASAN
+ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze ASAN
 reports. Try `casr-gdb` to get reports from gdb. `casr-cli` is meant to provide
 TUI for viewing reports. Reports triage (deduplication, clustering) is done by
 `casr-cluster`.
@@ -54,13 +54,13 @@ Run casr-san:
 
     $ casr-san -o asan.casrep -- ./test_asan_df
 
-## casr
+## casr-core
 
 Analyze coredump for security goals and provide detailed report with severity
 estimation
 
     USAGE:
-        casr [OPTIONS]
+        casr-core [OPTIONS]
 
     OPTIONS:
         -e, --executable <FILE>    Path to executable
@@ -73,14 +73,14 @@ estimation
             --stdout               Print CASR report to stdout
         -V, --version              Print version information
 
-`casr` have two modes: offline and online. Offline mode is used by default. You
+`casr-core` have two modes: offline and online. Offline mode is used by default. You
 may create report when you already have a coredump file.
 
 Example:
 
-    $ casr -f tests/casr_tests/bin/core.test_destAv -e tests/casr_tests/bin/test_destAv -o destAv.casrep
+    $ casr-core -f tests/casr_tests/bin/core.test_destAv -e tests/casr_tests/bin/test_destAv -o destAv.casrep
 
-In online mode `casr` could intercept crashes via core\_pattern. You
+In online mode `casr-core` could intercept crashes via core\_pattern. You
 should do the following steps.
 
 Create directory `/var/crash` and set permissions for it:
@@ -89,7 +89,7 @@ Create directory `/var/crash` and set permissions for it:
 
 Update core\_pattern:
 
-    $ echo "|<path_to_casr_binary> -m online -c %c -p %p  -P %P -u %u -g %g -e %E" | sudo tee /proc/sys/kernel/core_pattern
+    $ echo "|<path_to_casr_core_binary> -m online -c %c -p %p  -P %P -u %u -g %g -e %E" | sudo tee /proc/sys/kernel/core_pattern
 
 Set core ulimit to unlimited or another non-zero value:
 

@@ -11,7 +11,7 @@ use std::process::Command;
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
-    static ref EXE_CASR: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr"));
+    static ref EXE_CASR_CORE: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-core"));
     static ref EXE_CASR_AFL: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-afl"));
     static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
     static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
@@ -37,7 +37,7 @@ fn test_segfault_on_pc() {
         abs_path("tests/casr_tests/bin/test_segFaultOnPc"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -69,7 +69,7 @@ fn test_dest_av() {
         abs_path("tests/casr_tests/bin/test_destAv"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -101,7 +101,7 @@ fn test_dest_av_near_null() {
         abs_path("tests/casr_tests/bin/test_destAvNearNull"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -132,7 +132,7 @@ fn test_return_av() {
         abs_path("tests/casr_tests/bin/test_returnAv"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -164,7 +164,7 @@ fn test_call_av() {
         abs_path("tests/casr_tests/bin/test_callAv"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -196,7 +196,7 @@ fn test_call_av_tainted() {
         abs_path("tests/casr_tests/bin/test_callAvTainted"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -228,7 +228,7 @@ fn test_source_av() {
         abs_path("tests/casr_tests/bin/test_sourceAv"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -260,7 +260,7 @@ fn test_source_av_near_null() {
         abs_path("tests/casr_tests/bin/test_sourceAvNearNull"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -292,7 +292,7 @@ fn test_abort() {
         abs_path("tests/casr_tests/bin/test_abort"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -325,7 +325,7 @@ fn test_canary() {
         abs_path("tests/casr_tests/bin/test_canary"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -357,7 +357,7 @@ fn test_safe_func() {
         abs_path("tests/casr_tests/bin/test_safeFunc"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -389,7 +389,7 @@ fn test_bad_instruction() {
         abs_path("tests/casr_tests/bin/test_badInstruction"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -421,7 +421,7 @@ fn test_stack_overflow() {
         abs_path("tests/casr_tests/bin/test_stackOverflow"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -453,7 +453,7 @@ fn test_dest_av_tainted() {
         abs_path("tests/casr_tests/bin/test_destAvTainted"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -485,7 +485,7 @@ fn test_div_by_zero() {
         abs_path("tests/casr_tests/bin/test_DivByZero"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -517,7 +517,7 @@ fn test_segfault_on_pc32() {
         abs_path("tests/casr_tests/bin/test_segFaultOnPc32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -549,7 +549,7 @@ fn test_dest_av32() {
         abs_path("tests/casr_tests/bin/test_destAv32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -581,7 +581,7 @@ fn test_dest_av_near_null32() {
         abs_path("tests/casr_tests/bin/test_destAvNearNull32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -613,7 +613,7 @@ fn test_return_av32() {
         abs_path("tests/casr_tests/bin/test_returnAv32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -645,7 +645,7 @@ fn test_call_av32() {
         abs_path("tests/casr_tests/bin/test_callAv32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -677,7 +677,7 @@ fn test_source_av32() {
         abs_path("tests/casr_tests/bin/test_sourceAv32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -709,7 +709,7 @@ fn test_source_av_near_null32() {
         abs_path("tests/casr_tests/bin/test_sourceAvNearNull32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -741,7 +741,7 @@ fn test_abort32() {
         abs_path("tests/casr_tests/bin/test_abort32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -774,7 +774,7 @@ fn test_canary32() {
         abs_path("tests/casr_tests/bin/test_canary32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -807,7 +807,7 @@ fn test_safe_func32() {
         abs_path("tests/casr_tests/bin/test_safeFunc32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -839,7 +839,7 @@ fn test_bad_instruction32() {
         abs_path("tests/casr_tests/bin/test_badInstruction32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");
@@ -871,7 +871,7 @@ fn test_div_by_zero32() {
         abs_path("tests/casr_tests/bin/test_DivByZero32"),
     ];
     // Run casr.
-    let output = Command::new(*EXE_CASR.read().unwrap())
+    let output = Command::new(*EXE_CASR_CORE.read().unwrap())
         .args(&["-f", &paths[0], "-e", &paths[1], "--stdout"])
         .output()
         .expect("failed to start casr");

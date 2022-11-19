@@ -16,7 +16,7 @@ CASR is maintained by:
 ## Overview
 
 CASR is a set of tools that allows you to collect crash reports in different
-ways. Use `casr` binary to deal with coredumps. Use `casr-san` to analyze ASAN
+ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze ASAN
 reports. Try `casr-gdb` to get reports from gdb.
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable)),
@@ -60,7 +60,7 @@ Instead of steps 2-3 you may just install Casr from crates.io:
 
 Create report from coredump:
 
-    $ casr -f tests/casr_tests/bin/core.test_destAv -e tests/casr_tests/bin/test_destAv -o destAv.casrep
+    $ casr-core -f tests/casr_tests/bin/core.test_destAv -e tests/casr_tests/bin/test_destAv -o destAv.casrep
 
 Create report from sanitizers output:
 

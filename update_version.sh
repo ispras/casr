@@ -6,7 +6,7 @@ if [ "$#" -ne 2 ]; then
 fi
 
 sed -i "s/version = \"$1\"/version = \"$2\"/g" Cargo.toml
-sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr.rs
+sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-core.rs
 sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-cli.rs
 sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-cluster.rs
 sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-san.rs
