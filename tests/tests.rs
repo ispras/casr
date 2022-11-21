@@ -2066,13 +2066,13 @@ fn test_casr_cluster_c_huge_san() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 14, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 13, "Invalid number of clusters");
     assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl10")
+        std::fs::read_dir(paths[1].to_owned() + "/cl1")
             .unwrap()
             .count(),
         2,
-        "Invalid number of reports in cluster 10"
+        "Invalid number of reports in cluster 1"
     );
     assert_eq!(
         std::fs::read_dir(paths[1].to_owned() + "/cl12")
@@ -2122,7 +2122,7 @@ fn test_casr_cluster_c_huge_gdb() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 13, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 12, "Invalid number of clusters");
     assert_eq!(
         std::fs::read_dir(paths[1].to_owned() + "/cl1")
             .unwrap()
@@ -2131,11 +2131,11 @@ fn test_casr_cluster_c_huge_gdb() {
         "Invalid number of reports in cluster 1"
     );
     assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl12")
+        std::fs::read_dir(paths[1].to_owned() + "/cl2")
             .unwrap()
             .count(),
         2,
-        "Invalid number of reports in cluster 12"
+        "Invalid number of reports in cluster 2"
     );
 
     let _ = std::fs::remove_dir_all(&paths[1]);
@@ -2698,7 +2698,7 @@ fn test_casr_afl() {
         .args(&["-i", &paths[0], "-o", &paths[1]])
         .env(
             "PATH",
-            format!("{}:{}", std::env::var("PATH").unwrap(), bins.display()),
+            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
         )
         .output()
         .expect("failed to start casr-afl");
@@ -2730,7 +2730,7 @@ fn test_casr_afl() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 20, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 21, "Invalid number of clusters");
 
     let _ = fs::remove_file("/tmp/load_sydr");
     let _ = fs::remove_file("/tmp/load_afl");

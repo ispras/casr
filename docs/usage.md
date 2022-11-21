@@ -235,51 +235,52 @@ Example (Ubuntu 20.04+):
     $ tree tests/tmp_tests_casr/casr_afl_out
     tests/tmp_tests_casr/casr_afl_out
     ├── cl1
-    │   └──id:000029,sig:00,src:000260,time:5748120,execs:122586,op:havoc,rep:8.casrep
+    │   └── id:000029,sig:00,src:000260,time:5748120,execs:122586,op:havoc,rep:8.casrep
     ├── cl10
     │   └── id:000002,sig:00,sync:afl_s01-worker,src:000136.casrep
     ├── cl11
-    │   └──id:000024,sig:00,src:000507,time:1813906,execs:45610,op:havoc,rep:2.casrep
+    │   └── id:000024,sig:00,src:000507,time:1813906,execs:45610,op:havoc,rep:2.casrep
     ├── cl12
-    │   ├──id:000015,sig:06,src:000667,time:147636,execs:9735,op:havoc,rep:4.gdb.casrep
-    │   └──id:000019,sig:06,src:000040+000503,time:303958,execs:13059,op:splice,rep:8.casrep
+    │   ├── id:000016,sig:06,src:000018+000639,time:193966,execs:10509,op:splice,rep:2.casrep
+    │   └── id:000018,sig:06,src:000064+000617,time:5061657,execs:49612,op:splice,rep:16.gdb.casrep
     ├── cl13
-    │   ├──id:000016,sig:06,src:000018+000639,time:193966,execs:10509,op:splice,rep:2.casrep
-    │   └──id:000018,sig:06,src:000064+000617,time:5061657,execs:49612,op:splice,rep:16.gdb.casrep
+    │   ├── id:000017,sig:00,src:000048,time:665607,execs:21500,op:havoc,rep:8.gdb.casrep
+    │   └── id:000019,sig:00,src:000064+000142,time:5072767,execs:49687,op:splice,rep:8.gdb.casrep
     ├── cl14
-    │   └──id:000028,sig:06,src:000204,time:5134989,execs:109591,op:havoc,rep:2.casrep
-    ├── cl15
-    │   ├── id:000004,sig:00,sync:afl_main-worker,src:000180.gdb.casrep
-    │   └──id:000025,sig:00,src:000405,time:14413049,execs:142946,op:havoc,rep:16.gdb.casrep
-    ├── cl16
-    │   ├──id:000017,sig:00,src:000048,time:665607,execs:21500,op:havoc,rep:8.gdb.casrep
-    │   └──id:000019,sig:00,src:000064+000142,time:5072767,execs:49687,op:splice,rep:8.gdb.casrep
-    ├── cl17
     │   └── id:000013,sig:00,sync:afl_main-worker,src:000791.gdb.casrep
-    ├── cl18
+    ├── cl15
     │   ├── id:000003,sig:00,sync:afl_main-worker,src:000152.gdb.casrep
     │   ├── id:000008,sig:00,sync:afl_main-worker,src:000510.gdb.casrep
     │   └── id:000011,sig:00,sync:afl_main-worker,src:000684.gdb.casrep
-    ├── cl19
+    ├── cl16
+    │   ├── id:000015,sig:06,src:000667,time:147636,execs:9735,op:havoc,rep:4.gdb.casrep
+    │   └── id:000019,sig:06,src:000040+000503,time:303958,execs:13059,op:splice,rep:8.casrep
+    ├── cl17
+    │   └── id:000004,sig:00,sync:afl_main-worker,src:000180.gdb.casrep
+    ├── cl18
     │   └── id:000001,sig:00,sync:afl_main-worker,src:000111.gdb.casrep
+    ├── cl19
+    │   └── id:000025,sig:00,src:000405,time:14413049,execs:142946,op:havoc,rep:16.gdb.casrep
     ├── cl2
     │   └── id:000025,sig:00,sync:sydr-worker,src:000157.casrep
     ├── cl20
     │   └── id:000005,sig:00,sync:afl_main-worker,src:000335.gdb.casrep
+    ├── cl21
+    │   └── id:000028,sig:06,src:000204,time:5134989,execs:109591,op:havoc,rep:2.casrep
     ├── cl3
     │   ├── id:000009,sig:00,sync:afl_s01-worker,src:000560.casrep
     │   ├── id:000012,sig:00,sync:afl_s01-worker,src:000730.casrep
     │   ├── id:000013,sig:00,sync:afl_s01-worker,src:000791.casrep
-    │   ├──id:000017,sig:00,src:000037,time:232885,execs:12235,op:havoc,rep:16.casrep
+    │   ├── id:000017,sig:00,src:000037,time:232885,execs:12235,op:havoc,rep:16.casrep
     │   └── id:000031,sig:00,sync:sydr-worker,src:000371.casrep
     ├── cl4
-    │   └──id:000023,sig:00,src:000327,time:1245203,execs:33583,op:havoc,rep:16.casrep
+    │   └── id:000023,sig:00,src:000327,time:1245203,execs:33583,op:havoc,rep:16.casrep
     ├── cl5
-    │   └──id:000015,sig:00,src:000018+000616,time:190597,execs:10485,op:splice,rep:16.casrep
+    │   └── id:000015,sig:00,src:000018+000616,time:190597,execs:10485,op:splice,rep:16.casrep
     ├── cl6
-    │   ├──id:000020,sig:00,src:000074+000118,time:448203,execs:16610,op:splice,rep:2.casrep
-    │   ├──id:000022,sig:00,src:000178,time:654188,execs:21734,op:havoc,rep:16.casrep
-    │   └──id:000030,sig:00,src:000375,time:24443406,execs:524127,op:havoc,rep:4.casrep
+    │   ├── id:000020,sig:00,src:000074+000118,time:448203,execs:16610,op:splice,rep:2.casrep
+    │   ├── id:000022,sig:00,src:000178,time:654188,execs:21734,op:havoc,rep:16.casrep
+    │   └── id:000030,sig:00,src:000375,time:24443406,execs:524127,op:havoc,rep:4.casrep
     ├── cl7
     │   ├── id:000000,sig:00,sync:afl_s01-worker,src:000025.casrep
     │   ├── id:000008,sig:00,sync:afl_s01-worker,src:000510.casrep

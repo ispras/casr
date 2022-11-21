@@ -8,6 +8,7 @@ extern crate regex;
 extern crate serde_json;
 
 use anyhow::{bail, Context, Result};
+use casr::stacktrace_constants::*;
 use clap::{App, Arg};
 use gdb_command::mappings::*;
 use gdb_command::stacktrace::*;
@@ -59,7 +60,6 @@ fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
                 simatrix[i][j - 1].max(simatrix[i - 1][j].max(simatrix[i - 1][j - 1] + cost));
         }
     }
-
     // Result normalization
     let sum: f64 = (1..(k).min(n)).fold(0.0, |acc, i| acc + (-a * i as f64).exp());
 
@@ -146,15 +146,28 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
                 }
             }
 
-            // Remove abort and libc functions from stack trace
-            if rawtrace[0].function.contains("__GI_raise") {
-                let re = Regex::new(r"libc-\d{1}.\d{1, 3}.so").unwrap();
-                let pos = rawtrace
-                    .iter()
-                    .rposition(|x| !x.module.is_empty() && re.is_match(&x.module));
-                if let Some(pos) = pos {
-                    rawtrace.drain(0..pos + (pos != rawtrace.len() - 1) as usize);
-                }
+            // Compile function regexp.
+            let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES
+                .iter()
+                .map(|s| format!("({})|", s))
+                .collect::<String>();
+            let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+
+            // Compile file regexp.
+            let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
+                .iter()
+                .map(|s| format!("({})|", s))
+                .collect::<String>();
+            let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+
+            // Remove trusted functions from stack trace
+            let pos = rawtrace.iter().position(|entry| {
+                (entry.function.is_empty() || !rfunction.is_match(&entry.function))
+                    && (entry.module.is_empty() || !rfile.is_match(&entry.module))
+                    && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+            });
+            if let Some(pos) = pos {
+                rawtrace.drain(0..pos - (pos != 0) as usize);
             }
 
             return Ok(rawtrace);
