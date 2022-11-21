@@ -34,8 +34,8 @@ use casr::report::CrashReport;
 
 fn main() -> Result<()> {
     let matches = App::new("casr-cli")
-        .author("Andrey Fedotov  <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
-        .version("2.1.1")
+        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .version("2.2.0")
         .about("App provides text-based user interface to view CASR reports")
         .term_width(90)
         .arg(

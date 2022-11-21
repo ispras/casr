@@ -410,8 +410,8 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
 
 fn main() -> Result<()> {
     let matches = App::new("casr-cluster")
-        .version("2.1.1")
-        .author("Andrey Fedotov  <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .version("2.2.0")
+        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Tool for clustering CASR reports")
         .term_width(90)
         .arg(

@@ -35,8 +35,8 @@ use casr::report::*;
 
 fn main() -> Result<()> {
     let matches = App::new("casr-core")
-        .version("2.1.1")
-        .author("Andrey Fedotov  <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .version("2.2.0")
+        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Analyze coredump for security goals and provide detailed report with severity estimation")
         .term_width(90)
         .arg(Arg::new("mode")
