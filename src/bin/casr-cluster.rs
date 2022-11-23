@@ -194,7 +194,7 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Resu
     let outpath = outpath.unwrap_or(inpath);
     let dir = fs::read_dir(inpath).with_context(|| format!("File: {}", inpath.display()))?;
 
-    let casreps: Vec<PathBuf> = dir
+    let mut casreps: Vec<PathBuf> = dir
         .map(|path| path.unwrap().path())
         .filter(|s| s.extension().is_some() && s.extension().unwrap() == "casrep")
         .collect();
@@ -202,6 +202,14 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Resu
     if len < 2 {
         bail!("{} reports, nothing to cluster...", len);
     }
+
+    casreps.sort_by(|a, b| {
+        a.file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .cmp(b.file_name().unwrap().to_str().unwrap())
+    });
 
     // Start thread pool.
     rayon::ThreadPoolBuilder::new()
@@ -358,6 +366,12 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
         paths.push(entry);
     }
 
+    paths.sort_by(|a, b| {
+        a.file_name()
+            .into_string()
+            .unwrap()
+            .cmp(&b.file_name().into_string().unwrap())
+    });
     let mut casreps = HashSet::new();
     let mut badreports: Vec<PathBuf> = Vec::new();
 
@@ -365,12 +379,9 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
         fs::create_dir_all(outdir)?;
 
         for x in &paths {
-            let trace = match stacktrace(x.path().as_path()) {
-                Ok(tr) => tr,
-                Err(_) => {
-                    badreports.push(x.path());
-                    continue;
-                }
+            let Ok(trace) = stacktrace(x.path().as_path()) else {
+                badreports.push(x.path());
+                continue;
             };
             if casreps.insert(trace) {
                 fs::copy(x.path().as_path(), &Path::new(&outdir).join(&x.file_name()))?;
@@ -378,12 +389,9 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
         }
     } else {
         for x in &paths {
-            let trace = match stacktrace(x.path().as_path()) {
-                Ok(tr) => tr,
-                Err(_) => {
-                    badreports.push(x.path());
-                    continue;
-                }
+            let Ok(trace) = stacktrace(x.path().as_path()) else {
+                badreports.push(x.path());
+                continue;
             };
             if !casreps.insert(trace) {
                 fs::remove_file(x.path().as_path())?;
