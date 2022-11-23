@@ -457,7 +457,7 @@ fn merge_dirs(new: &Path, storage: &Path) -> Result<u64> {
                             target.file_name().unwrap().to_str().unwrap()
                         );
                     } else {
-                        fs::copy(&entry.path().as_path(), &target)?;
+                        fs::copy(entry.path().as_path(), &target)?;
                         new += 1;
                     }
                 }
