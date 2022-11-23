@@ -379,7 +379,9 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
         fs::create_dir_all(outdir)?;
 
         for x in &paths {
-            let Ok(trace) = stacktrace(x.path().as_path()) else {
+            let trace = if let Ok(trace) = stacktrace(x.path().as_path()) {
+                trace
+            } else {
                 badreports.push(x.path());
                 continue;
             };
@@ -389,7 +391,9 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
         }
     } else {
         for x in &paths {
-            let Ok(trace) = stacktrace(x.path().as_path()) else {
+            let trace = if let Ok(trace) = stacktrace(x.path().as_path()) {
+                trace
+            } else {
                 badreports.push(x.path());
                 continue;
             };
