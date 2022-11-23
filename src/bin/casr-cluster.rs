@@ -412,18 +412,18 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
 ///
 /// # Arguments
 ///
-/// * `sdir` - path to sub directory
+/// * `new` - path to directory with new CASR reports
 ///
-/// * `mdir` - path to main directory
+/// * `storage` - path to storage directory with CASR reports
 ///
 /// # Return value
 ///
 /// Number of merged reports
-fn merge_dirs(sdir: &Path, mdir: &Path) -> error::Result<u64> {
-    let dir = fs::read_dir(mdir).with_context(|| {
+fn merge_dirs(new: &Path, storage: &Path) -> Result<u64> {
+    let dir = fs::read_dir(storage).with_context(|| {
         format!(
             "Error occurred while opening directory with Casr reports. File: {}",
-            mdir.display()
+            storage.display()
         )
     })?;
 
@@ -433,15 +433,15 @@ fn merge_dirs(sdir: &Path, mdir: &Path) -> error::Result<u64> {
             if let Ok(trace) = stacktrace(entry.path().as_path()) {
                 mainhash.insert(trace);
             } else {
-                // return err?
+                bail!("Storage directory corrupted, merge failed.");
             }
         }
     }
 
-    let dir = fs::read_dir(sdir).with_context(|| {
+    let dir = fs::read_dir(new).with_context(|| {
         format!(
             "Error occurred while opening directory with Casr reports. File: {}",
-            sdir.display()
+            new.display()
         )
     })?;
 
@@ -450,14 +450,22 @@ fn merge_dirs(sdir: &Path, mdir: &Path) -> error::Result<u64> {
         if entry.path().extension().is_some() && entry.path().extension().unwrap() == "casrep" {
             if let Ok(trace) = stacktrace(entry.path().as_path()) {
                 if mainhash.insert(trace) {
-                    fs::copy(
-                        &entry.path().as_path(),
-                        &Path::new(&mdir).join(entry.file_name()),
-                    )?;
-                    new += 1;
+                    let target = Path::new(&storage).join(entry.file_name());
+                    if target.exists() {
+                        println!(
+                            "File with name {} already exists in STORAGE_DIR.",
+                            target.file_name().unwrap().to_str().unwrap()
+                        );
+                    } else {
+                        fs::copy(&entry.path().as_path(), &target)?;
+                        new += 1;
+                    }
                 }
             } else {
-                // return err?
+                println!(
+                    "Cannot extract stack trace from {}. Skip this report.",
+                    entry.file_name().into_string().unwrap()
+                );
             }
         }
     }
@@ -467,8 +475,10 @@ fn merge_dirs(sdir: &Path, mdir: &Path) -> error::Result<u64> {
 fn main() -> Result<()> {
     let matches = App::new("casr-cluster")
         .version("2.2.0")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, \
-            Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .author(
+            "Andrey Fedotov <fedotoff@ispras.ru>, \
+            Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>",
+        )
         .about("Tool for clustering CASR reports")
         .term_width(90)
         .arg(
@@ -517,10 +527,10 @@ fn main() -> Result<()> {
                 .takes_value(true)
                 .min_values(2)
                 .max_values(2)
-                .value_names(&["SUB_DIR", "MAIN_DIR"]) // Maybe rename SUB_DIR into ?
+                .value_names(&["NEW_DIR", "STORAGE_DIR"])
                 .help(
-                    "Merge SUB_DIR into MAIN_DIR. Only new instances from \
-                    SUB_DIR will be added to MAIN_DIR.",
+                    "Merge NEW_DIR into STORAGE_DIR. Only new CASR reports from \
+                    NEW_DIR will be added to STORAGE_DIR.",
                 ),
         )
         .arg(
@@ -579,7 +589,7 @@ fn main() -> Result<()> {
         let paths: Vec<&Path> = matches.values_of("merge").unwrap().map(Path::new).collect();
         let new = merge_dirs(paths[0], paths[1])?;
         println!(
-            "Added {} new reports to {} directory",
+            "Merged {} new reports into {} directory",
             new,
             paths[1].display()
         );

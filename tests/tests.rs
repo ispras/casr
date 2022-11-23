@@ -2164,12 +2164,14 @@ fn test_casr_cluster_d_and_m() {
         }
     };
 
+    // For further purposes
     let casrep = dirvec.next().unwrap().unwrap().path();
     let counter = dirvec.count();
     if counter != 1 {
         panic!("Bad deduplication, casreps {}", counter + 1);
     }
 
+    // Removing one report from target dir for merge testing
     let _ = std::fs::remove_file(casrep);
 
     let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
@@ -2180,7 +2182,7 @@ fn test_casr_cluster_d_and_m() {
     let out = String::from_utf8_lossy(&output.stdout);
 
     assert!(
-        out.contains("Added 1 new reports") && (fs::read_dir(&paths[1]).unwrap().count() == 2),
+        out.contains("Merged 1 new reports") && (fs::read_dir(&paths[1]).unwrap().count() == 2),
         "Something went wrong while merging directories"
     );
 
