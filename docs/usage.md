@@ -125,6 +125,10 @@ Tool for clustering CASR reports
         -j, --jobs <N>
                 Number of parallel jobs to collect CASR reports
 
+        -m, --merge <INPUT_DIR> <OUTPUT_DIR>
+                Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from INPUT_DIR will be
+                added to OUTPUT_DIR.
+
         -s, --similarity <CASREP1> <CASREP2>
                 Similarity between two CASR reports
 
