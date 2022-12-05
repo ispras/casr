@@ -420,10 +420,77 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
     Ok((before, after))
 }
 
+/// Merge new reports from input directory into output directory
+///
+/// # Arguments
+///
+/// * `input` - path to directory with new CASR reports
+///
+/// * `output` - path to output directory with CASR reports
+///
+/// # Return value
+///
+/// Number of merged reports
+fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
+    let dir = fs::read_dir(output).with_context(|| {
+        format!(
+            "Error occurred while opening directory with Casr reports. Directory: {}",
+            output.display()
+        )
+    })?;
+
+    let mut mainhash = HashSet::new();
+    for entry in dir.flatten() {
+        if entry.path().extension().is_some() && entry.path().extension().unwrap() == "casrep" {
+            if let Ok(trace) = stacktrace(entry.path().as_path()) {
+                mainhash.insert(trace);
+            } else {
+                bail!("Output directory corrupted, merge failed.");
+            }
+        }
+    }
+
+    let dir = fs::read_dir(input).with_context(|| {
+        format!(
+            "Error occurred while opening directory with Casr reports. Directory: {}",
+            input.display()
+        )
+    })?;
+
+    let mut new: u64 = 0;
+    for entry in dir.flatten() {
+        if entry.path().extension().is_some() && entry.path().extension().unwrap() == "casrep" {
+            if let Ok(trace) = stacktrace(entry.path().as_path()) {
+                if mainhash.insert(trace) {
+                    let target = Path::new(&output).join(entry.file_name());
+                    if target.exists() {
+                        eprintln!(
+                            "File with name {} already exists in OUTPUT_DIR.",
+                            target.file_name().unwrap().to_str().unwrap()
+                        );
+                    } else {
+                        fs::copy(entry.path().as_path(), &target)?;
+                        new += 1;
+                    }
+                }
+            } else {
+                eprintln!(
+                    "Cannot extract stack trace from {}. Skipping this report.",
+                    entry.file_name().into_string().unwrap()
+                );
+            }
+        }
+    }
+    Ok(new)
+}
+
 fn main() -> Result<()> {
     let matches = App::new("casr-cluster")
         .version("2.2.0")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .author(
+            "Andrey Fedotov <fedotoff@ispras.ru>, \
+            Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>",
+        )
         .about("Tool for clustering CASR reports")
         .term_width(90)
         .arg(
@@ -444,7 +511,12 @@ fn main() -> Result<()> {
                 .min_values(1)
                 .max_values(2)
                 .value_name("INPUT_DIR> <OUTPUT_DIR")
-                .help("Cluster CASR reports. If two directories are set, clusters will be placed in the second directory. If one directory is provided, clusters will be placed there, but reports in this directory will not be deleted."),
+                .help(
+                    "Cluster CASR reports. If two directories are set, \
+                    clusters will be placed in the second directory. If one \
+                    directory is provided, clusters will be placed there, but \
+                    reports in this directory will not be deleted.",
+                ),
         )
         .arg(
             Arg::new("deduplication")
@@ -454,7 +526,24 @@ fn main() -> Result<()> {
                 .min_values(1)
                 .max_values(2)
                 .value_name("INPUT_DIR> <OUTPUT_DIR")
-                .help("Deduplicate CASR reports. If two directories are set, deduplicated reports are copied to the second directory. If one directory is provided, duplicated reports are deleted."),
+                .help(
+                    "Deduplicate CASR reports. If two directories are set, \
+                    deduplicated reports are copied to the second directory. \
+                    If one directory is provided, duplicated reports are deleted.",
+                ),
+        )
+        .arg(
+            Arg::new("merge")
+                .short('m')
+                .long("merge")
+                .takes_value(true)
+                .min_values(2)
+                .max_values(2)
+                .value_names(&["INPUT_DIR", "OUTPUT_DIR"])
+                .help(
+                    "Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from \
+                    INPUT_DIR will be added to OUTPUT_DIR.",
+                ),
         )
         .arg(
             Arg::new("jobs")
@@ -508,6 +597,14 @@ fn main() -> Result<()> {
         let (before, after) = dedup(paths[0], paths.get(1).map(|x| x.to_path_buf()))?;
         println!("Number of reports before deduplication: {}", before);
         println!("Number of reports after deduplication: {}", after);
+    } else if matches.is_present("merge") {
+        let paths: Vec<&Path> = matches.values_of("merge").unwrap().map(Path::new).collect();
+        let new = merge_dirs(paths[0], paths[1])?;
+        println!(
+            "Merged {} new reports into {} directory",
+            new,
+            paths[1].display()
+        );
     }
 
     Ok(())
