@@ -1,7 +1,7 @@
 use crate::execution_class::ExecutionClass;
 use regex::Regex;
 
-/// Extract exception info from stderr
+/// Extract C++ exception info from stderr
 ///
 /// # Arguments
 ///
@@ -10,7 +10,7 @@ use regex::Regex;
 /// # Return value
 ///
 /// Exception info as a `ExecutionClass` struct
-pub fn exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClass> {
+pub fn cpp_exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClass> {
     let rexception = Regex::new(r"terminate called after throwing an instance of (.+)").unwrap();
     if let Some(pos) = stderr_list
         .iter()
@@ -23,9 +23,9 @@ pub fn exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClass> {
             .unwrap()
             .as_str();
         let message = if let Some(element) = stderr_list.get(pos + 1) {
-            let rwhat = Regex::new(r"  what\(\):  (.+)").unwrap();
+            let rwhat = Regex::new(r"what\(\): +(.+)").unwrap();
             if let Some(cap) = rwhat.captures(element) {
-                cap.get(1).unwrap().as_str()
+                cap.get(1).unwrap().as_str().trim()
             } else {
                 ""
             }

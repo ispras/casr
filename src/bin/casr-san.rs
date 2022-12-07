@@ -10,7 +10,7 @@ use casr::debug;
 use casr::debug::CrashLine;
 use casr::execution_class::*;
 use casr::report::CrashReport;
-use casr::util::exception_from_stderr;
+use casr::util::cpp_exception_from_stderr;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -282,7 +282,7 @@ fn main() -> Result<()> {
     }
 
     // Check for exceptions
-    if let Some(class) = exception_from_stderr(&san_stderr_list) {
+    if let Some(class) = cpp_exception_from_stderr(&san_stderr_list) {
         report.execution_class = class;
     }
 

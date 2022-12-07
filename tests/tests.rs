@@ -1498,7 +1498,6 @@ fn test_div_by_zero_gdb() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_div_by_zero_stdin_gdb() {
     // Test casr-san stdin
     let paths = [
@@ -1995,7 +1994,6 @@ fn test_casr_cluster_s() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_gdb_exception() {
     let paths = [
         abs_path("tests/casr_tests/test_exception.cpp"),
@@ -2218,7 +2216,6 @@ fn test_casr_cluster_d() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san() {
     // Double free test
     let paths = [
@@ -2549,7 +2546,6 @@ fn test_casr_san() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san_segf_near_null() {
     let paths = [
         abs_path("tests/casr_tests/test_asan_segf.cpp"),
@@ -2615,7 +2611,6 @@ fn test_casr_san_segf_near_null() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san_segf() {
     let paths = [
         abs_path("tests/casr_tests/test_asan_segf.cpp"),
@@ -2681,7 +2676,6 @@ fn test_casr_san_segf() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san_exception() {
     let paths = [
         abs_path("tests/casr_tests/test_exception.cpp"),
@@ -2730,7 +2724,6 @@ fn test_casr_san_exception() {
 
 #[test]
 #[ignore]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san_sigbus() {
     let paths = [
         abs_path("tests/casr_tests/test_sigbus.c"),

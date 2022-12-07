@@ -8,7 +8,7 @@ use casr::analysis::{CrashContext, MachineInfo};
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::report::CrashReport;
-use casr::util::exception_from_stderr;
+use casr::util::cpp_exception_from_stderr;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -203,7 +203,7 @@ fn main() -> Result<()> {
         .split('\n')
         .map(|l| l.trim_end().to_string())
         .collect::<Vec<String>>();
-    if let Some(class) = exception_from_stderr(&output_lines) {
+    if let Some(class) = cpp_exception_from_stderr(&output_lines) {
         report.execution_class = class;
     }
 
