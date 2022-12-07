@@ -8,6 +8,7 @@ use casr::analysis::{CrashContext, MachineInfo};
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::report::CrashReport;
+use casr::util::exception_from_stderr;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -145,17 +146,23 @@ fn main() -> Result<()> {
             bail!("Unsupported architecture: {}", elf_h.e_machine);
         }
     }
-
-    let result = GdbCommand::new(&ExecType::Local(argv.as_slice()))
+    let exectype = ExecType::Local(argv.as_slice());
+    let mut gdb_command = GdbCommand::new(&exectype);
+    let gdb_command = gdb_command
         .stdin(&stdin_file)
         .r()
         .bt()
         .siginfo()
         .mappings()
-        .regs()
-        .launch()
+        .regs();
+
+    let stdout = gdb_command
+        .raw()
         .with_context(|| "Unable to get results from gdb")?;
 
+    let output = String::from_utf8_lossy(&stdout);
+
+    let result = gdb_command.parse(&output)?;
     let frame = Regex::new(r"^ *#[0-9]+").unwrap();
     report.stacktrace = result[0]
         .split('\n')
@@ -191,6 +198,15 @@ fn main() -> Result<()> {
     let result = analysis::severity(&mut report, &context)?;
 
     report.execution_class = result.clone();
+
+    let output_lines = output
+        .split('\n')
+        .map(|l| l.trim_end().to_string())
+        .collect::<Vec<String>>();
+    if let Some(class) = exception_from_stderr(&output_lines) {
+        report.execution_class = class;
+    }
+
     report.registers = context.registers;
 
     // Get crash line.
