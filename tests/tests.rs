@@ -2265,8 +2265,15 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
 
-        assert_eq!(4, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert!(stacktrace.iter().count() > 3);
+        assert!(stacktrace[0].contains("free"));
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
         assert!(
@@ -2329,8 +2336,15 @@ fn test_casr_san() {
             .iter()
             .map(|x| x.to_string())
             .collect::<Vec<String>>();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
 
-        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert!(stacktrace.iter().count() > 2);
+        assert!(stacktrace[0].contains("main"));
 
         // Sources test
         assert!(sources[0].contains("    5      {"), "Bad sources");
@@ -2462,9 +2476,17 @@ fn test_casr_san() {
             .as_str()
             .unwrap()
             .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+
+        assert!(stacktrace.iter().count() > 2);
+        assert!(stacktrace[0].contains("main"));
 
         assert!(stdin.contains("/tmp/CasrSanTemp"));
-        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "heap-buffer-overflow(write)");
         assert!(
@@ -2594,10 +2616,22 @@ fn test_casr_san_segf_near_null() {
             .as_str()
             .unwrap()
             .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
 
-        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert!(stacktrace.iter().count() > 2);
+        assert!(stacktrace[0].contains("main"));
+
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_asan_segf.cpp:12"));
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -2616,8 +2650,20 @@ fn test_casr_san_segf_near_null() {
             .as_str()
             .unwrap()
             .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
 
-        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert!(stacktrace.iter().count() > 2);
+        assert!(stacktrace[0].contains("main"));
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_asan_segf.cpp:14"));
+
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
@@ -2659,8 +2705,20 @@ fn test_casr_san_segf() {
             .as_str()
             .unwrap()
             .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
 
-        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert!(stacktrace.iter().count() > 2);
+        assert!(stacktrace[0].contains("main"));
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_asan_segf.cpp:16"));
+
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
@@ -2681,8 +2739,20 @@ fn test_casr_san_segf() {
             .as_str()
             .unwrap()
             .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
 
-        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert!(stacktrace.iter().count() > 2);
+        assert!(stacktrace[0].contains("main"));
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_asan_segf.cpp:18"));
+
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
