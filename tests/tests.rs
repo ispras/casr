@@ -8,8 +8,8 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::RwLock;
 use std::str::FromStr;
+use std::sync::RwLock;
 
 lazy_static::lazy_static! {
     static ref EXE_CASR_CORE: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-core"));
@@ -2268,7 +2268,10 @@ fn test_casr_san() {
             .unwrap()
             .to_string();
 
-        assert_eq!(4 + *CI.read().unwrap(), report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            4 + *CI.read().unwrap(),
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
         assert!(
@@ -2332,7 +2335,10 @@ fn test_casr_san() {
             .map(|x| x.to_string())
             .collect::<Vec<String>>();
 
-        assert_eq!(3 + *CI.read().unwrap(), report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            3 + *CI.read().unwrap(),
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
 
         // Sources test
         assert!(sources[0].contains("    5      {"), "Bad sources");
@@ -2466,7 +2472,10 @@ fn test_casr_san() {
             .to_string();
 
         assert!(stdin.contains("/tmp/CasrSanTemp"));
-        assert_eq!(3 + *CI.read().unwrap(), report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            3 + *CI.read().unwrap(),
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "heap-buffer-overflow(write)");
         assert!(
@@ -2597,7 +2606,10 @@ fn test_casr_san_segf_near_null() {
             .unwrap()
             .to_string();
 
-        assert_eq!(3 + *CI.read().unwrap(), report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            3 + *CI.read().unwrap(),
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
     } else {
@@ -2619,7 +2631,10 @@ fn test_casr_san_segf_near_null() {
             .unwrap()
             .to_string();
 
-        assert_eq!(3 + *CI.read().unwrap(), report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            3 + *CI.read().unwrap(),
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
     } else {
@@ -2662,7 +2677,10 @@ fn test_casr_san_segf() {
             .unwrap()
             .to_string();
 
-        assert_eq!(3 + *CI.read().unwrap(), report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            3 + *CI.read().unwrap(),
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
     } else {
@@ -2684,7 +2702,10 @@ fn test_casr_san_segf() {
             .unwrap()
             .to_string();
 
-        assert_eq!(3 + *CI.read().unwrap(), report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            3 + *CI.read().unwrap(),
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
     } else {
