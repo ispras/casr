@@ -8,7 +8,6 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::str::FromStr;
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
