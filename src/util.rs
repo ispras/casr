@@ -21,7 +21,9 @@ pub fn cpp_exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClas
             .unwrap()
             .get(1)
             .unwrap()
-            .as_str();
+            .as_str()
+            .trim_start_matches('\'')
+            .trim_end_matches('\'');
         let message = if let Some(element) = stderr_list.get(pos + 1) {
             let rwhat = Regex::new(r"what\(\): +(.+)").unwrap();
             if let Some(cap) = rwhat.captures(element) {
@@ -32,7 +34,12 @@ pub fn cpp_exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClas
         } else {
             ""
         };
-        Some(ExecutionClass::new(("UNDEFINED", instance, message, "")))
+        Some(ExecutionClass::new((
+            "NOT_EXPLOITABLE",
+            instance,
+            message,
+            "",
+        )))
     } else {
         None
     }

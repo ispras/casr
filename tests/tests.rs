@@ -2027,7 +2027,7 @@ fn test_casr_gdb_exception() {
             .unwrap()
             .to_string();
 
-        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "ExceptionMessage");
         assert!(severity_short_desc.contains("std::runtime_error"));
     } else {
@@ -2729,7 +2729,7 @@ fn test_casr_san_exception() {
             .unwrap()
             .to_string();
 
-        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "ExceptionMessage");
         assert!(severity_short_desc.contains("std::runtime_error"));
     } else {
