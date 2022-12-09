@@ -8,7 +8,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-/// Extract C++ exception info from stderr
+/// Extract C++ exception info or rust panic message from stderr
 ///
 /// # Arguments
 ///
@@ -17,7 +17,8 @@ use std::path::{Path, PathBuf};
 /// # Return value
 ///
 /// Exception info as a `ExecutionClass` struct
-pub fn cpp_exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClass> {
+pub fn exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClass> {
+    // CPP exception check
     let rexception = Regex::new(r"terminate called after throwing an instance of (.+)").unwrap();
     if let Some(pos) = stderr_list
         .iter()
@@ -41,15 +42,33 @@ pub fn cpp_exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClas
         } else {
             ""
         };
-        Some(ExecutionClass::new((
+        return Some(ExecutionClass::new((
             "NOT_EXPLOITABLE",
             instance,
             message,
             "",
-        )))
-    } else {
-        None
+        )));
     }
+    // Rust panic check
+    let rexception = Regex::new(r"thread '.+?' panicked at '(.+)?'").unwrap();
+    if let Some(pos) = stderr_list
+        .iter()
+        .position(|line| rexception.is_match(line))
+    {
+        let message = rexception
+            .captures(&stderr_list[pos])
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str();
+        return Some(ExecutionClass::new((
+            "NOT_EXPLOITABLE",
+            "RustPanic",
+            message,
+            "",
+        )));
+    }
+    None
 }
 
 /// Save a report to the specified path

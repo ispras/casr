@@ -394,9 +394,7 @@ impl<'a> fmt::Display for CrashReport<'a> {
         // ProcEnviron
         if !self.proc_environ.is_empty() {
             report += "\n===ProcEnviron===\n";
-            for e in self.proc_environ.iter() {
-                report += &format!("{}\n", e);
-            }
+            report += &(self.proc_environ.join("\n") + "\n");
         }
 
         // ProcCmdline
@@ -407,25 +405,19 @@ impl<'a> fmt::Display for CrashReport<'a> {
         // ProcStatus
         if !self.proc_status.is_empty() {
             report += "\n===ProcStatus===\n";
-            for e in self.proc_status.iter() {
-                report += &format!("{}\n", e);
-            }
+            report += &(self.proc_status.join("\n") + "\n");
         }
 
         // ProcFiles
         if !self.proc_maps.is_empty() {
             report += "\n===ProcFiles===\n";
-            for e in self.proc_maps.iter() {
-                report += &format!("{}\n", e);
-            }
+            report += &(self.proc_maps.join("\n") + "\n");
         }
 
         // NetworkConnections
         if !self.proc_fd.is_empty() {
             report += "\n===NetworkConnections===\n";
-            for e in self.proc_fd.iter() {
-                report += &format!("{}\n", e);
-            }
+            report += &(self.proc_fd.join("\n") + "\n");
         }
 
         report += &format!("\n===CrashSeverity===\n{}\n", self.execution_class);
@@ -433,9 +425,7 @@ impl<'a> fmt::Display for CrashReport<'a> {
         // Stacktrace
         if !self.stacktrace.is_empty() {
             report += "\n===Stacktrace===\n";
-            for e in self.stacktrace.iter() {
-                report += &format!("{}\n", e);
-            }
+            report += &(self.stacktrace.join("\n") + "\n");
         }
 
         // Registers
@@ -449,9 +439,7 @@ impl<'a> fmt::Display for CrashReport<'a> {
 
             // Disassembly
             if !self.disassembly.is_empty() {
-                for e in self.disassembly.iter() {
-                    report += &format!("{}\n", e);
-                }
+                report += &(self.disassembly.join("\n") + "\n");
             }
         }
 
@@ -478,9 +466,7 @@ impl<'a> fmt::Display for CrashReport<'a> {
         // ASANreport
         if !self.asan_report.is_empty() {
             report += "\n===AsanReport===\n";
-            for e in self.asan_report.iter() {
-                report += &format!("{}\n", e);
-            }
+            report += &(self.asan_report.join("\n") + "\n");
         }
 
         // PythonReport
@@ -494,9 +480,7 @@ impl<'a> fmt::Display for CrashReport<'a> {
         // Source
         if !self.source.is_empty() {
             report += "\n===Source===\n";
-            for e in self.source.iter() {
-                report += &format!("{}\n", e);
-            }
+            report += &(self.source.join("\n") + "\n");
         }
 
         write!(f, "{}", report.trim())

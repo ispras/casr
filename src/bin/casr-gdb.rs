@@ -9,6 +9,7 @@ use casr::debug;
 use casr::debug::CrashLine;
 use casr::report::CrashReport;
 use casr::util;
+use casr::util::exception_from_stderr;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};

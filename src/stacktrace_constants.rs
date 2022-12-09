@@ -52,7 +52,6 @@ pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r"^WTFCrash",
     r"^X11Error",
     r"^_L_unlock_",
-    r"^_\$LT\$",
     r"^__GI_",
     r"^__asan::",
     r"^__asan_",
