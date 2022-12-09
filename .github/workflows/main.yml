@@ -25,4 +25,4 @@ jobs:
       run: |
         sudo apt update && sudo apt install -y gdb pip
         pip3 install numpy scipy
-        CI=1 cargo test --release --verbose
+        cargo test --release --verbose
