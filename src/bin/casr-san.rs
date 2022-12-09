@@ -10,6 +10,7 @@ use casr::debug;
 use casr::debug::CrashLine;
 use casr::execution_class::*;
 use casr::report::CrashReport;
+use casr::util::cpp_exception_from_stderr;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -278,6 +279,11 @@ fn main() -> Result<()> {
             // Normal termination.
             bail!("Program terminated (no crash)");
         }
+    }
+
+    // Check for exceptions
+    if let Some(class) = cpp_exception_from_stderr(&san_stderr_list) {
+        report.execution_class = class;
     }
 
     // Get crash line.

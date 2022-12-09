@@ -1498,7 +1498,6 @@ fn test_div_by_zero_gdb() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_div_by_zero_stdin_gdb() {
     // Test casr-san stdin
     let paths = [
@@ -1995,6 +1994,50 @@ fn test_casr_cluster_s() {
 }
 
 #[test]
+fn test_casr_gdb_exception() {
+    let paths = [
+        abs_path("tests/casr_tests/test_exception.cpp"),
+        abs_path("tests/casr_tests/bin/test_exception"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!("clang++ -O0 -g {} -o {}", &paths[0], &paths[1]))
+        .status()
+        .expect("failed to execute clang");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_GDB.read().unwrap())
+        .args(&["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_short_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let severity_desc = report["CrashSeverity"]["Description"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_desc, "ExceptionMessage");
+        assert!(severity_short_desc.contains("std::runtime_error"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+}
+
+#[test]
 fn test_casr_cluster_c() {
     let paths = [
         abs_path("tests/casr_tests/casrep/test_clustering_small"),
@@ -2190,7 +2233,6 @@ fn test_casr_cluster_d_and_m() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san() {
     // Double free test
     let paths = [
@@ -2521,7 +2563,6 @@ fn test_casr_san() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san_segf_near_null() {
     let paths = [
         abs_path("tests/casr_tests/test_asan_segf.cpp"),
@@ -2587,7 +2628,6 @@ fn test_casr_san_segf_near_null() {
 }
 
 #[test]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san_segf() {
     let paths = [
         abs_path("tests/casr_tests/test_asan_segf.cpp"),
@@ -2653,8 +2693,54 @@ fn test_casr_san_segf() {
 }
 
 #[test]
+fn test_casr_san_exception() {
+    let paths = [
+        abs_path("tests/casr_tests/test_exception.cpp"),
+        abs_path("tests/casr_tests/bin/test_asan_exception"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(&["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_short_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let severity_desc = report["CrashSeverity"]["Description"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_desc, "ExceptionMessage");
+        assert!(severity_short_desc.contains("std::runtime_error"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+}
+
+#[test]
 #[ignore]
-#[cfg(target_arch = "x86_64")]
 fn test_casr_san_sigbus() {
     let paths = [
         abs_path("tests/casr_tests/test_sigbus.c"),
