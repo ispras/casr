@@ -15,26 +15,26 @@ license-file = "LICENSE"
 exclude = ["/tests", ".gitignore", ".github", "update_version.sh"]
 
 [dependencies]
-anyhow = "1.0"
-regex = "1.5.4"
+anyhow = "~1.0"
+regex = "~1.5"
 lazy_static = "~1.4"
-goblin = "0.5"
+goblin = "~0.5"
 libc = "~0"
-capstone = "0.7"
+capstone = "~0.7"
 clap = "~3.2"
-chrono =  "0.4"
-serde = { version = "1.0.104", features = ["derive"] }
-serde_json = "1.0.57"
-log = "0.4"
-simplelog = "^0.8"
-cursive = { version = "0.17", default-features = false, features = ["termion-backend"] }
+chrono =  "~0.4"
+serde = { version = "~1.0", features = ["derive"] }
+serde_json = "~1.0"
+log = "~0.4"
+simplelog = "~0.8"
+cursive = { version = "~0.17", default-features = false, features = ["termion-backend"] }
 cursive_tree_view = "~0.8"
 nix = "0.20.0"
-gdb-command = { git = "https://github.com/anfedotoff/gdb-command.git" }
+gdb-command = "~0.7"
 rayon = "~1.5"
 num_cpus = "~1.13"
-linux-personality = "1.0.0"
-thiserror = "1.0"
+linux-personality = "~1.0"
+thiserror = "~1.0"
 
 [profile.release]
 opt-level = 3
