@@ -167,7 +167,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
                     && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
             });
             if let Some(pos) = pos {
-                rawtrace.drain(0..pos - (pos != 0) as usize);
+                rawtrace.drain(0..pos);
             }
 
             return Ok(rawtrace);
