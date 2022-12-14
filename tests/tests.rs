@@ -1958,7 +1958,7 @@ fn test_casr_cluster_s() {
         .collect::<String>()
         .parse::<f64>()
         .unwrap();
-    if res > 0.35 {
+    if res > 0.45 {
         panic!(
             "Too high similarity, mistake. Stdout:{:?}\nDigit: {}\n",
             output.stdout.as_slice(),
@@ -1984,7 +1984,7 @@ fn test_casr_cluster_s() {
         .collect::<String>()
         .parse::<f64>()
         .unwrap();
-    if res < 0.70 {
+    if res < 0.80 {
         panic!(
             "Too small similarity, mistake. Stdout:{:?}\nDigit: {}\n",
             output.stdout.as_slice(),
@@ -2109,7 +2109,7 @@ fn test_casr_cluster_c_huge_san() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 13, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 12, "Invalid number of clusters");
     assert_eq!(
         std::fs::read_dir(paths[1].to_owned() + "/cl1")
             .unwrap()
@@ -2903,7 +2903,7 @@ fn test_casr_afl() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 21, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 19, "Invalid number of clusters");
 
     let _ = fs::remove_file("/tmp/load_sydr");
     let _ = fs::remove_file("/tmp/load_afl");
