@@ -1,7 +1,7 @@
 # Severity Classes
 
 Crash severity classes are gathered in 3 groups: exploitable, probably
-exploitable, and not exploitable. Some class prototypes are taken from the open
+exploitable, not exploitable, and undefined. Some class prototypes are taken from the open
 source library [gdb-exploitable](https://github.com/jfoote/exploitable.git).
 
 ## EXPLOITABLE
@@ -90,3 +90,8 @@ Lists of classes:
 28. **out-of-memory**. The target has exceeded the memory limit.
 29. **fuzz target exited**. Fuzz target exited.
 30. **timeout**. Timeout after several seconds.
+
+## UNDEFINED
+
+Classes with undefined severity. 
+Now it is used for python exception. 

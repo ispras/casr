@@ -8,7 +8,7 @@ use casr::analysis::{CrashContext, MachineInfo};
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::report::CrashReport;
-use casr::util::cpp_exception_from_stderr;
+use casr::util;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -203,7 +203,7 @@ fn main() -> Result<()> {
         .split('\n')
         .map(|l| l.trim_end().to_string())
         .collect::<Vec<String>>();
-    if let Some(class) = cpp_exception_from_stderr(&output_lines) {
+    if let Some(class) = util::cpp_exception_from_stderr(&output_lines) {
         report.execution_class = class;
     }
 
@@ -219,16 +219,6 @@ fn main() -> Result<()> {
         }
     }
 
-    if matches.is_present("output") {
-        let result_path = PathBuf::from(matches.value_of("output").unwrap());
-        let mut file = File::create(&result_path)
-            .with_context(|| format!("Couldn't create report: {}", result_path.display()))?;
-        file.write_all(serde_json::to_string_pretty(&report).unwrap().as_bytes())
-            .with_context(|| format!("Couldn't write report: {}", result_path.display()))?;
-    }
-
-    if matches.is_present("stdout") {
-        println!("{}\n", serde_json::to_string_pretty(&report).unwrap());
-    }
-    Ok(())
+    //Output report
+    util::output_report(&report, &matches, &argv)
 }

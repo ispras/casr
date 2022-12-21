@@ -10,7 +10,7 @@ use casr::debug;
 use casr::debug::CrashLine;
 use casr::execution_class::*;
 use casr::report::CrashReport;
-use casr::util::cpp_exception_from_stderr;
+use casr::util;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -18,11 +18,9 @@ use gdb_command::*;
 use linux_personality::personality;
 use regex::Regex;
 use std::env;
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::os::unix::process::CommandExt;
 use std::os::unix::process::ExitStatusExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 fn main() -> Result<()> {
@@ -282,7 +280,7 @@ fn main() -> Result<()> {
     }
 
     // Check for exceptions
-    if let Some(class) = cpp_exception_from_stderr(&san_stderr_list) {
+    if let Some(class) = util::cpp_exception_from_stderr(&san_stderr_list) {
         report.execution_class = class;
     }
 
@@ -296,51 +294,5 @@ fn main() -> Result<()> {
         }
     }
 
-    // Convert report to string.
-    let repstr = serde_json::to_string_pretty(&report).unwrap();
-
-    if matches.is_present("stdout") {
-        println!("{}\n", repstr);
-    }
-
-    if matches.is_present("output") {
-        let mut report_path = PathBuf::from(matches.value_of("output").unwrap());
-        if report_path.is_dir() {
-            let executable_name = PathBuf::from(&argv[0]);
-            let file_name = match argv.iter().skip(1).find(|&x| Path::new(&x).exists()) {
-                Some(x) => match Path::new(x).file_stem() {
-                    Some(file) => file.to_os_string().into_string().unwrap(),
-                    None => x.to_string(),
-                },
-                None => report.date,
-            };
-            report_path.push(format!(
-                "{}_{}.casrep",
-                executable_name
-                    .as_path()
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
-                file_name
-            ));
-        }
-        if let Ok(mut file) = OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open(&report_path)
-        {
-            file.write_all(repstr.as_bytes()).with_context(|| {
-                format!(
-                    "Couldn't write data to report file `{}`",
-                    report_path.display()
-                )
-            })?;
-        } else {
-            bail!("Couldn't save report to file: {}", report_path.display());
-        }
-    }
-
-    Ok(())
+    util::output_report(&report, &matches, &argv)
 }

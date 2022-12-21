@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
@@ -15,6 +15,7 @@ lazy_static::lazy_static! {
     static ref EXE_CASR_AFL: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-afl"));
     static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
     static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
+    static ref EXE_CASR_PYTHON: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-python"));
     static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
     static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
 }
@@ -2891,7 +2892,7 @@ fn test_casr_afl() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(unique_cnt, 34, "Invalid number of deduplicated reports");
+    assert_eq!(unique_cnt, 33, "Invalid number of deduplicated reports");
 
     let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
     let clusters_cnt = re
@@ -2903,7 +2904,7 @@ fn test_casr_afl() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 19, "Invalid number of clusters");
+    assert!(clusters_cnt >= 19, "Invalid number of clusters");
 
     let _ = fs::remove_file("/tmp/load_sydr");
     let _ = fs::remove_file("/tmp/load_afl");
@@ -3066,4 +3067,469 @@ fn test_asan_stacktrace() {
     );
     assert_eq!(stacktrace[17].debug.line, 116);
     assert_eq!(stacktrace[17].debug.column, 7);
+}
+
+#[test]
+fn test_casr_python() {
+    // Division by zero test
+    let path = abs_path("tests/casr_tests/python/test_casr_python.py");
+
+    let output = Command::new(*EXE_CASR_PYTHON.read().unwrap())
+        .args(["--stdout", "--", &path])
+        .output()
+        .expect("failed to start casr-python");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_desc, "ZeroDivisionError");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_casr_python.py:4"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
+fn test_casr_python_atheris() {
+    // Division by zero atheris test
+    let paths = [
+        abs_path("tests/casr_tests/python/test_casr_python_atheris.py"),
+        abs_path("tests/casr_tests/python/crash"),
+    ];
+
+    let output = Command::new(*EXE_CASR_PYTHON.read().unwrap())
+        .args(["--stdout", "--", &paths[0], &paths[1]])
+        .output()
+        .expect("failed to start casr-python");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(2, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_desc, "ZeroDivisionError");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_casr_python_atheris.py:10"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
+fn test_casr_san_python_df() {
+    // Double free python C extension test
+    // Copy files to tmp dir
+    let work_dir = abs_path("tests/casr_tests/python");
+    let test_dir = abs_path("tests/casr_tests/test_casr_san_python_df");
+
+    let output = Command::new("cp")
+        .args(["-r", &work_dir, &test_dir])
+        .output()
+        .expect("failed to copy dir");
+
+    assert!(output.status.success());
+
+    let paths = [
+        abs_path("tests/casr_tests/test_casr_san_python_df/cpp_module.cpp"),
+        abs_path("tests/casr_tests/test_casr_san_python_df/cpp_module.so"),
+        abs_path("tests/casr_tests/test_casr_san_python_df/test_casr_python_asan_df.py"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I/usr/include/python3.10 -lpython3.10",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    // Get path of asan lib
+    let output = Command::new("python3")
+        .arg("-c")
+        .arg("import atheris; print(atheris.path(), end='')")
+        .stdout(Stdio::piped())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let lib_path = String::from_utf8_lossy(&output.stdout);
+    let lib_path = lib_path + "/asan_with_fuzzer.so";
+
+    assert!(Path::new(&lib_path.to_string()).exists());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
+        .env("LD_PRELOAD", lib_path.to_string())
+        .args(["--stdout", "--", &paths[2]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 19);
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "double-free");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("cpp_module.cpp:8:5"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+fn test_casr_san_atheris_df() {
+    // Double free python C extension test
+    // Copy files to tmp dir
+    let work_dir = abs_path("tests/casr_tests/python");
+    let test_dir = abs_path("tests/casr_tests/test_casr_san_atheris_df");
+
+    let output = Command::new("cp")
+        .args(["-r", &work_dir, &test_dir])
+        .output()
+        .expect("failed to copy dir");
+
+    assert!(output.status.success());
+
+    let paths = [
+        abs_path("tests/casr_tests/test_casr_san_atheris_df/cpp_module.cpp"),
+        abs_path("tests/casr_tests/test_casr_san_atheris_df/cpp_module.so"),
+        abs_path("tests/casr_tests/test_casr_san_atheris_df/test_casr_python_asan_df_atheris.py"),
+        abs_path("tests/casr_tests/test_casr_san_atheris_df/crash"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I/usr/include/python3.10 -lpython3.10",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    // Get path of asan lib
+    let output = Command::new("python3")
+        .arg("-c")
+        .arg("import atheris; print(atheris.path(), end='')")
+        .stdout(Stdio::piped())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let lib_path = String::from_utf8_lossy(&output.stdout);
+    let lib_path = lib_path + "/asan_with_fuzzer.so";
+
+    assert!(Path::new(&lib_path.to_string()).exists());
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
+        .env("LD_PRELOAD", lib_path.to_string())
+        .args(["--stdout", "--", &paths[2], &paths[3]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        // TODO: Resolve trouble with asan lib selection
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() > 50);
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "double-free");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("cpp_module.cpp:8:5"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+fn test_casr_python_call_san_df() {
+    // Double free python C extension test
+    // Copy files to tmp dir
+    let work_dir = abs_path("tests/casr_tests/python");
+    let test_dir = abs_path("tests/casr_tests/test_casr_python_call_san_df");
+
+    let output = Command::new("cp")
+        .args(["-r", &work_dir, &test_dir])
+        .output()
+        .expect("failed to copy dir");
+
+    assert!(output.status.success());
+
+    let paths = [
+        abs_path("tests/casr_tests/test_casr_python_call_san_df/cpp_module.cpp"),
+        abs_path("tests/casr_tests/test_casr_python_call_san_df/cpp_module.so"),
+        abs_path("tests/casr_tests/test_casr_python_call_san_df/test_casr_python_asan_df.py"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I/usr/include/python3.10 -lpython3.10",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    // Get path of asan lib
+    let output = Command::new("python3")
+        .arg("-c")
+        .arg("import atheris; print(atheris.path(), end='')")
+        .stdout(Stdio::piped())
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let lib_path = String::from_utf8_lossy(&output.stdout);
+    let lib_path = lib_path + "/asan_with_fuzzer.so";
+
+    assert!(Path::new(&lib_path.to_string()).exists());
+
+    let bins = Path::new(*EXE_CASR_PYTHON.read().unwrap())
+        .parent()
+        .unwrap();
+    let output = Command::new(*EXE_CASR_PYTHON.read().unwrap())
+        .env("ASAN_OPTIONS", "detect_leaks=0,symolize=1")
+        .env("LD_PRELOAD", lib_path.to_string())
+        .env(
+            "PATH",
+            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+        )
+        .args(["--stdout", "--", &paths[2]])
+        .output()
+        .expect("failed to start casr-python");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 19);
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "double-free");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("cpp_module.cpp:8:5"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+fn test_casr_cluster_c_python() {
+    let paths = [
+        abs_path("tests/casr_tests/casrep/test_clustering_python"),
+        abs_path("tests/tmp_tests_casr/clustering_out_python"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+        .args(["-c", &paths[0], &paths[1]])
+        .output()
+        .expect("failed to start casr-cluster");
+
+    assert!(output.status.success());
+
+    let res = String::from_utf8_lossy(&output.stdout);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 3, "Clusters count mismatch.");
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
+}
+
+#[test]
+fn test_casr_cluster_d_python() {
+    let paths = [
+        abs_path("tests/casr_tests/casrep/test_clustering_python"),
+        abs_path("tests/tmp_tests_casr/dedup_out_python"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+        .args(["-d", &paths[0], &paths[1]])
+        .output()
+        .expect("failed to start casr-cluster");
+
+    assert!(output.status.success());
+
+    let dirvec = match fs::read_dir(&paths[1]) {
+        Ok(vec) => vec,
+        Err(why) => {
+            panic!("{:?}", why.kind());
+        }
+    };
+
+    let counter = dirvec.count();
+    if counter != 7 {
+        panic!("Bad deduplication, casreps: {}", counter);
+    }
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
+}
+
+#[test]
+fn test_python_stacktrace() {
+    let raw_stacktrace = &[
+        "File \"<stdin>\", line 1, in <module>",
+        "File \"/usr/lib/python3.10/site-packages/PIL/Image.py\", line 2259, in show",
+        "File \"/usr/lib/python3.10/site-packages/PIL/Image.py\", line 3233, in _show",
+        "File \"/usr/lib/python3.10/site-packages/PIL/ImageShow.py\", line 55, in show",
+        "File \"/usr/lib/python3.10/site-packages/PIL/ImageShow.py\", line 79, in show",
+        "File \"/usr/lib/python3.10/site-packages/PIL/ImageShow.py\", line 105, in show_image",
+        "File \"/usr/lib/python3.10/site-packages/PIL/ImageShow.py\", line 212, in show_file",
+        "File \"/usr/lib/python3.10/subprocess.py\", line 966, in __init__",
+        "[Previous line repeated 3 more times]",
+        "File \"/usr/lib/python3.10/subprocess.py\", line 1775, in _execute_child",
+    ];
+    let trace = raw_stacktrace
+        .iter()
+        .map(|e| e.to_string())
+        .collect::<Vec<String>>();
+    let sttr = casr::python::stacktrace_from_python(&trace);
+    if sttr.is_err() {
+        panic!("{}", sttr.err().unwrap());
+    }
+
+    let stacktrace = sttr.unwrap();
+    assert_eq!(stacktrace[0].debug.file, "<stdin>".to_string());
+    assert_eq!(stacktrace[0].debug.line, 1);
+    assert_eq!(stacktrace[0].function, "<module>".to_string());
+    assert_eq!(
+        stacktrace[1].debug.file,
+        "/usr/lib/python3.10/site-packages/PIL/Image.py".to_string()
+    );
+    assert_eq!(stacktrace[1].debug.line, 2259);
+    assert_eq!(stacktrace[1].function, "show".to_string());
+    assert_eq!(
+        stacktrace[2].debug.file,
+        "/usr/lib/python3.10/site-packages/PIL/Image.py".to_string()
+    );
+    assert_eq!(stacktrace[2].debug.line, 3233);
+    assert_eq!(stacktrace[2].function, "_show".to_string());
+    assert_eq!(
+        stacktrace[3].debug.file,
+        "/usr/lib/python3.10/site-packages/PIL/ImageShow.py".to_string()
+    );
+    assert_eq!(stacktrace[3].debug.line, 55);
+    assert_eq!(stacktrace[3].function, "show".to_string());
+    assert_eq!(
+        stacktrace[4].debug.file,
+        "/usr/lib/python3.10/site-packages/PIL/ImageShow.py".to_string()
+    );
+    assert_eq!(stacktrace[4].debug.line, 79);
+    assert_eq!(stacktrace[4].function, "show".to_string());
+    assert_eq!(
+        stacktrace[5].debug.file,
+        "/usr/lib/python3.10/site-packages/PIL/ImageShow.py".to_string()
+    );
+    assert_eq!(stacktrace[5].debug.line, 105);
+    assert_eq!(stacktrace[5].function, "show_image".to_string());
+    assert_eq!(
+        stacktrace[6].debug.file,
+        "/usr/lib/python3.10/site-packages/PIL/ImageShow.py".to_string()
+    );
+    assert_eq!(stacktrace[6].debug.line, 212);
+    assert_eq!(stacktrace[6].function, "show_file".to_string());
+    assert_eq!(
+        stacktrace[7].debug.file,
+        "/usr/lib/python3.10/subprocess.py".to_string()
+    );
+    assert_eq!(stacktrace[7].debug.line, 966);
+    assert_eq!(stacktrace[7].function, "__init__".to_string());
+    assert_eq!(
+        stacktrace[8].debug.file,
+        "/usr/lib/python3.10/subprocess.py".to_string()
+    );
+    assert_eq!(stacktrace[8].debug.line, 966);
+    assert_eq!(stacktrace[8].function, "__init__".to_string());
+    assert_eq!(
+        stacktrace[9].debug.file,
+        "/usr/lib/python3.10/subprocess.py".to_string()
+    );
+    assert_eq!(stacktrace[9].debug.line, 966);
+    assert_eq!(stacktrace[9].function, "__init__".to_string());
+    assert_eq!(
+        stacktrace[10].debug.file,
+        "/usr/lib/python3.10/subprocess.py".to_string()
+    );
+    assert_eq!(stacktrace[10].debug.line, 966);
+    assert_eq!(stacktrace[10].function, "__init__".to_string());
+    assert_eq!(
+        stacktrace[11].debug.file,
+        "/usr/lib/python3.10/subprocess.py".to_string()
+    );
+    assert_eq!(stacktrace[11].debug.line, 1775);
+    assert_eq!(stacktrace[11].function, "_execute_child".to_string());
 }

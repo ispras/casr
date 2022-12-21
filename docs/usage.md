@@ -54,6 +54,28 @@ Run casr-san:
 
     $ casr-san -o asan.casrep -- ./test_asan_df
 
+## casr-python
+
+Create CASR reports (.casrep) from python reports
+
+    USAGE:
+        casr-python [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+
+    ARGS:
+        <ARGS>...    Add "-- ./binary <arguments>" to run executable
+
+    OPTIONS:
+        -h, --help               Print help information
+        -o, --output <REPORT>    Path to save report. Path can be a directory, then report
+                                 name is generated
+            --stdin <FILE>       Stdin file for program
+            --stdout             Print CASR report to stdout
+        -V, --version            Print version information
+
+Example:
+
+    $ casr-python -o python.casrep -- tests/casr_tests/python/test_casr_python.py
+
 ## casr-core
 
 Analyze coredump for security goals and provide detailed report with severity

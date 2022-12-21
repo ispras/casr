@@ -12,12 +12,13 @@ CASR is maintained by:
 * [Andrey Fedotov](https://github.com/anfedotoff) \<fedotoff@ispras.ru\>
 * [Alexey Vishnyakov](https://github.com/SweetVishnya) \<vishnya@ispras.ru\>
 * [Georgy Savidov](https://github.com/Avgor46) \<avgor46@ispras.ru\>
+* [Ilya Yegorov](https://github.com/hkctkuy) \<Yegorov_Ilya@ispras.ru\>
 
 ## Overview
 
 CASR is a set of tools that allows you to collect crash reports in different
 ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze ASAN
-reports. Try `casr-gdb` to get reports from gdb.
+reports. Try `casr-gdb` to get reports from gdb. Use `casr-python` to analyze python reports and get report from [atheris](https://github.com/google/atheris).
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable)),
 OS and package versions, command line, stack trace, register values,
@@ -70,6 +71,10 @@ Create report from sanitizers output:
 Create report from gdb:
 
     $ casr-gdb -o destAv.gdb.casrep -- tests/casr_tests/bin/test_destAv $(printf 'A%.s' {1..200})
+
+Create report from python:
+
+    $ casr-python -o python.casrep -- tests/casr_tests/python/test_casr_python.py
 
 View report:
 
