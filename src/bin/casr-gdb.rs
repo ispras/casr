@@ -203,7 +203,7 @@ fn main() -> Result<()> {
         .split('\n')
         .map(|l| l.trim_end().to_string())
         .collect::<Vec<String>>();
-    if let Some(class) = util::cpp_exception_from_stderr(&output_lines) {
+    if let Some(class) = util::exception_from_stderr(&output_lines) {
         report.execution_class = class;
     }
 

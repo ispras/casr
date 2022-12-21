@@ -280,7 +280,7 @@ fn main() -> Result<()> {
     }
 
     // Check for exceptions
-    if let Some(class) = util::cpp_exception_from_stderr(&san_stderr_list) {
+    if let Some(class) = util::exception_from_stderr(&san_stderr_list) {
         report.execution_class = class;
     }
 
