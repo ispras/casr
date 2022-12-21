@@ -56,14 +56,13 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
     if let Some(path) = matches.value_of("stdin") {
         python_cmd.args(["--stdin", path]);
     }
+    python_cmd.arg("--").args(argv);
 
     let output = python_cmd
-        .arg("--")
-        .args(argv)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .expect("failed to start casr-san");
+        .with_context(|| format!("Couldn't launch {:?}", python_cmd))?;
 
     if output.status.success() {
         Ok(())
