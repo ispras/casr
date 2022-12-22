@@ -20,7 +20,7 @@ use regex::Regex;
 use std::env;
 use std::os::unix::process::CommandExt;
 use std::os::unix::process::ExitStatusExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() -> Result<()> {
@@ -57,6 +57,13 @@ fn main() -> Result<()> {
                 .help("Stdin file for program"),
         )
         .arg(
+            Arg::new("ignore")
+                .long("ignore")
+                .takes_value(true)
+                .value_name("FILE")
+                .help("File with function and file path regexs that should be ignored"),
+        )
+        .arg(
             Arg::new("ARGS")
                 .multiple_values(true)
                 .takes_value(true)
@@ -72,6 +79,9 @@ fn main() -> Result<()> {
         bail!("Wrong arguments for starting program");
     };
 
+    if let Some(path) = matches.value_of("ignore") {
+        util::change_ignored_frames(Path::new(path))?;
+    }
     // Get stdin for target program.
     let stdin_file = if let Some(path) = matches.value_of("stdin") {
         let file = PathBuf::from(path);

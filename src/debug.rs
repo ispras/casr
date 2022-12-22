@@ -9,8 +9,8 @@ use crate::stacktrace_constants::*;
 
 use gdb_command::mappings::*;
 use gdb_command::stacktrace::*;
-use regex::Regex;
 
+use regex::Regex;
 use std::fmt;
 use std::io::{prelude::*, BufReader};
 
@@ -60,14 +60,18 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
     };
 
     // Compile function regexp.
-    let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES
+    let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE
+        .read()
+        .unwrap()
         .iter()
         .map(|s| format!("({})|", s))
         .collect::<String>();
     let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
     // Compile file regexp.
-    let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
+    let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE
+        .read()
+        .unwrap()
         .iter()
         .map(|s| format!("({})|", s))
         .collect::<String>();

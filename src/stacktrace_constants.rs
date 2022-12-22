@@ -14,8 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 //! Module contains constants for parsing stack traces.
+extern crate lazy_static;
+use std::sync::RwLock;
 
-pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
+const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     // Function names (exact match).
     r"^abort$",
     r"^exit$",
@@ -178,7 +180,7 @@ pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r".*v8::base::OS::Abort",
 ];
 
-pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
+const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     // File paths.
     r".*/usr/include/c\+\+/",
     r".*\-gnu/c\+\+/",
@@ -222,3 +224,10 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*libubsan\.so",
     r".*asan_with_fuzzer\.so",
 ];
+
+lazy_static::lazy_static! {
+    pub static ref STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE: RwLock<Vec<String>> = RwLock::new(
+        STACK_FRAME_FUNCION_IGNORE_REGEXES.iter().map(|x| x.to_string()).collect());
+    pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE: RwLock<Vec<String>> = RwLock::new(
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES.iter().map(|x| x.to_string()).collect());
+}
