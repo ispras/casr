@@ -1514,16 +1514,22 @@ fn test_div_by_zero_stdin_gdb() {
 
     assert!(clang.success());
 
-    let mut tempfile = fs::File::create("/tmp/CasrSanTemp").unwrap();
+    let mut tempfile = fs::File::create("/tmp/casr_gdb_div_by_zero").unwrap();
     tempfile.write_all(b"1").unwrap();
     let output = Command::new(*EXE_CASR_GDB.read().unwrap())
-        .args(["--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
+        .args([
+            "--stdout",
+            "--stdin",
+            "/tmp/casr_gdb_div_by_zero",
+            "--",
+            &paths[1],
+        ])
         .output()
         .expect("failed to start casr-gdb");
 
     // Test if casr got results.
     assert!(output.status.success());
-    fs::remove_file("/tmp/CasrSanTemp").unwrap();
+    fs::remove_file("/tmp/casr_gdb_div_by_zero").unwrap();
 
     // Test report.
     let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
@@ -1535,7 +1541,7 @@ fn test_div_by_zero_stdin_gdb() {
             .unwrap()
             .to_string();
 
-        assert!(stdin.contains("/tmp/CasrSanTemp"));
+        assert!(stdin.contains("/tmp/casr_gdb_div_by_zero"));
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "FPE");
     } else {
