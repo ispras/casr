@@ -9,6 +9,7 @@ extern crate serde_json;
 
 use anyhow::{bail, Context, Result};
 use casr::stacktrace_constants::*;
+use casr::util;
 use clap::{App, Arg};
 use gdb_command::mappings::*;
 use gdb_command::stacktrace::*;
@@ -162,14 +163,18 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
             }
 
             // Compile function regexp.
-            let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES
+            let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE
+                .read()
+                .unwrap()
                 .iter()
                 .map(|s| format!("({})|", s))
                 .collect::<String>();
             let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
             // Compile file regexp.
-            let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
+            let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE
+                .read()
+                .unwrap()
                 .iter()
                 .map(|s| format!("({})|", s))
                 .collect::<String>();
@@ -561,6 +566,13 @@ fn main() -> Result<()> {
                 ),
         )
         .arg(
+            Arg::new("ignore")
+                .long("ignore")
+                .takes_value(true)
+                .value_name("FILE")
+                .help("File with function and file path regexs that should be ignored"),
+        )
+        .arg(
             Arg::new("jobs")
                 .long("jobs")
                 .short('j')
@@ -577,7 +589,9 @@ fn main() -> Result<()> {
                 }),
         )
         .get_matches();
-
+    if let Some(path) = matches.value_of("ignore") {
+        util::change_ignored_frames(Path::new(path))?;
+    }
     if matches.is_present("similarity") {
         let casreps: Vec<&Path> = matches
             .values_of("similarity")

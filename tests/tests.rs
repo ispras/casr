@@ -2922,6 +2922,66 @@ fn test_casr_san_sigbus() {
 }
 
 #[test]
+fn test_casr_ignore_frames() {
+    let paths = [
+        abs_path("tests/casr_tests/test_casr_ignore_frames/psan.sh"),
+        abs_path("tests/casr_tests/test_casr_ignore_frames/ign1.lst"),
+        abs_path("tests/casr_tests/test_casr_ignore_frames/ign2.lst"),
+    ];
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(["--stdout", "--ignore", &paths[1], "--", &paths[0]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("size-too-big.cpp:11:25"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(["--stdout", "--ignore", &paths[2], "--", &paths[0]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("size-too-big.cpp:12:25"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let output = Command::new(*EXE_CASR_SAN.read().unwrap())
+        .args(["--stdout", "--", &paths[0]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(output.status.success());
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("size-too-big.cpp:16:5"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_afl() {
     let paths = [
