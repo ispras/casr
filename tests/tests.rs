@@ -3217,11 +3217,26 @@ fn test_casr_san_python_df() {
         abs_path("tests/casr_tests/test_casr_san_python_df/test_casr_python_asan_df.py"),
     ];
 
+    let python_path = fs::read_dir("/usr/include")
+        .unwrap()
+        .filter_map(|s| s.ok())
+        .map(|s| s.path())
+        .find(|s| s.as_path().to_str().unwrap().contains("python3"));
+
+    if python_path.is_none() {
+        panic!("No python include directory is found.");
+    }
+
+    let python_path = python_path.unwrap();
+
     let clang = Command::new("bash")
         .arg("-c")
         .arg(format!(
-            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I/usr/include/python3.10 -lpython3.10",
-            &paths[0], &paths[1]
+            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I{} -l{}",
+            &paths[0],
+            &paths[1],
+            python_path.display(),
+            python_path.file_name().unwrap().to_str().unwrap()
         ))
         .status()
         .expect("failed to execute clang++");
@@ -3294,11 +3309,26 @@ fn test_casr_san_atheris_df() {
         abs_path("tests/casr_tests/test_casr_san_atheris_df/crash"),
     ];
 
+    let python_path = fs::read_dir("/usr/include")
+        .unwrap()
+        .filter_map(|s| s.ok())
+        .map(|s| s.path())
+        .find(|s| s.as_path().to_str().unwrap().contains("python3"));
+
+    if python_path.is_none() {
+        panic!("No python include directory is found.");
+    }
+
+    let python_path = python_path.unwrap();
+
     let clang = Command::new("bash")
         .arg("-c")
         .arg(format!(
-            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I/usr/include/python3.10 -lpython3.10",
-            &paths[0], &paths[1]
+            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I{} -l{}",
+            &paths[0],
+            &paths[1],
+            python_path.display(),
+            python_path.file_name().unwrap().to_str().unwrap()
         ))
         .status()
         .expect("failed to execute clang++");
@@ -3371,11 +3401,26 @@ fn test_casr_python_call_san_df() {
         abs_path("tests/casr_tests/test_casr_python_call_san_df/test_casr_python_asan_df.py"),
     ];
 
+    let python_path = fs::read_dir("/usr/include")
+        .unwrap()
+        .filter_map(|s| s.ok())
+        .map(|s| s.path())
+        .find(|s| s.as_path().to_str().unwrap().contains("python3"));
+
+    if python_path.is_none() {
+        panic!("No python include directory is found.");
+    }
+
+    let python_path = python_path.unwrap();
+
     let clang = Command::new("bash")
         .arg("-c")
         .arg(format!(
-            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I/usr/include/python3.10 -lpython3.10",
-            &paths[0], &paths[1]
+            "clang++ -fsanitize=address,fuzzer-no-link -O0 -g {} -o {} -shared -fPIC -I{} -l{}",
+            &paths[0],
+            &paths[1],
+            python_path.display(),
+            python_path.file_name().unwrap().to_str().unwrap()
         ))
         .status()
         .expect("failed to execute clang++");
