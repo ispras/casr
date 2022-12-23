@@ -190,6 +190,7 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*/bindings/ToV8\.h",
     r".*/crosstool/",
     r".*/gcc/",
+    r".*sysdeps/",
     r".*/glibc\-",
     r".*/jemalloc/",
     r".*/libc\+\+",
