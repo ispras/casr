@@ -1,6 +1,6 @@
 [package]
 name = "casr"
-version = "2.2.0"
+version = "2.3.0"
 authors = ["Andrey Fedotov  <fedotoff@ispras.ru>", "Alexey Vishnyakov <vishnya@ispras.ru>", "Georgy Savidov <avgor46@ispras.ru>"]
 
 edition = "2021"
