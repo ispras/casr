@@ -204,6 +204,7 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*/vctools/crt/",
     r".*/win_toolchain/",
     r".*libc\+\+/",
+    r".*/afl-.*/.*\.rs",
     // Others (uncategorized).
     r".*\+Unknown",
     r".*<unknown module>",
