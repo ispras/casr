@@ -10,6 +10,7 @@ use casr::util;
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use regex::Regex;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -55,6 +56,9 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
     }
     if let Some(path) = matches.value_of("stdin") {
         python_cmd.args(["--stdin", path]);
+    }
+    if let Some(path) = matches.value_of("ignore") {
+        python_cmd.args(["--ignore", path]);
     }
     python_cmd.arg("--").args(argv);
 
@@ -105,6 +109,13 @@ fn main() -> Result<()> {
                 .help("Stdin file for program"),
         )
         .arg(
+            Arg::new("ignore")
+                .long("ignore")
+                .takes_value(true)
+                .value_name("FILE")
+                .help("File with function and file path regexs that should be ignored"),
+        )
+        .arg(
             Arg::new("ARGS")
                 .multiple_values(true)
                 .takes_value(true)
@@ -120,6 +131,9 @@ fn main() -> Result<()> {
         bail!("Wrong arguments for starting program");
     };
 
+    if let Some(path) = matches.value_of("ignore") {
+        util::change_ignored_frames(Path::new(path))?;
+    }
     // Get stdin for target program.
     let stdin_file = if let Some(path) = matches.value_of("stdin") {
         let file = PathBuf::from(path);

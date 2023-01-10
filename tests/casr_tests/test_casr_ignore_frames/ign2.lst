@@ -1,0 +1,6 @@
+FUNCTIONS
+^abort$
+^exit$
+^ignored_func_name$
+FILES
+.*/ignored/file/path/
