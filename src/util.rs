@@ -143,7 +143,7 @@ pub fn change_ignored_frames(path: &Path) -> error::Result<()> {
     if reader.is_empty() || !reader[0].contains("FUNCTIONS") && !reader[0].contains("FILES") {
         return Err(error::Error::Casr(format!(
             "File {} is empty or does not contain \
-                    FUNCTION or FILES on the first line",
+                    FUNCTIONS or FILES on the first line",
             path.display()
         )));
     }
@@ -152,15 +152,21 @@ pub fn change_ignored_frames(path: &Path) -> error::Result<()> {
             let files = reader.split_off(bound);
             (reader, files)
         } else {
-            (reader, vec![r"^[^.]$".to_string()])
+            (reader, vec![])
         }
     } else if let Some(bound) = reader.iter().position(|x| x.contains("FUNCTIONS")) {
         let funcs = reader.split_off(bound);
         (funcs, reader)
     } else {
-        (vec![r"^[^.]$".to_string()], reader)
+        (vec![], reader)
     };
-    *STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE.write().unwrap() = funcs;
-    *STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE.write().unwrap() = paths;
+    STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE
+        .write()
+        .unwrap()
+        .extend_from_slice(&funcs);
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE
+        .write()
+        .unwrap()
+        .extend_from_slice(&paths);
     Ok(())
 }
