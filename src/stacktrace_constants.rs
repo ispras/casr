@@ -226,8 +226,10 @@ const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
 ];
 
 lazy_static::lazy_static! {
+    // Mutable variable for custom ignored function names
     pub static ref STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE: RwLock<Vec<String>> = RwLock::new(
         STACK_FRAME_FUNCION_IGNORE_REGEXES.iter().map(|x| x.to_string()).collect());
+    // Mutable variable for custom ignored file paths
     pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE: RwLock<Vec<String>> = RwLock::new(
         STACK_FRAME_FILEPATH_IGNORE_REGEXES.iter().map(|x| x.to_string()).collect());
 }

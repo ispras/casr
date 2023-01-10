@@ -2941,7 +2941,7 @@ fn test_casr_ignore_frames() {
         assert!(report["CrashLine"]
             .as_str()
             .unwrap()
-            .contains("size-too-big.cpp:11:25"));
+            .contains("size-too-big.cpp:13:25"));
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -2958,7 +2958,7 @@ fn test_casr_ignore_frames() {
         assert!(report["CrashLine"]
             .as_str()
             .unwrap()
-            .contains("size-too-big.cpp:12:25"));
+            .contains("size-too-big.cpp:16:5"));
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -2975,7 +2975,7 @@ fn test_casr_ignore_frames() {
         assert!(report["CrashLine"]
             .as_str()
             .unwrap()
-            .contains("size-too-big.cpp:16:5"));
+            .contains("size-too-big.cpp:12:25"));
     } else {
         panic!("Couldn't parse json report file.");
     }

@@ -57,6 +57,9 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
     if let Some(path) = matches.value_of("stdin") {
         python_cmd.args(["--stdin", path]);
     }
+    if let Some(path) = matches.value_of("ignore") {
+        python_cmd.args(["--ignore", path]);
+    }
     python_cmd.arg("--").args(argv);
 
     let output = python_cmd
