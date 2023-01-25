@@ -17,7 +17,22 @@ limitations under the License.
 extern crate lazy_static;
 use std::sync::RwLock;
 
-const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
+const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
+    r"^rust_begin_unwind",
+    r"^rust_fuzzer_test_input",
+    r"^rust_oom",
+    r"^rust_panic",
+    r"^std::io::Write::write_fmt",
+    r"^std::panic",
+    r"^std::process::abort",
+    r"^__rust_start_panic",
+    r"^core::fmt::write",
+    r"^core::panicking",
+    r"^core::result",
+    r"^panic_abort::",
+];
+
+const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     // Function names (exact match).
     r"^abort$",
     r"^exit$",
@@ -100,9 +115,6 @@ const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r"^calloc",
     r"^check_memory_region",
     r"^common_exit",
-    r"^core::fmt::write",
-    r"^core::panicking",
-    r"^core::result",
     r"^delete",
     r"^demangling_terminate_handler",
     r"^dump_backtrace",
@@ -110,11 +122,12 @@ const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r"^exit_or_terminate_process",
     r"^fpehandler\(",
     r"^free",
-    r"^fuzzer::",
     r"^g_log",
     r"^generic_cpp_",
     r"^gsignal",
     r"^kasan_",
+    // LibFuzzer
+    r"^fuzzer::",
     r"^libfuzzer_sys::initialize",
     //r"^main",
     r"^malloc",
@@ -122,22 +135,13 @@ const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r"^new",
     r"^object_err",
     r"^operator",
-    r"^panic_abort::",
     r"^print_trailer",
     r"^realloc",
-    r"^rust_begin_unwind",
-    r"^rust_fuzzer_test_input",
-    r"^rust_oom",
-    r"^rust_panic",
     r"^scanf",
     r"^show_stack",
     r"^std::__terminate",
-    r"^std::io::Write::write_fmt",
-    r"^std::panic",
-    r"^std::process::abort",
     r"^std::sys::unix::abort",
     r"^std::sys_common::backtrace",
-    r"^__rust_start_panic",
     r"^__scrt_common_main_seh",
     // Functions names (contains).
     r".*ASAN_OnSIGSEGV",
@@ -180,14 +184,15 @@ const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r".*v8::base::OS::Abort",
 ];
 
-const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
+const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[r".*/rust(|c)/"];
+
+const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     // File paths.
     r".*/usr/include/c\+\+/",
     r".*\-gnu/c\+\+/",
     r".*\-gnu/bits/",
     r".*/clang/",
     r".*base/callback",
-    r".*/rust(|c)/",
     r".*/AOSP\-toolchain/",
     r".*/bindings/ToV8\.h",
     r".*/crosstool/",
@@ -197,7 +202,6 @@ const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*/jemalloc/",
     r".*/libc\+\+",
     r".*/libc/",
-    r".*/compiler\-rt/lib/fuzzer/",
     r".*/llvm\-build/",
     r".*/minkernel/crts/",
     r".*/sanitizer_common/",
@@ -206,6 +210,9 @@ const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*/vctools/crt/",
     r".*/win_toolchain/",
     r".*libc\+\+/",
+    // LibFuzzer
+    r".*/compiler\-rt/lib/fuzzer/",
+    // AFL
     r".*/afl-.*/.*\.rs",
     // Others (uncategorized).
     r".*\+Unknown",
@@ -228,8 +235,14 @@ const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
 lazy_static::lazy_static! {
     // Mutable variable for custom ignored function names
     pub static ref STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE: RwLock<Vec<String>> = RwLock::new(
-        STACK_FRAME_FUNCION_IGNORE_REGEXES.iter().map(|x| x.to_string()).collect());
+        [
+            STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP,
+            STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST
+        ].concat().iter().map(|x| x.to_string()).collect());
     // Mutable variable for custom ignored file paths
     pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE: RwLock<Vec<String>> = RwLock::new(
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES.iter().map(|x| x.to_string()).collect());
+        [
+            STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP,
+            STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST
+        ].concat().iter().map(|x| x.to_string()).collect());
 }
