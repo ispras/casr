@@ -5,9 +5,11 @@ extern crate gdb_command;
 
 use casr::analysis;
 use casr::analysis::{CrashContext, MachineInfo};
+use casr::concatall;
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::report::CrashReport;
+use casr::stacktrace_constants::*;
 use casr::util;
 
 use anyhow::{bail, Context, Result};
@@ -61,7 +63,7 @@ fn main() -> Result<()> {
                 .long("ignore")
                 .takes_value(true)
                 .value_name("FILE")
-                .help("File with function and file path regexs that should be ignored"),
+                .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
             Arg::new("ARGS")
@@ -78,9 +80,17 @@ fn main() -> Result<()> {
     } else {
         bail!("Wrong arguments for starting program");
     };
+    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concatall!(
+        STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
+        STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
+    );
+    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concatall!(
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
+    );
 
     if let Some(path) = matches.value_of("ignore") {
-        util::change_ignored_frames(Path::new(path))?;
+        util::add_custom_ignored_frames(Path::new(path))?;
     }
     // Get stdin for target program.
     let stdin_file = if let Some(path) = matches.value_of("stdin") {

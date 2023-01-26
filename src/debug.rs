@@ -60,7 +60,7 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
     };
 
     // Compile function regexp.
-    let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE
+    let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
         .read()
         .unwrap()
         .iter()
@@ -69,7 +69,7 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
     let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
     // Compile file regexp.
-    let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE
+    let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
         .read()
         .unwrap()
         .iter()

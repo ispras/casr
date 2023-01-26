@@ -40,8 +40,8 @@ Create CASR reports (.casrep) from sanitizer reports
 
     OPTIONS:
         -h, --help               Print help information
-            --ignore <FILE>      File with function and file path regexs that should be
-                                 ignored
+            --ignore <FILE>      File with regular expressions for functions and file paths
+                                 that should be ignored
         -o, --output <REPORT>    Path to save report. Path can be a directory, then report
                                  name is generated
             --stdin <FILE>       Stdin file for program
@@ -68,8 +68,8 @@ Create CASR reports (.casrep) from python reports
 
     OPTIONS:
         -h, --help               Print help information
-            --ignore <FILE>      File with function and file path regexs that should be
-                                 ignored
+            --ignore <FILE>      File with regular expressions for functions and file paths
+                                 that should be ignored
         -o, --output <REPORT>    Path to save report. Path can be a directory, then report
                                  name is generated
             --stdin <FILE>       Stdin file for program
@@ -149,7 +149,8 @@ Tool for clustering CASR reports
                 Print help information
 
             --ignore <FILE>
-                File with function and file path regexs that should be ignored
+                File with regular expressions for functions and file paths that should be
+                ignored
 
         -j, --jobs <N>
                 Number of parallel jobs to collect CASR reports
@@ -220,7 +221,7 @@ For the **--ignore <FILE>** option, file format should be as follows:
     /*ignored regexs for file paths*/
 
 Headers may be in different order, one of them may be missing.
-This FILES/FUNCTIONS will be added to the default values of ignored frames.
+Frames that match these regular expressions will be not considered during analysis.
 
 ## casr-cli
 

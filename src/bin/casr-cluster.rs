@@ -8,6 +8,7 @@ extern crate regex;
 extern crate serde_json;
 
 use anyhow::{bail, Context, Result};
+use casr::concatall;
 use casr::stacktrace_constants::*;
 use casr::util;
 use clap::{App, Arg};
@@ -163,7 +164,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
             }
 
             // Compile function regexp.
-            let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE
+            let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
                 .read()
                 .unwrap()
                 .iter()
@@ -172,7 +173,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
             let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
             // Compile file regexp.
-            let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE
+            let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
                 .read()
                 .unwrap()
                 .iter()
@@ -570,7 +571,7 @@ fn main() -> Result<()> {
                 .long("ignore")
                 .takes_value(true)
                 .value_name("FILE")
-                .help("File with function and file path regexs that should be ignored"),
+                .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
             Arg::new("jobs")
@@ -589,8 +590,17 @@ fn main() -> Result<()> {
                 }),
         )
         .get_matches();
+    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concatall!(
+        STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
+        STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
+    );
+    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concatall!(
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
+    );
+
     if let Some(path) = matches.value_of("ignore") {
-        util::change_ignored_frames(Path::new(path))?;
+        util::add_custom_ignored_frames(Path::new(path))?;
     }
     if matches.is_present("similarity") {
         let casreps: Vec<&Path> = matches

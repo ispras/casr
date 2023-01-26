@@ -1,9 +1,8 @@
-use crate::error;
 use crate::execution_class::ExecutionClass;
 use crate::report::CrashReport;
 
-use crate::stacktrace_constants::STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE;
-use crate::stacktrace_constants::STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE;
+use crate::stacktrace_constants::STACK_FRAME_FILEPATH_IGNORE_REGEXES;
+use crate::stacktrace_constants::STACK_FRAME_FUNCTION_IGNORE_REGEXES;
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
 use regex::Regex;
@@ -133,7 +132,7 @@ pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) 
     Ok(())
 }
 
-pub fn change_ignored_frames(path: &Path) -> error::Result<()> {
+pub fn add_custom_ignored_frames(path: &Path) -> Result<()> {
     let file = std::fs::File::open(path)
         .with_context(|| format!("Cannot open file: {}", path.display()))?;
     let mut reader = BufReader::new(file)
@@ -141,11 +140,11 @@ pub fn change_ignored_frames(path: &Path) -> error::Result<()> {
         .map(|x| x.unwrap())
         .collect::<Vec<String>>();
     if reader.is_empty() || !reader[0].contains("FUNCTIONS") && !reader[0].contains("FILES") {
-        return Err(error::Error::Casr(format!(
+        bail!(
             "File {} is empty or does not contain \
                     FUNCTIONS or FILES on the first line",
             path.display()
-        )));
+        );
     }
     let (funcs, paths) = if reader[0].contains("FUNCTIONS") {
         if let Some(bound) = reader.iter().position(|x| x.contains("FILES")) {
@@ -160,11 +159,11 @@ pub fn change_ignored_frames(path: &Path) -> error::Result<()> {
     } else {
         (vec![], reader)
     };
-    STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE
+    STACK_FRAME_FUNCTION_IGNORE_REGEXES
         .write()
         .unwrap()
         .extend_from_slice(&funcs);
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES
         .write()
         .unwrap()
         .extend_from_slice(&paths);

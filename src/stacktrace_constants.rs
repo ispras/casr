@@ -17,7 +17,7 @@ limitations under the License.
 extern crate lazy_static;
 use std::sync::RwLock;
 
-const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^rust_begin_unwind",
     r"^rust_fuzzer_test_input",
     r"^rust_oom",
@@ -32,7 +32,7 @@ const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^panic_abort::",
 ];
 
-const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     // Function names (exact match).
     r"^abort$",
     r"^exit$",
@@ -184,9 +184,13 @@ const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*v8::base::OS::Abort",
 ];
 
-const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[r".*/rust(|c)/"];
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[
+    r".*/rust(|c)/",
+    // AFL
+    r".*/afl-.*/.*\.rs",
+];
 
-const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     // File paths.
     r".*/usr/include/c\+\+/",
     r".*\-gnu/c\+\+/",
@@ -212,8 +216,6 @@ const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*libc\+\+/",
     // LibFuzzer
     r".*/compiler\-rt/lib/fuzzer/",
-    // AFL
-    r".*/afl-.*/.*\.rs",
     // Others (uncategorized).
     r".*\+Unknown",
     r".*<unknown module>",
@@ -234,15 +236,9 @@ const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
 
 lazy_static::lazy_static! {
     // Mutable variable for custom ignored function names
-    pub static ref STACK_FRAME_FUNCION_IGNORE_REGEXES_MUTABLE: RwLock<Vec<String>> = RwLock::new(
-        [
-            STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP,
-            STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST
-        ].concat().iter().map(|x| x.to_string()).collect());
+    pub static ref STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
+        Vec::new());
     // Mutable variable for custom ignored file paths
-    pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES_MUTABLE: RwLock<Vec<String>> = RwLock::new(
-        [
-            STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP,
-            STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST
-        ].concat().iter().map(|x| x.to_string()).collect());
+    pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
+        Vec::new());
 }

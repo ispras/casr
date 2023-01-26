@@ -45,10 +45,4 @@ impl From<goblin::error::Error> for Error {
     }
 }
 
-impl From<anyhow::Error> for Error {
-    fn from(err: anyhow::Error) -> Error {
-        Error::Casr(err.chain().rev().map(|s| s.to_string() + ". ").collect())
-    }
-}
-
 pub type Result<T> = result::Result<T, Error>;

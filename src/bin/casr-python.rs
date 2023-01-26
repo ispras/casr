@@ -10,7 +10,6 @@ use casr::util;
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use regex::Regex;
-use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -113,7 +112,7 @@ fn main() -> Result<()> {
                 .long("ignore")
                 .takes_value(true)
                 .value_name("FILE")
-                .help("File with function and file path regexs that should be ignored"),
+                .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
             Arg::new("ARGS")
@@ -131,9 +130,6 @@ fn main() -> Result<()> {
         bail!("Wrong arguments for starting program");
     };
 
-    if let Some(path) = matches.value_of("ignore") {
-        util::change_ignored_frames(Path::new(path))?;
-    }
     // Get stdin for target program.
     let stdin_file = if let Some(path) = matches.value_of("stdin") {
         let file = PathBuf::from(path);
