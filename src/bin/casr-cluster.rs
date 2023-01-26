@@ -128,7 +128,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
                 casr::python::stacktrace_from_python(&trace)
                     .with_context(|| format!("File: {}", path.display()))?
             } else {
-                Stacktrace::from_gdb(&trace.join("\n"))
+                Stacktrace::from_gdb(trace.join("\n"))
                     .with_context(|| format!("File: {}", path.display()))?
             };
 
@@ -155,7 +155,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
                             }
                         });
                         let trace = trace.join("\n");
-                        let mappings = MappedFiles::from_gdb(&trace)
+                        let mappings = MappedFiles::from_gdb(trace)
                             .with_context(|| format!("File: {}", path.display()))?;
                         rawtrace.compute_module_offsets(&mappings);
                     }
@@ -374,7 +374,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
                 entry.path().as_path(),
                 outdir
                     .as_ref()
-                    .map(|outdir| Path::new(&outdir).join(&entry.file_name())),
+                    .map(|outdir| Path::new(&outdir).join(entry.file_name())),
             )?;
             before += res.0;
             after += res.1;
@@ -406,7 +406,7 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
                 continue;
             };
             if casreps.insert(trace) {
-                fs::copy(x.path().as_path(), &Path::new(&outdir).join(&x.file_name()))?;
+                fs::copy(x.path().as_path(), Path::new(&outdir).join(x.file_name()))?;
             }
         }
     } else {
@@ -612,7 +612,7 @@ fn main() -> Result<()> {
         let jobs = if let Some(jobs) = matches.value_of("jobs") {
             jobs.parse::<usize>().unwrap()
         } else {
-            std::cmp::max(1, (num_cpus::get() / 2) as usize)
+            std::cmp::max(1, num_cpus::get() / 2)
         };
 
         let result = make_clusters(paths[0], paths.get(1).cloned(), jobs)?;
