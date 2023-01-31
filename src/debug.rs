@@ -52,8 +52,8 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
         python::stacktrace_from_python(&report.stacktrace)?
     } else {
         // Get stack trace and update it from mappings.
-        let mut gdbtrace = Stacktrace::from_gdb(&report.stacktrace.join("\n"))?;
-        if let Ok(mfiles) = MappedFiles::from_gdb(&report.proc_maps.join("\n")) {
+        let mut gdbtrace = Stacktrace::from_gdb(report.stacktrace.join("\n"))?;
+        if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
             gdbtrace.compute_module_offsets(&mfiles);
         }
         gdbtrace
