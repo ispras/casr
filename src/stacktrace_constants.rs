@@ -17,6 +17,11 @@ limitations under the License.
 extern crate lazy_static;
 use std::sync::RwLock;
 
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[
+    // TODO
+    r"^[^.]$",
+];
+
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^rust_begin_unwind",
     r"^rust_fuzzer_test_input",
@@ -182,6 +187,11 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*logging::LogMessage",
     r".*stdext::exception::what",
     r".*v8::base::OS::Abort",
+];
+
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON: &[&str] = &[
+    // TODO
+    r"^[^.]$",
 ];
 
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[

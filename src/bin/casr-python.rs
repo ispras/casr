@@ -1,10 +1,12 @@
 extern crate clap;
 
+use casr::concatall;
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::error;
 use casr::execution_class::*;
 use casr::report::CrashReport;
+use casr::stacktrace_constants::*;
 use casr::util;
 
 use anyhow::{bail, Context, Result};
@@ -122,6 +124,11 @@ fn main() -> Result<()> {
                 .help("Add \"-- <path> <arguments>\" to run"),
         )
         .get_matches();
+
+    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() =
+        concatall!(STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON);
+    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() =
+        concatall!(STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON);
 
     // Get program args.
     let argv: Vec<&str> = if let Some(args) = matches.values_of("ARGS") {
