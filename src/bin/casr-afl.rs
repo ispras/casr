@@ -192,7 +192,7 @@ fn main() -> Result<()> {
         debug!("{:?}", casr_cmd);
         let casr_output = casr_cmd
             .output()
-            .with_context(|| format!("Couldn't launch {:?}", casr_cmd))?;
+            .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
         if !casr_output.status.success() {
             let err = String::from_utf8_lossy(&casr_output.stderr);
             if err.contains("Program terminated (no crash)") {

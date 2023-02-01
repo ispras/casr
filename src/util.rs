@@ -85,7 +85,7 @@ pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) 
     let repstr = serde_json::to_string_pretty(&report).unwrap();
 
     if matches.is_present("stdout") {
-        println!("{}\n", repstr);
+        println!("{repstr}\n");
     }
 
     if matches.is_present("output") {

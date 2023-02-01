@@ -191,7 +191,7 @@ pub fn severity<'a>(
                         let mut disassembly = Vec::new();
                         insns
                             .iter()
-                            .for_each(|i| disassembly.push(format!("    {}", i)));
+                            .for_each(|i| disassembly.push(format!("    {i}")));
                         if let Some(insn) = disassembly.get(0) {
                             let new_insn = format!("==> {}", insn.trim_start());
                             let _ = std::mem::replace(&mut disassembly[0], new_insn);

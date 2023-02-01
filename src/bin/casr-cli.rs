@@ -296,7 +296,7 @@ fn build_tree_report(
             .insert_container_item("CrashState".to_string(), Placement::After, row)
             .unwrap();
         report.registers.iter().for_each(|(k, v)| {
-            tree.insert_item(format!("{}:    0x{:x}", k, v), Placement::LastChild, row);
+            tree.insert_item(format!("{k}:    0x{v:x}"), Placement::LastChild, row);
         });
 
         if !report.disassembly.is_empty() && !report.registers.is_empty() {
@@ -480,7 +480,7 @@ fn build_slider_report(
     let mut state = report
         .registers
         .iter()
-        .map(|(k, v)| format!("{}:    0x{:x}\n", k, v))
+        .map(|(k, v)| format!("{k}:    0x{v:x}\n"))
         .collect::<String>();
 
     if !report.disassembly.is_empty() {

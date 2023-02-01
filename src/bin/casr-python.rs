@@ -33,8 +33,7 @@ fn python_exception(exception_line: &str) -> error::Result<ExecutionClass> {
         )))
     } else {
         Err(error::Error::Casr(format!(
-            "Can't parse exception line: {}",
-            exception_line
+            "Can't parse exception line: {exception_line}"
         )))
     }
 }
@@ -62,7 +61,7 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()
-        .with_context(|| format!("Couldn't launch {:?}", python_cmd))?;
+        .with_context(|| format!("Couldn't launch {python_cmd:?}"))?;
 
     if output.status.success() {
         Ok(())
