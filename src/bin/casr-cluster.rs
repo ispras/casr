@@ -8,7 +8,7 @@ extern crate regex;
 extern crate serde_json;
 
 use anyhow::{bail, Context, Result};
-use casr::concatall;
+use casr::concat_slices;
 use casr::stacktrace_constants::*;
 use casr::util;
 use clap::{App, Arg};
@@ -590,11 +590,11 @@ fn main() -> Result<()> {
                 }),
         )
         .get_matches();
-    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concatall!(
+    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concat_slices!(
         STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
         STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
     );
-    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concatall!(
+    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concat_slices!(
         STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
         STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
     );

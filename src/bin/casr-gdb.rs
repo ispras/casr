@@ -5,7 +5,7 @@ extern crate gdb_command;
 
 use casr::analysis;
 use casr::analysis::{CrashContext, MachineInfo};
-use casr::concatall;
+use casr::concat_slices;
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::report::CrashReport;
@@ -80,11 +80,11 @@ fn main() -> Result<()> {
     } else {
         bail!("Wrong arguments for starting program");
     };
-    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concatall!(
+    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concat_slices!(
         STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
         STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
     );
-    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concatall!(
+    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concat_slices!(
         STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
         STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
     );

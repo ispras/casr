@@ -1,6 +1,6 @@
 extern crate clap;
 
-use casr::concatall;
+use casr::concat_slices;
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::error;
@@ -126,9 +126,9 @@ fn main() -> Result<()> {
         .get_matches();
 
     *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() =
-        concatall!(STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON);
+        concat_slices!(STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON);
     *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() =
-        concatall!(STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON);
+        concat_slices!(STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON);
 
     // Get program args.
     let argv: Vec<&str> = if let Some(args) = matches.values_of("ARGS") {

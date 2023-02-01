@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 
 /// This macro merges all [&str] slices into single Vec<String>.
 #[macro_export]
-macro_rules! concatall {
+macro_rules! concat_slices {
     ( $( $x:expr ),* ) => {
         {
             [$($x,)*].concat().iter().map(|x| x.to_string()).collect::<Vec<String>>()
