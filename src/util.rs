@@ -11,6 +11,16 @@ use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
+/// This macro merges all [&str] slices into single Vec<String>.
+#[macro_export]
+macro_rules! concatall {
+    ( $( $x:expr ),* ) => {
+        {
+            [$($x,)*].concat().iter().map(|x| x.to_string()).collect::<Vec<String>>()
+        }
+    };
+}
+
 /// Extract C++ exception info or rust panic message from stderr
 ///
 /// # Arguments
