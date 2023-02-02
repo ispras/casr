@@ -2983,6 +2983,8 @@ fn test_casr_ignore_frames() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_afl() {
+    use std::collections::HashMap;
+
     let paths = [
         abs_path("tests/casr_tests/bin/afl-out-xlnt"),
         abs_path("tests/tmp_tests_casr/casr_afl_out"),
@@ -3032,6 +3034,30 @@ fn test_casr_afl() {
 
     assert_eq!(clusters_cnt, 20, "Invalid number of clusters");
 
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                    if e.extension().is_some() && e.extension().unwrap() == "gdb" {
+                        e = e.with_extension("");
+                    }
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
     let _ = fs::remove_file("/tmp/load_sydr");
     let _ = fs::remove_file("/tmp/load_afl");
 }

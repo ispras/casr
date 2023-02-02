@@ -276,7 +276,7 @@ fn copy_crashes(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<(
     for entry in fs::read_dir(dir)? {
         let mut e = entry?.path();
         let fname = e.file_name().unwrap().to_str().unwrap();
-        if fname.starts_with("cl") && e.is_dir() && !fname.starts_with("clerr") {
+        if fname.starts_with("cl") && e.is_dir() {
             copy_crashes(&e, crashes)?;
         } else if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
             e = e.with_extension("");
