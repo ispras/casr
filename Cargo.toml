@@ -36,7 +36,6 @@ num_cpus = "~1.13"
 linux-personality = "~1.0"
 thiserror = "~1.0"
 colored = "~2.0"
-fern = { version = "~0.6", features = ["colored"] }
 
 [profile.release]
 opt-level = 3
