@@ -9,6 +9,7 @@ use anyhow::{bail, Context, Result};
 use clap::{App, Arg};
 use simplelog::*;
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -98,7 +99,7 @@ fn main() -> Result<()> {
     }
 
     // Get all crashes.
-    let mut crashes: Vec<AflCrashInfo> = Vec::new();
+    let mut crashes: HashMap<String, AflCrashInfo> = HashMap::new();
     for node_dir in fs::read_dir(matches.value_of("input").unwrap())? {
         let path = node_dir?.path();
         if !path.is_dir() {
@@ -147,22 +148,23 @@ fn main() -> Result<()> {
         // Push crash paths.
         for crash in fs::read_dir(path.join("crashes"))? {
             let crash_path = crash?.path();
-            if crash_path
+            let fname = crash_path
                 .file_name()
                 .unwrap()
                 .to_str()
                 .unwrap()
-                .starts_with("id:")
-            {
+                .to_string();
+
+            if fname.starts_with("id:") {
                 crash_info.path = crash_path.to_path_buf();
-                crashes.push(crash_info.clone());
+                crashes.insert(fname, crash_info.clone());
             }
         }
     }
 
     // Generate CASR reports.
     info!("Generating CASR reports...");
-    for crash in crashes {
+    for crash in crashes.values() {
         let mut args: Vec<String> = vec!["-o".to_string()];
         let report_path = output_dir.join(crash.path.file_name().unwrap());
         if crash.is_asan {
@@ -255,6 +257,35 @@ fn main() -> Result<()> {
                 if ext == "casrep" {
                     let _ = fs::remove_file(casrep_path);
                 }
+            }
+        }
+    }
+
+    // Copy crashes next to reports
+    copy_crashes(output_dir, &crashes)?;
+
+    Ok(())
+}
+
+/// Copy recursively crash inputs next to casr reports
+///
+/// # Arguments
+///
+/// `dir` - directory with casr reports
+fn copy_crashes(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let mut e = entry?.path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() && !fname.starts_with("clerr") {
+            copy_crashes(&e, crashes)?;
+        } else if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+            e = e.with_extension("");
+            if e.extension().is_some() && e.extension().unwrap() == "gdb" {
+                e = e.with_extension("");
+            }
+            let fname = e.file_name().unwrap().to_str().unwrap();
+            if let Some(crash) = crashes.get(fname) {
+                let _ = fs::copy(&crash.path, e);
             }
         }
     }
