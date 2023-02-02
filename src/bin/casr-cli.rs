@@ -800,7 +800,7 @@ fn print_summary(dir: PathBuf) {
         }
         let mut classes = String::new();
         cluster_classes.iter().for_each(|(class, number)| {
-            classes.push_str(format!(" {}: {}", class, number).as_str());
+            classes.push_str(format!(" {class}: {number}").as_str());
             casr_classes.insert(
                 class.clone(),
                 casr_classes.get(class).unwrap_or(&0) + number,
@@ -811,7 +811,7 @@ fn print_summary(dir: PathBuf) {
     let mut classes = String::new();
     casr_classes
         .iter()
-        .for_each(|(class, number)| classes.push_str(format!(" {}: {}", class, number).as_str()));
+        .for_each(|(class, number)| classes.push_str(format!(" {class}: {number}").as_str()));
     if classes.is_empty() {
         info!("{} -> {}", "SUMMARY".magenta(), "No crashes found".red());
     } else {
