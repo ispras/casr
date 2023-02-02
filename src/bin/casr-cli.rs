@@ -7,10 +7,15 @@ extern crate regex;
 extern crate serde_json;
 
 use clap::{App, Arg};
+use colored::Colorize;
 use cursive::event::EventTrigger;
 use cursive::View;
+use serde_json::Value;
+use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
@@ -36,7 +41,7 @@ fn main() -> Result<()> {
     let matches = App::new("casr-cli")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .version("2.3.0")
-        .about("App provides text-based user interface to view CASR reports")
+        .about("App provides text-based user interface to view CASR reports and print joint statistics for all reports.")
         .term_width(90)
         .arg(
             Arg::new("view")
@@ -49,15 +54,21 @@ fn main() -> Result<()> {
                 .possible_values(["tree", "slider", "stdout"]),
         )
         .arg(
-            Arg::new("report")
+            Arg::new("target")
                 .takes_value(true)
                 .required(true)
-                .value_name("REPORT")
-                .help("CASR report file to view"),
+                .value_name("REPORT|DIR")
+                .help("CASR report file to view or directory with reports"),
         )
         .get_matches();
 
-    let report_path = PathBuf::from(matches.value_of("report").unwrap());
+    let report_path = PathBuf::from(matches.value_of("target").unwrap());
+
+    if report_path.is_dir() {
+        print_summary(report_path);
+        return Ok(());
+    }
+
     let mut file = File::open(&report_path)
         .with_context(|| format!("Couldn't open report file: {}", &report_path.display()))?;
 
@@ -628,4 +639,228 @@ fn change_text_view(layout1: &mut LinearLayout, act: Action) -> Option<EventResu
         Action::Arrow(_) => Some(EventResult::with_cb(|_s| {})),
         Action::Mouse(_) => None,
     }
+}
+
+/// Print common statistic all over reports in directory
+///
+/// # Arguments
+///
+/// * 'dir' - directory with reports
+///
+fn print_summary(dir: PathBuf) {
+    // Hash each class in whole casr directory
+    let mut casr_classes: HashMap<String, i32> = HashMap::new();
+
+    let mut corrupted_reports = Vec::new();
+    let mut clusters: Vec<(PathBuf, i32)> = Vec::new();
+    for cl_path in fs::read_dir(&dir).unwrap().flatten() {
+        let cluster = cl_path.path();
+        let filename = cluster.file_name().unwrap().to_str().unwrap();
+
+        // check dir name
+        if !filename.starts_with("cl") || !cluster.is_dir() || filename.starts_with("clerr") {
+            continue;
+        } else {
+            clusters.push((cluster.to_path_buf(), filename[2..].parse::<i32>().unwrap()));
+        }
+    }
+    clusters.sort_by(|a, b| a.1.cmp(&b.1));
+    if clusters.is_empty()
+        && fs::read_dir(&dir)
+            .unwrap()
+            .filter(|res| res.is_ok())
+            .map(|res| res.unwrap().path())
+            .any(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
+    {
+        clusters.push((dir, 0));
+    }
+
+    for (clpath, _) in clusters {
+        let cluster = clpath.as_path();
+        let filename = cluster.file_name().unwrap().to_str().unwrap();
+
+        println!("==> <{}>", filename.magenta());
+
+        // Hash each crash in cluster
+        let mut cluster_hash: HashMap<String, (Vec<String>, i32)> = HashMap::new();
+        // Hash each class in cluster
+        let mut cluster_classes: HashMap<String, i32> = HashMap::new();
+        // Hash files
+        let mut filestems: HashSet<PathBuf> = HashSet::new();
+        for report_path in fs::read_dir(cluster).unwrap().flatten() {
+            let report = report_path.path();
+            if report.is_file()
+                && report.extension().is_some()
+                && report.extension().unwrap() == "casrep"
+            {
+                // report == .*/crash.gdb.casrep
+                let mut input = report.canonicalize().unwrap().with_extension("");
+                // input == .*/crash.gdb
+                if input.extension().is_some() && input.extension().unwrap() == "gdb" {
+                    input.set_extension("");
+                }
+                // input == .*/crash
+                if !filestems.insert(input.clone()) {
+                    continue;
+                }
+
+                let mut result: Vec<String> = Vec::new();
+                let crash = if input.exists() {
+                    input.clone()
+                } else {
+                    report
+                }
+                .to_str()
+                .unwrap()
+                .to_string();
+
+                let mut report = input.to_str().unwrap().to_string();
+                report.push_str(".casrep");
+
+                let (san_desc, san_line) = if let Some((report_sum, san_desc, san_line)) =
+                    process_report(&report, "casrep")
+                {
+                    result.push(report_sum);
+                    (san_desc, san_line)
+                } else {
+                    (String::new(), String::new())
+                };
+
+                let report = report.replace(".casrep", ".gdb.casrep");
+                let (casr_gdb_desc, casr_gdb_line) =
+                    if let Some((report_sum, casr_gdb_desc, casr_gdb_line)) =
+                        process_report(&report, "gdb.casrep")
+                    {
+                        result.push(report_sum);
+                        (casr_gdb_desc, casr_gdb_line)
+                    } else {
+                        (String::new(), String::new())
+                    };
+
+                if result.is_empty() {
+                    corrupted_reports.push(format!("Cannot read casrep: {report}"));
+                    continue;
+                } else {
+                    result.push(crash);
+                }
+
+                let mut hash = String::new();
+                hash.push_str(san_desc.as_str());
+                hash.push_str(san_line.as_str());
+                hash.push_str(casr_gdb_desc.as_str());
+                hash.push_str(casr_gdb_line.as_str());
+
+                if !san_desc.is_empty() {
+                    let san_cnt = cluster_classes.get(&san_desc).unwrap_or(&0) + 1;
+                    cluster_classes.insert(san_desc, san_cnt);
+                }
+                if !casr_gdb_desc.is_empty() {
+                    let casr_gdb_cnt = cluster_classes.get(&casr_gdb_desc).unwrap_or(&0) + 1;
+                    cluster_classes.insert(casr_gdb_desc, casr_gdb_cnt);
+                }
+
+                let value = if let Some(res) = cluster_hash.get(&hash) {
+                    (res.0.clone(), res.1 + 1)
+                } else {
+                    (result, 1)
+                };
+                cluster_hash.insert(hash, value);
+            }
+        }
+        for info in cluster_hash.values() {
+            // Crash: /path/to/input or /path/to/report.casrep
+            println!("{}: {}", "Crash".green(), info.0.last().unwrap());
+            // casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
+            println!("  {}", info.0[0]);
+            if info.0.len() == 3 {
+                // gdb.casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
+                println!("  {}", info.0[1]);
+            }
+            // Number of crashes with the same hash
+            println!("  Similar crashes: {}", info.1);
+        }
+        let mut classes = String::new();
+        cluster_classes.iter().for_each(|(class, number)| {
+            classes.push_str(format!(" {class}: {number}").as_str());
+            casr_classes.insert(
+                class.clone(),
+                casr_classes.get(class).unwrap_or(&0) + number,
+            );
+        });
+        println!("Cluster summary ->{classes}");
+    }
+    let mut classes = String::new();
+    casr_classes
+        .iter()
+        .for_each(|(class, number)| classes.push_str(format!(" {class}: {number}").as_str()));
+    if classes.is_empty() {
+        println!("{} -> {}", "SUMMARY".magenta(), "No crashes found".red());
+    } else {
+        println!("{} ->{}", "SUMMARY".magenta(), classes);
+    }
+
+    if !corrupted_reports.is_empty() {
+        println!("{} reports were found:", "Corrupted".red());
+        corrupted_reports.iter().for_each(|x| println!("{x}"));
+    }
+}
+
+/// Function processes report and returns summary
+///
+/// # Arguments
+///
+/// * 'report' - path to report
+///
+/// * 'extension' - casrep extension
+///
+/// # Return value
+///
+/// 1 String - summary of one report in cluster
+/// 2 String - crash description
+/// 3 String - crashline (path:line:column)
+fn process_report(report: &str, extension: &str) -> Option<(String, String, String)> {
+    let Ok(file) = fs::File::open(report) else {
+        return None;
+    };
+    let Ok(jreport): Result<Value, _> = serde_json::from_reader(BufReader::new(file)) else {
+        return None;
+    };
+    let desc = jreport["CrashSeverity"]["ShortDescription"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let severity = jreport["CrashSeverity"]["Type"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let crashline = if let Some(crashline) = jreport.get("CrashLine") {
+        let crashline_str = crashline.as_str().unwrap();
+        if !crashline_str.trim().is_empty() {
+            crashline_str.to_string()
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
+    Some((
+        format!(
+            "{}: {}: {}: {}",
+            extension,
+            match severity.as_str() {
+                "EXPLOITABLE" => "EXPLOITABLE".red(),
+                "PROBABLY_EXPLOITABLE" => "PROBABLY_EXPLOITABLE".yellow(),
+                "NOT_EXPLOITABLE" => "NOT_EXPLOITABLE".white(),
+                &_ => "UNDEFINED".white(),
+            },
+            desc,
+            if crashline.is_empty() {
+                report
+            } else {
+                &crashline
+            }
+        ),
+        desc,
+        crashline,
+    ))
 }
