@@ -10,8 +10,6 @@ use clap::{App, Arg};
 use colored::Colorize;
 use cursive::event::EventTrigger;
 use cursive::View;
-use fern::colors::ColoredLevelConfig;
-use log::{info, warn};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -43,7 +41,7 @@ fn main() -> Result<()> {
     let matches = App::new("casr-cli")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .version("2.3.0")
-        .about("App provides text-based user interface to view CASR reports and print common statistic all over reports")
+        .about("App provides text-based user interface to view CASR reports and print joint statistics for all reports.")
         .term_width(90)
         .arg(
             Arg::new("view")
@@ -67,24 +65,6 @@ fn main() -> Result<()> {
     let report_path = PathBuf::from(matches.value_of("target").unwrap());
 
     if report_path.is_dir() {
-        // Set log color scheme.
-        let colors = ColoredLevelConfig::new().info(fern::colors::Color::Blue);
-
-        let stderr_dispatcher = fern::Dispatch::new()
-            .format(move |out, message, record| {
-                out.finish(format_args!(
-                    "{} [{}] {}",
-                    chrono::Local::now().format("[%Y-%m-%d %H:%M:%S]"),
-                    colors.color(record.level()),
-                    message
-                ))
-            })
-            .chain(std::io::stderr());
-        fern::Dispatch::new()
-            .chain(stderr_dispatcher)
-            .apply()
-            .unwrap();
-
         print_summary(report_path);
         return Ok(());
     }
@@ -671,6 +651,7 @@ fn print_summary(dir: PathBuf) {
     // Hash each class in whole casr directory
     let mut casr_classes: HashMap<String, i32> = HashMap::new();
 
+    let mut corrupted_reports = Vec::new();
     let mut clusters: Vec<(PathBuf, i32)> = Vec::new();
     for cl_path in fs::read_dir(&dir).unwrap().flatten() {
         let cluster = cl_path.path();
@@ -698,7 +679,7 @@ fn print_summary(dir: PathBuf) {
         let cluster = clpath.as_path();
         let filename = cluster.file_name().unwrap().to_str().unwrap();
 
-        info!("==> <{}>", filename.magenta());
+        println!("==> <{}>", filename.magenta());
 
         // Hash each crash in cluster
         let mut cluster_hash: HashMap<String, (Vec<String>, i32)> = HashMap::new();
@@ -757,7 +738,7 @@ fn print_summary(dir: PathBuf) {
                     };
 
                 if result.is_empty() {
-                    warn!("Skipping {}. Cannot read casrep.", crash);
+                    corrupted_reports.push(format!("Cannot read casrep: {report}"));
                     continue;
                 } else {
                     result.push(crash);
@@ -788,15 +769,15 @@ fn print_summary(dir: PathBuf) {
         }
         for info in cluster_hash.values() {
             // Crash: /path/to/input or /path/to/report.casrep
-            info!("{}: {}", "Crash".green(), info.0.last().unwrap());
+            println!("{}: {}", "Crash".green(), info.0.last().unwrap());
             // casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
-            info!("  {}", info.0[0]);
+            println!("  {}", info.0[0]);
             if info.0.len() == 3 {
                 // gdb.casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
-                info!("  {}", info.0[1]);
+                println!("  {}", info.0[1]);
             }
             // Number of crashes with the same hash
-            info!("  Similar crashes: {}", info.1);
+            println!("  Similar crashes: {}", info.1);
         }
         let mut classes = String::new();
         cluster_classes.iter().for_each(|(class, number)| {
@@ -806,16 +787,21 @@ fn print_summary(dir: PathBuf) {
                 casr_classes.get(class).unwrap_or(&0) + number,
             );
         });
-        info!("Cluster summary ->{}", classes);
+        println!("Cluster summary ->{classes}");
     }
     let mut classes = String::new();
     casr_classes
         .iter()
         .for_each(|(class, number)| classes.push_str(format!(" {class}: {number}").as_str()));
     if classes.is_empty() {
-        info!("{} -> {}", "SUMMARY".magenta(), "No crashes found".red());
+        println!("{} -> {}", "SUMMARY".magenta(), "No crashes found".red());
     } else {
-        info!("{} ->{}", "SUMMARY".magenta(), classes);
+        println!("{} ->{}", "SUMMARY".magenta(), classes);
+    }
+
+    if !corrupted_reports.is_empty() {
+        println!("{} reports were found:", "Corrupted".red());
+        corrupted_reports.iter().for_each(|x| println!("{x}"));
     }
 }
 

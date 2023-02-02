@@ -225,8 +225,8 @@ Frames that match these regular expressions will be not considered during analys
 
 ## casr-cli
 
-App provides text-based user interface to view CASR reports and print common statistic all
-over reports
+App provides text-based user interface to view CASR reports and print joint statistics for
+all reports.
 
     USAGE:
         casr-cli [OPTIONS] <REPORT|DIR>
