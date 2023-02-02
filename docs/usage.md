@@ -256,6 +256,8 @@ Triage crashes found by AFL++
     OPTIONS:
         -h, --help                     Print help information
         -i, --input <INPUT_DIR>        AFL++ work directory
+        -j, --jobs <jobs>              Number of parallel jobs for generating CASR reports
+                                       [default: half of cpu cores]
         -l, --log-level <log-level>    Logging level [default: info] [possible values: info,
                                        debug]
             --no-cluster               Do not cluster CASR reports
