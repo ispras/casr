@@ -34,7 +34,7 @@ impl fmt::Display for CrashLine {
                 }
             }
             CrashLine::Module { file, offset } => {
-                write!(f, "{}+{:#x}", file, offset)
+                write!(f, "{file}+{offset:#x}")
             }
         }
     }
@@ -62,14 +62,14 @@ pub fn crash_line(report: &CrashReport) -> error::Result<CrashLine> {
     // Compile function regexp.
     let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES
         .iter()
-        .map(|s| format!("({})|", s))
+        .map(|s| format!("({s})|"))
         .collect::<String>();
     let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
     // Compile file regexp.
     let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
         .iter()
-        .map(|s| format!("({})|", s))
+        .map(|s| format!("({s})|"))
         .collect::<String>();
     let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 

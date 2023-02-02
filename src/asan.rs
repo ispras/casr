@@ -22,8 +22,7 @@ pub fn stacktrace_from_asan(entries: &[String]) -> gdb_command::error::Result<St
         let caps = re.captures(entry.as_ref());
         if caps.is_none() {
             return Err(gdb_command::error::Error::StacktraceParse(format!(
-                "Couldn't parse frame and address in stack trace entry: {}",
-                entry
+                "Couldn't parse frame and address in stack trace entry: {entry}"
             )));
         }
         let caps = caps.unwrap();
@@ -33,8 +32,7 @@ pub fn stacktrace_from_asan(entries: &[String]) -> gdb_command::error::Result<St
         let addr = u64::from_str_radix(num, 16);
         if addr.is_err() {
             return Err(gdb_command::error::Error::StacktraceParse(format!(
-                "Couldn't parse address: {}",
-                num
+                "Couldn't parse address: {num}"
             )));
         }
         stentry.address = addr.unwrap();
@@ -66,8 +64,7 @@ pub fn stacktrace_from_asan(entries: &[String]) -> gdb_command::error::Result<St
             let off = u64::from_str_radix(num, 16);
             if off.is_err() {
                 return Err(gdb_command::error::Error::StacktraceParse(format!(
-                    "Couldn't parse module offset: {}",
-                    num
+                    "Couldn't parse module offset: {num}"
                 )));
             }
             stentry.offset = off.unwrap();
@@ -81,8 +78,7 @@ pub fn stacktrace_from_asan(entries: &[String]) -> gdb_command::error::Result<St
             location = location[3..].trim();
             if location.is_empty() {
                 return Err(gdb_command::error::Error::StacktraceParse(format!(
-                    "Couldn't parse function name: {}",
-                    entry
+                    "Couldn't parse function name: {entry}"
                 )));
             }
             let i = if let Some(p) = location.rfind(')') {
@@ -115,8 +111,7 @@ pub fn stacktrace_from_asan(entries: &[String]) -> gdb_command::error::Result<St
             let source: Vec<&str> = location.rsplitn(3, ':').collect();
             if source.iter().any(|x| x.is_empty()) {
                 return Err(gdb_command::error::Error::StacktraceParse(format!(
-                    "Couldn't parse source file path, line, or column: {}",
-                    location
+                    "Couldn't parse source file path, line, or column: {location}"
                 )));
             }
             // Get source file.
@@ -127,8 +122,7 @@ pub fn stacktrace_from_asan(entries: &[String]) -> gdb_command::error::Result<St
                 let line = num.parse::<u64>();
                 if line.is_err() {
                     return Err(gdb_command::error::Error::StacktraceParse(format!(
-                        "Couldn't parse source line: {}",
-                        num
+                        "Couldn't parse source line: {num}"
                     )));
                 }
                 stentry.debug.line = line.unwrap();
@@ -139,8 +133,7 @@ pub fn stacktrace_from_asan(entries: &[String]) -> gdb_command::error::Result<St
                 let column = num.parse::<u64>();
                 if column.is_err() {
                     return Err(gdb_command::error::Error::StacktraceParse(format!(
-                        "Couldn't parse source column: {}",
-                        num
+                        "Couldn't parse source column: {num}"
                     )));
                 }
                 stentry.debug.column = column.unwrap();

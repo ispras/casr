@@ -22,7 +22,7 @@ pub fn stacktrace_from_python(entries: &[String]) -> error::Result<Stacktrace> {
             if let Some(rep) = re.captures(entry) {
                 let rep = rep.get(1).unwrap().as_str().parse::<u64>();
                 if rep.is_err() {
-                    return Err(error::Error::Casr(format!("Couldn't parse num: {}", entry)));
+                    return Err(error::Error::Casr(format!("Couldn't parse num: {entry}")));
                 }
                 let rep = rep.unwrap();
                 let last = stacktrace.last().unwrap().clone();
@@ -33,8 +33,7 @@ pub fn stacktrace_from_python(entries: &[String]) -> error::Result<Stacktrace> {
                 continue;
             } else {
                 return Err(error::Error::Casr(format!(
-                    "Couldn't parse stacktrace line: {}",
-                    entry
+                    "Couldn't parse stacktrace line: {entry}"
                 )));
             }
         }
@@ -46,16 +45,14 @@ pub fn stacktrace_from_python(entries: &[String]) -> error::Result<Stacktrace> {
             let line = cap.get(2).unwrap().as_str().parse::<u64>();
             if line.is_err() {
                 return Err(error::Error::Casr(format!(
-                    "Couldn't parse stacktrace line num: {}",
-                    entry
+                    "Couldn't parse stacktrace line num: {entry}"
                 )));
             }
             stentry.debug.line = line.unwrap();
             stentry.function = cap.get(3).unwrap().as_str().to_string();
         } else {
             return Err(error::Error::Casr(format!(
-                "Couldn't parse stacktrace line: {}",
-                entry
+                "Couldn't parse stacktrace line: {entry}"
             )));
         }
 

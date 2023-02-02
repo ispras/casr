@@ -2582,8 +2582,7 @@ fn test_casr_san() {
                 .to_string();
             assert_eq!(
                 first_addr, second_addr,
-                "Addresses must be equal! {} != {}",
-                first_addr, second_addr
+                "Addresses must be equal! {first_addr} != {second_addr}"
             );
             return;
         }
@@ -3545,7 +3544,7 @@ fn test_casr_cluster_d_python() {
 
     let counter = dirvec.count();
     if counter != 7 {
-        panic!("Bad deduplication, casreps: {}", counter);
+        panic!("Bad deduplication, casreps: {counter}");
     }
 
     let _ = std::fs::remove_dir_all(&paths[1]);

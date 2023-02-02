@@ -225,9 +225,9 @@ fn main() -> Result<()> {
 
     file_name_to_save.push_str(&format!("_{}", report.date));
     let mut core_path = PathBuf::new();
-    core_path.push(format!("/var/crash/{}.core", file_name_to_save));
+    core_path.push(format!("/var/crash/{file_name_to_save}.core"));
     let mut report_path = PathBuf::new();
-    report_path.push(format!("/var/crash/{}.casrep", file_name_to_save));
+    report_path.push(format!("/var/crash/{file_name_to_save}.casrep"));
 
     report
         .executable_path

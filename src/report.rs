@@ -432,7 +432,7 @@ impl<'a> fmt::Display for CrashReport<'a> {
         if !self.registers.is_empty() {
             report += "\n===CrashState===\n";
             for (reg, value) in &self.registers {
-                report += &format!("{}:    0x{:x}\n", reg, value);
+                report += &format!("{reg}:    0x{value:x}\n");
             }
 
             report += "\n";
@@ -473,7 +473,7 @@ impl<'a> fmt::Display for CrashReport<'a> {
         if !self.python_report.is_empty() {
             report += "\n===PythonReport===\n";
             for e in self.python_report.iter() {
-                report += &format!("{}\n", e);
+                report += &format!("{e}\n");
             }
         }
 

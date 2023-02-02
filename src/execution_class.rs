@@ -120,8 +120,7 @@ impl<'a> ExecutionClass<'a> {
             }
         }
         Err(error::Error::Casr(format!(
-            "Couldn't find class {} by name.",
-            short_desc
+            "Couldn't find class {short_desc} by name."
         )))
     }
 
@@ -151,8 +150,8 @@ impl<'a> ExecutionClass<'a> {
             "deadly" => ExecutionClass::find("AbortSignal"), // hack: regexp matches word without spaces
             _ => {
                 let pattern = match rw.unwrap_or("UNDEF") {
-                    "READ" => format!("{}(read)", short_desc),
-                    "WRITE" => format!("{}(write)", short_desc),
+                    "READ" => format!("{short_desc}(read)"),
+                    "WRITE" => format!("{short_desc}(write)"),
                     _ => short_desc.to_string(),
                 };
                 if let Ok(class) = ExecutionClass::find(&pattern) {

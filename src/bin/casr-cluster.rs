@@ -164,14 +164,14 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
             // Compile function regexp.
             let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES
                 .iter()
-                .map(|s| format!("({})|", s))
+                .map(|s| format!("({s})|"))
                 .collect::<String>();
             let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
             // Compile file regexp.
             let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
                 .iter()
-                .map(|s| format!("({})|", s))
+                .map(|s| format!("({s})|"))
                 .collect::<String>();
             let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
@@ -602,7 +602,7 @@ fn main() -> Result<()> {
         };
 
         let result = make_clusters(paths[0], paths.get(1).cloned(), jobs)?;
-        println!("Number of clusters: {}", result);
+        println!("Number of clusters: {result}");
     } else if matches.is_present("deduplication") {
         let paths: Vec<&Path> = matches
             .values_of("deduplication")
@@ -610,8 +610,8 @@ fn main() -> Result<()> {
             .map(Path::new)
             .collect();
         let (before, after) = dedup(paths[0], paths.get(1).map(|x| x.to_path_buf()))?;
-        println!("Number of reports before deduplication: {}", before);
-        println!("Number of reports after deduplication: {}", after);
+        println!("Number of reports before deduplication: {before}");
+        println!("Number of reports after deduplication: {after}");
     } else if matches.is_present("merge") {
         let paths: Vec<&Path> = matches.values_of("merge").unwrap().map(Path::new).collect();
         let new = merge_dirs(paths[0], paths[1])?;

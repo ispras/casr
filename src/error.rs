@@ -20,10 +20,10 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::IO(ref err) => write!(f, "{}", err),
-            Error::GdbCommand(ref err) => write!(f, "{}", err),
-            Error::Casr(ref msg) => write!(f, "Casr: {}", msg),
-            Error::Goblin(ref msg) => write!(f, "Goblin: {}", msg),
+            Error::IO(ref err) => write!(f, "{err}"),
+            Error::GdbCommand(ref err) => write!(f, "{err}"),
+            Error::Casr(ref msg) => write!(f, "Casr: {msg}"),
+            Error::Goblin(ref msg) => write!(f, "Goblin: {msg}"),
         }
     }
 }
