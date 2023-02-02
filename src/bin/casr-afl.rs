@@ -293,6 +293,18 @@ fn main() -> Result<()> {
     // Copy crashes next to reports
     copy_crashes(output_dir, &crashes)?;
 
+    // print summary
+    let status = Command::new("casr-cli")
+        .arg(matches.value_of("output").unwrap())
+        .stderr(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .status()
+        .with_context(|| "Couldn't launch casr-cli".to_string())?;
+
+    if !status.success() {
+        error!("casr-cli exited with status {status}");
+    }
+
     Ok(())
 }
 
