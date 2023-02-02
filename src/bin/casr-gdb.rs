@@ -5,9 +5,11 @@ extern crate gdb_command;
 
 use casr::analysis;
 use casr::analysis::{CrashContext, MachineInfo};
+use casr::concat_slices;
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::report::CrashReport;
+use casr::stacktrace_constants::*;
 use casr::util;
 
 use anyhow::{bail, Context, Result};
@@ -21,7 +23,7 @@ use goblin::elf::{header, Elf};
 use regex::Regex;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn main() -> Result<()> {
     let matches = App::new("casr-gdb")
@@ -57,6 +59,13 @@ fn main() -> Result<()> {
                 .help("Stdin file for program"),
         )
         .arg(
+            Arg::new("ignore")
+                .long("ignore")
+                .takes_value(true)
+                .value_name("FILE")
+                .help("File with regular expressions for functions and file paths that should be ignored"),
+        )
+        .arg(
             Arg::new("ARGS")
                 .multiple_values(true)
                 .takes_value(true)
@@ -71,7 +80,18 @@ fn main() -> Result<()> {
     } else {
         bail!("Wrong arguments for starting program");
     };
+    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concat_slices!(
+        STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
+        STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
+    );
+    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concat_slices!(
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
+    );
 
+    if let Some(path) = matches.value_of("ignore") {
+        util::add_custom_ignored_frames(Path::new(path))?;
+    }
     // Get stdin for target program.
     let stdin_file = if let Some(path) = matches.value_of("stdin") {
         let file = PathBuf::from(path);

@@ -14,8 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 //! Module contains constants for parsing stack traces.
+extern crate lazy_static;
+use std::sync::RwLock;
 
-pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[
+    // TODO
+    r"^[^.]$",
+];
+
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
+    r"^rust_begin_unwind",
+    r"^rust_fuzzer_test_input",
+    r"^rust_oom",
+    r"^rust_panic",
+    r"^std::io::Write::write_fmt",
+    r"^std::panic",
+    r"^std::process::abort",
+    r"^__rust_start_panic",
+    r"^core::fmt::write",
+    r"^core::panicking",
+    r"^core::result",
+    r"^panic_abort::",
+];
+
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     // Function names (exact match).
     r"^abort$",
     r"^exit$",
@@ -98,9 +120,6 @@ pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r"^calloc",
     r"^check_memory_region",
     r"^common_exit",
-    r"^core::fmt::write",
-    r"^core::panicking",
-    r"^core::result",
     r"^delete",
     r"^demangling_terminate_handler",
     r"^dump_backtrace",
@@ -108,11 +127,12 @@ pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r"^exit_or_terminate_process",
     r"^fpehandler\(",
     r"^free",
-    r"^fuzzer::",
     r"^g_log",
     r"^generic_cpp_",
     r"^gsignal",
     r"^kasan_",
+    // LibFuzzer
+    r"^fuzzer::",
     r"^libfuzzer_sys::initialize",
     //r"^main",
     r"^malloc",
@@ -120,22 +140,13 @@ pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r"^new",
     r"^object_err",
     r"^operator",
-    r"^panic_abort::",
     r"^print_trailer",
     r"^realloc",
-    r"^rust_begin_unwind",
-    r"^rust_fuzzer_test_input",
-    r"^rust_oom",
-    r"^rust_panic",
     r"^scanf",
     r"^show_stack",
     r"^std::__terminate",
-    r"^std::io::Write::write_fmt",
-    r"^std::panic",
-    r"^std::process::abort",
     r"^std::sys::unix::abort",
     r"^std::sys_common::backtrace",
-    r"^__rust_start_panic",
     r"^__scrt_common_main_seh",
     // Functions names (contains).
     r".*ASAN_OnSIGSEGV",
@@ -178,14 +189,24 @@ pub const STACK_FRAME_FUNCION_IGNORE_REGEXES: &[&str] = &[
     r".*v8::base::OS::Abort",
 ];
 
-pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON: &[&str] = &[
+    // TODO
+    r"^[^.]$",
+];
+
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[
+    r".*/rust(|c)/",
+    // AFL
+    r".*/afl-.*/.*\.rs",
+];
+
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     // File paths.
     r".*/usr/include/c\+\+/",
     r".*\-gnu/c\+\+/",
     r".*\-gnu/bits/",
     r".*/clang/",
     r".*base/callback",
-    r".*/rust(|c)/",
     r".*/AOSP\-toolchain/",
     r".*/bindings/ToV8\.h",
     r".*/crosstool/",
@@ -195,7 +216,6 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*/jemalloc/",
     r".*/libc\+\+",
     r".*/libc/",
-    r".*/compiler\-rt/lib/fuzzer/",
     r".*/llvm\-build/",
     r".*/minkernel/crts/",
     r".*/sanitizer_common/",
@@ -204,7 +224,8 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*/vctools/crt/",
     r".*/win_toolchain/",
     r".*libc\+\+/",
-    r".*/afl-.*/.*\.rs",
+    // LibFuzzer
+    r".*/compiler\-rt/lib/fuzzer/",
     // Others (uncategorized).
     r".*\+Unknown",
     r".*<unknown module>",
@@ -222,3 +243,12 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES: &[&str] = &[
     r".*libubsan\.so",
     r".*asan_with_fuzzer\.so",
 ];
+
+lazy_static::lazy_static! {
+    // Regular expressions for functions to be ignored.
+    pub static ref STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
+        Vec::new());
+    // Regular expressions for file paths to be ignored.
+    pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
+        Vec::new());
+}

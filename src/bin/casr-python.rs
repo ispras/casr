@@ -1,10 +1,12 @@
 extern crate clap;
 
+use casr::concat_slices;
 use casr::debug;
 use casr::debug::CrashLine;
 use casr::error;
 use casr::execution_class::*;
 use casr::report::CrashReport;
+use casr::stacktrace_constants::*;
 use casr::util;
 
 use anyhow::{bail, Context, Result};
@@ -55,6 +57,9 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
     if let Some(path) = matches.value_of("stdin") {
         python_cmd.args(["--stdin", path]);
     }
+    if let Some(path) = matches.value_of("ignore") {
+        python_cmd.args(["--ignore", path]);
+    }
     python_cmd.arg("--").args(argv);
 
     let output = python_cmd
@@ -104,6 +109,13 @@ fn main() -> Result<()> {
                 .help("Stdin file for program"),
         )
         .arg(
+            Arg::new("ignore")
+                .long("ignore")
+                .takes_value(true)
+                .value_name("FILE")
+                .help("File with regular expressions for functions and file paths that should be ignored"),
+        )
+        .arg(
             Arg::new("ARGS")
                 .multiple_values(true)
                 .takes_value(true)
@@ -111,6 +123,11 @@ fn main() -> Result<()> {
                 .help("Add \"-- <path> <arguments>\" to run"),
         )
         .get_matches();
+
+    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() =
+        concat_slices!(STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON);
+    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() =
+        concat_slices!(STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON);
 
     // Get program args.
     let argv: Vec<&str> = if let Some(args) = matches.values_of("ARGS") {

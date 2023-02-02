@@ -8,7 +8,9 @@ extern crate regex;
 extern crate serde_json;
 
 use anyhow::{bail, Context, Result};
+use casr::concat_slices;
 use casr::stacktrace_constants::*;
+use casr::util;
 use clap::{App, Arg};
 use gdb_command::mappings::*;
 use gdb_command::stacktrace::*;
@@ -162,7 +164,9 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
             }
 
             // Compile function regexp.
-            let rstring = STACK_FRAME_FUNCION_IGNORE_REGEXES
+            let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
+                .read()
+                .unwrap()
                 .iter()
                 .map(|s| format!("({s})|"))
                 .collect::<String>();
@@ -170,6 +174,8 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
 
             // Compile file regexp.
             let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
+                .read()
+                .unwrap()
                 .iter()
                 .map(|s| format!("({s})|"))
                 .collect::<String>();
@@ -561,6 +567,13 @@ fn main() -> Result<()> {
                 ),
         )
         .arg(
+            Arg::new("ignore")
+                .long("ignore")
+                .takes_value(true)
+                .value_name("FILE")
+                .help("File with regular expressions for functions and file paths that should be ignored"),
+        )
+        .arg(
             Arg::new("jobs")
                 .long("jobs")
                 .short('j')
@@ -577,7 +590,18 @@ fn main() -> Result<()> {
                 }),
         )
         .get_matches();
+    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concat_slices!(
+        STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
+        STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
+    );
+    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concat_slices!(
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
+    );
 
+    if let Some(path) = matches.value_of("ignore") {
+        util::add_custom_ignored_frames(Path::new(path))?;
+    }
     if matches.is_present("similarity") {
         let casreps: Vec<&Path> = matches
             .values_of("similarity")

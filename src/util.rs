@@ -1,12 +1,25 @@
 use crate::execution_class::ExecutionClass;
 use crate::report::CrashReport;
 
+use crate::stacktrace_constants::STACK_FRAME_FILEPATH_IGNORE_REGEXES;
+use crate::stacktrace_constants::STACK_FRAME_FUNCTION_IGNORE_REGEXES;
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
 use regex::Regex;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+
+/// This macro merges all [&str] slices into single Vec<String>.
+#[macro_export]
+macro_rules! concat_slices {
+    ( $( $x:expr ),* ) => {
+        {
+            [$($x,)*].concat().iter().map(|x| x.to_string()).collect::<Vec<String>>()
+        }
+    };
+}
 
 /// Extract C++ exception info or rust panic message from stderr
 ///
@@ -126,5 +139,43 @@ pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) 
             bail!("Couldn't save report to file: {}", report_path.display());
         }
     }
+    Ok(())
+}
+
+pub fn add_custom_ignored_frames(path: &Path) -> Result<()> {
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("Cannot open file: {}", path.display()))?;
+    let mut reader = BufReader::new(file)
+        .lines()
+        .map(|x| x.unwrap())
+        .collect::<Vec<String>>();
+    if reader.is_empty() || !reader[0].contains("FUNCTIONS") && !reader[0].contains("FILES") {
+        bail!(
+            "File {} is empty or does not contain \
+                    FUNCTIONS or FILES on the first line",
+            path.display()
+        );
+    }
+    let (funcs, paths) = if reader[0].contains("FUNCTIONS") {
+        if let Some(bound) = reader.iter().position(|x| x.contains("FILES")) {
+            let files = reader.split_off(bound);
+            (reader, files)
+        } else {
+            (reader, vec![])
+        }
+    } else if let Some(bound) = reader.iter().position(|x| x.contains("FUNCTIONS")) {
+        let funcs = reader.split_off(bound);
+        (funcs, reader)
+    } else {
+        (vec![], reader)
+    };
+    STACK_FRAME_FUNCTION_IGNORE_REGEXES
+        .write()
+        .unwrap()
+        .extend_from_slice(&funcs);
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES
+        .write()
+        .unwrap()
+        .extend_from_slice(&paths);
     Ok(())
 }

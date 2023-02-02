@@ -40,6 +40,8 @@ Create CASR reports (.casrep) from sanitizer reports
 
     OPTIONS:
         -h, --help               Print help information
+            --ignore <FILE>      File with regular expressions for functions and file paths
+                                 that should be ignored
         -o, --output <REPORT>    Path to save report. Path can be a directory, then report
                                  name is generated
             --stdin <FILE>       Stdin file for program
@@ -62,10 +64,12 @@ Create CASR reports (.casrep) from python reports
         casr-python [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
 
     ARGS:
-        <ARGS>...    Add "-- ./binary <arguments>" to run executable
+        <ARGS>...    Add "-- <path> <arguments>" to run
 
     OPTIONS:
         -h, --help               Print help information
+            --ignore <FILE>      File with regular expressions for functions and file paths
+                                 that should be ignored
         -o, --output <REPORT>    Path to save report. Path can be a directory, then report
                                  name is generated
             --stdin <FILE>       Stdin file for program
@@ -144,6 +148,10 @@ Tool for clustering CASR reports
         -h, --help
                 Print help information
 
+            --ignore <FILE>
+                File with regular expressions for functions and file paths that should be
+                ignored
+
         -j, --jobs <N>
                 Number of parallel jobs to collect CASR reports
 
@@ -204,6 +212,16 @@ After clustering result directory will have the following structure:
         └── crash-76f90b8ba0ee1e10f04692607a2aae17a1ced499.casrep
 
 Similar CASR reports are inside one cluster.
+
+For the **--ignore <FILE>** option, file format should be as follows:
+
+    FUNCTIONS
+    /*ignored regexs for function names*/
+    FILES
+    /*ignored regexs for file paths*/
+
+Headers may be in different order, one of them may be missing.
+Frames that match these regular expressions will be not considered during analysis.
 
 ## casr-cli
 
