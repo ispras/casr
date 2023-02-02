@@ -12,7 +12,7 @@ use casr::util;
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use regex::Regex;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 /// Get exception from python report.
@@ -129,6 +129,9 @@ fn main() -> Result<()> {
     *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() =
         concat_slices!(STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON);
 
+    if let Some(path) = matches.value_of("ignore") {
+        util::add_custom_ignored_frames(Path::new(path))?;
+    }
     // Get program args.
     let argv: Vec<&str> = if let Some(args) = matches.values_of("ARGS") {
         args.collect()
