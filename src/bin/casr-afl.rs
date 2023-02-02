@@ -265,18 +265,15 @@ fn main() -> Result<()> {
     copy_crashes(output_dir, &crashes)?;
 
     // print summary
-    let casr_cli = Command::new("casr-cli")
+    let status = Command::new("casr-cli")
         .arg(matches.value_of("output").unwrap())
-        .output()
+        .stderr(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .status()
         .with_context(|| "Couldn't launch casr-cli".to_string())?;
 
-    if casr_cli.status.success() {
-        String::from_utf8_lossy(&casr_cli.stdout)
-            .trim_end()
-            .lines()
-            .for_each(|x| info!("{x}"));
-    } else {
-        error!("{}", String::from_utf8_lossy(&casr_cli.stderr));
+    if !status.success() {
+        error!("casr-cli exited with status {status}");
     }
 
     Ok(())
