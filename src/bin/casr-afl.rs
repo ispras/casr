@@ -7,6 +7,7 @@ extern crate log;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use simplelog::*;
 
 use std::collections::HashMap;
@@ -42,6 +43,19 @@ fn main() -> Result<()> {
                 .possible_values(["info", "debug"])
                 .help("Logging level")
         )
+        .arg(Arg::new("jobs")
+            .long("jobs")
+            .short('j')
+            .takes_value(true)
+            .help("Number of parallel jobs for generating CASR reports [default: half of cpu cores]")
+            .validator(|arg| {
+                if let Ok(x) = arg.parse::<u64>() {
+                    if x > 0 {
+                        return Ok(());
+                    }
+                }
+                Err(String::from("Couldn't parse jobs value"))
+        }))
         .arg(
             Arg::new("input")
                 .short('i')
@@ -162,48 +176,63 @@ fn main() -> Result<()> {
         }
     }
 
+    let jobs = if let Some(jobs) = matches.value_of("jobs") {
+        jobs.parse::<usize>().unwrap()
+    } else {
+        std::cmp::max(1, num_cpus::get() / 2)
+    };
+    let num_of_threads = jobs.min(crashes.len());
+    let custom_pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(num_of_threads)
+        .build()
+        .unwrap();
+
     // Generate CASR reports.
     info!("Generating CASR reports...");
-    for crash in crashes.values() {
-        let mut args: Vec<String> = vec!["-o".to_string()];
-        let report_path = output_dir.join(crash.path.file_name().unwrap());
-        if crash.is_asan {
-            args.push(format!("{}.casrep", report_path.display()));
-        } else {
-            args.push(format!("{}.gdb.casrep", report_path.display()));
-        }
-
-        if let Some(at_index) = crash.at_index {
-            args.push("--".to_string());
-            args.extend_from_slice(&crash.target_args);
-            let input = args[at_index + 4].replace("@@", crash.path.to_str().unwrap());
-            args[at_index + 4] = input;
-        } else {
-            args.push("--stdin".to_string());
-            args.push(crash.path.to_str().unwrap().to_string());
-            args.push("--".to_string());
-            args.extend_from_slice(&crash.target_args);
-        }
-        let tool = if crash.is_asan {
-            "casr-san"
-        } else {
-            "casr-gdb"
-        };
-        let mut casr_cmd = Command::new(tool);
-        casr_cmd.args(&args);
-        debug!("{:?}", casr_cmd);
-        let casr_output = casr_cmd
-            .output()
-            .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
-        if !casr_output.status.success() {
-            let err = String::from_utf8_lossy(&casr_output.stderr);
-            if err.contains("Program terminated (no crash)") {
-                warn!("{}: no crash on input {}", tool, crash.path.display());
+    info!("Using {} threads", num_of_threads);
+    custom_pool.install(|| {
+        crashes.par_iter().try_for_each(|(_, crash)| {
+            let mut args: Vec<String> = vec!["-o".to_string()];
+            let report_path = output_dir.join(crash.path.file_name().unwrap());
+            if crash.is_asan {
+                args.push(format!("{}.casrep", report_path.display()));
             } else {
-                error!("{} for input: {}", err, crash.path.display());
+                args.push(format!("{}.gdb.casrep", report_path.display()));
             }
-        }
-    }
+
+            if let Some(at_index) = crash.at_index {
+                args.push("--".to_string());
+                args.extend_from_slice(&crash.target_args);
+                let input = args[at_index + 4].replace("@@", crash.path.to_str().unwrap());
+                args[at_index + 4] = input;
+            } else {
+                args.push("--stdin".to_string());
+                args.push(crash.path.to_str().unwrap().to_string());
+                args.push("--".to_string());
+                args.extend_from_slice(&crash.target_args);
+            }
+            let tool = if crash.is_asan {
+                "casr-san"
+            } else {
+                "casr-gdb"
+            };
+            let mut casr_cmd = Command::new(tool);
+            casr_cmd.args(&args);
+            debug!("{:?}", casr_cmd);
+            let casr_output = casr_cmd
+                .output()
+                .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
+            if !casr_output.status.success() {
+                let err = String::from_utf8_lossy(&casr_output.stderr);
+                if err.contains("Program terminated (no crash)") {
+                    warn!("{}: no crash on input {}", tool, crash.path.display());
+                } else {
+                    error!("{} for input: {}", err, crash.path.display());
+                }
+            }
+            Ok::<(), anyhow::Error>(())
+        })
+    })?;
 
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
