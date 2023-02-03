@@ -507,7 +507,7 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 
 fn main() -> Result<()> {
     let matches = App::new("casr-cluster")
-        .version("2.3.0")
+        .version("2.4.0")
         .author(
             "Andrey Fedotov <fedotoff@ispras.ru>, \
             Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>",
