@@ -482,7 +482,7 @@ pub const SI_KERNEL: u32 = 0x80;
 /// * `cs` - capstone.
 ///
 /// * `insns` - instruction list to analyze.
-pub fn check_taint<'a>(cs: &Capstone, insns: &Instructions) -> Result<ExecutionClass<'a>> {
+fn check_taint<'a>(cs: &Capstone, insns: &Instructions) -> Result<ExecutionClass<'a>> {
     let mut taint_set: HashSet<RegId> = HashSet::new();
     for (index, insn) in insns.iter().enumerate() {
         match process_instruction(cs, &insn, index, &mut taint_set) {
