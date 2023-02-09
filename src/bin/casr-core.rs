@@ -380,7 +380,9 @@ fn analyze_coredump(
     }
 
     match elf.header.e_machine {
-        header::EM_386 | header::EM_ARM | header::EM_X86_64 => machine.arch = elf.header.e_machine,
+        header::EM_386 | header::EM_ARM | header::EM_X86_64 | header::EM_AARCH64 => {
+            machine.arch = elf.header.e_machine
+        }
         _ => {
             return Err(Error::Casr(format!(
                 "Unsupported architecture: {}",
@@ -395,8 +397,8 @@ fn analyze_coredump(
         if note.n_type == note::NT_PRPSINFO {
             // Get run command.
             let mut run_line = String::new();
-            match elf.header.e_machine {
-                header::EM_386 | header::EM_ARM => {
+            match machine.byte_width {
+                4 => {
                     if note.desc.len() < 45 {
                         warn!("Prpsinfo is less than 45 bytes.");
                         break;
@@ -409,7 +411,7 @@ fn analyze_coredump(
                         }
                     }
                 }
-                header::EM_X86_64 => {
+                8 => {
                     if note.desc.len() < 57 {
                         warn!("Prpsinfo is less than 57 bytes.");
                         break;
@@ -481,9 +483,14 @@ fn analyze_coredump(
             .collect();
     }
 
-    let result = analysis::severity(report, &context)?;
+    let severity = analysis::severity(report, &context);
 
-    report.execution_class = result.clone();
+    if let Ok(severity) = severity {
+        report.execution_class = severity;
+    } else {
+        warn!("Couldn't estimate severity. {}", severity.err().unwrap());
+    }
+
     report.registers = context.registers;
 
     Ok(())

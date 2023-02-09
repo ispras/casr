@@ -161,7 +161,9 @@ fn main() -> Result<()> {
     }
 
     match elf_h.e_machine {
-        header::EM_386 | header::EM_ARM | header::EM_X86_64 => machine.arch = elf_h.e_machine,
+        header::EM_386 | header::EM_ARM | header::EM_X86_64 | header::EM_AARCH64 => {
+            machine.arch = elf_h.e_machine
+        }
         _ => {
             bail!("Unsupported architecture: {}", elf_h.e_machine);
         }
@@ -215,9 +217,13 @@ fn main() -> Result<()> {
         machine,
     };
 
-    let result = analysis::severity(&mut report, &context)?;
+    let severity = analysis::severity(&mut report, &context);
 
-    report.execution_class = result.clone();
+    if let Ok(severity) = severity {
+        report.execution_class = severity;
+    } else {
+        println!("Couldn't estimate severity. {}", severity.err().unwrap());
+    }
 
     let output_lines = output
         .split('\n')
