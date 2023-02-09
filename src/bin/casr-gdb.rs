@@ -222,7 +222,7 @@ fn main() -> Result<()> {
     if let Ok(severity) = severity {
         report.execution_class = severity;
     } else {
-        println!("Couldn't estimate severity. {}", severity.err().unwrap());
+        eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
     }
 
     let output_lines = output
