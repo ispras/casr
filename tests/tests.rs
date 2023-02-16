@@ -2,6 +2,7 @@ extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
 
+use casr::stacktrace::ProcessStacktrace;
 use regex::Regex;
 use serde_json::Value;
 use std::fs;
@@ -1139,29 +1140,29 @@ fn test_return_av_gdb() {
         // Disassembly test
         assert!(disasm[0].contains("ret "), "Bad disassembly");
         assert!(
-            disasm[1].contains("nop word ptr cs:[rax + rax]"),
+            disasm[1].contains("nop    WORD PTR cs:[rax+rax*1+0x0]"),
             "Bad disassembly"
         );
-        assert!(disasm[2].contains("nop "), "Bad disassembly");
-        assert!(disasm[3].contains("push r15"), "Bad disassembly");
-        assert!(disasm[4].contains("push r14"), "Bad disassembly");
-        assert!(disasm[5].contains("mov r15, rdx"), "Bad disassembly");
-        assert!(disasm[6].contains("push r13"), "Bad disassembly");
-        assert!(disasm[7].contains("push r12"), "Bad disassembly");
+        assert!(disasm[2].contains("nop"), "Bad disassembly");
+        assert!(disasm[3].contains("push   r15"), "Bad disassembly");
+        assert!(disasm[4].contains("push   r14"), "Bad disassembly");
+        assert!(disasm[5].contains("mov    r15,rdx"), "Bad disassembly");
+        assert!(disasm[6].contains("push   r13"), "Bad disassembly");
+        assert!(disasm[7].contains("push   r12"), "Bad disassembly");
         assert!(
-            disasm[8].contains("lea r12, [rip + 0x200656]"),
+            disasm[8].contains("lea    r12,[rip+0x200656]"),
             "Bad disassembly"
         );
-        assert!(disasm[9].contains("push rbp"), "Bad disassembly");
+        assert!(disasm[9].contains("push   rbp"), "Bad disassembly");
         assert!(
-            disasm[10].contains("lea rbp, [rip + 0x200656]"),
+            disasm[10].contains("lea    rbp,[rip+0x200656]"),
             "Bad disassembly"
         );
-        assert!(disasm[11].contains("push rbx"), "Bad disassembly");
-        assert!(disasm[12].contains("mov r13d, edi"), "Bad disassembly");
-        assert!(disasm[13].contains("mov r14, rsi"), "Bad disassembly");
-        assert!(disasm[14].contains("sub rbp, r12"), "Bad disassembly");
-        assert!(disasm[15].contains("sub rsp, 8"), "Bad disassembly");
+        assert!(disasm[11].contains("push   rbx"), "Bad disassembly");
+        assert!(disasm[12].contains("mov    r13d,edi"), "Bad disassembly");
+        assert!(disasm[13].contains("mov    r14,rsi"), "Bad disassembly");
+        assert!(disasm[14].contains("sub    rbp,r12"), "Bad disassembly");
+        assert!(disasm[15].contains("sub    rsp,0x8"), "Bad disassembly");
 
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "ReturnAv");
@@ -3087,7 +3088,7 @@ fn test_asan_stacktrace() {
         .iter()
         .map(|e| e.to_string())
         .collect::<Vec<String>>();
-    let sttr = casr::asan::stacktrace_from_asan(&trace);
+    let sttr = casr::asan::AsanAnalysis::parse_stacktrace(&trace, None);
     if sttr.is_err() {
         panic!("{}", sttr.err().unwrap());
     }
@@ -3654,7 +3655,7 @@ fn test_python_stacktrace() {
         .iter()
         .map(|e| e.to_string())
         .collect::<Vec<String>>();
-    let sttr = casr::python::stacktrace_from_python(&trace);
+    let sttr = casr::python::PythonAnalysis::parse_stacktrace(&trace, None);
     if sttr.is_err() {
         panic!("{}", sttr.err().unwrap());
     }

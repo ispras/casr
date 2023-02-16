@@ -3,18 +3,20 @@ extern crate casr;
 extern crate clap;
 extern crate gdb_command;
 
-use casr::analysis;
-use casr::analysis::{CrashContext, MachineInfo};
-use casr::concat_slices;
+use casr::cpp::CppAnalysis;
 use casr::debug;
-use casr::debug::CrashLine;
+use casr::gdb::{CrashContext, GdbAnalysis, MachineInfo};
+use casr::init_ignored_frames;
 use casr::report::CrashReport;
-use casr::stacktrace_constants::*;
+use casr::rust::RustAnalysis;
+use casr::stacktrace::*;
 use casr::util;
+use casr::util::{Exception, Severity};
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
 use gdb_command::mappings::*;
+use gdb_command::memory::*;
 use gdb_command::registers::*;
 use gdb_command::siginfo::Siginfo;
 use gdb_command::*;
@@ -80,29 +82,13 @@ fn main() -> Result<()> {
     } else {
         bail!("Wrong arguments for starting program");
     };
-    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concat_slices!(
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
-    );
-    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concat_slices!(
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
-    );
 
+    init_ignored_frames!("cpp", "rust");
     if let Some(path) = matches.value_of("ignore") {
         util::add_custom_ignored_frames(Path::new(path))?;
     }
     // Get stdin for target program.
-    let stdin_file = if let Some(path) = matches.value_of("stdin") {
-        let file = PathBuf::from(path);
-        if file.exists() {
-            Some(file)
-        } else {
-            bail!("Stdin file not found: {}", file.display());
-        }
-    } else {
-        None
-    };
+    let stdin_file = util::stdin_from_matches(&matches)?;
 
     let target_path = PathBuf::from(argv[0]);
     if !target_path.exists() {
@@ -176,7 +162,9 @@ fn main() -> Result<()> {
         .bt()
         .siginfo()
         .mappings()
-        .regs();
+        .regs()
+        .mem("$pc", 64)
+        .disassembly();
 
     let stdout = gdb_command
         .raw()
@@ -185,12 +173,7 @@ fn main() -> Result<()> {
     let output = String::from_utf8_lossy(&stdout);
 
     let result = gdb_command.parse(&output)?;
-    let frame = Regex::new(r"^ *#[0-9]+").unwrap();
-    report.stacktrace = result[0]
-        .split('\n')
-        .filter(|x| frame.is_match(x))
-        .map(|x| x.to_string())
-        .collect();
+    report.stacktrace = GdbAnalysis::detect_stacktrace(&result[0])?;
     report.proc_maps = result[2]
         .split('\n')
         .skip(3)
@@ -214,10 +197,15 @@ fn main() -> Result<()> {
         siginfo: siginfo.unwrap(),
         mappings: MappedFiles::from_gdb(&result[2])?,
         registers: Registers::from_gdb(&result[3])?,
+        pc_memory: MemoryObject::from_gdb(&result[4])?,
         machine,
     };
 
-    let severity = analysis::severity(&mut report, &context);
+    let rm_modules = Regex::new("<.*?>").unwrap();
+    let disassembly = rm_modules.replace_all(&result[5], "");
+    report.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();
+
+    let severity = GdbAnalysis::severity(&context, &report.stacktrace);
 
     if let Ok(severity) = severity {
         report.execution_class = severity;
@@ -229,14 +217,25 @@ fn main() -> Result<()> {
         .split('\n')
         .map(|l| l.trim_end().to_string())
         .collect::<Vec<String>>();
-    if let Some(class) = util::exception_from_stderr(&output_lines) {
-        report.execution_class = class;
+    // Check for exceptions
+    if report.execution_class == Default::default()
+        || report.execution_class.short_description == "AbortSignal"
+    {
+        if let Some(class) = [CppAnalysis::parse_exception, RustAnalysis::parse_exception]
+            .iter()
+            .find_map(|parse| parse(&output_lines))
+        {
+            report.execution_class = class;
+        }
     }
 
     report.registers = context.registers;
 
     // Get crash line.
-    if let Ok(crash_line) = debug::crash_line(&report) {
+    if let Ok(crash_line) = GdbAnalysis::crash_line(&GdbAnalysis::parse_stacktrace(
+        &report.stacktrace,
+        Some(&report.proc_maps),
+    )?) {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = debug::sources(&debug) {

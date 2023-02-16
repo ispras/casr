@@ -1,8 +1,6 @@
 extern crate capstone;
 
 use std::collections::HashSet;
-use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
 
 use capstone::arch::arm::ArmInsn;
 use capstone::arch::x86::X86Insn;
@@ -10,14 +8,18 @@ use capstone::arch::*;
 use capstone::prelude::*;
 use capstone::{Insn, InsnId, Instructions};
 use gdb_command::mappings::*;
+use gdb_command::memory::*;
 use gdb_command::registers::*;
 use gdb_command::siginfo::*;
+use gdb_command::stacktrace::*;
 use goblin::container::Endian;
 use goblin::elf::header;
+use regex::Regex;
 
 use super::error::{Error, Result};
 use super::execution_class::ExecutionClass;
-use super::report::*;
+use super::stacktrace::*;
+use super::util::Severity;
 
 #[derive(Clone, Default)]
 /// Information about machine.
@@ -37,6 +39,7 @@ pub struct CrashContext {
     pub registers: Registers,
     pub mappings: MappedFiles,
     pub machine: MachineInfo,
+    pub pc_memory: MemoryObject,
 }
 
 impl CrashContext {
@@ -61,84 +64,108 @@ impl CrashContext {
     }
 }
 
-/// Get severity class from parameters and save it to report.
-///
-/// # Arguments
-///
-/// * `report` - Crash report.
-///
-/// * `context` - Crash context.
-pub fn severity<'a>(
-    report: &mut CrashReport,
-    context: &CrashContext,
-) -> Result<ExecutionClass<'a>> {
-    // Check signal number.
-    match context.siginfo.si_signo {
-        SIGINFO_SIGABRT => {
-            if report
-                .stacktrace
-                .iter()
-                .any(|entry| entry.contains("cfree"))
-            {
-                return ExecutionClass::find("HeapError");
-            }
-            if report
-                .stacktrace
-                .iter()
-                .any(|entry| entry.contains("__chk_fail"))
-            {
-                return ExecutionClass::find("SafeFunctionCheck");
-            }
-            if report
-                .stacktrace
-                .iter()
-                .any(|entry| entry.contains("_stack_chk_fail"))
-            {
-                return ExecutionClass::find("StackGuard");
-            }
+pub struct GdbAnalysis;
 
-            ExecutionClass::find("AbortSignal")
+impl ProcessStacktrace for GdbAnalysis {
+    /// Detect stack trace in gdb string, obtained with "bt" command
+    ///
+    /// # Arguments
+    ///
+    /// * `stream` - gdb string with stack trace
+    ///
+    /// # Return value
+    ///
+    /// Stack trace as vector of strings
+    fn detect_stacktrace(stream: &str) -> anyhow::Result<Vec<String>> {
+        let frame = Regex::new(r"^ *#[0-9]+").unwrap();
+        Ok(stream
+            .split('\n')
+            .filter(|x| frame.is_match(x))
+            .map(|x| x.to_string())
+            .collect())
+    }
+
+    /// Extract stack trace object from gdb stack trace vector of strings
+    ///    
+    /// # Arguments                                                              
+    ///                                                                          
+    /// * `entries` - stack trace as vector                                      
+    ///
+    /// * `mappings` - memory mappings as vector
+    ///                                                                          
+    /// # Return value                                                           
+    ///                                                                          
+    /// Stack trace as a `Stacktrace` struct                                     
+    fn parse_stacktrace(
+        entries: &[String],
+        mappings: Option<&[String]>,
+    ) -> anyhow::Result<Stacktrace> {
+        let mut gdbtrace = Stacktrace::from_gdb(entries.join("\n"))?;
+        if let Some(mappings) = mappings {
+            if let Ok(mfiles) = MappedFiles::from_gdb(mappings.join("\n")) {
+                gdbtrace.compute_module_offsets(&mfiles);
+            }
         }
-        SIGINFO_SIGTRAP => ExecutionClass::find("TrapSignal"),
-        SIGINFO_SIGILL | SIGINFO_SIGSYS => ExecutionClass::find("BadInstruction"),
-        SIGINFO_SIGSEGV | SIGINFO_SIGFPE | SIGINFO_SIGBUS => {
-            // Get program counter.
-            let pc = context.pc();
+        Ok(gdbtrace)
+    }
+}
 
-            if pc.is_none() {
-                return Err(Error::Casr("Unable to get Program counter.".to_string()));
+impl Severity for GdbAnalysis {
+    /// Get severity class from parameters and save it to report.
+    ///
+    /// # Arguments
+    ///
+    /// * `report` - Crash report.
+    ///
+    /// * `context` - Crash context.
+    fn severity<'a>(
+        context: &CrashContext,
+        stacktrace: &'a [String],
+    ) -> Result<ExecutionClass<'a>> {
+        // Check signal number.
+        match context.siginfo.si_signo {
+            SIGINFO_SIGABRT => {
+                if stacktrace.iter().any(|entry| entry.contains("cfree")) {
+                    return ExecutionClass::find("HeapError");
+                }
+                if stacktrace.iter().any(|entry| entry.contains("__chk_fail")) {
+                    return ExecutionClass::find("SafeFunctionCheck");
+                }
+                if stacktrace
+                    .iter()
+                    .any(|entry| entry.contains("_stack_chk_fail"))
+                {
+                    return ExecutionClass::find("StackGuard");
+                }
+
+                ExecutionClass::find("AbortSignal")
             }
+            SIGINFO_SIGTRAP => ExecutionClass::find("TrapSignal"),
+            SIGINFO_SIGILL | SIGINFO_SIGSYS => ExecutionClass::find("BadInstruction"),
+            SIGINFO_SIGSEGV | SIGINFO_SIGFPE | SIGINFO_SIGBUS => {
+                // Get program counter.
+                let pc = context.pc();
 
-            let pc = pc.unwrap();
+                if pc.is_none() {
+                    return Err(Error::Casr("Unable to get Program counter.".to_string()));
+                }
 
-            // Check for segfaultOnPC.
-            if context.siginfo.si_signo == SIGINFO_SIGSEGV && *pc == context.siginfo.si_addr {
-                if is_near_null(context.siginfo.si_addr) {
-                    return ExecutionClass::find("SegFaultOnPcNearNull");
-                } else {
+                let pc = pc.unwrap();
+
+                // Check for segfaultOnPC.
+                if context.siginfo.si_signo == SIGINFO_SIGSEGV && *pc == context.siginfo.si_addr {
+                    if is_near_null(context.siginfo.si_addr) {
+                        return ExecutionClass::find("SegFaultOnPcNearNull");
+                    } else {
+                        return ExecutionClass::find("SegFaultOnPc");
+                    };
+                }
+                if context.siginfo.si_signo == SIGINFO_SIGSEGV
+                    && context.pc_memory.data.is_empty()
+                    && context.siginfo.si_code == SI_KERNEL
+                {
                     return ExecutionClass::find("SegFaultOnPc");
-                };
-            }
-
-            // Find file and offset for PC.
-            let file = context.mappings.find(*pc);
-
-            if context.siginfo.si_signo == SIGINFO_SIGSEGV
-                && file.is_none()
-                && context.siginfo.si_code == SI_KERNEL
-            {
-                return ExecutionClass::find("SegFaultOnPc");
-            }
-
-            if let Some(file) = file {
-                let offset = *pc - file.start + file.offset;
-
-                // Read file part for disassembly.
-                let mut f = File::open(file.name)?;
-                f.seek(SeekFrom::Start(offset))?;
-
-                let mut buffer = [0; 64];
-                f.read_exact(&mut buffer)?;
+                }
 
                 // Initialize disassembler.
                 let cs = match context.machine.arch {
@@ -186,7 +213,7 @@ pub fn severity<'a>(
 
                 if let Ok(cs) = cs {
                     // Get disassembly for report.
-                    let insns = cs.disasm_all(&buffer, *pc);
+                    let insns = cs.disasm_all(&context.pc_memory.data, *pc);
                     if let Ok(insns) = insns {
                         let mut disassembly = Vec::new();
                         insns
@@ -197,7 +224,6 @@ pub fn severity<'a>(
                             let _ = std::mem::replace(&mut disassembly[0], new_insn);
                         }
                         disassembly.truncate(16);
-                        report.disassembly = disassembly;
 
                         if context.siginfo.si_signo == SIGINFO_SIGSEGV
                             || context.siginfo.si_signo == SIGINFO_SIGBUS
@@ -217,16 +243,12 @@ pub fn severity<'a>(
                         context.machine.arch
                     )))
                 }
-            } else {
-                Err(Error::Casr(
-                    "Unable to find file to be disassembled".to_string(),
-                ))
             }
+            _ => Err(Error::Casr(format!(
+                "Unsupported signal :{}",
+                context.siginfo.si_signo
+            ))),
         }
-        _ => Err(Error::Casr(format!(
-            "Unsupported signal :{}",
-            context.siginfo.si_signo
-        ))),
     }
 }
 
@@ -1003,7 +1025,7 @@ const X86_INS_CMP: InsnId = InsnId(X86Insn::X86_INS_CMP as u32);
 
 #[cfg(test)]
 mod tests {
-    use crate::analysis::*;
+    use crate::gdb::*;
     use gdb_command::registers::Registers;
     use gdb_command::siginfo::Siginfo;
     #[test]
@@ -1212,6 +1234,10 @@ mod tests {
                 siginfo: sig,
                 registers,
                 mappings: MappedFiles::new(),
+                pc_memory: MemoryObject {
+                    address: 0x0,
+                    data: vec![0x8b, 0x00, 0x01, 0xc2, 0x89, 0x02],
+                },
                 machine,
             };
             let data: &[u8] = &[0x8b, 0x00, 0x01, 0xc2, 0x89, 0x02];
@@ -1250,6 +1276,10 @@ mod tests {
                 siginfo: sig,
                 registers,
                 mappings: MappedFiles::new(),
+                pc_memory: MemoryObject {
+                    address: 0x0,
+                    data: vec![0x8b, 0x00, 0x8b, 0x00, 0xff, 0xd0],
+                },
                 machine,
             };
             let data: &[u8] = &[0x8b, 0x00, 0x8b, 0x00, 0xff, 0xd0];

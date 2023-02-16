@@ -1,21 +1,96 @@
-/* Copyright 2020 Google LLC
-Modifications copyright (C) 2022 ISP RAS
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-//! Module contains constants for parsing stack traces.
 extern crate lazy_static;
+
+use anyhow::{bail, Result};
+use gdb_command::stacktrace::*;
+use regex::Regex;
+use std::fmt;
 use std::sync::RwLock;
+
+pub enum CrashLine {
+    // source:line:column.
+    Source(DebugInfo),
+    // Binary module and offset.
+    Module { file: String, offset: u64 },
+}
+
+impl fmt::Display for CrashLine {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self {
+            CrashLine::Source(debug) => {
+                if debug.line != 0 && debug.column != 0 {
+                    write!(f, "{}:{}:{}", debug.file, debug.line, debug.column)
+                } else if debug.line != 0 {
+                    write!(f, "{}:{}", debug.file, debug.line)
+                } else {
+                    write!(f, "{}", debug.file)
+                }
+            }
+            CrashLine::Module { file, offset } => {
+                write!(f, "{file}+{offset:#x}")
+            }
+        }
+    }
+}
+
+pub trait ProcessStacktrace {
+    fn detect_stacktrace(_stream: &str) -> Result<Vec<String>> {
+        bail!("Not implemented")
+    }
+
+    fn parse_stacktrace(_entries: &[String], _mappings: Option<&[String]>) -> Result<Stacktrace> {
+        bail!("Not implemented")
+    }
+
+    /// Get crash line from stack trace: source:line or binary+offset.               
+    ///                                                                              
+    /// # Arguments   
+    ///
+    /// * 'trace' - Stacktrace type from gdb_command library
+    ///
+    /// # Return value
+    ///
+    /// Crash line as a 'CrashLine' enum.
+    fn crash_line(trace: &Stacktrace) -> Result<CrashLine> {
+        // Compile function regexp.
+        let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
+            .read()
+            .unwrap()
+            .iter()
+            .map(|s| format!("({s})|"))
+            .collect::<String>();
+        let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+
+        // Compile file regexp.
+        let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
+            .read()
+            .unwrap()
+            .iter()
+            .map(|s| format!("({s})|"))
+            .collect::<String>();
+        let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+
+        let crash_entry = trace.iter().find(|entry| {
+            (entry.function.is_empty() || !rfunction.is_match(&entry.function))
+                && (entry.module.is_empty() || !rfile.is_match(&entry.module))
+                && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+        });
+
+        if let Some(crash_entry) = crash_entry {
+            if !crash_entry.debug.file.is_empty() {
+                return Ok(CrashLine::Source(crash_entry.debug.clone()));
+            } else if !crash_entry.module.is_empty() && crash_entry.offset != 0 {
+                return Ok(CrashLine::Module {
+                    file: crash_entry.module.clone(),
+                    offset: crash_entry.offset,
+                });
+            }
+
+            bail!("Couldn't collect crash line from stack trace".to_string(),);
+        }
+
+        bail!("No stack trace entries after filtering".to_string(),);
+    }
+}
 
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[
     // TODO

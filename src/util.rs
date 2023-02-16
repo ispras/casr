@@ -1,11 +1,12 @@
+use crate::error;
 use crate::execution_class::ExecutionClass;
+use crate::gdb::CrashContext;
 use crate::report::CrashReport;
+use crate::stacktrace::STACK_FRAME_FILEPATH_IGNORE_REGEXES;
+use crate::stacktrace::STACK_FRAME_FUNCTION_IGNORE_REGEXES;
 
-use crate::stacktrace_constants::STACK_FRAME_FILEPATH_IGNORE_REGEXES;
-use crate::stacktrace_constants::STACK_FRAME_FUNCTION_IGNORE_REGEXES;
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
-use regex::Regex;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
@@ -21,67 +22,33 @@ macro_rules! concat_slices {
     };
 }
 
-/// Extract C++ exception info or rust panic message from stderr
-///
-/// # Arguments
-///
-/// * `stderr_list` - lines of stderr
-///
-/// # Return value
-///
-/// Exception info as a `ExecutionClass` struct
-pub fn exception_from_stderr(stderr_list: &[String]) -> Option<ExecutionClass> {
-    // CPP exception check
-    let rexception = Regex::new(r"terminate called after throwing an instance of (.+)").unwrap();
-    if let Some(pos) = stderr_list
-        .iter()
-        .position(|line| rexception.is_match(line))
-    {
-        let instance = rexception
-            .captures(&stderr_list[pos])
-            .unwrap()
-            .get(1)
-            .unwrap()
-            .as_str()
-            .trim_start_matches('\'')
-            .trim_end_matches('\'');
-        let message = if let Some(element) = stderr_list.get(pos + 1) {
-            let rwhat = Regex::new(r"what\(\): +(.+)").unwrap();
-            if let Some(cap) = rwhat.captures(element) {
-                cap.get(1).unwrap().as_str().trim()
-            } else {
-                ""
-            }
-        } else {
-            ""
-        };
-        return Some(ExecutionClass::new((
-            "NOT_EXPLOITABLE",
-            instance,
-            message,
-            "",
-        )));
-    }
-    // Rust panic check
-    let rexception = Regex::new(r"thread '.+?' panicked at '(.+)?'").unwrap();
-    if let Some(pos) = stderr_list
-        .iter()
-        .position(|line| rexception.is_match(line))
-    {
-        let message = rexception
-            .captures(&stderr_list[pos])
-            .unwrap()
-            .get(1)
-            .unwrap()
-            .as_str();
-        return Some(ExecutionClass::new((
-            "NOT_EXPLOITABLE",
-            "RustPanic",
-            message,
-            "",
-        )));
-    }
-    None
+#[macro_export]
+macro_rules! init_ignored_frames {
+    ( $( $x:expr ),* ) => {
+        {
+            let (funcs, files): (Vec<_>, Vec<_>) = [$($x,)*].iter().map(|&x|
+                match x {
+                    "python" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON),
+                    "rust" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST, STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST),
+                    "cpp" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP),
+                    &_ => (["^[^.]$"].as_slice(), ["^[^.]$"].as_slice()),
+                }
+            ).unzip();
+           *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = funcs.concat().iter().map(|x| x.to_string()).collect::<Vec<String>>();
+           *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = files.concat().iter().map(|x| x.to_string()).collect::<Vec<String>>();
+        }
+    };
+}
+
+pub trait Exception {
+    fn parse_exception(stream: &[String]) -> Option<ExecutionClass>;
+}
+
+pub trait Severity {
+    fn severity<'a>(
+        context: &CrashContext,
+        str_list: &'a [String],
+    ) -> error::Result<ExecutionClass<'a>>;
 }
 
 /// Save a report to the specified path
@@ -178,4 +145,17 @@ pub fn add_custom_ignored_frames(path: &Path) -> Result<()> {
         .unwrap()
         .extend_from_slice(&paths);
     Ok(())
+}
+
+pub fn stdin_from_matches(matches: &ArgMatches) -> Result<Option<PathBuf>> {
+    if let Some(path) = matches.value_of("stdin") {
+        let file = PathBuf::from(path);
+        if file.exists() {
+            Ok(Some(file))
+        } else {
+            bail!("Stdin file not found: {}", file.display());
+        }
+    } else {
+        Ok(None)
+    }
 }
