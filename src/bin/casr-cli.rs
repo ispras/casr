@@ -10,6 +10,7 @@ use clap::{App, Arg};
 use colored::Colorize;
 use cursive::event::EventTrigger;
 use cursive::View;
+use regex::Regex;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -60,12 +61,18 @@ fn main() -> Result<()> {
                 .value_name("REPORT|DIR")
                 .help("CASR report file to view or directory with reports"),
         )
+        .arg(
+            Arg::new("unique")
+                .long("unique")
+                .short('u')
+                .help("Print only unique crash lines in joint statistics"),
+        )
         .get_matches();
 
     let report_path = PathBuf::from(matches.value_of("target").unwrap());
 
     if report_path.is_dir() {
-        print_summary(report_path);
+        print_summary(report_path, matches.is_present("unique"));
         return Ok(());
     }
 
@@ -647,9 +654,30 @@ fn change_text_view(layout1: &mut LinearLayout, act: Action) -> Option<EventResu
 ///
 /// * 'dir' - directory with reports
 ///
-fn print_summary(dir: PathBuf) {
+/// * 'unique_crash_line' - print summary only for unique crash lines
+///
+fn print_summary(dir: PathBuf, unique_crash_line: bool) {
     // Hash each class in whole casr directory
     let mut casr_classes: HashMap<String, i32> = HashMap::new();
+
+    // Unique crash lines hash
+    let mut crash_lines: HashSet<String> = HashSet::new();
+
+    // Line and column regex
+    let line_column = Regex::new(r"\d+:\d+$").unwrap();
+
+    // Return true when crash line is unique
+    let mut is_unique_crash_line = |line: &str| {
+        if !unique_crash_line || line.is_empty() {
+            return true;
+        }
+        let l = if line_column.is_match(line) {
+            line.rsplit_once(':').unwrap().0
+        } else {
+            line
+        };
+        crash_lines.insert(l.to_string())
+    };
 
     let mut corrupted_reports = Vec::new();
     let mut clusters: Vec<(PathBuf, i32)> = Vec::new();
@@ -678,8 +706,6 @@ fn print_summary(dir: PathBuf) {
     for (clpath, _) in clusters {
         let cluster = clpath.as_path();
         let filename = cluster.file_name().unwrap().to_str().unwrap();
-
-        println!("==> <{}>", filename.magenta());
 
         // Hash each crash in cluster
         let mut cluster_hash: HashMap<String, (Vec<String>, i32)> = HashMap::new();
@@ -720,6 +746,9 @@ fn print_summary(dir: PathBuf) {
                 let (san_desc, san_line) = if let Some((report_sum, san_desc, san_line)) =
                     process_report(&report, "casrep")
                 {
+                    if !is_unique_crash_line(&san_line) {
+                        continue;
+                    }
                     result.push(report_sum);
                     (san_desc, san_line)
                 } else {
@@ -731,6 +760,9 @@ fn print_summary(dir: PathBuf) {
                     if let Some((report_sum, casr_gdb_desc, casr_gdb_line)) =
                         process_report(&report, "gdb.casrep")
                     {
+                        if san_line.is_empty() && !is_unique_crash_line(&casr_gdb_line) {
+                            continue;
+                        }
                         result.push(report_sum);
                         (casr_gdb_desc, casr_gdb_line)
                     } else {
@@ -767,6 +799,12 @@ fn print_summary(dir: PathBuf) {
                 cluster_hash.insert(hash, value);
             }
         }
+
+        if cluster_hash.is_empty() {
+            continue;
+        }
+
+        println!("==> <{}>", filename.magenta());
         for info in cluster_hash.values() {
             // Crash: /path/to/input or /path/to/report.casrep
             println!("{}: {}", "Crash".green(), info.0.last().unwrap());
