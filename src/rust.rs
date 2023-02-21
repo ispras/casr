@@ -3,9 +3,9 @@ use crate::util::Exception;
 
 use regex::Regex;
 
-pub struct RustAnalysis;
+pub struct RustPanic;
 
-impl Exception for RustAnalysis {
+impl Exception for RustPanic {
     fn parse_exception(stderr_list: &[String]) -> Option<ExecutionClass> {
         let rexception = Regex::new(r"thread '.+?' panicked at '(.+)?'").unwrap();
         if let Some(pos) = stderr_list

@@ -7,7 +7,7 @@ use casr::cpp::CppException;
 use casr::gdb::{GdbAnalysis, GdbContext, MachineInfo};
 use casr::init_ignored_frames;
 use casr::report::CrashReport;
-use casr::rust::RustAnalysis;
+use casr::rust::RustPanic;
 use casr::stacktrace::*;
 use casr::util;
 use casr::util::{Exception, Severity};
@@ -222,7 +222,7 @@ fn main() -> Result<()> {
     if report.execution_class == Default::default()
         || report.execution_class.short_description == "AbortSignal"
     {
-        if let Some(class) = [CppException::parse_exception, RustAnalysis::parse_exception]
+        if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
             .iter()
             .find_map(|parse| parse(&output_lines))
         {
