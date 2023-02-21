@@ -666,17 +666,18 @@ fn print_summary(dir: PathBuf, unique_crash_line: bool) {
     // Line and column regex
     let line_column = Regex::new(r"\d+:\d+$").unwrap();
 
-    // Return true when crash line is unique
-    let mut is_unique_crash_line = |line: &str| {
+    // Return true when crash should be omitted in summary because it has
+    // non-unique crash line
+    let mut skip_crash = |line: &str| {
         if !unique_crash_line || line.is_empty() {
-            return true;
+            return false;
         }
         let l = if line_column.is_match(line) {
             line.rsplit_once(':').unwrap().0
         } else {
             line
         };
-        crash_lines.insert(l.to_string())
+        !crash_lines.insert(l.to_string())
     };
 
     let mut corrupted_reports = Vec::new();
@@ -746,7 +747,7 @@ fn print_summary(dir: PathBuf, unique_crash_line: bool) {
                 let (san_desc, san_line) = if let Some((report_sum, san_desc, san_line)) =
                     process_report(&report, "casrep")
                 {
-                    if !is_unique_crash_line(&san_line) {
+                    if skip_crash(&san_line) {
                         continue;
                     }
                     result.push(report_sum);
@@ -760,7 +761,7 @@ fn print_summary(dir: PathBuf, unique_crash_line: bool) {
                     if let Some((report_sum, casr_gdb_desc, casr_gdb_line)) =
                         process_report(&report, "gdb.casrep")
                     {
-                        if san_line.is_empty() && !is_unique_crash_line(&casr_gdb_line) {
+                        if san_line.is_empty() && skip_crash(&casr_gdb_line) {
                             continue;
                         }
                         result.push(report_sum);
