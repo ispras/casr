@@ -80,6 +80,10 @@ View report:
 
     $ casr-cli tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
 
+View joint statistics about crash clusters:
+
+    $ casr-cli casr_reports
+
 Create report for program that reads stdin:
 
     $ casr-san --stdin seed -o san_bin.casrep -- ./san_bin

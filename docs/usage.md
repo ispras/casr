@@ -236,6 +236,7 @@ all reports.
 
     OPTIONS:
         -h, --help           Print help information
+        -u, --unique         Print only unique crash lines in joint statistics
         -v, --view <MODE>    View mode [default: tree] [possible values: tree, slider, stdout]
         -V, --version        Print version information
 
@@ -245,6 +246,10 @@ There are three view modes: tree, slider (list), and stdout. In stdout mode
 Example:
 
     $ casr-cli tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
+
+Joint statistics about crash clusters:
+
+    $ casr-cli casr_reports
 
 ## casr-afl
 
