@@ -3,18 +3,9 @@ use crate::util::Exception;
 
 use regex::Regex;
 
-pub struct CppAnalysis;
+pub struct CppException;
 
-impl Exception for CppAnalysis {
-    /// Extract C++ exception info from stderr                 
-    ///                                                                              
-    /// # Arguments                                                                  
-    ///                                                                              
-    /// * `stderr_list` - lines of stderr                                            
-    ///                                                                              
-    /// # Return value                                                               
-    ///                                                                              
-    /// Exception info as a `ExecutionClass` struct                                  
+impl Exception for CppException {
     fn parse_exception(stderr_list: &[String]) -> Option<ExecutionClass> {
         let rexception =
             Regex::new(r"terminate called after throwing an instance of (.+)").unwrap();

@@ -3,9 +3,8 @@ extern crate casr;
 extern crate clap;
 extern crate gdb_command;
 
-use casr::cpp::CppAnalysis;
-use casr::debug;
-use casr::gdb::{CrashContext, GdbAnalysis, MachineInfo};
+use casr::cpp::CppException;
+use casr::gdb::{GdbAnalysis, GdbContext, MachineInfo};
 use casr::init_ignored_frames;
 use casr::report::CrashReport;
 use casr::rust::RustAnalysis;
@@ -19,6 +18,7 @@ use gdb_command::mappings::*;
 use gdb_command::memory::*;
 use gdb_command::registers::*;
 use gdb_command::siginfo::Siginfo;
+use gdb_command::stacktrace::StacktraceExt;
 use gdb_command::*;
 use goblin::container::Endian;
 use goblin::elf::{header, Elf};
@@ -173,7 +173,7 @@ fn main() -> Result<()> {
     let output = String::from_utf8_lossy(&stdout);
 
     let result = gdb_command.parse(&output)?;
-    report.stacktrace = GdbAnalysis::detect_stacktrace(&result[0])?;
+    report.stacktrace = GdbAnalysis::extract_stacktrace(&result[0])?;
     report.proc_maps = result[2]
         .split('\n')
         .skip(3)
@@ -193,19 +193,20 @@ fn main() -> Result<()> {
         }
     }
 
-    let context = CrashContext {
+    let context = GdbContext {
         siginfo: siginfo.unwrap(),
         mappings: MappedFiles::from_gdb(&result[2])?,
         registers: Registers::from_gdb(&result[3])?,
         pc_memory: MemoryObject::from_gdb(&result[4])?,
         machine,
+        stacktrace: report.stacktrace.clone(),
     };
 
     let rm_modules = Regex::new("<.*?>").unwrap();
     let disassembly = rm_modules.replace_all(&result[5], "");
     report.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();
 
-    let severity = GdbAnalysis::severity(&context, &report.stacktrace);
+    let severity = context.severity();
 
     if let Ok(severity) = severity {
         report.execution_class = severity;
@@ -221,7 +222,7 @@ fn main() -> Result<()> {
     if report.execution_class == Default::default()
         || report.execution_class.short_description == "AbortSignal"
     {
-        if let Some(class) = [CppAnalysis::parse_exception, RustAnalysis::parse_exception]
+        if let Some(class) = [CppException::parse_exception, RustAnalysis::parse_exception]
             .iter()
             .find_map(|parse| parse(&output_lines))
         {
@@ -231,14 +232,15 @@ fn main() -> Result<()> {
 
     report.registers = context.registers;
 
+    let mut parsed_stacktrace = GdbAnalysis::parse_stacktrace(&report.stacktrace)?;
+    if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
+        parsed_stacktrace.compute_module_offsets(&mfiles);
+    }
     // Get crash line.
-    if let Ok(crash_line) = GdbAnalysis::crash_line(&GdbAnalysis::parse_stacktrace(
-        &report.stacktrace,
-        Some(&report.proc_maps),
-    )?) {
+    if let Ok(crash_line) = GdbAnalysis::crash_line(&parsed_stacktrace) {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = debug::sources(&debug) {
+            if let Some(sources) = util::sources(&debug) {
                 report.source = sources;
             }
         }

@@ -5,9 +5,8 @@ extern crate gdb_command;
 extern crate linux_personality;
 extern crate regex;
 
-use casr::asan::AsanAnalysis;
-use casr::cpp::CppAnalysis;
-use casr::debug;
+use casr::asan::{AsanAnalysis, AsanContext};
+use casr::cpp::CppException;
 use casr::execution_class::*;
 use casr::gdb::*;
 use casr::init_ignored_frames;
@@ -161,28 +160,27 @@ fn main() -> Result<()> {
         // Set ASAN report in casr report.
         let report_end = san_stderr_list.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
         report.asan_report = Vec::from(&san_stderr_list[report_start..report_end]);
-        report.execution_class = AsanAnalysis::severity(&Default::default(), &report.asan_report)?;
-        report.stacktrace = AsanAnalysis::detect_stacktrace(&report.asan_report.join("\n"))?;
+        let context = AsanContext(report.asan_report.clone());
+        report.execution_class = context.severity()?;
+        report.stacktrace = AsanAnalysis::extract_stacktrace(&report.asan_report.join("\n"))?;
     } else {
         // Get termination signal.
         if let Some(signal) = sanitizers_result.status.signal() {
             // Get stack trace and mappings from gdb.
             match signal as u32 {
                 SIGINFO_SIGILL | SIGINFO_SIGSYS => {
-                    report.execution_class =
-                        ExecutionClass::find("BadInstruction").unwrap().clone();
+                    report.execution_class = ExecutionClass::find("BadInstruction").unwrap();
                 }
                 SIGINFO_SIGTRAP => {
-                    report.execution_class = ExecutionClass::find("TrapSignal").unwrap().clone();
+                    report.execution_class = ExecutionClass::find("TrapSignal").unwrap();
                 }
                 SIGINFO_SIGABRT => {
-                    report.execution_class = ExecutionClass::find("AbortSignal").unwrap().clone();
+                    report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
                 }
                 SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
                     eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
                     exploitability. Try using casr-gdb instead.");
-                    report.execution_class =
-                        ExecutionClass::find("AccessViolation").unwrap().clone();
+                    report.execution_class = ExecutionClass::find("AccessViolation").unwrap();
                 }
                 _ => {
                     // "Undefined" is by default in report.
@@ -219,7 +217,7 @@ fn main() -> Result<()> {
     if report.execution_class == Default::default()
         || report.execution_class.short_description == "AbortSignal"
     {
-        if let Some(class) = [CppAnalysis::parse_exception, RustAnalysis::parse_exception]
+        if let Some(class) = [CppException::parse_exception, RustAnalysis::parse_exception]
             .iter()
             .find_map(|parse| parse(&san_stderr_list))
         {
@@ -229,14 +227,14 @@ fn main() -> Result<()> {
 
     // Get crash line.
     let stacktrace = if !report.asan_report.is_empty() {
-        AsanAnalysis::parse_stacktrace(&report.stacktrace, None)?
+        AsanAnalysis::parse_stacktrace(&report.stacktrace)?
     } else {
-        GdbAnalysis::parse_stacktrace(&report.stacktrace, None)?
+        GdbAnalysis::parse_stacktrace(&report.stacktrace)?
     };
     if let Ok(crash_line) = AsanAnalysis::crash_line(&stacktrace) {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = debug::sources(&debug) {
+            if let Some(sources) = util::sources(&debug) {
                 report.source = sources;
             }
         }

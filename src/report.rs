@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
-pub struct CrashReport<'a> {
+pub struct CrashReport {
     /// Pid of crashed process.
     #[serde(skip)]
     pub pid: i32,
@@ -71,7 +71,7 @@ pub struct CrashReport<'a> {
     /// Crash classification.
     #[serde(rename(serialize = "CrashSeverity", deserialize = "CrashSeverity"))]
     #[serde(default)]
-    pub execution_class: ExecutionClass<'a>,
+    pub execution_class: ExecutionClass,
     /// Stack trace for crashed thread.
     #[serde(rename(serialize = "Stacktrace", deserialize = "Stacktrace"))]
     #[serde(default)]
@@ -119,7 +119,7 @@ pub struct CrashReport<'a> {
     pub source: Vec<String>,
 }
 
-impl<'a> CrashReport<'a> {
+impl CrashReport {
     /// Create new crash report.
     pub fn new() -> Self {
         let mut report: CrashReport = Default::default();
@@ -353,7 +353,7 @@ impl<'a> CrashReport<'a> {
     }
 }
 
-impl<'a> fmt::Display for CrashReport<'a> {
+impl fmt::Display for CrashReport {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut report = String::new();
         // CrashLine

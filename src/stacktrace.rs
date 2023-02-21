@@ -1,9 +1,13 @@
 extern crate lazy_static;
 
-use anyhow::{bail, Result};
+use crate::error::*;
 use gdb_command::stacktrace::*;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use regex::Regex;
+use std::collections::HashSet;
 use std::fmt;
+use std::io::Write;
+use std::process::{Command, Stdio};
 use std::sync::RwLock;
 
 pub enum CrashLine {
@@ -33,23 +37,13 @@ impl fmt::Display for CrashLine {
 }
 
 pub trait ProcessStacktrace {
-    fn detect_stacktrace(_stream: &str) -> Result<Vec<String>> {
-        bail!("Not implemented")
-    }
+    /// Extract stack trace from stream
+    fn extract_stacktrace(stream: &str) -> Result<Vec<String>>;
 
-    fn parse_stacktrace(_entries: &[String], _mappings: Option<&[String]>) -> Result<Stacktrace> {
-        bail!("Not implemented")
-    }
+    /// Transform stack trace strings into Stacktrace type
+    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace>;
 
     /// Get crash line from stack trace: source:line or binary+offset.               
-    ///                                                                              
-    /// # Arguments   
-    ///
-    /// * 'trace' - Stacktrace type from gdb_command library
-    ///
-    /// # Return value
-    ///
-    /// Crash line as a 'CrashLine' enum.
     fn crash_line(trace: &Stacktrace) -> Result<CrashLine> {
         // Compile function regexp.
         let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
@@ -85,11 +79,160 @@ pub trait ProcessStacktrace {
                 });
             }
 
-            bail!("Couldn't collect crash line from stack trace".to_string(),);
+            return Err(Error::Casr(
+                "Couldn't collect crash line from stack trace".to_string(),
+            ));
         }
 
-        bail!("No stack trace entries after filtering".to_string(),);
+        Err(Error::Casr(
+            "No stack trace entries after filtering".to_string(),
+        ))
     }
+}
+
+/// Compute the similarity between 2 stack traces                                
+///                                                                              
+/// # Arguments                                                                  
+///                                                                              
+/// * `first` - first stacktrace                                                 
+///                                                                              
+/// * `second` - second stacktrace                                               
+///                                                                              
+/// # Return value                                                               
+///                                                                              
+/// Similarity coefficient                                                       
+pub fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
+    // Initializing coefficients
+    let a: f64 = 0.04;
+    let r: f64 = 0.13;
+    // Creating the similarity matrix according to the PDM algorithm
+    let k: usize = first.len() + 1;
+    let n: usize = second.len() + 1;
+    let mut raw_matrix = vec![0 as f64; k * n];
+    let mut simatrix: Vec<_> = raw_matrix.as_mut_slice().chunks_mut(k).collect();
+    let simatrix = simatrix.as_mut_slice();
+
+    for i in 1..n {
+        for j in 1..k {
+            let cost = if first[j - 1] == second[i - 1] {
+                // Calculating addition
+                (-(i.min(j) as f64 * a + i.abs_diff(j) as f64 * r)).exp()
+            } else {
+                0.0
+            };
+
+            // Choosing maximum of three neigbors
+            simatrix[i][j] =
+                simatrix[i][j - 1].max(simatrix[i - 1][j].max(simatrix[i - 1][j - 1] + cost));
+        }
+    }
+    // Result normalization
+    let sum: f64 = (1..(k).min(n)).fold(0.0, |acc, i| acc + (-a * i as f64).exp());
+
+    simatrix[n - 1][k - 1] / sum
+}
+
+/// Deduplicate stack traces
+///
+/// # Arguments
+///
+/// * `stacktraces` - slice of `Stacktrace` structs
+///
+/// # Return value
+///
+/// An vector of the same length as `stacktraces`.
+/// Vec[i] is None, if original stacktrace i is a duplicate of any element of `stacktraces`.
+pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<Option<Stacktrace>> {
+    let mut traces = HashSet::new();
+    let mut result: Vec<Option<Stacktrace>> = Vec::new();
+    stacktraces.iter().for_each(|trace| {
+        result.push(if traces.insert(trace) {
+            Some(trace.clone())
+        } else {
+            None
+        })
+    });
+    result
+}
+
+/// Perform the clustering of stack traces
+///
+/// # Arguments
+///
+/// * `stacktraces` - slice of `Stacktrace` structs
+///
+/// # Return value
+///
+/// An vector of the same length as `stacktraces`.
+/// Vec[i] is the flat cluster number to which original stacktrace i belongs.
+pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
+    let len = stacktraces.len();
+    let mut tmp_lines: Vec<String> = Vec::new();
+    tmp_lines.resize(len, "".to_string());
+    // Lines in compressed distance matrix
+    let mut lines: RwLock<Vec<String>> = RwLock::new(tmp_lines);
+    // Writing compressed distance matrix into Vector<String>
+    (0..len).into_par_iter().for_each(|i| {
+        let mut tmp_str = String::new();
+        for j in i + 1..len {
+            tmp_str += format!(
+                "{0:.3} ",
+                1.0 - similarity(&stacktraces[i], &stacktraces[j])
+            )
+            .as_str();
+        }
+        let mut lines = lines.write().unwrap();
+        lines[i] = tmp_str;
+    });
+
+    let python_cluster_script =
+        "import numpy as np;\
+        from scipy.cluster.hierarchy import fcluster, linkage;\
+        a = np.fromstring(input(), dtype=float, sep=' ');\
+        print(*fcluster(linkage([a] if type(a.tolist()) is float else a, method=\"complete\"), 0.3, criterion=\"distance\"))";
+
+    let Ok(mut python) = Command::new("python3")
+        .args(["-c", python_cluster_script])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn() else {
+        return Err(Error::Casr("Failed to launch python3".to_string()));
+    };
+    {
+        let python_stdin = python.stdin.as_mut().unwrap();
+        if python_stdin
+            .write_all(lines.get_mut().unwrap().join("").as_bytes())
+            .is_err()
+        {
+            return Err(Error::Casr(
+                "Error while writing to stdin of python script".to_string(),
+            ));
+        }
+    }
+    let python = python.wait_with_output()?;
+
+    if !python.status.success() {
+        return Err(Error::Casr(format!(
+            "Failed to start python script. Error: {}",
+            String::from_utf8_lossy(&python.stderr)
+        )));
+    }
+    let output = String::from_utf8_lossy(&python.stdout);
+    let clusters = output
+        .split(' ')
+        .filter_map(|x| x.trim().parse::<u32>().ok())
+        .collect::<Vec<u32>>();
+
+    if clusters.len() != len {
+        return Err(Error::Casr(format!(
+            "Number of casreps({}) differs from array length({}) from python",
+            len,
+            clusters.len()
+        )));
+    }
+
+    Ok(clusters)
 }
 
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[

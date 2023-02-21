@@ -3088,7 +3088,7 @@ fn test_asan_stacktrace() {
         .iter()
         .map(|e| e.to_string())
         .collect::<Vec<String>>();
-    let sttr = casr::asan::AsanAnalysis::parse_stacktrace(&trace, None);
+    let sttr = casr::asan::AsanAnalysis::parse_stacktrace(&trace);
     if sttr.is_err() {
         panic!("{}", sttr.err().unwrap());
     }
@@ -3655,7 +3655,7 @@ fn test_python_stacktrace() {
         .iter()
         .map(|e| e.to_string())
         .collect::<Vec<String>>();
-    let sttr = casr::python::PythonAnalysis::parse_stacktrace(&trace, None);
+    let sttr = casr::python::PythonAnalysis::parse_stacktrace(&trace);
     if sttr.is_err() {
         panic!("{}", sttr.err().unwrap());
     }

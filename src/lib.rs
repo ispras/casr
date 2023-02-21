@@ -1,6 +1,5 @@
 pub mod asan;
 pub mod cpp;
-pub mod debug;
 pub mod error;
 pub mod execution_class;
 pub mod gdb;

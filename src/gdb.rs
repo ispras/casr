@@ -16,7 +16,7 @@ use goblin::container::Endian;
 use goblin::elf::header;
 use regex::Regex;
 
-use super::error::{Error, Result};
+use super::error::*;
 use super::execution_class::ExecutionClass;
 use super::stacktrace::*;
 use super::util::Severity;
@@ -34,15 +34,16 @@ pub struct MachineInfo {
 
 #[derive(Clone, Default)]
 /// Information about crash state.
-pub struct CrashContext {
+pub struct GdbContext {
     pub siginfo: Siginfo,
     pub registers: Registers,
     pub mappings: MappedFiles,
     pub machine: MachineInfo,
     pub pc_memory: MemoryObject,
+    pub stacktrace: Vec<String>,
 }
 
-impl CrashContext {
+impl GdbContext {
     /// Get stack pointer value for current architecture.
     pub fn sp(&self) -> Option<&u64> {
         match self.machine.arch {
@@ -67,16 +68,7 @@ impl CrashContext {
 pub struct GdbAnalysis;
 
 impl ProcessStacktrace for GdbAnalysis {
-    /// Detect stack trace in gdb string, obtained with "bt" command
-    ///
-    /// # Arguments
-    ///
-    /// * `stream` - gdb string with stack trace
-    ///
-    /// # Return value
-    ///
-    /// Stack trace as vector of strings
-    fn detect_stacktrace(stream: &str) -> anyhow::Result<Vec<String>> {
+    fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let frame = Regex::new(r"^ *#[0-9]+").unwrap();
         Ok(stream
             .split('\n')
@@ -85,53 +77,28 @@ impl ProcessStacktrace for GdbAnalysis {
             .collect())
     }
 
-    /// Extract stack trace object from gdb stack trace vector of strings
-    ///    
-    /// # Arguments                                                              
-    ///                                                                          
-    /// * `entries` - stack trace as vector                                      
-    ///
-    /// * `mappings` - memory mappings as vector
-    ///                                                                          
-    /// # Return value                                                           
-    ///                                                                          
-    /// Stack trace as a `Stacktrace` struct                                     
-    fn parse_stacktrace(
-        entries: &[String],
-        mappings: Option<&[String]>,
-    ) -> anyhow::Result<Stacktrace> {
-        let mut gdbtrace = Stacktrace::from_gdb(entries.join("\n"))?;
-        if let Some(mappings) = mappings {
-            if let Ok(mfiles) = MappedFiles::from_gdb(mappings.join("\n")) {
-                gdbtrace.compute_module_offsets(&mfiles);
-            }
-        }
-        Ok(gdbtrace)
+    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
+        Ok(Stacktrace::from_gdb(entries.join("\n"))?)
     }
 }
 
-impl Severity for GdbAnalysis {
-    /// Get severity class from parameters and save it to report.
-    ///
-    /// # Arguments
-    ///
-    /// * `report` - Crash report.
-    ///
-    /// * `context` - Crash context.
-    fn severity<'a>(
-        context: &CrashContext,
-        stacktrace: &'a [String],
-    ) -> Result<ExecutionClass<'a>> {
+impl Severity for GdbContext {
+    fn severity(&self) -> Result<ExecutionClass> {
         // Check signal number.
-        match context.siginfo.si_signo {
+        match self.siginfo.si_signo {
             SIGINFO_SIGABRT => {
-                if stacktrace.iter().any(|entry| entry.contains("cfree")) {
+                if self.stacktrace.iter().any(|entry| entry.contains("cfree")) {
                     return ExecutionClass::find("HeapError");
                 }
-                if stacktrace.iter().any(|entry| entry.contains("__chk_fail")) {
+                if self
+                    .stacktrace
+                    .iter()
+                    .any(|entry| entry.contains("__chk_fail"))
+                {
                     return ExecutionClass::find("SafeFunctionCheck");
                 }
-                if stacktrace
+                if self
+                    .stacktrace
                     .iter()
                     .any(|entry| entry.contains("_stack_chk_fail"))
                 {
@@ -144,7 +111,7 @@ impl Severity for GdbAnalysis {
             SIGINFO_SIGILL | SIGINFO_SIGSYS => ExecutionClass::find("BadInstruction"),
             SIGINFO_SIGSEGV | SIGINFO_SIGFPE | SIGINFO_SIGBUS => {
                 // Get program counter.
-                let pc = context.pc();
+                let pc = self.pc();
 
                 if pc.is_none() {
                     return Err(Error::Casr("Unable to get Program counter.".to_string()));
@@ -153,22 +120,22 @@ impl Severity for GdbAnalysis {
                 let pc = pc.unwrap();
 
                 // Check for segfaultOnPC.
-                if context.siginfo.si_signo == SIGINFO_SIGSEGV && *pc == context.siginfo.si_addr {
-                    if is_near_null(context.siginfo.si_addr) {
+                if self.siginfo.si_signo == SIGINFO_SIGSEGV && *pc == self.siginfo.si_addr {
+                    if is_near_null(self.siginfo.si_addr) {
                         return ExecutionClass::find("SegFaultOnPcNearNull");
                     } else {
                         return ExecutionClass::find("SegFaultOnPc");
                     };
                 }
-                if context.siginfo.si_signo == SIGINFO_SIGSEGV
-                    && context.pc_memory.data.is_empty()
-                    && context.siginfo.si_code == SI_KERNEL
+                if self.siginfo.si_signo == SIGINFO_SIGSEGV
+                    && self.pc_memory.data.is_empty()
+                    && self.siginfo.si_code == SI_KERNEL
                 {
                     return ExecutionClass::find("SegFaultOnPc");
                 }
 
                 // Initialize disassembler.
-                let cs = match context.machine.arch {
+                let cs = match self.machine.arch {
                     header::EM_386 => Capstone::new()
                         .x86()
                         .mode(arch::x86::ArchMode::Mode32)
@@ -182,7 +149,7 @@ impl Severity for GdbAnalysis {
                         .detail(true)
                         .build(),
                     header::EM_ARM => {
-                        if let Some(cpsr) = context.registers.get("cpsr") {
+                        if let Some(cpsr) = self.registers.get("cpsr") {
                             Capstone::new()
                                 .arm()
                                 .mode(if *cpsr & 0x20 != 0 {
@@ -191,7 +158,7 @@ impl Severity for GdbAnalysis {
                                     arch::arm::ArchMode::Arm
                                 })
                                 .detail(true)
-                                .endian(if context.machine.endianness == Endian::Little {
+                                .endian(if self.machine.endianness == Endian::Little {
                                     capstone::Endian::Little
                                 } else {
                                     capstone::Endian::Big
@@ -206,14 +173,14 @@ impl Severity for GdbAnalysis {
                     _ => {
                         return Err(Error::Casr(format!(
                             "Unsupported machine architecture: {}",
-                            context.machine.arch
+                            self.machine.arch
                         )))
                     }
                 };
 
                 if let Ok(cs) = cs {
                     // Get disassembly for report.
-                    let insns = cs.disasm_all(&context.pc_memory.data, *pc);
+                    let insns = cs.disasm_all(&self.pc_memory.data, *pc);
                     if let Ok(insns) = insns {
                         let mut disassembly = Vec::new();
                         insns
@@ -225,10 +192,10 @@ impl Severity for GdbAnalysis {
                         }
                         disassembly.truncate(16);
 
-                        if context.siginfo.si_signo == SIGINFO_SIGSEGV
-                            || context.siginfo.si_signo == SIGINFO_SIGBUS
+                        if self.siginfo.si_signo == SIGINFO_SIGSEGV
+                            || self.siginfo.si_signo == SIGINFO_SIGBUS
                         {
-                            analyze_instructions(&cs, &insns, context)
+                            analyze_instructions(&cs, &insns, self)
                         } else {
                             ExecutionClass::find("FPE")
                         }
@@ -240,13 +207,13 @@ impl Severity for GdbAnalysis {
                 } else {
                     Err(Error::Casr(format!(
                         "Unable to initialize architecture disassembler: {}",
-                        context.machine.arch
+                        self.machine.arch
                     )))
                 }
             }
             _ => Err(Error::Casr(format!(
                 "Unsupported signal :{}",
-                context.siginfo.si_signo
+                self.siginfo.si_signo
             ))),
         }
     }
@@ -270,11 +237,11 @@ pub fn is_near_null(value: u64) -> bool {
 /// * `insns` - reference to disassembled instructions.
 ///
 /// * `context` - crash context.
-fn analyze_instructions<'a>(
+fn analyze_instructions(
     cs: &Capstone,
     insns: &Instructions,
-    context: &CrashContext,
-) -> Result<ExecutionClass<'a>> {
+    context: &GdbContext,
+) -> Result<ExecutionClass> {
     match context.machine.arch {
         header::EM_386 | header::EM_X86_64 => analyze_instructions_x86(cs, insns, context),
         header::EM_ARM => analyze_instructions_arm(cs, insns, &context.siginfo),
@@ -294,11 +261,11 @@ fn analyze_instructions<'a>(
 /// * `insns` - reference to disassembled instructions.
 ///
 /// * `context` - crash context.
-fn analyze_instructions_x86<'a>(
+fn analyze_instructions_x86(
     cs: &Capstone,
     insns: &Instructions,
-    context: &CrashContext,
-) -> Result<ExecutionClass<'a>> {
+    context: &GdbContext,
+) -> Result<ExecutionClass> {
     // Get first instruction.
     let insn = insns.iter().next();
     if insn.is_none() {
@@ -413,11 +380,11 @@ fn analyze_instructions_x86<'a>(
 /// * `insns` - reference to disassembled instructions.
 ///
 /// * `info` - reference to signal information struct.
-fn analyze_instructions_arm<'a>(
+fn analyze_instructions_arm(
     cs: &Capstone,
     insns: &Instructions,
     info: &Siginfo,
-) -> Result<ExecutionClass<'a>> {
+) -> Result<ExecutionClass> {
     // Get first instruction.
     let insn = insns.iter().next();
     if insn.is_none() {
@@ -504,7 +471,7 @@ pub const SI_KERNEL: u32 = 0x80;
 /// * `cs` - capstone.
 ///
 /// * `insns` - instruction list to analyze.
-fn check_taint<'a>(cs: &Capstone, insns: &Instructions) -> Result<ExecutionClass<'a>> {
+fn check_taint(cs: &Capstone, insns: &Instructions) -> Result<ExecutionClass> {
     let mut taint_set: HashSet<RegId> = HashSet::new();
     for (index, insn) in insns.iter().enumerate() {
         match process_instruction(cs, &insn, index, &mut taint_set) {
@@ -1230,7 +1197,7 @@ mod tests {
             };
             let mut registers = Registers::new();
             registers.insert("eax".to_string(), 0xdeadbeaf);
-            let context = CrashContext {
+            let context = GdbContext {
                 siginfo: sig,
                 registers,
                 mappings: MappedFiles::new(),
@@ -1239,6 +1206,7 @@ mod tests {
                     data: vec![0x8b, 0x00, 0x01, 0xc2, 0x89, 0x02],
                 },
                 machine,
+                stacktrace: Vec::new(),
             };
             let data: &[u8] = &[0x8b, 0x00, 0x01, 0xc2, 0x89, 0x02];
             let insns = cs.disasm_all(data, 0).unwrap();
@@ -1272,7 +1240,7 @@ mod tests {
             };
             let mut registers = Registers::new();
             registers.insert("eax".to_string(), 0xdeadbeaf);
-            let context = CrashContext {
+            let context = GdbContext {
                 siginfo: sig,
                 registers,
                 mappings: MappedFiles::new(),
@@ -1281,6 +1249,7 @@ mod tests {
                     data: vec![0x8b, 0x00, 0x8b, 0x00, 0xff, 0xd0],
                 },
                 machine,
+                stacktrace: Vec::new(),
             };
             let data: &[u8] = &[0x8b, 0x00, 0x8b, 0x00, 0xff, 0xd0];
             let insns = cs.disasm_all(data, 0).unwrap();

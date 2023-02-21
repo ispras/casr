@@ -1,24 +1,15 @@
 use crate::stacktrace::ProcessStacktrace;
 use crate::util::Exception;
 
+use crate::error::*;
 use crate::execution_class::ExecutionClass;
-use anyhow::{bail, Result};
 use gdb_command::stacktrace::*;
 use regex::Regex;
 
 pub struct PythonAnalysis;
 
 impl ProcessStacktrace for PythonAnalysis {
-    /// Detect stack trace in python report                      
-    ///                                                                          
-    /// # Arguments                                                              
-    ///                                                                          
-    /// * `stream` - python report                                            
-    ///                                                                          
-    /// # Return value                                                           
-    ///                                                                          
-    /// Stack trace as vector of strings                                         
-    fn detect_stacktrace(stream: &str) -> Result<Vec<String>> {
+    fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         // Get stack trace from python report.
         let stacktrace = stream
             .split('\n')
@@ -28,14 +19,18 @@ impl ProcessStacktrace for PythonAnalysis {
             .iter()
             .position(|line| line.starts_with("Traceback "));
         if first.is_none() {
-            bail!("Couldn't find traceback in python report");
+            return Err(Error::Casr(
+                "Couldn't find traceback in python report".to_string(),
+            ));
         }
 
         // Stack trace is splitted by empty line.
         let first = first.unwrap();
         let last = stacktrace.iter().skip(first).rposition(|s| !s.is_empty());
         if last.is_none() {
-            bail!("Couldn't find traceback end in python report");
+            return Err(Error::Casr(
+                "Couldn't find traceback end in python report".to_string(),
+            ));
         }
         let last = last.unwrap();
 
@@ -51,16 +46,7 @@ impl ProcessStacktrace for PythonAnalysis {
             .collect::<Vec<String>>())
     }
 
-    /// Extract stack trace object from python traceback string
-    ///
-    /// # Arguments
-    ///
-    /// * `entries` - traceback as vector
-    ///
-    /// # Return value
-    ///
-    /// Traceback as a `Stacktrace` struct
-    fn parse_stacktrace(entries: &[String], _: Option<&[String]>) -> Result<Stacktrace> {
+    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
         let mut stacktrace = Stacktrace::new();
 
         for entry in entries.iter() {
@@ -70,7 +56,7 @@ impl ProcessStacktrace for PythonAnalysis {
                 let re = Regex::new(r#"\[Previous line repeated (\d+) more times\]"#).unwrap();
                 if let Some(rep) = re.captures(entry) {
                     let Ok(rep) = rep.get(1).unwrap().as_str().parse::<u64>() else {
-                        bail!("Couldn't parse num: {entry}");
+                        return Err(Error::Casr("Couldn't parse num: {entry}".to_string()));
                     };
                     let last = stacktrace.last().unwrap().clone();
                     for _ in 0..rep {
@@ -79,7 +65,9 @@ impl ProcessStacktrace for PythonAnalysis {
                     }
                     continue;
                 } else {
-                    bail!("Couldn't parse stacktrace line: {entry}");
+                    return Err(Error::Casr(
+                        "Couldn't parse stacktrace line: {entry}".to_string(),
+                    ));
                 }
             }
 
@@ -90,11 +78,15 @@ impl ProcessStacktrace for PythonAnalysis {
                 if let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() {
                     stentry.debug.line = line;
                 } else {
-                    bail!("Couldn't parse stacktrace line num: {entry}");
+                    return Err(Error::Casr(
+                        "Couldn't parse stacktrace line num: {entry}".to_string(),
+                    ));
                 };
                 stentry.function = cap.get(3).unwrap().as_str().to_string();
             } else {
-                bail!("Couldn't parse stacktrace line: {entry}");
+                return Err(Error::Casr(
+                    "Couldn't parse stacktrace line: {entry}".to_string(),
+                ));
             }
 
             stacktrace.push(stentry);
@@ -104,15 +96,6 @@ impl ProcessStacktrace for PythonAnalysis {
 }
 
 impl Exception for PythonAnalysis {
-    /// Get exception from python report.                                            
-    ///                                                                              
-    /// # Arguments                                                                  
-    ///                                                                              
-    /// * `exception_line` - python exception line                                   
-    ///                                                                              
-    /// # Return value                                                               
-    ///                                                                              
-    /// ExecutionClass with python exception info                                    
     fn parse_exception(stderr_list: &[String]) -> Option<ExecutionClass> {
         let re = Regex::new(r#"([\w]+): (.+)"#).unwrap();
         stderr_list

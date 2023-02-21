@@ -1,22 +1,21 @@
 use crate::error;
 
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 use std::fmt;
 /// Classified information about program's execution.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct ExecutionClass<'a> {
+pub struct ExecutionClass {
     /// Severity type.
     #[serde(rename(serialize = "Type", deserialize = "Type"))]
-    pub severity: Cow<'a, str>,
+    pub severity: String,
     /// Class name.
     #[serde(rename(serialize = "ShortDescription", deserialize = "ShortDescription"))]
-    pub short_description: Cow<'a, str>,
+    pub short_description: String,
     /// Some description.
     #[serde(rename(serialize = "Description", deserialize = "Description"))]
-    pub description: Cow<'a, str>,
+    pub description: String,
     #[serde(rename(serialize = "Explanation", deserialize = "Explanation"))]
-    pub explanation: Cow<'a, str>,
+    pub explanation: String,
 }
 
 pub const CLASSES: &[(&str, &str, &str, &str); 71] = &[
@@ -93,18 +92,18 @@ pub const CLASSES: &[(&str, &str, &str, &str); 71] = &[
     ("PROBABLY_EXPLOITABLE", "overwrites-const-input", "Attempt to overwrite constant input", "Fuzz target overwrites its constant input."),
 ];
 
-impl<'a> ExecutionClass<'a> {
+impl ExecutionClass {
     /// Construct `ExecutionClass` struct from tuple.
     ///
     /// # Arguments
     ///
     /// * `class` - tuple of strings represents execution class.
-    pub fn new(class: (&'a str, &'a str, &'a str, &'a str)) -> Self {
+    pub fn new(class: (&str, &str, &str, &str)) -> Self {
         ExecutionClass {
-            severity: Cow::Borrowed(class.0),
-            short_description: Cow::Borrowed(class.1),
-            description: Cow::Borrowed(class.2),
-            explanation: Cow::Borrowed(class.3),
+            severity: class.0.to_string(),
+            short_description: class.1.to_string(),
+            description: class.2.to_string(),
+            explanation: class.3.to_string(),
         }
     }
 
@@ -133,11 +132,7 @@ impl<'a> ExecutionClass<'a> {
     /// * `rw` - access information.
     ///
     /// * `near_null` - is crash address near null
-    pub fn san_find(
-        short_desc: &'a str,
-        rw: Option<&'a str>,
-        near_null: bool,
-    ) -> error::Result<Self> {
+    pub fn san_find(short_desc: &str, rw: Option<&str>, near_null: bool) -> error::Result<Self> {
         match short_desc {
             "SEGV" => match (rw.unwrap_or("UNDEF"), near_null) {
                 ("READ", false) => ExecutionClass::find("SourceAv"),
@@ -163,7 +158,7 @@ impl<'a> ExecutionClass<'a> {
         }
     }
 }
-impl<'a> fmt::Display for ExecutionClass<'a> {
+impl fmt::Display for ExecutionClass {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let explanation = if !self.explanation.is_empty() {
             format!("\nExplanation: {}", self.explanation)
@@ -177,13 +172,13 @@ impl<'a> fmt::Display for ExecutionClass<'a> {
         )
     }
 }
-impl<'a> Default for ExecutionClass<'a> {
+impl Default for ExecutionClass {
     fn default() -> Self {
         ExecutionClass {
-            severity: Cow::Borrowed("UNDEFINED"),
-            short_description: Cow::Borrowed("Undefined"),
-            description: Cow::Borrowed("Undefined class"),
-            explanation: Cow::Borrowed("The is no execution class for this type of exception"),
+            severity: "UNDEFINED".to_string(),
+            short_description: "Undefined".to_string(),
+            description: "Undefined class".to_string(),
+            explanation: "The is no execution class for this type of exception".to_string(),
         }
     }
 }

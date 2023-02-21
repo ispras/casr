@@ -1,55 +1,40 @@
-use anyhow::{bail, Result};
 use gdb_command::stacktrace::*;
 use regex::Regex;
 
-use crate::error;
+use crate::error::*;
 use crate::execution_class::ExecutionClass;
 use crate::gdb::is_near_null;
-use crate::gdb::CrashContext;
 use crate::stacktrace::ProcessStacktrace;
 use crate::util::Severity;
 
 pub struct AsanAnalysis;
+pub struct AsanContext(pub Vec<String>);
 
 impl ProcessStacktrace for AsanAnalysis {
-    /// Detect stack trace in sanitizer report
-    ///
-    /// # Arguments
-    ///
-    /// * `stream` - sanitizer report
-    ///
-    /// # Return value
-    ///
-    /// Stack trace as vector of strings
-    fn detect_stacktrace(stream: &str) -> Result<Vec<String>> {
+    fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let lines: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
 
         let frame = Regex::new(r"^#0 ").unwrap();
         let first = lines.iter().position(|x| frame.is_match(x));
         if first.is_none() {
-            bail!("Couldn't find stack trace in sanitizer's report");
+            return Err(Error::Casr(
+                "Couldn't find stack trace in sanitizer's report".to_string(),
+            ));
         }
 
         // Stack trace is splitted by empty line.
         let first = first.unwrap();
         let last = lines.iter().skip(first).position(|val| val.is_empty());
         if last.is_none() {
-            bail!("Couldn't find stack trace end in sanitizer's report");
+            return Err(Error::Casr(
+                "Couldn't find stack trace end in sanitizer's report".to_string(),
+            ));
         }
         let last = last.unwrap();
         Ok(lines[first..first + last].to_vec())
     }
 
-    /// Extract stack trace object from asan stack trace vector of string
-    ///
-    /// # Arguments
-    ///
-    /// * `entries` - stack trace as vector
-    ///
-    /// # Return value
-    ///
-    /// Stack trace as a `Stacktrace` struct
-    fn parse_stacktrace(entries: &[String], _: Option<&[String]>) -> Result<Stacktrace> {
+    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
         let mut stacktrace = Stacktrace::new();
         for entry in entries.iter() {
             let mut stentry = StacktraceEntry::default();
@@ -58,7 +43,9 @@ impl ProcessStacktrace for AsanAnalysis {
             let re = Regex::new(r"^ *#[0-9]+ +0x([0-9a-f]+) *").unwrap();
             let caps = re.captures(entry.as_ref());
             if caps.is_none() {
-                bail!("Couldn't parse frame and address in stack trace entry: {entry}");
+                return Err(Error::Casr(
+                    "Couldn't parse frame and address in stack trace entry: {entry}".to_string(),
+                ));
             }
             let caps = caps.unwrap();
 
@@ -66,7 +53,7 @@ impl ProcessStacktrace for AsanAnalysis {
             let num = caps.get(1).unwrap().as_str();
             let addr = u64::from_str_radix(num, 16);
             if addr.is_err() {
-                bail!("Couldn't parse address: {num}");
+                return Err(Error::Casr("Couldn't parse address: {num}".to_string()));
             }
             stentry.address = addr.unwrap();
 
@@ -96,7 +83,9 @@ impl ProcessStacktrace for AsanAnalysis {
                 let num = caps.get(2).unwrap().as_str();
                 let off = u64::from_str_radix(num, 16);
                 if off.is_err() {
-                    bail!("Couldn't parse module offset: {num}");
+                    return Err(Error::Casr(
+                        "Couldn't parse module offset: {num}".to_string(),
+                    ));
                 }
                 stentry.offset = off.unwrap();
                 // Cut module from string.
@@ -108,7 +97,9 @@ impl ProcessStacktrace for AsanAnalysis {
             if has_function {
                 location = location[3..].trim();
                 if location.is_empty() {
-                    bail!("Couldn't parse function name: {entry}");
+                    return Err(Error::Casr(
+                        "Couldn't parse function name: {entry}".to_string(),
+                    ));
                 }
                 let i = if let Some(p) = location.rfind(')') {
                     if location[p..].starts_with(") const ") {
@@ -139,7 +130,9 @@ impl ProcessStacktrace for AsanAnalysis {
             if !location.is_empty() {
                 let source: Vec<&str> = location.rsplitn(3, ':').collect();
                 if source.iter().any(|x| x.is_empty()) {
-                    bail!("Couldn't parse source file path, line, or column: {location}");
+                    return Err(Error::Casr(
+                        "Couldn't parse source file path, line, or column: {location}".to_string(),
+                    ));
                 }
                 // Get source file.
                 stentry.debug.file = source.last().unwrap().trim().to_string();
@@ -148,7 +141,7 @@ impl ProcessStacktrace for AsanAnalysis {
                     let num = source[source.len() - 2];
                     let line = num.parse::<u64>();
                     if line.is_err() {
-                        bail!("Couldn't parse source line: {num}");
+                        return Err(Error::Casr("Couldn't parse source line: {num}".to_string()));
                     }
                     stentry.debug.line = line.unwrap();
                 }
@@ -157,7 +150,9 @@ impl ProcessStacktrace for AsanAnalysis {
                     let num = source[0];
                     let column = num.parse::<u64>();
                     if column.is_err() {
-                        bail!("Couldn't parse source column: {num}");
+                        return Err(Error::Casr(
+                            "Couldn't parse source column: {num}".to_string(),
+                        ));
                     }
                     stentry.debug.column = column.unwrap();
                 }
@@ -169,11 +164,9 @@ impl ProcessStacktrace for AsanAnalysis {
     }
 }
 
-impl Severity for AsanAnalysis {
-    fn severity<'a>(
-        _: &CrashContext,
-        asan_report: &'a [String],
-    ) -> error::Result<ExecutionClass<'a>> {
+impl Severity for AsanContext {
+    fn severity(&self) -> Result<ExecutionClass> {
+        let asan_report = &self.0;
         if asan_report[0].contains("LeakSanitizer") {
             return Ok(ExecutionClass::find("memory-leaks").unwrap());
         } else {
@@ -208,15 +201,19 @@ impl Severity for AsanAnalysis {
                         };
 
                         let rcrash_address = Regex::new("on.*address 0x([0-9a-f]+)").unwrap();
-                        let near_null =
-                            if let Some(crash_address) = rcrash_address.captures(&asan_report[0]) {
-                                is_near_null(u64::from_str_radix(
+                        let near_null = if let Some(crash_address) =
+                            rcrash_address.captures(&asan_report[0])
+                        {
+                            let Ok(addr) = u64::from_str_radix(
                                     crash_address.get(1).unwrap().as_str(),
                                     16,
-                                )?)
-                            } else {
-                                false
-                            };
+                                ) else {
+                                    return Err(Error::Casr(format!("Cannot parse address: {}", crash_address.get(1).unwrap().as_str())));
+                                };
+                            is_near_null(addr)
+                        } else {
+                            false
+                        };
                         if let Ok(class) = ExecutionClass::san_find(san_type, mem_access, near_null)
                         {
                             return Ok(class);

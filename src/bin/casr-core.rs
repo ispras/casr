@@ -30,7 +30,7 @@ use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 
 use casr::error::Error;
-use casr::gdb::{CrashContext, GdbAnalysis, MachineInfo};
+use casr::gdb::{GdbContext, MachineInfo};
 use casr::report::*;
 use casr::util::Severity;
 
@@ -148,8 +148,7 @@ fn main() -> Result<()> {
 
         let result = analyze_coredump(&mut report, &core, &core_path);
 
-        if let Ok(context) = result {
-            report.execution_class = GdbAnalysis::severity(&context, &report.stacktrace)?;
+        if result.is_ok() {
             if matches.is_present("output") {
                 let result_path = PathBuf::from(matches.value_of("output").unwrap());
                 let mut file = File::create(&result_path).with_context(|| {
@@ -303,7 +302,6 @@ fn main() -> Result<()> {
         );
     }
 
-    report.execution_class = GdbAnalysis::severity(&result.unwrap(), &report.stacktrace)?;
     // Save report.
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
@@ -344,7 +342,7 @@ fn analyze_coredump(
     report: &mut CrashReport,
     core: &[u8],
     core_path: &Path,
-) -> casr::error::Result<CrashContext> {
+) -> casr::error::Result<()> {
     let mut machine = MachineInfo {
         arch: header::EM_X86_64,
         endianness: Endian::Little,
@@ -459,12 +457,13 @@ fn analyze_coredump(
             .collect();
     }
 
-    let mut context = CrashContext {
+    let mut context = GdbContext {
         siginfo: Siginfo::from_gdb(&result[1])?,
         mappings: MappedFiles::from_gdb(&result[2])?,
         registers: Registers::from_gdb(&result[3])?,
         pc_memory: MemoryObject::from_gdb(&result[4])?,
         machine,
+        stacktrace: report.stacktrace.clone(),
     };
     let rm_modules = Regex::new("<.*?>").unwrap();
     let disassembly = rm_modules.replace_all(&result[5], "");
@@ -494,6 +493,15 @@ fn analyze_coredump(
             .collect();
     }
 
-    report.registers = context.registers.clone();
-    Ok(context)
+    let severity = context.severity();
+
+    if let Ok(severity) = severity {
+        report.execution_class = severity;
+    } else {
+        warn!("Couldn't estimate severity. {}", severity.err().unwrap());
+    }
+
+    report.registers = context.registers;
+
+    Ok(())
 }

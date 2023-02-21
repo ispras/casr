@@ -1,6 +1,5 @@
 extern crate clap;
 
-use casr::debug;
 use casr::init_ignored_frames;
 use casr::python::PythonAnalysis;
 use casr::report::CrashReport;
@@ -152,7 +151,7 @@ fn main() -> Result<()> {
                 report.python_report = Vec::from(&python_stdout_list[report_start..report_end]);
 
                 report.stacktrace =
-                    PythonAnalysis::detect_stacktrace(&report.python_report.join("\n"))?;
+                    PythonAnalysis::extract_stacktrace(&report.python_report.join("\n"))?;
                 // Get exception from python report.
                 if report.python_report.len() > 1 {
                     if let Some(exception) =
@@ -178,7 +177,7 @@ fn main() -> Result<()> {
             report.python_report = Vec::from(&python_stderr_list[report_start..report_end]);
 
             report.stacktrace =
-                PythonAnalysis::detect_stacktrace(&report.python_report.join("\n"))?;
+                PythonAnalysis::extract_stacktrace(&report.python_report.join("\n"))?;
 
             if let Some(exception) = PythonAnalysis::parse_exception(&report.python_report) {
                 report.execution_class = exception;
@@ -192,11 +191,11 @@ fn main() -> Result<()> {
     }
 
     if let Ok(crash_line) =
-        PythonAnalysis::crash_line(&PythonAnalysis::parse_stacktrace(&report.stacktrace, None)?)
+        PythonAnalysis::crash_line(&PythonAnalysis::parse_stacktrace(&report.stacktrace)?)
     {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = debug::sources(&debug) {
+            if let Some(sources) = util::sources(&debug) {
                 report.source = sources;
             }
         }

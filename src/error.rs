@@ -46,10 +46,4 @@ impl From<goblin::error::Error> for Error {
     }
 }
 
-impl From<std::num::ParseIntError> for Error {
-    fn from(err: std::num::ParseIntError) -> Error {
-        Error::Casr(err.to_string())
-    }
-}
-
 pub type Result<T> = result::Result<T, Error>;

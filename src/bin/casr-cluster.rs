@@ -25,53 +25,8 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::fs;
 use std::io::BufReader;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::process::Stdio;
 use std::sync::RwLock;
-
-/// Compute the similarity between 2 stack traces
-///
-/// # Arguments
-///
-/// * `first` - first stacktrace
-///
-/// * `second` - second stacktrace
-///
-/// # Return value
-///
-/// Similarity coefficient
-fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
-    // Initializing coefficients
-    let a: f64 = 0.04;
-    let r: f64 = 0.13;
-    // Creating the similarity matrix according to the PDM algorithm
-    let k: usize = first.len() + 1;
-    let n: usize = second.len() + 1;
-    let mut raw_matrix = vec![0 as f64; k * n];
-    let mut simatrix: Vec<_> = raw_matrix.as_mut_slice().chunks_mut(k).collect();
-    let simatrix = simatrix.as_mut_slice();
-
-    for i in 1..n {
-        for j in 1..k {
-            let cost = if first[j - 1] == second[i - 1] {
-                // Calculating addition
-                (-(i.min(j) as f64 * a + i.abs_diff(j) as f64 * r)).exp()
-            } else {
-                0.0
-            };
-
-            // Choosing maximum of three neigbors
-            simatrix[i][j] =
-                simatrix[i][j - 1].max(simatrix[i - 1][j].max(simatrix[i - 1][j - 1] + cost));
-        }
-    }
-    // Result normalization
-    let sum: f64 = (1..(k).min(n)).fold(0.0, |acc, i| acc + (-a * i as f64).exp());
-
-    simatrix[n - 1][k - 1] / sum
-}
 
 /// Extract stack trace from casr (casr-san/casr-gdb) report
 ///
@@ -107,35 +62,32 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
                 }
             });
 
-            let asan_report_handle = if let Some(array) = u.get("AsanReport") {
+            let mut rawtrace: Stacktrace = Default::default();
+            if let Some(array) = u.get("AsanReport") {
                 if let Some(array) = array.as_array() {
-                    !array.is_empty()
+                    if !array.is_empty() {
+                        rawtrace = AsanAnalysis::parse_stacktrace(&trace)
+                            .with_context(|| format!("File: {}", path.display()))?;
+                    }
                 } else {
                     bail!("Error while parsing AsanReport. File: {}", path.display());
                 }
-            } else {
-                false
-            };
+            }
 
-            let python_report_handle = if let Some(array) = u.get("PythonReport") {
+            if let Some(array) = u.get("PythonReport") {
                 if let Some(array) = array.as_array() {
-                    !array.is_empty()
+                    if !array.is_empty() {
+                        rawtrace = PythonAnalysis::parse_stacktrace(&trace)
+                            .with_context(|| format!("File: {}", path.display()))?;
+                    }
                 } else {
                     bail!("Error while parsing PythonReport. File: {}", path.display());
                 }
-            } else {
-                false
-            };
+            }
 
-            let mut rawtrace = if asan_report_handle {
-                AsanAnalysis::parse_stacktrace(&trace, None)
-                    .with_context(|| format!("File: {}", path.display()))?
-            } else if python_report_handle {
-                PythonAnalysis::parse_stacktrace(&trace, None)
-                    .with_context(|| format!("File: {}", path.display()))?
-            } else {
-                GdbAnalysis::parse_stacktrace(&trace, None)
-                    .with_context(|| format!("File: {}", path.display()))?
+            if rawtrace.is_empty() {
+                rawtrace = GdbAnalysis::parse_stacktrace(&trace)
+                    .with_context(|| format!("File: {}", path.display()))?;
             };
 
             // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
@@ -200,70 +152,6 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
         }
     }
     bail!("Json parse error, file: {}", path.display());
-}
-
-fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
-    let len = stacktraces.len();
-    let mut tmp_lines: Vec<String> = Vec::new();
-    tmp_lines.resize(len, "".to_string());
-    // Lines in compressed distance matrix
-    let mut lines: RwLock<Vec<String>> = RwLock::new(tmp_lines);
-    // Writing compressed distance matrix into Vector<String>
-    (0..len).into_par_iter().for_each(|i| {
-        let mut tmp_str = String::new();
-        for j in i + 1..len {
-            tmp_str += format!(
-                "{0:.3} ",
-                1.0 - similarity(&stacktraces[i], &stacktraces[j])
-            )
-            .as_str();
-        }
-        let mut lines = lines.write().unwrap();
-        lines[i] = tmp_str;
-    });
-
-    let python_cluster_script =
-        "import numpy as np;\
-        from scipy.cluster.hierarchy import fcluster, linkage;\
-        a = np.fromstring(input(), dtype=float, sep=' ');\
-        print(*fcluster(linkage([a] if type(a.tolist()) is float else a, method=\"complete\"), 0.3, criterion=\"distance\"))";
-
-    let mut python = Command::new("python3")
-        .args(["-c", python_cluster_script])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| "Failed to launch python3")?;
-    {
-        let python_stdin = python.stdin.as_mut().unwrap();
-        python_stdin
-            .write_all(lines.get_mut().unwrap().join("").as_bytes())
-            .with_context(|| "Error while writing to stdin of python script".to_string())?;
-    }
-    let python = python.wait_with_output()?;
-
-    if !python.status.success() {
-        bail!(
-            "Failed to start python script. Error: {}",
-            String::from_utf8_lossy(&python.stderr)
-        );
-    }
-    let output = String::from_utf8_lossy(&python.stdout);
-    let clusters = output
-        .split(' ')
-        .filter_map(|x| x.trim().parse::<u32>().ok())
-        .collect::<Vec<u32>>();
-
-    if clusters.len() != len {
-        bail!(
-            "Number of casreps({}) differs from array length({}) from python",
-            len,
-            clusters.len()
-        );
-    }
-
-    Ok(clusters)
 }
 
 /// Perform the clustering of casreps
@@ -357,19 +245,6 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Resu
         }
     }
     Ok(cluster_cnt)
-}
-
-fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<Option<Stacktrace>> {
-    let mut traces = HashSet::new();
-    let mut result: Vec<Option<Stacktrace>> = Vec::new();
-    stacktraces.iter().for_each(|trace| {
-        result.push(if traces.insert(trace) {
-            Some(trace.clone())
-        } else {
-            None
-        })
-    });
-    result
 }
 
 /// Remove duplicate casreps

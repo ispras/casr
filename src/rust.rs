@@ -6,15 +6,6 @@ use regex::Regex;
 pub struct RustAnalysis;
 
 impl Exception for RustAnalysis {
-    /// Extract rust panic message from stderr                 
-    ///                                                                              
-    /// # Arguments                                                                  
-    ///                                                                              
-    /// * `stderr_list` - lines of stderr                                            
-    ///                                                                              
-    /// # Return value                                                               
-    ///                                                                              
-    /// Exception info as a `ExecutionClass` struct                                  
     fn parse_exception(stderr_list: &[String]) -> Option<ExecutionClass> {
         let rexception = Regex::new(r"thread '.+?' panicked at '(.+)?'").unwrap();
         if let Some(pos) = stderr_list
