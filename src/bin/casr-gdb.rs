@@ -4,13 +4,14 @@ extern crate clap;
 extern crate gdb_command;
 
 use casr::cpp::CppException;
-use casr::gdb::{GdbAnalysis, GdbContext, MachineInfo};
+use casr::exception::Exception;
+use casr::gdb::{GdbContext, GdbStacktrace, MachineInfo};
 use casr::init_ignored_frames;
 use casr::report::CrashReport;
 use casr::rust::RustPanic;
 use casr::stacktrace::*;
 use casr::util;
-use casr::util::{Exception, Severity};
+use casr::util::Severity;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -173,7 +174,7 @@ fn main() -> Result<()> {
     let output = String::from_utf8_lossy(&stdout);
 
     let result = gdb_command.parse(&output)?;
-    report.stacktrace = GdbAnalysis::extract_stacktrace(&result[0])?;
+    report.stacktrace = GdbStacktrace::extract_stacktrace(&result[0])?;
     report.proc_maps = result[2]
         .split('\n')
         .skip(3)
@@ -214,17 +215,13 @@ fn main() -> Result<()> {
         eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
     }
 
-    let output_lines = output
-        .split('\n')
-        .map(|l| l.trim_end().to_string())
-        .collect::<Vec<String>>();
     // Check for exceptions
     if report.execution_class == Default::default()
         || report.execution_class.short_description == "AbortSignal"
     {
         if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
             .iter()
-            .find_map(|parse| parse(&output_lines))
+            .find_map(|parse| parse(&output))
         {
             report.execution_class = class;
         }
@@ -232,12 +229,12 @@ fn main() -> Result<()> {
 
     report.registers = context.registers;
 
-    let mut parsed_stacktrace = GdbAnalysis::parse_stacktrace(&report.stacktrace)?;
+    let mut parsed_stacktrace = GdbStacktrace::parse_stacktrace(&report.stacktrace)?;
     if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
         parsed_stacktrace.compute_module_offsets(&mfiles);
     }
     // Get crash line.
-    if let Ok(crash_line) = GdbAnalysis::crash_line(&parsed_stacktrace) {
+    if let Ok(crash_line) = GdbStacktrace::crash_line(&parsed_stacktrace) {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = util::sources(&debug) {

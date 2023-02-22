@@ -1,12 +1,17 @@
+use crate::exception::Exception;
 use crate::execution_class::ExecutionClass;
-use crate::util::Exception;
 
 use regex::Regex;
 
+/// Structure provides an interface for parsing C++ exception message.
 pub struct CppException;
 
 impl Exception for CppException {
-    fn parse_exception(stderr_list: &[String]) -> Option<ExecutionClass> {
+    fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
+        let stderr_list: Vec<String> = stderr
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect();
         let rexception =
             Regex::new(r"terminate called after throwing an instance of (.+)").unwrap();
         if let Some(pos) = stderr_list

@@ -5,8 +5,9 @@ extern crate gdb_command;
 extern crate linux_personality;
 extern crate regex;
 
-use casr::asan::{AsanAnalysis, AsanContext};
+use casr::asan::{AsanContext, AsanStacktrace};
 use casr::cpp::CppException;
+use casr::exception::Exception;
 use casr::execution_class::*;
 use casr::gdb::*;
 use casr::init_ignored_frames;
@@ -14,7 +15,7 @@ use casr::report::CrashReport;
 use casr::rust::RustPanic;
 use casr::stacktrace::*;
 use casr::util;
-use casr::util::{Exception, Severity};
+use casr::util::Severity;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -162,7 +163,7 @@ fn main() -> Result<()> {
         report.asan_report = Vec::from(&san_stderr_list[report_start..report_end]);
         let context = AsanContext(report.asan_report.clone());
         report.execution_class = context.severity()?;
-        report.stacktrace = AsanAnalysis::extract_stacktrace(&report.asan_report.join("\n"))?;
+        report.stacktrace = AsanStacktrace::extract_stacktrace(&report.asan_report.join("\n"))?;
     } else {
         // Get termination signal.
         if let Some(signal) = sanitizers_result.status.signal() {
@@ -219,7 +220,7 @@ fn main() -> Result<()> {
     {
         if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
             .iter()
-            .find_map(|parse| parse(&san_stderr_list))
+            .find_map(|parse| parse(&sanitizers_stderr))
         {
             report.execution_class = class;
         }
@@ -227,11 +228,11 @@ fn main() -> Result<()> {
 
     // Get crash line.
     let stacktrace = if !report.asan_report.is_empty() {
-        AsanAnalysis::parse_stacktrace(&report.stacktrace)?
+        AsanStacktrace::parse_stacktrace(&report.stacktrace)?
     } else {
-        GdbAnalysis::parse_stacktrace(&report.stacktrace)?
+        GdbStacktrace::parse_stacktrace(&report.stacktrace)?
     };
-    if let Ok(crash_line) = AsanAnalysis::crash_line(&stacktrace) {
+    if let Ok(crash_line) = AsanStacktrace::crash_line(&stacktrace) {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = util::sources(&debug) {

@@ -7,10 +7,10 @@ extern crate rayon;
 extern crate regex;
 extern crate serde_json;
 
-use casr::asan::AsanAnalysis;
-use casr::gdb::GdbAnalysis;
+use casr::asan::AsanStacktrace;
+use casr::gdb::GdbStacktrace;
 use casr::init_ignored_frames;
-use casr::python::PythonAnalysis;
+use casr::python::PythonStacktrace;
 use casr::stacktrace::*;
 use casr::util;
 
@@ -66,7 +66,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
             if let Some(array) = u.get("AsanReport") {
                 if let Some(array) = array.as_array() {
                     if !array.is_empty() {
-                        rawtrace = AsanAnalysis::parse_stacktrace(&trace)
+                        rawtrace = AsanStacktrace::parse_stacktrace(&trace)
                             .with_context(|| format!("File: {}", path.display()))?;
                     }
                 } else {
@@ -77,7 +77,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
             if let Some(array) = u.get("PythonReport") {
                 if let Some(array) = array.as_array() {
                     if !array.is_empty() {
-                        rawtrace = PythonAnalysis::parse_stacktrace(&trace)
+                        rawtrace = PythonStacktrace::parse_stacktrace(&trace)
                             .with_context(|| format!("File: {}", path.display()))?;
                     }
                 } else {
@@ -86,7 +86,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
             }
 
             if rawtrace.is_empty() {
-                rawtrace = GdbAnalysis::parse_stacktrace(&trace)
+                rawtrace = GdbStacktrace::parse_stacktrace(&trace)
                     .with_context(|| format!("File: {}", path.display()))?;
             };
 

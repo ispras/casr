@@ -1,10 +1,12 @@
 pub mod asan;
 pub mod cpp;
 pub mod error;
+pub mod exception;
 pub mod execution_class;
 pub mod gdb;
 pub mod python;
 pub mod report;
 pub mod rust;
+pub mod severity;
 pub mod stacktrace;
 pub mod util;

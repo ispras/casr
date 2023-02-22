@@ -1,14 +1,15 @@
+use crate::exception::Exception;
 use crate::stacktrace::ProcessStacktrace;
-use crate::util::Exception;
 
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
 use gdb_command::stacktrace::*;
 use regex::Regex;
 
-pub struct PythonAnalysis;
+/// Structure provides an interface for processing the stack trace.
+pub struct PythonStacktrace;
 
-impl ProcessStacktrace for PythonAnalysis {
+impl ProcessStacktrace for PythonStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         // Get stack trace from python report.
         let stacktrace = stream
@@ -95,8 +96,15 @@ impl ProcessStacktrace for PythonAnalysis {
     }
 }
 
-impl Exception for PythonAnalysis {
-    fn parse_exception(stderr_list: &[String]) -> Option<ExecutionClass> {
+/// Structure provides an interface for parsing python exception message.
+pub struct PythonException;
+
+impl Exception for PythonException {
+    fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
+        let stderr_list: Vec<String> = stderr
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect();
         let re = Regex::new(r#"([\w]+): (.+)"#).unwrap();
         stderr_list
             .iter()

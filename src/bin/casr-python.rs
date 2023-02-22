@@ -1,11 +1,11 @@
 extern crate clap;
 
+use casr::exception::Exception;
 use casr::init_ignored_frames;
-use casr::python::PythonAnalysis;
+use casr::python::{PythonException, PythonStacktrace};
 use casr::report::CrashReport;
 use casr::stacktrace::*;
 use casr::util;
-use casr::util::Exception;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup, ArgMatches};
@@ -151,11 +151,11 @@ fn main() -> Result<()> {
                 report.python_report = Vec::from(&python_stdout_list[report_start..report_end]);
 
                 report.stacktrace =
-                    PythonAnalysis::extract_stacktrace(&report.python_report.join("\n"))?;
+                    PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
                 // Get exception from python report.
                 if report.python_report.len() > 1 {
                     if let Some(exception) =
-                        PythonAnalysis::parse_exception(&report.python_report[1..2])
+                        PythonException::parse_exception(&report.python_report[1])
                     {
                         report.execution_class = exception;
                     }
@@ -177,9 +177,11 @@ fn main() -> Result<()> {
             report.python_report = Vec::from(&python_stderr_list[report_start..report_end]);
 
             report.stacktrace =
-                PythonAnalysis::extract_stacktrace(&report.python_report.join("\n"))?;
+                PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
 
-            if let Some(exception) = PythonAnalysis::parse_exception(&report.python_report) {
+            if let Some(exception) =
+                PythonException::parse_exception(&report.python_report.join("\n"))
+            {
                 report.execution_class = exception;
             }
         } else {
@@ -191,7 +193,7 @@ fn main() -> Result<()> {
     }
 
     if let Ok(crash_line) =
-        PythonAnalysis::crash_line(&PythonAnalysis::parse_stacktrace(&report.stacktrace)?)
+        PythonStacktrace::crash_line(&PythonStacktrace::parse_stacktrace(&report.stacktrace)?)
     {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {

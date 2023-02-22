@@ -30,7 +30,7 @@ simplelog = "~0.8"
 cursive = { version = "~0.17", default-features = false, features = ["termion-backend"] }
 cursive_tree_view = "~0.8"
 nix = "0.20.0"
-gdb-command = {git = "https://github.com/anfedotoff/gdb-command"}
+gdb-command = "~0.7"
 rayon = "~1.5"
 num_cpus = "~1.13"
 linux-personality = "~1.0"

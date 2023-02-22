@@ -7,10 +7,10 @@ use crate::gdb::is_near_null;
 use crate::stacktrace::ProcessStacktrace;
 use crate::util::Severity;
 
-pub struct AsanAnalysis;
-pub struct AsanContext(pub Vec<String>);
+/// Structure provides an interface for processing the stack trace.
+pub struct AsanStacktrace;
 
-impl ProcessStacktrace for AsanAnalysis {
+impl ProcessStacktrace for AsanStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let lines: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
 
@@ -164,64 +164,58 @@ impl ProcessStacktrace for AsanAnalysis {
     }
 }
 
+/// Information about sanitizer crash state.
+pub struct AsanContext(pub Vec<String>);
+
 impl Severity for AsanContext {
     fn severity(&self) -> Result<ExecutionClass> {
         let asan_report = &self.0;
         if asan_report[0].contains("LeakSanitizer") {
-            return Ok(ExecutionClass::find("memory-leaks").unwrap());
+            ExecutionClass::find("memory-leaks")
         } else {
             let summary = Regex::new(r"SUMMARY: *(AddressSanitizer|libFuzzer): (\S+)").unwrap();
 
-            if let Some(caps) = asan_report.iter().find_map(|s| summary.captures(s)) {
-                // Match Sanitizer.
-                match caps.get(1).unwrap().as_str() {
-                    "libFuzzer" => {
-                        if let Ok(class) =
-                            ExecutionClass::san_find(caps.get(2).unwrap().as_str(), None, false)
-                        {
-                            return Ok(class);
-                        }
-                    }
-                    _ => {
-                        // AddressSanitizer
-                        let san_type = caps.get(2).unwrap().as_str();
-                        let mem_access = if let Some(second_line) = asan_report.get(1) {
-                            let raccess = Regex::new(r"(READ|WRITE|ACCESS)").unwrap();
-                            if let Some(access_type) = raccess.captures(second_line) {
-                                Some(access_type.get(1).unwrap().as_str())
-                            } else if let Some(third_line) = asan_report.get(2) {
-                                raccess
-                                    .captures(third_line)
-                                    .map(|access_type| access_type.get(1).unwrap().as_str())
-                            } else {
-                                None
-                            }
+            let Some(caps) = asan_report.iter().find_map(|s| summary.captures(s)) else {
+                return Err(Error::Casr("Cannot find SUMMARY in Sanitizer report".to_string()));
+            };
+            // Match Sanitizer.
+            match caps.get(1).unwrap().as_str() {
+                "libFuzzer" => ExecutionClass::san_find(caps.get(2).unwrap().as_str(), None, false),
+                _ => {
+                    // AddressSanitizer
+                    let san_type = caps.get(2).unwrap().as_str();
+                    let mem_access = if let Some(second_line) = asan_report.get(1) {
+                        let raccess = Regex::new(r"(READ|WRITE|ACCESS)").unwrap();
+                        if let Some(access_type) = raccess.captures(second_line) {
+                            Some(access_type.get(1).unwrap().as_str())
+                        } else if let Some(third_line) = asan_report.get(2) {
+                            raccess
+                                .captures(third_line)
+                                .map(|access_type| access_type.get(1).unwrap().as_str())
                         } else {
                             None
-                        };
-
-                        let rcrash_address = Regex::new("on.*address 0x([0-9a-f]+)").unwrap();
-                        let near_null = if let Some(crash_address) =
-                            rcrash_address.captures(&asan_report[0])
-                        {
-                            let Ok(addr) = u64::from_str_radix(
-                                    crash_address.get(1).unwrap().as_str(),
-                                    16,
-                                ) else {
-                                    return Err(Error::Casr(format!("Cannot parse address: {}", crash_address.get(1).unwrap().as_str())));
-                                };
-                            is_near_null(addr)
-                        } else {
-                            false
-                        };
-                        if let Ok(class) = ExecutionClass::san_find(san_type, mem_access, near_null)
-                        {
-                            return Ok(class);
                         }
-                    }
+                    } else {
+                        None
+                    };
+
+                    let rcrash_address = Regex::new("on.*address 0x([0-9a-f]+)").unwrap();
+                    let near_null = if let Some(crash_address) =
+                        rcrash_address.captures(&asan_report[0])
+                    {
+                        let Ok(addr) = u64::from_str_radix(
+                                crash_address.get(1).unwrap().as_str(),
+                                16,
+                            ) else {
+                                return Err(Error::Casr(format!("Cannot parse address: {}", crash_address.get(1).unwrap().as_str())));
+                            };
+                        is_near_null(addr)
+                    } else {
+                        false
+                    };
+                    ExecutionClass::san_find(san_type, mem_access, near_null)
                 }
             }
         }
-        Ok(Default::default())
     }
 }

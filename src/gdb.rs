@@ -65,9 +65,10 @@ impl GdbContext {
     }
 }
 
-pub struct GdbAnalysis;
+/// Structure provides an interface for processing the stack trace.
+pub struct GdbStacktrace;
 
-impl ProcessStacktrace for GdbAnalysis {
+impl ProcessStacktrace for GdbStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let frame = Regex::new(r"^ *#[0-9]+").unwrap();
         Ok(stream
@@ -195,7 +196,7 @@ impl Severity for GdbContext {
                         if self.siginfo.si_signo == SIGINFO_SIGSEGV
                             || self.siginfo.si_signo == SIGINFO_SIGBUS
                         {
-                            analyze_instructions(&cs, &insns, self)
+                            Self::analyze_instructions(&cs, &insns, self)
                         } else {
                             ExecutionClass::find("FPE")
                         }
@@ -228,227 +229,230 @@ pub fn is_near_null(value: u64) -> bool {
     value < 64 * 1024
 }
 
-/// Analyze crash instruction and return ExecutionClass or error.
-///
-/// # Arguments
-///
-/// * `cs` - reference to capstone disassembler.
-///
-/// * `insns` - reference to disassembled instructions.
-///
-/// * `context` - crash context.
-fn analyze_instructions(
-    cs: &Capstone,
-    insns: &Instructions,
-    context: &GdbContext,
-) -> Result<ExecutionClass> {
-    match context.machine.arch {
-        header::EM_386 | header::EM_X86_64 => analyze_instructions_x86(cs, insns, context),
-        header::EM_ARM => analyze_instructions_arm(cs, insns, &context.siginfo),
-        _ => Err(Error::Casr(format!(
-            "Unsupported machine arch: {}",
-            context.machine.arch
-        ))),
-    }
-}
-
-/// Analyze x86 crash instruction.
-///
-/// # Arguments
-///
-/// * `cs` - reference to capstone.
-///
-/// * `insns` - reference to disassembled instructions.
-///
-/// * `context` - crash context.
-fn analyze_instructions_x86(
-    cs: &Capstone,
-    insns: &Instructions,
-    context: &GdbContext,
-) -> Result<ExecutionClass> {
-    // Get first instruction.
-    let insn = insns.iter().next();
-    if insn.is_none() {
-        return Err(Error::Casr(
-            "Couldn't get first x86 instruction".to_string(),
-        ));
-    }
-    let insn = insn.unwrap();
-
-    let detail = cs.insn_detail(&insn);
-    if detail.is_err() {
-        return Err(Error::Casr(
-            "Couldn't capstone instruction details".to_string(),
-        ));
-    }
-
-    let detail = detail.unwrap();
-
-    // Check for return.
-    if detail.groups().any(|x| cs.group_name(x).unwrap() == "ret") {
-        return ExecutionClass::find("ReturnAv");
-    }
-    // Check for call.
-    if detail.groups().any(|x| cs.group_name(x).unwrap() == "call") {
-        // Check for exceeded stack.
-        if let Some(sp) = context.sp() {
-            if (*sp - context.machine.byte_width as u64) == context.siginfo.si_addr {
-                return ExecutionClass::find("StackOverflow");
+impl GdbContext {
+    /// Analyze crash instruction and return ExecutionClass or error.
+    ///
+    /// # Arguments
+    ///
+    /// * `cs` - reference to capstone disassembler.
+    ///
+    /// * `insns` - reference to disassembled instructions.
+    ///
+    /// * `context` - crash context.
+    fn analyze_instructions(
+        cs: &Capstone,
+        insns: &Instructions,
+        context: &GdbContext,
+    ) -> Result<ExecutionClass> {
+        match context.machine.arch {
+            header::EM_386 | header::EM_X86_64 => {
+                Self::analyze_instructions_x86(cs, insns, context)
             }
-        }
-        // Check for Call reg, Call [reg].
-        if detail.regs_read_count() > 0 {
-            if !is_near_null(context.siginfo.si_addr) || context.siginfo.si_code == SI_KERNEL {
-                return ExecutionClass::find("CallAv");
-            } else {
-                return ExecutionClass::find("CallAvNearNull");
-            }
-        }
-    }
-    // Check for jump.
-    if detail.groups().any(|x| cs.group_name(x).unwrap() == "jump") {
-        // Check for Jump reg, Jump [reg].
-        if detail.regs_read_count() > 0 {
-            if !is_near_null(context.siginfo.si_addr) || context.siginfo.si_code == SI_KERNEL {
-                return ExecutionClass::find("BranchAv");
-            } else {
-                return ExecutionClass::find("BranchAvNearNull");
-            }
+            header::EM_ARM => Self::analyze_instructions_arm(cs, insns, &context.siginfo),
+            _ => Err(Error::Casr(format!(
+                "Unsupported machine arch: {}",
+                context.machine.arch
+            ))),
         }
     }
 
-    // Check for mov instructions.
-    let mnemonic = insn.mnemonic();
-    if mnemonic.is_none() {
-        return Err(Error::Casr(
-            "Couldn't capstone instruction mnemonic".to_string(),
-        ));
+    /// Analyze x86 crash instruction.
+    ///
+    /// # Arguments
+    ///
+    /// * `cs` - reference to capstone.
+    ///
+    /// * `insns` - reference to disassembled instructions.
+    ///
+    /// * `context` - crash context.
+    fn analyze_instructions_x86(
+        cs: &Capstone,
+        insns: &Instructions,
+        context: &GdbContext,
+    ) -> Result<ExecutionClass> {
+        // Get first instruction.
+        let insn = insns.iter().next();
+        if insn.is_none() {
+            return Err(Error::Casr(
+                "Couldn't get first x86 instruction".to_string(),
+            ));
+        }
+        let insn = insn.unwrap();
+
+        let detail = cs.insn_detail(&insn);
+        if detail.is_err() {
+            return Err(Error::Casr(
+                "Couldn't capstone instruction details".to_string(),
+            ));
+        }
+
+        let detail = detail.unwrap();
+
+        // Check for return.
+        if detail.groups().any(|x| cs.group_name(x).unwrap() == "ret") {
+            return ExecutionClass::find("ReturnAv");
+        }
+        // Check for call.
+        if detail.groups().any(|x| cs.group_name(x).unwrap() == "call") {
+            // Check for exceeded stack.
+            if let Some(sp) = context.sp() {
+                if (*sp - context.machine.byte_width as u64) == context.siginfo.si_addr {
+                    return ExecutionClass::find("StackOverflow");
+                }
+            }
+            // Check for Call reg, Call [reg].
+            if detail.regs_read_count() > 0 {
+                if !is_near_null(context.siginfo.si_addr) || context.siginfo.si_code == SI_KERNEL {
+                    return ExecutionClass::find("CallAv");
+                } else {
+                    return ExecutionClass::find("CallAvNearNull");
+                }
+            }
+        }
+        // Check for jump.
+        if detail.groups().any(|x| cs.group_name(x).unwrap() == "jump") {
+            // Check for Jump reg, Jump [reg].
+            if detail.regs_read_count() > 0 {
+                if !is_near_null(context.siginfo.si_addr) || context.siginfo.si_code == SI_KERNEL {
+                    return ExecutionClass::find("BranchAv");
+                } else {
+                    return ExecutionClass::find("BranchAvNearNull");
+                }
+            }
+        }
+
+        // Check for mov instructions.
+        let mnemonic = insn.mnemonic();
+        if mnemonic.is_none() {
+            return Err(Error::Casr(
+                "Couldn't capstone instruction mnemonic".to_string(),
+            ));
+        }
+        let mnemonic = mnemonic.unwrap();
+        if mnemonic.to_string().contains("mov") {
+            // Get operands.
+            let ops = detail.arch_detail().operands();
+            for (num, op) in ops.iter().enumerate() {
+                // Safe.
+                let operand = if let capstone::arch::ArchOperand::X86Operand(operand) = op {
+                    operand
+                } else {
+                    return Err(Error::Casr(
+                        "Couldn't capstone instruction operands".to_string(),
+                    ));
+                };
+
+                // Check mem operand.
+                if let capstone::arch::x86::X86OperandType::Mem(_) = operand.op_type {
+                    match (
+                        context.siginfo.si_signo,
+                        context.siginfo.si_code,
+                        num,
+                        is_near_null(context.siginfo.si_addr),
+                    ) {
+                        (SIGINFO_SIGBUS, _, 1, _) => {
+                            return ExecutionClass::find("SourceAv");
+                        }
+                        (_, SI_KERNEL, 0, _) | (_, _, 0, false) | (SIGINFO_SIGBUS, _, 0, _) => {
+                            return ExecutionClass::find("DestAv");
+                        }
+                        (_, _, 0, true) => {
+                            return ExecutionClass::find("DestAvNearNull");
+                        }
+                        (_, SI_KERNEL, 1, _) | (_, _, 1, false) => {
+                            if let Ok(new_class) = check_taint(cs, insns) {
+                                return Ok(new_class);
+                            } else {
+                                return ExecutionClass::find("SourceAv");
+                            }
+                        }
+                        (_, _, 1, true) => return ExecutionClass::find("SourceAvNearNull"),
+                        _ => return ExecutionClass::find("AccessViolation"),
+                    }
+                }
+            }
+        }
+        ExecutionClass::find("AccessViolation")
     }
-    let mnemonic = mnemonic.unwrap();
-    if mnemonic.to_string().contains("mov") {
-        // Get operands.
+
+    /// Analyze arm crash instruction
+    ///
+    /// # Arguments
+    ///
+    /// * `cs` - reference to capstone.
+    ///
+    /// * `insns` - reference to disassembled instructions.
+    ///
+    /// * `info` - reference to signal information struct.
+    fn analyze_instructions_arm(
+        cs: &Capstone,
+        insns: &Instructions,
+        info: &Siginfo,
+    ) -> Result<ExecutionClass> {
+        // Get first instruction.
+        let insn = insns.iter().next();
+        if insn.is_none() {
+            return Err(Error::Casr(
+                "Couldn't get first arm instruction".to_string(),
+            ));
+        }
+        let insn = insn.unwrap();
+
+        let detail = cs.insn_detail(&insn);
+        if detail.is_err() {
+            return Err(Error::Casr(
+                "Couldn't capstone instruction details".to_string(),
+            ));
+        }
+        let detail = detail.unwrap();
+
+        // Check for mov instructions.
+        let mnemonic = insn.mnemonic();
+        if mnemonic.is_none() {
+            return Err(Error::Casr(
+                "Couldn't capstone instruction mnemonic".to_string(),
+            ));
+        }
+        let mnemonic = mnemonic.unwrap();
+        let m = mnemonic.to_string();
+
         let ops = detail.arch_detail().operands();
-        for (num, op) in ops.iter().enumerate() {
+        for op in ops.iter() {
             // Safe.
-            let operand = if let capstone::arch::ArchOperand::X86Operand(operand) = op {
+            let operand = if let capstone::arch::ArchOperand::ArmOperand(operand) = op {
                 operand
             } else {
                 return Err(Error::Casr(
                     "Couldn't capstone instruction operands".to_string(),
                 ));
             };
-
             // Check mem operand.
-            if let capstone::arch::x86::X86OperandType::Mem(_) = operand.op_type {
+            if let capstone::arch::arm::ArmOperandType::Mem(_) = operand.op_type {
                 match (
-                    context.siginfo.si_signo,
-                    context.siginfo.si_code,
-                    num,
-                    is_near_null(context.siginfo.si_addr),
+                    info.si_code,
+                    m.contains("str"),
+                    m.contains("ldr"),
+                    is_near_null(info.si_addr),
                 ) {
-                    (SIGINFO_SIGBUS, _, 1, _) => {
-                        return ExecutionClass::find("SourceAv");
+                    (SI_KERNEL, true, false, _) | (_, true, false, false) => {
+                        return ExecutionClass::find("DestAv")
                     }
-                    (_, SI_KERNEL, 0, _) | (_, _, 0, false) | (SIGINFO_SIGBUS, _, 0, _) => {
-                        return ExecutionClass::find("DestAv");
-                    }
-                    (_, _, 0, true) => {
-                        return ExecutionClass::find("DestAvNearNull");
-                    }
-                    (_, SI_KERNEL, 1, _) | (_, _, 1, false) => {
+                    (_, true, false, true) => return ExecutionClass::find("DestAvNearNull"),
+                    (SI_KERNEL, false, true, _) | (_, false, true, false) => {
                         if let Ok(new_class) = check_taint(cs, insns) {
                             return Ok(new_class);
                         } else {
                             return ExecutionClass::find("SourceAv");
                         }
                     }
-                    (_, _, 1, true) => return ExecutionClass::find("SourceAvNearNull"),
+                    (_, false, true, true) => return ExecutionClass::find("SourceAvNearNull"),
                     _ => return ExecutionClass::find("AccessViolation"),
-                }
+                };
             }
         }
+        ExecutionClass::find("AccessViolation")
     }
-    ExecutionClass::find("AccessViolation")
 }
-
-/// Analyze arm crash instruction
-///
-/// # Arguments
-///
-/// * `cs` - reference to capstone.
-///
-/// * `insns` - reference to disassembled instructions.
-///
-/// * `info` - reference to signal information struct.
-fn analyze_instructions_arm(
-    cs: &Capstone,
-    insns: &Instructions,
-    info: &Siginfo,
-) -> Result<ExecutionClass> {
-    // Get first instruction.
-    let insn = insns.iter().next();
-    if insn.is_none() {
-        return Err(Error::Casr(
-            "Couldn't get first arm instruction".to_string(),
-        ));
-    }
-    let insn = insn.unwrap();
-
-    let detail = cs.insn_detail(&insn);
-    if detail.is_err() {
-        return Err(Error::Casr(
-            "Couldn't capstone instruction details".to_string(),
-        ));
-    }
-    let detail = detail.unwrap();
-
-    // Check for mov instructions.
-    let mnemonic = insn.mnemonic();
-    if mnemonic.is_none() {
-        return Err(Error::Casr(
-            "Couldn't capstone instruction mnemonic".to_string(),
-        ));
-    }
-    let mnemonic = mnemonic.unwrap();
-    let m = mnemonic.to_string();
-
-    let ops = detail.arch_detail().operands();
-    for op in ops.iter() {
-        // Safe.
-        let operand = if let capstone::arch::ArchOperand::ArmOperand(operand) = op {
-            operand
-        } else {
-            return Err(Error::Casr(
-                "Couldn't capstone instruction operands".to_string(),
-            ));
-        };
-        // Check mem operand.
-        if let capstone::arch::arm::ArmOperandType::Mem(_) = operand.op_type {
-            match (
-                info.si_code,
-                m.contains("str"),
-                m.contains("ldr"),
-                is_near_null(info.si_addr),
-            ) {
-                (SI_KERNEL, true, false, _) | (_, true, false, false) => {
-                    return ExecutionClass::find("DestAv")
-                }
-                (_, true, false, true) => return ExecutionClass::find("DestAvNearNull"),
-                (SI_KERNEL, false, true, _) | (_, false, true, false) => {
-                    if let Ok(new_class) = check_taint(cs, insns) {
-                        return Ok(new_class);
-                    } else {
-                        return ExecutionClass::find("SourceAv");
-                    }
-                }
-                (_, false, true, true) => return ExecutionClass::find("SourceAvNearNull"),
-                _ => return ExecutionClass::find("AccessViolation"),
-            };
-        }
-    }
-    ExecutionClass::find("AccessViolation")
-}
-
 // Signal numbers.
 pub const SIGINFO_SIGILL: u32 = 4;
 pub const SIGINFO_SIGTRAP: u32 = 5;
@@ -1211,7 +1215,7 @@ mod tests {
             let data: &[u8] = &[0x8b, 0x00, 0x01, 0xc2, 0x89, 0x02];
             let insns = cs.disasm_all(data, 0).unwrap();
             let expected_class = ExecutionClass::find("DestAvTainted").unwrap();
-            if let Ok(res) = analyze_instructions(&cs, &insns, &context) {
+            if let Ok(res) = GdbContext::analyze_instructions(&cs, &insns, &context) {
                 assert_eq!(res, expected_class);
             } else {
                 unreachable!();
@@ -1254,7 +1258,7 @@ mod tests {
             let data: &[u8] = &[0x8b, 0x00, 0x8b, 0x00, 0xff, 0xd0];
             let insns = cs.disasm_all(data, 0).unwrap();
             let expected_class = ExecutionClass::find("CallAvTainted").unwrap();
-            if let Ok(res) = analyze_instructions(&cs, &insns, &context) {
+            if let Ok(res) = GdbContext::analyze_instructions(&cs, &insns, &context) {
                 assert_eq!(res, expected_class);
             } else {
                 unreachable!();

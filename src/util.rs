@@ -40,11 +40,6 @@ macro_rules! init_ignored_frames {
     };
 }
 
-pub trait Exception {
-    /// Extract exception info and return it as a `ExecutionClass` struct
-    fn parse_exception(stream: &[String]) -> Option<ExecutionClass>;
-}
-
 pub trait Severity {
     /// Get severity class and return it as a `ExecutionClass` struct
     fn severity(&self) -> error::Result<ExecutionClass>;
