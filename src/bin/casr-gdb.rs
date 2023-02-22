@@ -9,9 +9,9 @@ use casr::gdb::{GdbContext, GdbStacktrace, MachineInfo};
 use casr::init_ignored_frames;
 use casr::report::CrashReport;
 use casr::rust::RustPanic;
+use casr::severity::Severity;
 use casr::stacktrace::*;
 use casr::util;
-use casr::util::Severity;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};

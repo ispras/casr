@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 use casr::error::Error;
 use casr::gdb::{GdbContext, MachineInfo};
 use casr::report::*;
-use casr::util::Severity;
+use casr::severity::Severity;
 
 fn main() -> Result<()> {
     let matches = App::new("casr-core")

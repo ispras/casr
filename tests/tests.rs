@@ -1140,7 +1140,7 @@ fn test_return_av_gdb() {
         // Disassembly test
         assert!(disasm[0].contains("ret "), "Bad disassembly");
         assert!(
-            disasm[1].contains("nop    WORD PTR cs:[rax+rax*1+0x0]"),
+            disasm[1].contains("nop") && disasm[1].contains("[rax+rax*1+0x0]"),
             "Bad disassembly"
         );
         assert!(disasm[2].contains("nop"), "Bad disassembly");

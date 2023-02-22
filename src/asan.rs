@@ -4,8 +4,8 @@ use regex::Regex;
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
 use crate::gdb::is_near_null;
+use crate::severity::Severity;
 use crate::stacktrace::ProcessStacktrace;
-use crate::util::Severity;
 
 /// Structure provides an interface for processing the stack trace.
 pub struct AsanStacktrace;

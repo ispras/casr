@@ -18,8 +18,8 @@ use regex::Regex;
 
 use super::error::*;
 use super::execution_class::ExecutionClass;
+use super::severity::Severity;
 use super::stacktrace::*;
-use super::util::Severity;
 
 #[derive(Clone, Default)]
 /// Information about machine.
@@ -41,28 +41,6 @@ pub struct GdbContext {
     pub machine: MachineInfo,
     pub pc_memory: MemoryObject,
     pub stacktrace: Vec<String>,
-}
-
-impl GdbContext {
-    /// Get stack pointer value for current architecture.
-    pub fn sp(&self) -> Option<&u64> {
-        match self.machine.arch {
-            header::EM_X86_64 => self.registers.get("rsp"),
-            header::EM_386 => self.registers.get("esp"),
-            header::EM_ARM => self.registers.get("sp"),
-            _ => None,
-        }
-    }
-
-    /// Get program counter.
-    pub fn pc(&self) -> Option<&u64> {
-        match self.machine.arch {
-            header::EM_386 => self.registers.get("eip"),
-            header::EM_X86_64 => self.registers.get("rip"),
-            header::EM_ARM => self.registers.get("pc"),
-            _ => None,
-        }
-    }
 }
 
 /// Structure provides an interface for processing the stack trace.
@@ -230,6 +208,26 @@ pub fn is_near_null(value: u64) -> bool {
 }
 
 impl GdbContext {
+    /// Get stack pointer value for current architecture.
+    pub fn sp(&self) -> Option<&u64> {
+        match self.machine.arch {
+            header::EM_X86_64 => self.registers.get("rsp"),
+            header::EM_386 => self.registers.get("esp"),
+            header::EM_ARM => self.registers.get("sp"),
+            _ => None,
+        }
+    }
+
+    /// Get program counter.
+    pub fn pc(&self) -> Option<&u64> {
+        match self.machine.arch {
+            header::EM_386 => self.registers.get("eip"),
+            header::EM_X86_64 => self.registers.get("rip"),
+            header::EM_ARM => self.registers.get("pc"),
+            _ => None,
+        }
+    }
+
     /// Analyze crash instruction and return ExecutionClass or error.
     ///
     /// # Arguments

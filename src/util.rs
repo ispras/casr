@@ -1,5 +1,3 @@
-use crate::error;
-use crate::execution_class::ExecutionClass;
 use crate::report::CrashReport;
 use crate::stacktrace::STACK_FRAME_FILEPATH_IGNORE_REGEXES;
 use crate::stacktrace::STACK_FRAME_FUNCTION_IGNORE_REGEXES;
@@ -38,11 +36,6 @@ macro_rules! init_ignored_frames {
            *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = files.concat().iter().map(|x| x.to_string()).collect::<Vec<String>>();
         }
     };
-}
-
-pub trait Severity {
-    /// Get severity class and return it as a `ExecutionClass` struct
-    fn severity(&self) -> error::Result<ExecutionClass>;
 }
 
 /// Save a report to the specified path
