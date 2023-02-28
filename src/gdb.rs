@@ -46,7 +46,7 @@ pub struct GdbContext {
 /// Structure provides an interface for processing the stack trace.
 pub struct GdbStacktrace;
 
-impl ProcessStacktrace for GdbStacktrace {
+impl ParseStacktrace for GdbStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let frame = Regex::new(r"^ *#[0-9]+").unwrap();
         Ok(stream

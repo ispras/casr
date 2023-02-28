@@ -8,6 +8,7 @@ extern crate regex;
 extern crate serde_json;
 
 use casr::asan::AsanStacktrace;
+use casr::constants::*;
 use casr::gdb::GdbStacktrace;
 use casr::init_ignored_frames;
 use casr::python::PythonStacktrace;

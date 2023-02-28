@@ -2,7 +2,7 @@ extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
 
-use casr::stacktrace::ProcessStacktrace;
+use casr::stacktrace::ParseStacktrace;
 use regex::Regex;
 use serde_json::Value;
 use std::fs;

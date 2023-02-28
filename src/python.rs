@@ -1,5 +1,5 @@
 use crate::exception::Exception;
-use crate::stacktrace::ProcessStacktrace;
+use crate::stacktrace::ParseStacktrace;
 
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
@@ -9,7 +9,7 @@ use regex::Regex;
 /// Structure provides an interface for processing the stack trace.
 pub struct PythonStacktrace;
 
-impl ProcessStacktrace for PythonStacktrace {
+impl ParseStacktrace for PythonStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         // Get stack trace from python report.
         let stacktrace = stream

@@ -3,6 +3,7 @@ extern crate casr;
 extern crate clap;
 extern crate gdb_command;
 
+use casr::constants::*;
 use casr::cpp::CppException;
 use casr::exception::Exception;
 use casr::gdb::{GdbContext, GdbStacktrace, MachineInfo};

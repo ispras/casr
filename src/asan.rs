@@ -5,12 +5,12 @@ use crate::error::*;
 use crate::execution_class::ExecutionClass;
 use crate::gdb::is_near_null;
 use crate::severity::Severity;
-use crate::stacktrace::ProcessStacktrace;
+use crate::stacktrace::ParseStacktrace;
 
 /// Structure provides an interface for processing the stack trace.
 pub struct AsanStacktrace;
 
-impl ProcessStacktrace for AsanStacktrace {
+impl ParseStacktrace for AsanStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let lines: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
 

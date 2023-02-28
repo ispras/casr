@@ -1,5 +1,6 @@
 extern crate clap;
 
+use casr::constants::*;
 use casr::exception::Exception;
 use casr::init_ignored_frames;
 use casr::python::{PythonException, PythonStacktrace};
