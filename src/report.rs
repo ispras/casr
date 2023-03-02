@@ -11,6 +11,7 @@ use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::registers::Registers;
 use gdb_command::stacktrace::DebugInfo;
 use gdb_command::stacktrace::{Stacktrace, StacktraceExt};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs;
@@ -400,6 +401,19 @@ impl CrashReport {
         }
 
         None
+    }
+
+    /// Add disassembly to the report
+    ///
+    /// # Arguments
+    ///
+    /// * `gdb_asm` - disassembly from gdb
+    pub fn set_disassembly(&mut self, gdb_asm: &str) {
+        // Remove module names from disassembly for pretty view in report.
+        let rm_modules = Regex::new("<.*?>").unwrap();
+        let disassembly = rm_modules.replace_all(gdb_asm, "");
+
+        self.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();
     }
 
     /// Remove trusted frames from stack trace and reutrn it as `Stacktrace` struct

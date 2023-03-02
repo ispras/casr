@@ -21,7 +21,6 @@ use gdb_command::{ExecType, GdbCommand};
 use goblin::container::Endian;
 use goblin::elf::{header, note, Elf};
 use nix::fcntl::{flock, FlockArg};
-use regex::Regex;
 use simplelog::*;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
@@ -467,10 +466,8 @@ fn analyze_coredump(
         machine,
         stacktrace: report.stacktrace.clone(),
     };
-    // Remove module names from disassembly for pretty view in report.
-    let rm_modules = Regex::new("<.*?>").unwrap();
-    let disassembly = rm_modules.replace_all(&result[5], "");
-    report.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();
+
+    report.set_disassembly(&result[5]);
 
     // Set executable path from user.
     if !report.executable_path.is_empty() {

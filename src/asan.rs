@@ -12,10 +12,9 @@ pub struct AsanStacktrace;
 
 impl ParseStacktrace for AsanStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
-        let lines: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
+        let lines: Vec<String> = stream.split('\n').map(|l| l.to_string()).collect();
 
-        let frame = Regex::new(r"^#0 ").unwrap();
-        let Some(first) = lines.iter().position(|x| frame.is_match(x)) else {
+        let Some(first) = lines.iter().position(|x| x.contains(" #0 ")) else {
             return Err(Error::Casr(
                 "Couldn't find stack trace in sanitizer's report".to_string(),
             ));
