@@ -2,7 +2,6 @@ extern crate lazy_static;
 
 use crate::error::*;
 use gdb_command::stacktrace::*;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use regex::Regex;
 use std::collections::HashSet;
 use std::fmt;
@@ -10,6 +9,16 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::RwLock;
 
+lazy_static::lazy_static! {
+    // Regular expressions for functions to be ignored.
+    pub static ref STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
+        Vec::new());
+    // Regular expressions for file paths to be ignored.
+    pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
+        Vec::new());
+}
+
+/// Information about line in sources which caused a crash.
 pub enum CrashLine {
     // source:line:column.
     Source(DebugInfo),
@@ -44,48 +53,27 @@ pub trait ParseStacktrace {
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace>;
 
     /// Get crash line from stack trace: source:line or binary+offset.               
-    fn crash_line(trace: &Stacktrace) -> Result<CrashLine> {
-        // Compile function regexp.
-        let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
-            .read()
-            .unwrap()
-            .iter()
-            .map(|s| format!("({s})|"))
-            .collect::<String>();
-        let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+    fn crash_line(stacktrace: &Stacktrace) -> Result<CrashLine> {
+        let mut trace = stacktrace.clone();
+        trace.filter();
 
-        // Compile file regexp.
-        let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
-            .read()
-            .unwrap()
-            .iter()
-            .map(|s| format!("({s})|"))
-            .collect::<String>();
-        let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
-
-        let crash_entry = trace.iter().find(|entry| {
-            (entry.function.is_empty() || !rfunction.is_match(&entry.function))
-                && (entry.module.is_empty() || !rfile.is_match(&entry.module))
-                && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
-        });
-
-        if let Some(crash_entry) = crash_entry {
-            if !crash_entry.debug.file.is_empty() {
-                return Ok(CrashLine::Source(crash_entry.debug.clone()));
-            } else if !crash_entry.module.is_empty() && crash_entry.offset != 0 {
-                return Ok(CrashLine::Module {
-                    file: crash_entry.module.clone(),
-                    offset: crash_entry.offset,
-                });
-            }
-
+        let Some(crash_entry) = trace.get(0) else {
             return Err(Error::Casr(
-                "Couldn't collect crash line from stack trace".to_string(),
+                "No stack trace entries after filtering".to_string(),
             ));
+        };
+
+        if !crash_entry.debug.file.is_empty() {
+            return Ok(CrashLine::Source(crash_entry.debug.clone()));
+        } else if !crash_entry.module.is_empty() && crash_entry.offset != 0 {
+            return Ok(CrashLine::Module {
+                file: crash_entry.module.clone(),
+                offset: crash_entry.offset,
+            });
         }
 
         Err(Error::Casr(
-            "No stack trace entries after filtering".to_string(),
+            "Couldn't collect crash line from stack trace".to_string(),
         ))
     }
 }
@@ -141,18 +129,13 @@ pub fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
 /// # Return value
 ///
 /// An vector of the same length as `stacktraces`.
-/// Vec[i] is None, if original stacktrace i is a duplicate of any element of `stacktraces`.
-pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<Option<Stacktrace>> {
+/// Vec[i] is false, if original stacktrace i is a duplicate of any element of `stacktraces`.
+pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
     let mut traces = HashSet::new();
-    let mut result: Vec<Option<Stacktrace>> = Vec::new();
-    stacktraces.iter().for_each(|trace| {
-        result.push(if traces.insert(trace) {
-            Some(trace.clone())
-        } else {
-            None
-        })
-    });
-    result
+    stacktraces
+        .iter()
+        .map(|trace| traces.insert(trace))
+        .collect()
 }
 
 /// Perform the clustering of stack traces
@@ -167,12 +150,10 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<Option<Stacktrace>> 
 /// Vec[i] is the flat cluster number to which original stacktrace i belongs.
 pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     let len = stacktraces.len();
-    let mut tmp_lines: Vec<String> = Vec::new();
-    tmp_lines.resize(len, "".to_string());
     // Lines in compressed distance matrix
-    let mut lines: RwLock<Vec<String>> = RwLock::new(tmp_lines);
+    let mut lines: Vec<String> = vec![String::new(); len];
     // Writing compressed distance matrix into Vector<String>
-    (0..len).into_par_iter().for_each(|i| {
+    (0..len).into_iter().for_each(|i| {
         let mut tmp_str = String::new();
         for j in i + 1..len {
             tmp_str += format!(
@@ -181,7 +162,6 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
             )
             .as_str();
         }
-        let mut lines = lines.write().unwrap();
         lines[i] = tmp_str;
     });
 
@@ -201,10 +181,7 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     };
     {
         let python_stdin = python.stdin.as_mut().unwrap();
-        if python_stdin
-            .write_all(lines.get_mut().unwrap().join("").as_bytes())
-            .is_err()
-        {
+        if python_stdin.write_all(lines.join("").as_bytes()).is_err() {
             return Err(Error::Casr(
                 "Error while writing to stdin of python script".to_string(),
             ));
@@ -235,11 +212,36 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     Ok(clusters)
 }
 
-lazy_static::lazy_static! {
-    // Regular expressions for functions to be ignored.
-    pub static ref STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
-        Vec::new());
-    // Regular expressions for file paths to be ignored.
-    pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
-        Vec::new());
+pub trait Filter {
+    /// Remove trusted functions from stack trace
+    fn filter(&mut self);
+}
+
+impl Filter for Stacktrace {
+    fn filter(&mut self) {
+        // Compile function regexp.
+        let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
+            .read()
+            .unwrap()
+            .iter()
+            .map(|s| format!("({s})|"))
+            .collect::<String>();
+        let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+
+        // Compile file regexp.
+        let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
+            .read()
+            .unwrap()
+            .iter()
+            .map(|s| format!("({s})|"))
+            .collect::<String>();
+        let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+
+        // Remove trusted functions from stack trace
+        self.retain(|entry| {
+            (entry.function.is_empty() || !rfunction.is_match(&entry.function))
+                && (entry.module.is_empty() || !rfile.is_match(&entry.module))
+                && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+        });
+    }
 }

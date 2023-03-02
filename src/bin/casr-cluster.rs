@@ -7,21 +7,17 @@ extern crate rayon;
 extern crate regex;
 extern crate serde_json;
 
-use casr::asan::AsanStacktrace;
 use casr::constants::*;
-use casr::gdb::GdbStacktrace;
 use casr::init_ignored_frames;
-use casr::python::PythonStacktrace;
+use casr::report::CrashReport;
 use casr::stacktrace::*;
 use casr::util;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg};
-use gdb_command::mappings::*;
 use gdb_command::stacktrace::*;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
-use regex::Regex;
+use rayon::iter::{IndexedParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 
 use std::collections::HashSet;
 use std::fs;
@@ -40,119 +36,19 @@ use std::sync::RwLock;
 /// Stack trace as a `Stacktrace` struct
 fn stacktrace(path: &Path) -> Result<Stacktrace> {
     // Opening file and reading it
-    let file = std::fs::File::open(path);
-    if file.is_err() {
+    let Ok(file) = std::fs::File::open(path) else {
         bail!("Error with opening Casr report: {}", path.display());
-    }
-    let file = file.unwrap();
+    };
     let reader = BufReader::new(file);
 
-    let u = serde_json::from_reader(reader);
-    if u.is_err() {
+    let Ok(u): Result<CrashReport, _> = serde_json::from_reader(reader) else {
         bail!("Json parse error. File: {}", path.display());
+    };
+
+    match u.filtered_stacktrace() {
+        Ok(trace) => Ok(trace),
+        Err(e) => bail!("{}. File {}", e, path.display()),
     }
-    let u: serde_json::Value = u.unwrap();
-
-    // Search stacktrace
-    if let Some(arrtrace) = u.get("Stacktrace") {
-        if let Some(arrtrace) = arrtrace.as_array() {
-            let mut trace = Vec::new();
-            arrtrace.iter().for_each(|x| {
-                if let Some(entry) = x.as_str() {
-                    trace.push(entry.to_string());
-                }
-            });
-
-            let mut rawtrace: Stacktrace = Default::default();
-            if let Some(array) = u.get("AsanReport") {
-                if let Some(array) = array.as_array() {
-                    if !array.is_empty() {
-                        rawtrace = AsanStacktrace::parse_stacktrace(&trace)
-                            .with_context(|| format!("File: {}", path.display()))?;
-                    }
-                } else {
-                    bail!("Error while parsing AsanReport. File: {}", path.display());
-                }
-            }
-
-            if let Some(array) = u.get("PythonReport") {
-                if let Some(array) = array.as_array() {
-                    if !array.is_empty() {
-                        rawtrace = PythonStacktrace::parse_stacktrace(&trace)
-                            .with_context(|| format!("File: {}", path.display()))?;
-                    }
-                } else {
-                    bail!("Error while parsing PythonReport. File: {}", path.display());
-                }
-            }
-
-            if rawtrace.is_empty() {
-                rawtrace = GdbStacktrace::parse_stacktrace(&trace)
-                    .with_context(|| format!("File: {}", path.display()))?;
-            };
-
-            // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
-            if let Some(pos) = &rawtrace
-                .iter()
-                .position(|x| x.function.contains("LLVMFuzzerTestOneInput"))
-            {
-                rawtrace.drain(pos + 1..);
-            }
-
-            if rawtrace.is_empty() {
-                bail!("Current stack trace length is null".to_string());
-            }
-
-            // Get Proc mappings from Casr report
-            if let Some(arrtrace) = u.get("ProcMaps") {
-                if let Some(arrtrace) = arrtrace.as_array() {
-                    if !arrtrace.is_empty() {
-                        let mut trace = Vec::new();
-                        arrtrace.iter().for_each(|x| {
-                            if let Some(entry) = x.as_str() {
-                                trace.push(entry.to_string());
-                            }
-                        });
-                        let trace = trace.join("\n");
-                        let mappings = MappedFiles::from_gdb(trace)
-                            .with_context(|| format!("File: {}", path.display()))?;
-                        rawtrace.compute_module_offsets(&mappings);
-                    }
-                }
-            }
-
-            // Compile function regexp.
-            let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
-                .read()
-                .unwrap()
-                .iter()
-                .map(|s| format!("({s})|"))
-                .collect::<String>();
-            let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
-
-            // Compile file regexp.
-            let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
-                .read()
-                .unwrap()
-                .iter()
-                .map(|s| format!("({s})|"))
-                .collect::<String>();
-            let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
-
-            // Remove trusted functions from stack trace
-            let pos = rawtrace.iter().position(|entry| {
-                (entry.function.is_empty() || !rfunction.is_match(&entry.function))
-                    && (entry.module.is_empty() || !rfile.is_match(&entry.module))
-                    && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
-            });
-            if let Some(pos) = pos {
-                rawtrace.drain(0..pos);
-            }
-
-            return Ok(rawtrace);
-        }
-    }
-    bail!("Json parse error, file: {}", path.display());
 }
 
 /// Perform the clustering of casreps
@@ -168,7 +64,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
 /// # Return value
 ///
 /// Number of clusters
-pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u32> {
+fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u32> {
     // if outpath is "None" we consider that outpath and inpath are the same
     let outpath = outpath.unwrap_or(inpath);
     let dir = fs::read_dir(inpath).with_context(|| format!("File: {}", inpath.display()))?;
@@ -256,10 +152,12 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Resu
 ///
 /// * `outdir` - target directory for deduplication
 ///
+/// * `jobs` - number of jobs for deduplication process
+///
 /// # Return value
 ///
 /// Number of reports before/after deduplication
-fn deduplication(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
+fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(usize, usize)> {
     let dir = fs::read_dir(indir).with_context(|| {
         format!(
             "Error occurred while opening directory with Casr reports. File: {}",
@@ -275,6 +173,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)
                 outdir
                     .as_ref()
                     .map(|outdir| Path::new(&outdir).join(entry.file_name())),
+                jobs,
             )?;
             before += res.0;
             after += res.1;
@@ -287,15 +186,25 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)
     }
 
     paths.sort_by(|a, b| a.file_name().unwrap().cmp(b.file_name().unwrap()));
-    let mut badrepidxs: Vec<usize> = Vec::new();
-    let mut stacktraces: Vec<Stacktrace> = Vec::new();
-    for (index, report) in paths.iter().enumerate() {
+
+    // Start thread pool.
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(jobs.min(paths.len()))
+        .build_global()
+        .unwrap();
+
+    let badrepidxs: RwLock<HashSet<usize>> = RwLock::new(HashSet::new());
+    let stacktraces: RwLock<Vec<Stacktrace>> = RwLock::new(vec![Default::default(); paths.len()]);
+    paths.par_iter().enumerate().for_each(|(index, report)| {
         if let Ok(trace) = stacktrace(report.as_path()) {
-            stacktraces.push(trace);
+            stacktraces.write().unwrap()[index] = trace;
         } else {
-            badrepidxs.push(index);
+            badrepidxs.write().unwrap().insert(index);
         }
-    }
+    });
+
+    let badrepidxs = badrepidxs.read().unwrap();
+    let stacktraces = stacktraces.read().unwrap();
 
     let result = dedup_stacktraces(&stacktraces);
 
@@ -305,7 +214,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)
             .filter(|x| !badrepidxs.contains(x))
             .enumerate()
             .try_for_each(|(res_idx, true_idx)| {
-                if result[res_idx].is_some() {
+                if result[res_idx] {
                     fs::copy(
                         &paths[true_idx],
                         Path::new(&outdir).join(paths[true_idx].file_name().unwrap()),
@@ -318,7 +227,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)
             .filter(|x| !badrepidxs.contains(x))
             .enumerate()
             .try_for_each(|(res_idx, true_idx)| {
-                if result[res_idx].is_none() {
+                if !result[res_idx] {
                     fs::remove_file(&paths[true_idx])
                 } else {
                     Ok(())
@@ -338,7 +247,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)
     }
 
     before += paths.len();
-    after += result.iter().filter(|x| x.is_some()).count();
+    after += result.iter().fold(0, |acc, &x| acc + x as usize);
 
     Ok((before, after))
 }
@@ -494,6 +403,12 @@ fn main() -> Result<()> {
         .get_matches();
     init_ignored_frames!("cpp", "rust", "python");
 
+    let jobs = if let Some(jobs) = matches.value_of("jobs") {
+        jobs.parse::<usize>().unwrap()
+    } else {
+        std::cmp::max(1, num_cpus::get() / 2)
+    };
+
     if let Some(path) = matches.value_of("ignore") {
         util::add_custom_ignored_frames(Path::new(path))?;
     }
@@ -514,12 +429,6 @@ fn main() -> Result<()> {
             .map(Path::new)
             .collect();
 
-        let jobs = if let Some(jobs) = matches.value_of("jobs") {
-            jobs.parse::<usize>().unwrap()
-        } else {
-            std::cmp::max(1, num_cpus::get() / 2)
-        };
-
         let result = make_clusters(paths[0], paths.get(1).cloned(), jobs)?;
         println!("Number of clusters: {result}");
     } else if matches.is_present("deduplication") {
@@ -528,7 +437,7 @@ fn main() -> Result<()> {
             .unwrap()
             .map(Path::new)
             .collect();
-        let (before, after) = deduplication(paths[0], paths.get(1).map(|x| x.to_path_buf()))?;
+        let (before, after) = deduplication(paths[0], paths.get(1).map(|x| x.to_path_buf()), jobs)?;
         println!("Number of reports before deduplication: {before}");
         println!("Number of reports after deduplication: {after}");
     } else if matches.is_present("merge") {

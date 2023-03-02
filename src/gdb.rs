@@ -269,22 +269,17 @@ impl GdbContext {
         context: &GdbContext,
     ) -> Result<ExecutionClass> {
         // Get first instruction.
-        let insn = insns.iter().next();
-        if insn.is_none() {
+        let Some(insn) = insns.iter().next() else {
             return Err(Error::Casr(
                 "Couldn't get first x86 instruction".to_string(),
             ));
-        }
-        let insn = insn.unwrap();
+        };
 
-        let detail = cs.insn_detail(&insn);
-        if detail.is_err() {
+        let Ok(detail) = cs.insn_detail(&insn) else {
             return Err(Error::Casr(
                 "Couldn't capstone instruction details".to_string(),
             ));
-        }
-
-        let detail = detail.unwrap();
+        };
 
         // Check for return.
         if detail.groups().any(|x| cs.group_name(x).unwrap() == "ret") {
@@ -388,38 +383,30 @@ impl GdbContext {
         info: &Siginfo,
     ) -> Result<ExecutionClass> {
         // Get first instruction.
-        let insn = insns.iter().next();
-        if insn.is_none() {
+        let Some(insn) = insns.iter().next() else {
             return Err(Error::Casr(
                 "Couldn't get first arm instruction".to_string(),
             ));
-        }
-        let insn = insn.unwrap();
+        };
 
-        let detail = cs.insn_detail(&insn);
-        if detail.is_err() {
+        let Ok(detail) = cs.insn_detail(&insn) else {
             return Err(Error::Casr(
                 "Couldn't capstone instruction details".to_string(),
             ));
-        }
-        let detail = detail.unwrap();
+        };
 
         // Check for mov instructions.
-        let mnemonic = insn.mnemonic();
-        if mnemonic.is_none() {
+        let Some(mnemonic) = insn.mnemonic() else {
             return Err(Error::Casr(
                 "Couldn't capstone instruction mnemonic".to_string(),
             ));
-        }
-        let mnemonic = mnemonic.unwrap();
+        };
         let m = mnemonic.to_string();
 
         let ops = detail.arch_detail().operands();
         for op in ops.iter() {
             // Safe.
-            let operand = if let capstone::arch::ArchOperand::ArmOperand(operand) = op {
-                operand
-            } else {
+            let capstone::arch::ArchOperand::ArmOperand(operand) = op else {
                 return Err(Error::Casr(
                     "Couldn't capstone instruction operands".to_string(),
                 ));

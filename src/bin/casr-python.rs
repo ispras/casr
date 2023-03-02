@@ -147,22 +147,20 @@ fn main() -> Result<()> {
             .position(|line| line.contains("Uncaught Python exception: "))
         {
             // Set python report in casr report.
-            if let Some(report_end) = python_stdout_list.iter().rposition(|s| !s.is_empty()) {
-                let report_end = report_end + 1;
-                report.python_report = Vec::from(&python_stdout_list[report_start..report_end]);
-
-                report.stacktrace =
-                    PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
-                // Get exception from python report.
-                if report.python_report.len() > 1 {
-                    if let Some(exception) =
-                        PythonException::parse_exception(&report.python_report[1])
-                    {
-                        report.execution_class = exception;
-                    }
-                }
-            } else {
+            let Some(report_end) = python_stdout_list.iter().rposition(|s| !s.is_empty()) else {
                 bail!("Corrupted output: can't find stdout end");
+            };
+            let report_end = report_end + 1;
+            report.python_report = Vec::from(&python_stdout_list[report_start..report_end]);
+
+            report.stacktrace =
+                PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
+            // Get exception from python report.
+            if report.python_report.len() > 1 {
+                if let Some(exception) = PythonException::parse_exception(&report.python_report[1])
+                {
+                    report.execution_class = exception;
+                }
             }
         } else {
             // Call casr-san
@@ -173,20 +171,18 @@ fn main() -> Result<()> {
         .position(|line| line.contains("Traceback "))
     {
         // Set python report in casr report.
-        if let Some(report_end) = python_stderr_list.iter().rposition(|s| !s.is_empty()) {
-            let report_end = report_end + 1;
-            report.python_report = Vec::from(&python_stderr_list[report_start..report_end]);
-
-            report.stacktrace =
-                PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
-
-            if let Some(exception) =
-                PythonException::parse_exception(&report.python_report.join("\n"))
-            {
-                report.execution_class = exception;
-            }
-        } else {
+        let Some(report_end) = python_stderr_list.iter().rposition(|s| !s.is_empty()) else {
             bail!("Corrupted output: can't find stderr end");
+        };
+        let report_end = report_end + 1;
+        report.python_report = Vec::from(&python_stderr_list[report_start..report_end]);
+
+        report.stacktrace = PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
+
+        if let Some(exception) =
+            PythonException::parse_exception(report.python_report.last().unwrap())
+        {
+            report.execution_class = exception;
         }
     } else {
         // Call casr-san
@@ -198,7 +194,7 @@ fn main() -> Result<()> {
     {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = util::sources(&debug) {
+            if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
         }

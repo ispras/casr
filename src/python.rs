@@ -16,24 +16,20 @@ impl ParseStacktrace for PythonStacktrace {
             .split('\n')
             .map(|l| l.to_string())
             .collect::<Vec<String>>();
-        let first = stacktrace
+        let Some(first) = stacktrace
             .iter()
-            .position(|line| line.starts_with("Traceback "));
-        if first.is_none() {
+            .position(|line| line.starts_with("Traceback ")) else {
             return Err(Error::Casr(
                 "Couldn't find traceback in python report".to_string(),
             ));
-        }
+        };
 
         // Stack trace is splitted by empty line.
-        let first = first.unwrap();
-        let last = stacktrace.iter().skip(first).rposition(|s| !s.is_empty());
-        if last.is_none() {
+        let Some(last) = stacktrace.iter().skip(first).rposition(|s| !s.is_empty()) else {
             return Err(Error::Casr(
                 "Couldn't find traceback end in python report".to_string(),
             ));
-        }
-        let last = last.unwrap();
+        };
 
         let re = Regex::new(
             r#"(File ".+", line [\d]+, in .+|\[Previous line repeated (\d+) more times\])"#,
@@ -55,40 +51,38 @@ impl ParseStacktrace for PythonStacktrace {
 
             if entry.starts_with('[') {
                 let re = Regex::new(r#"\[Previous line repeated (\d+) more times\]"#).unwrap();
-                if let Some(rep) = re.captures(entry) {
-                    let Ok(rep) = rep.get(1).unwrap().as_str().parse::<u64>() else {
-                        return Err(Error::Casr("Couldn't parse num: {entry}".to_string()));
-                    };
-                    let last = stacktrace.last().unwrap().clone();
-                    for _ in 0..rep {
-                        stentry = last.clone();
-                        stacktrace.push(stentry);
-                    }
-                    continue;
-                } else {
+                let Some(rep) = re.captures(entry) else {
                     return Err(Error::Casr(
                         "Couldn't parse stacktrace line: {entry}".to_string(),
                     ));
+                };
+                let Ok(rep) = rep.get(1).unwrap().as_str().parse::<u64>() else {
+                    return Err(Error::Casr("Couldn't parse num: {entry}".to_string()));
+                };
+                let last = stacktrace.last().unwrap().clone();
+                for _ in 0..rep {
+                    stentry = last.clone();
+                    stacktrace.push(stentry);
                 }
+                continue;
             }
 
             let re = Regex::new(r#"File "(.+)", line (\d+), in (.+)"#).unwrap();
 
-            if let Some(cap) = re.captures(entry) {
-                stentry.debug.file = cap.get(1).unwrap().as_str().to_string();
-                if let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() {
-                    stentry.debug.line = line;
-                } else {
-                    return Err(Error::Casr(
-                        "Couldn't parse stacktrace line num: {entry}".to_string(),
-                    ));
-                };
-                stentry.function = cap.get(3).unwrap().as_str().to_string();
-            } else {
+            let Some(cap) = re.captures(entry) else {
                 return Err(Error::Casr(
                     "Couldn't parse stacktrace line: {entry}".to_string(),
                 ));
-            }
+            };
+            stentry.debug.file = cap.get(1).unwrap().as_str().to_string();
+            if let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() {
+                stentry.debug.line = line;
+            } else {
+                return Err(Error::Casr(
+                    "Couldn't parse stacktrace line num: {entry}".to_string(),
+                ));
+            };
+            stentry.function = cap.get(3).unwrap().as_str().to_string();
 
             stacktrace.push(stentry);
         }

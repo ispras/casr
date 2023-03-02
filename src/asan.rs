@@ -15,22 +15,18 @@ impl ParseStacktrace for AsanStacktrace {
         let lines: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
 
         let frame = Regex::new(r"^#0 ").unwrap();
-        let first = lines.iter().position(|x| frame.is_match(x));
-        if first.is_none() {
+        let Some(first) = lines.iter().position(|x| frame.is_match(x)) else {
             return Err(Error::Casr(
                 "Couldn't find stack trace in sanitizer's report".to_string(),
             ));
-        }
+        };
 
         // Stack trace is splitted by empty line.
-        let first = first.unwrap();
-        let last = lines.iter().skip(first).position(|val| val.is_empty());
-        if last.is_none() {
+        let Some(last) = lines.iter().skip(first).position(|val| val.is_empty()) else {
             return Err(Error::Casr(
                 "Couldn't find stack trace end in sanitizer's report".to_string(),
             ));
-        }
-        let last = last.unwrap();
+        };
         Ok(lines[first..first + last].to_vec())
     }
 
@@ -41,13 +37,11 @@ impl ParseStacktrace for AsanStacktrace {
 
             // #10 0xdeadbeef
             let re = Regex::new(r"^ *#[0-9]+ +0x([0-9a-f]+) *").unwrap();
-            let caps = re.captures(entry.as_ref());
-            if caps.is_none() {
+            let Some(caps) = re.captures(entry.as_ref()) else {
                 return Err(Error::Casr(
                     "Couldn't parse frame and address in stack trace entry: {entry}".to_string(),
                 ));
-            }
-            let caps = caps.unwrap();
+            };
 
             // Get address.
             let num = caps.get(1).unwrap().as_str();
@@ -170,6 +164,11 @@ pub struct AsanContext(pub Vec<String>);
 impl Severity for AsanContext {
     fn severity(&self) -> Result<ExecutionClass> {
         let asan_report = &self.0;
+        if asan_report.is_empty() {
+            return Err(Error::Casr(
+                "Cannot estimate severity: Asan is empty.".to_string(),
+            ));
+        }
         if asan_report[0].contains("LeakSanitizer") {
             ExecutionClass::find("memory-leaks")
         } else {
@@ -208,7 +207,7 @@ impl Severity for AsanContext {
                                 16,
                             ) else {
                                 return Err(Error::Casr(format!("Cannot parse address: {}", crash_address.get(1).unwrap().as_str())));
-                            };
+                        };
                         is_near_null(addr)
                     } else {
                         false

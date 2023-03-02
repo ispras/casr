@@ -18,8 +18,10 @@ use casr::severity::Severity;
 use casr::stacktrace::*;
 use casr::util;
 
+use crate::gdb_command::stacktrace::StacktraceExt;
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
+use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::*;
 use linux_personality::personality;
 use regex::Regex;
@@ -216,27 +218,27 @@ fn main() -> Result<()> {
     }
 
     // Check for exceptions
-    if report.execution_class == Default::default()
-        || report.execution_class.short_description == "AbortSignal"
+    if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
+        .iter()
+        .find_map(|parse| parse(&sanitizers_stderr))
     {
-        if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
-            .iter()
-            .find_map(|parse| parse(&sanitizers_stderr))
-        {
-            report.execution_class = class;
-        }
+        report.execution_class = class;
     }
 
     // Get crash line.
     let stacktrace = if !report.asan_report.is_empty() {
         AsanStacktrace::parse_stacktrace(&report.stacktrace)?
     } else {
-        GdbStacktrace::parse_stacktrace(&report.stacktrace)?
+        let mut parsed_stacktrace = GdbStacktrace::parse_stacktrace(&report.stacktrace)?;
+        if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
+            parsed_stacktrace.compute_module_offsets(&mfiles);
+        }
+        parsed_stacktrace
     };
     if let Ok(crash_line) = AsanStacktrace::crash_line(&stacktrace) {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = util::sources(&debug) {
+            if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
         }

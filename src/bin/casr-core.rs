@@ -444,6 +444,8 @@ fn analyze_coredump(
     .siginfo()
     .mappings()
     .regs()
+    // We need 2 disassembles: one for severity analysis
+    // and another for the report.
     .mem("$pc", 64)
     .disassembly()
     .launch()?;
@@ -465,6 +467,7 @@ fn analyze_coredump(
         machine,
         stacktrace: report.stacktrace.clone(),
     };
+    // Remove module names from disassembly for pretty view in report.
     let rm_modules = Regex::new("<.*?>").unwrap();
     let disassembly = rm_modules.replace_all(&result[5], "");
     report.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();

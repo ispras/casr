@@ -1,12 +1,22 @@
+use crate::asan::AsanStacktrace;
 use crate::error;
+use crate::error::*;
 use crate::execution_class::*;
+use crate::gdb::GdbStacktrace;
+use crate::python::PythonStacktrace;
+use crate::stacktrace::{cluster_stacktraces, dedup_stacktraces};
+use crate::stacktrace::{Filter, ParseStacktrace};
 use chrono::prelude::*;
+use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::registers::Registers;
+use gdb_command::stacktrace::DebugInfo;
+use gdb_command::stacktrace::{Stacktrace, StacktraceExt};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -351,6 +361,112 @@ impl CrashReport {
         }
         Ok(())
     }
+
+    /// Get source code fragment for crash line
+    ///
+    /// # Arguments
+    ///
+    /// * 'debug' - debug information
+    pub fn sources(debug: &DebugInfo) -> Option<Vec<String>> {
+        if debug.line == 0 {
+            return None;
+        }
+
+        if let Ok(file) = std::fs::File::open(&debug.file) {
+            let file = BufReader::new(file);
+            let start: usize = if debug.line > 5 {
+                debug.line as usize - 5
+            } else {
+                0
+            };
+            let mut lines: Vec<String> = file
+                .lines()
+                .skip(start)
+                .enumerate()
+                .take_while(|(i, _)| *i < 10)
+                .map(|(i, l)| {
+                    if let Ok(l) = l {
+                        format!("    {:<6} {}", start + i + 1, l.trim_end())
+                    } else {
+                        format!("    {:<6} Corrupted line", start + i + 1)
+                    }
+                })
+                .collect::<Vec<String>>();
+            let crash_line = debug.line as usize - start - 1;
+            if crash_line < lines.len() {
+                lines[crash_line].replace_range(..4, "--->");
+                return Some(lines);
+            }
+        }
+
+        None
+    }
+
+    /// Remove trusted frames from stack trace and reutrn it as `Stacktrace` struct
+    pub fn filtered_stacktrace(&self) -> Result<Stacktrace> {
+        let mut rawtrace: Stacktrace = Default::default();
+        if !self.asan_report.is_empty() {
+            rawtrace = if let Ok(parsed_trace) = AsanStacktrace::parse_stacktrace(&self.stacktrace)
+            {
+                parsed_trace
+            } else {
+                return Err(Error::Casr(
+                    "Error while parsing asan stacktrace".to_string(),
+                ));
+            };
+        }
+
+        if !self.python_report.is_empty() {
+            rawtrace =
+                if let Ok(parsed_trace) = PythonStacktrace::parse_stacktrace(&self.stacktrace) {
+                    parsed_trace
+                } else {
+                    return Err(Error::Casr(
+                        "Error while parsing python stacktrace".to_string(),
+                    ));
+                };
+        }
+
+        if rawtrace.is_empty() {
+            rawtrace = if let Ok(parsed_trace) = GdbStacktrace::parse_stacktrace(&self.stacktrace) {
+                parsed_trace
+            } else {
+                return Err(Error::Casr(
+                    "Error while parsing gdb stacktrace".to_string(),
+                ));
+            };
+        };
+
+        // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
+        if let Some(pos) = &rawtrace
+            .iter()
+            .position(|x| x.function.contains("LLVMFuzzerTestOneInput"))
+        {
+            rawtrace.drain(pos + 1..);
+        }
+
+        if rawtrace.is_empty() {
+            return Err(Error::Casr(
+                "Current stack trace length is null".to_string(),
+            ));
+        }
+
+        // Get Proc mappings from Casr report
+        if !self.proc_maps.is_empty() {
+            let mappings = MappedFiles::from_gdb(self.proc_maps.join("\n"))?;
+            rawtrace.compute_module_offsets(&mappings);
+        }
+
+        rawtrace.filter();
+
+        if rawtrace.is_empty() {
+            return Err(Error::Casr(
+                "Current stack trace length is null".to_string(),
+            ));
+        }
+
+        Ok(rawtrace)
+    }
 }
 
 impl fmt::Display for CrashReport {
@@ -485,4 +601,44 @@ impl fmt::Display for CrashReport {
 
         write!(f, "{}", report.trim())
     }
+}
+
+/// Deduplicate crash reports
+///
+/// # Arguments
+///
+/// * `casreps` - slice of Casr reports
+///
+/// # Return value
+///
+/// An vector of the same length as `casreps`.
+/// Vec[i] is false, if original casrep i is a duplicate of any element of `casreps`.
+pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
+    let mut traces: Vec<Stacktrace> = Vec::new();
+    (0..casreps.len()).into_iter().try_for_each(|i| {
+        traces.push(casreps[i].filtered_stacktrace()?);
+        Ok::<_, Error>(())
+    })?;
+
+    Ok(dedup_stacktraces(&traces))
+}
+
+/// Perform the clustering of casreps
+///
+/// # Arguments
+///
+/// * `casreps` - slice of Casr reports
+///
+/// # Return value
+///
+/// An vector of the same length as `casreps`.
+/// Vec[i] is the flat cluster number to which original casrep i belongs.
+pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<u32>> {
+    let mut traces: Vec<Stacktrace> = Vec::new();
+    (0..casreps.len()).into_iter().try_for_each(|i| {
+        traces.push(casreps[i].filtered_stacktrace()?);
+        Ok::<_, Error>(())
+    })?;
+
+    cluster_stacktraces(&traces)
 }

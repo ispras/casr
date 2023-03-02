@@ -165,6 +165,8 @@ fn main() -> Result<()> {
         .siginfo()
         .mappings()
         .regs()
+        // We need 2 disassembles: one for severity analysis
+        // and another for the report.
         .mem("$pc", 64)
         .disassembly();
 
@@ -204,6 +206,7 @@ fn main() -> Result<()> {
         stacktrace: report.stacktrace.clone(),
     };
 
+    // Remove module names from disassembly for pretty view in report.
     let rm_modules = Regex::new("<.*?>").unwrap();
     let disassembly = rm_modules.replace_all(&result[5], "");
     report.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();
@@ -217,15 +220,11 @@ fn main() -> Result<()> {
     }
 
     // Check for exceptions
-    if report.execution_class == Default::default()
-        || report.execution_class.short_description == "AbortSignal"
+    if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
+        .iter()
+        .find_map(|parse| parse(&output))
     {
-        if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
-            .iter()
-            .find_map(|parse| parse(&output))
-        {
-            report.execution_class = class;
-        }
+        report.execution_class = class;
     }
 
     report.registers = context.registers;
@@ -238,7 +237,7 @@ fn main() -> Result<()> {
     if let Ok(crash_line) = GdbStacktrace::crash_line(&parsed_stacktrace) {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = util::sources(&debug) {
+            if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
         }
