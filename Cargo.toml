@@ -11,7 +11,6 @@ readme = "README.md"
 repository = "https://github.com/ispras/casr.git"
 homepage = "https://github.com/ispras/casr.git"
 license = "Apache-2.0"
-license-file = "LICENSE"
 exclude = ["/tests", ".gitignore", ".github", "update_version.sh"]
 
 [dependencies]
