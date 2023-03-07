@@ -19,6 +19,7 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Represents the information about program termination.
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct CrashReport {
     /// Pid of crashed process.
@@ -69,7 +70,7 @@ pub struct CrashReport {
     #[serde(rename(serialize = "ProcMaps", deserialize = "ProcMaps"))]
     #[serde(default)]
     pub proc_maps: Vec<String>,
-    /// Opend files at crash : ls -lah /proc/<pid>/fd.
+    /// Opend files at crash : ls -lah /proc/\<pid\>/fd.
     #[serde(rename(serialize = "ProcFiles", deserialize = "ProcFiles"))]
     #[serde(default)]
     pub proc_fd: Vec<String>,
@@ -120,9 +121,11 @@ pub struct CrashReport {
     #[serde(rename(serialize = "PythonReport", deserialize = "PythonReport"))]
     #[serde(default)]
     pub python_report: Vec<String>,
+    /// Crash line from stack trace: source:line or binary+offset.
     #[serde(rename(serialize = "CrashLine", deserialize = "CrashLine"))]
     #[serde(default)]
     pub crashline: String,
+    /// Source code fragment.
     #[serde(rename(serialize = "Source", deserialize = "Source"))]
     #[serde(default)]
     pub source: Vec<String>,
@@ -424,20 +427,6 @@ impl CrashReport {
             GdbStacktrace::parse_stacktrace(&self.stacktrace)?
         };
 
-        // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
-        if let Some(pos) = &rawtrace
-            .iter()
-            .position(|x| x.function.contains("LLVMFuzzerTestOneInput"))
-        {
-            rawtrace.drain(pos + 1..);
-        }
-
-        if rawtrace.is_empty() {
-            return Err(Error::Casr(
-                "Current stack trace length is null".to_string(),
-            ));
-        }
-
         // Get Proc mappings from Casr report
         if !self.proc_maps.is_empty() {
             let mappings = MappedFiles::from_gdb(self.proc_maps.join("\n"))?;
@@ -599,11 +588,11 @@ impl fmt::Display for CrashReport {
 /// # Return value
 ///
 /// An vector of the same length as `casreps`.
-/// Vec[i] is false, if original casrep i is a duplicate of any element of `casreps`.
+/// Vec\[i\] is false, if original casrep i is a duplicate of any element of `casreps`.
 pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
-    let traces: Vec<Stacktrace> = (0..casreps.len())
-        .into_iter()
-        .map(|i| casreps[i].filtered_stacktrace())
+    let traces: Vec<Stacktrace> = casreps
+        .iter()
+        .map(|report| report.filtered_stacktrace())
         .collect::<Result<_>>()?;
 
     Ok(dedup_stacktraces(&traces))
@@ -618,11 +607,11 @@ pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
 /// # Return value
 ///
 /// An vector of the same length as `casreps`.
-/// Vec[i] is the flat cluster number to which original casrep i belongs.
+/// Vec\[i\] is the flat cluster number to which original casrep i belongs.
 pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<u32>> {
-    let traces: Vec<Stacktrace> = (0..casreps.len())
-        .into_iter()
-        .map(|i| casreps[i].filtered_stacktrace())
+    let traces: Vec<Stacktrace> = casreps
+        .iter()
+        .map(|report| report.filtered_stacktrace())
         .collect::<Result<_>>()?;
 
     cluster_stacktraces(&traces)

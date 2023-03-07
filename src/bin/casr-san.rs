@@ -18,10 +18,10 @@ use casr::severity::Severity;
 use casr::stacktrace::*;
 use casr::util;
 
-use crate::gdb_command::stacktrace::StacktraceExt;
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
 use gdb_command::mappings::{MappedFiles, MappedFilesExt};
+use gdb_command::stacktrace::StacktraceExt;
 use gdb_command::*;
 use linux_personality::personality;
 use regex::Regex;

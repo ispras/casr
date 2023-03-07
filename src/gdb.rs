@@ -24,22 +24,28 @@ use super::stacktrace::*;
 #[derive(Clone, Default)]
 /// Information about machine.
 pub struct MachineInfo {
-    // x86, x86_64, arm32
+    /// Machine architecture: x86, x86_64, arm32.
     pub arch: u16,
-    // Little, Big
+    /// Byte order: Little, Big.
     pub endianness: Endian,
-    // 4 or 8 bytes
+    /// Word size: 4 or 8 bytes.
     pub byte_width: u8,
 }
 
 #[derive(Clone, Default)]
 /// Information about crash state.
 pub struct GdbContext {
+    /// Info about received signal.
     pub siginfo: Siginfo,
+    /// Info about regiters state.
     pub registers: Registers,
+    /// Memory mappings.
     pub mappings: MappedFiles,
+    /// Info about machine.
     pub machine: MachineInfo,
+    /// Memory at pc address.
     pub pc_memory: MemoryObject,
+    /// Stack trace of crashed program
     pub stacktrace: Vec<String>,
 }
 

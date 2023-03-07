@@ -14,11 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/// Regular expressions for python functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[
     // TODO
     r"^[^.]$",
 ];
 
+/// Regular expressions for rust functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^rust_begin_unwind",
     r"^rust_fuzzer_test_input",
@@ -34,6 +36,7 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^panic_abort::",
 ];
 
+/// Regular expressions for cpp functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     // Function names (exact match).
     r"^abort$",
@@ -186,17 +189,20 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*v8::base::OS::Abort",
 ];
 
+/// Regular expressions for paths to python files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON: &[&str] = &[
     // TODO
     r"^[^.]$",
 ];
 
+/// Regular expressions for paths to rust files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[
     r".*/rust(|c)/",
     // AFL
     r".*/afl-.*/.*\.rs",
 ];
 
+/// Regular expressions for paths to cpp files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     // File paths.
     r".*/usr/include/c\+\+/",

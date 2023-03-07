@@ -9,25 +9,33 @@ use std::process::{Command, Stdio};
 use std::sync::RwLock;
 
 // Re-export types from gdb_command for convenient use from Casr library
+/// Represents the information about stack trace.
 pub type Stacktrace = gdb_command::stacktrace::Stacktrace;
+/// Represents the debug information of one frame in stack trace.
 pub type DebugInfo = gdb_command::stacktrace::DebugInfo;
+/// Represents the information about one line of the stack trace.
 pub type StacktraceEntry = gdb_command::stacktrace::StacktraceEntry;
 
 lazy_static::lazy_static! {
-    // Regular expressions for functions to be ignored.
+    /// Regular expressions for functions to be ignored.
     pub static ref STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
         Vec::new());
-    // Regular expressions for file paths to be ignored.
+    /// Regular expressions for file paths to be ignored.
     pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
         Vec::new());
 }
 
 /// Information about line in sources which caused a crash.
 pub enum CrashLine {
-    // source:line:column.
+    /// Crash line from debug info: source:line:column.
     Source(DebugInfo),
-    // Binary module and offset.
-    Module { file: String, offset: u64 },
+    /// Crash line from binary module: binary module and offset.
+    Module {
+        /// Path to binary module.
+        file: String,
+        /// Offset in binary module.
+        offset: u64,
+    },
 }
 
 impl fmt::Display for CrashLine {
@@ -49,16 +57,18 @@ impl fmt::Display for CrashLine {
     }
 }
 
+/// Stack trace processing trait.
 pub trait ParseStacktrace {
-    /// Extract stack trace from stream
+    /// Extract stack trace from stream.
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>>;
 
-    /// Transform stack trace strings into Stacktrace type
+    /// Transform stack trace strings into Stacktrace type.
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace>;
 }
 
-/// Get crash line from stack trace: source:line or binary+offset.
+/// Extract crash line from stack trace.
 pub trait CrashLineExt {
+    /// Get crash line from stack trace: source:line or binary+offset.
     fn crash_line(&self) -> Result<CrashLine>;
 }
 
@@ -139,7 +149,7 @@ pub fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
 /// # Return value
 ///
 /// An vector of the same length as `stacktraces`.
-/// Vec[i] is false, if original stacktrace i is a duplicate of any element of `stacktraces`.
+/// Vec\[i\] is false, if original stacktrace i is a duplicate of any element of `stacktraces`.
 pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
     let mut traces = HashSet::new();
     stacktraces
@@ -157,7 +167,7 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
 /// # Return value
 ///
 /// An vector of the same length as `stacktraces`.
-/// Vec[i] is the flat cluster number to which original stacktrace i belongs.
+/// Vec\[i\] is the flat cluster number to which original stacktrace i belongs.
 pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     let len = stacktraces.len();
     // Writing compressed distance matrix into Vector<String>
@@ -223,8 +233,9 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     Ok(clusters)
 }
 
+/// Stack trace filtering trait.
 pub trait Filter {
-    /// Remove trusted functions from stack trace
+    /// Remove trusted functions from stack trace.
     fn filter(&mut self);
 }
 
@@ -254,5 +265,13 @@ impl Filter for Stacktrace {
                 && (entry.module.is_empty() || !rfile.is_match(&entry.module))
                 && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
         });
+
+        // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
+        if let Some(pos) = &self
+            .iter()
+            .position(|x| x.function.contains("LLVMFuzzerTestOneInput"))
+        {
+            self.drain(pos + 1..);
+        }
     }
 }

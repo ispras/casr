@@ -14,6 +14,7 @@ pub struct ExecutionClass {
     /// Some description.
     #[serde(rename(serialize = "Description", deserialize = "Description"))]
     pub description: String,
+    /// Execution class detailed explanation.
     #[serde(rename(serialize = "Explanation", deserialize = "Explanation"))]
     pub explanation: String,
 }

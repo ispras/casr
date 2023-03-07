@@ -86,6 +86,11 @@ pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) 
     Ok(())
 }
 
+/// Add custom regex for frames from user that should be ignored during analysis
+///
+/// # Arguments
+///
+/// * `path` - path to the specification file
 pub fn add_custom_ignored_frames(path: &Path) -> Result<()> {
     let file = std::fs::File::open(path)
         .with_context(|| format!("Cannot open file: {}", path.display()))?;
