@@ -235,7 +235,7 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
 
 /// Stack trace filtering trait.
 pub trait Filter {
-    /// Remove trusted functions from stack trace.
+    /// Filter frames from the stack trace that are not related to analyzed code containing crash.
     fn filter(&mut self);
 }
 
@@ -259,13 +259,6 @@ impl Filter for Stacktrace {
             .collect::<String>();
         let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
 
-        // Remove trusted functions from stack trace
-        self.retain(|entry| {
-            (entry.function.is_empty() || !rfunction.is_match(&entry.function))
-                && (entry.module.is_empty() || !rfile.is_match(&entry.module))
-                && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
-        });
-
         // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
         if let Some(pos) = &self
             .iter()
@@ -273,5 +266,12 @@ impl Filter for Stacktrace {
         {
             self.drain(pos + 1..);
         }
+
+        // Remove trusted functions from stack trace
+        self.retain(|entry| {
+            (entry.function.is_empty() || !rfunction.is_match(&entry.function))
+                && (entry.module.is_empty() || !rfile.is_match(&entry.module))
+                && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+        });
     }
 }

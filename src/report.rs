@@ -417,7 +417,8 @@ impl CrashReport {
         self.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();
     }
 
-    /// Remove trusted frames from stack trace and return it as `Stacktrace` struct
+    /// Filter frames from the stack trace that are not related to analyzed code containing crash
+    /// and return it as `Stacktrace` struct
     pub fn filtered_stacktrace(&self) -> Result<Stacktrace> {
         let mut rawtrace = if !self.asan_report.is_empty() {
             AsanStacktrace::parse_stacktrace(&self.stacktrace)?
