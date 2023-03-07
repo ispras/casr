@@ -15,7 +15,6 @@ use casr::util;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg};
-use gdb_command::stacktrace::*;
 use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 
@@ -87,9 +86,9 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
     });
 
     // Start thread pool.
-    rayon::ThreadPoolBuilder::new()
+    let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(jobs.min(len))
-        .build_global()
+        .build()
         .unwrap();
 
     // Stacktraces from casreps
@@ -98,13 +97,15 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
     let filtered_casreps: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
     // Casreps with stacktraces, that we cannot parse
     let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
-    (0..len).into_par_iter().for_each(|i| {
-        if let Ok(trace) = stacktrace(casreps[i].as_path()) {
-            traces.write().unwrap().push(trace);
-            filtered_casreps.write().unwrap().push(casreps[i].clone());
-        } else {
-            badreports.write().unwrap().push(casreps[i].clone());
-        }
+    custom_pool.install(|| {
+        (0..len).into_par_iter().for_each(|i| {
+            if let Ok(trace) = stacktrace(casreps[i].as_path()) {
+                traces.write().unwrap().push(trace);
+                filtered_casreps.write().unwrap().push(casreps[i].clone());
+            } else {
+                badreports.write().unwrap().push(casreps[i].clone());
+            }
+        })
     });
     let stacktraces = traces.read().unwrap();
     let casreps = filtered_casreps.read().unwrap();
@@ -188,19 +189,21 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
     paths.sort_by(|a, b| a.file_name().unwrap().cmp(b.file_name().unwrap()));
 
     // Start thread pool.
-    rayon::ThreadPoolBuilder::new()
+    let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(jobs.min(paths.len()))
-        .build_global()
+        .build()
         .unwrap();
 
     let badrepidxs: RwLock<HashSet<usize>> = RwLock::new(HashSet::new());
     let stacktraces: RwLock<Vec<Stacktrace>> = RwLock::new(vec![Default::default(); paths.len()]);
-    paths.par_iter().enumerate().for_each(|(index, report)| {
-        if let Ok(trace) = stacktrace(report.as_path()) {
-            stacktraces.write().unwrap()[index] = trace;
-        } else {
-            badrepidxs.write().unwrap().insert(index);
-        }
+    custom_pool.install(|| {
+        paths.par_iter().enumerate().for_each(|(index, report)| {
+            if let Ok(trace) = stacktrace(report.as_path()) {
+                stacktraces.write().unwrap()[index] = trace;
+            } else {
+                badrepidxs.write().unwrap().insert(index);
+            }
+        })
     });
 
     let badrepidxs = badrepidxs.read().unwrap();

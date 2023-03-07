@@ -1,13 +1,17 @@
 extern crate lazy_static;
 
 use crate::error::*;
-use gdb_command::stacktrace::*;
 use regex::Regex;
 use std::collections::HashSet;
 use std::fmt;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::RwLock;
+
+// Re-export types from gdb_command for convenient use from Casr library
+pub type Stacktrace = gdb_command::stacktrace::Stacktrace;
+pub type DebugInfo = gdb_command::stacktrace::DebugInfo;
+pub type StacktraceEntry = gdb_command::stacktrace::StacktraceEntry;
 
 lazy_static::lazy_static! {
     // Regular expressions for functions to be ignored.
@@ -51,10 +55,16 @@ pub trait ParseStacktrace {
 
     /// Transform stack trace strings into Stacktrace type
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace>;
+}
 
-    /// Get crash line from stack trace: source:line or binary+offset.               
-    fn crash_line(stacktrace: &Stacktrace) -> Result<CrashLine> {
-        let mut trace = stacktrace.clone();
+/// Get crash line from stack trace: source:line or binary+offset.
+pub trait CrashLineExt {
+    fn crash_line(&self) -> Result<CrashLine>;
+}
+
+impl CrashLineExt for Stacktrace {
+    fn crash_line(&self) -> Result<CrashLine> {
+        let mut trace = self.clone();
         trace.filter();
 
         let Some(crash_entry) = trace.get(0) else {
@@ -150,20 +160,21 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
 /// Vec[i] is the flat cluster number to which original stacktrace i belongs.
 pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     let len = stacktraces.len();
-    // Lines in compressed distance matrix
-    let mut lines: Vec<String> = vec![String::new(); len];
     // Writing compressed distance matrix into Vector<String>
-    (0..len).into_iter().for_each(|i| {
-        let mut tmp_str = String::new();
-        for j in i + 1..len {
-            tmp_str += format!(
-                "{0:.3} ",
-                1.0 - similarity(&stacktraces[i], &stacktraces[j])
-            )
-            .as_str();
-        }
-        lines[i] = tmp_str;
-    });
+    let lines: Vec<String> = (0..len)
+        .into_iter()
+        .map(|i| {
+            let mut tmp_str = String::new();
+            for j in i + 1..len {
+                tmp_str += format!(
+                    "{0:.3} ",
+                    1.0 - similarity(&stacktraces[i], &stacktraces[j])
+                )
+                .as_str();
+            }
+            tmp_str
+        })
+        .collect();
 
     let python_cluster_script =
         "import numpy as np;\

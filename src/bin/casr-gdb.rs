@@ -231,7 +231,7 @@ fn main() -> Result<()> {
         parsed_stacktrace.compute_module_offsets(&mfiles);
     }
     // Get crash line.
-    if let Ok(crash_line) = GdbStacktrace::crash_line(&parsed_stacktrace) {
+    if let Ok(crash_line) = parsed_stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = CrashReport::sources(&debug) {

@@ -235,7 +235,7 @@ fn main() -> Result<()> {
         }
         parsed_stacktrace
     };
-    if let Ok(crash_line) = AsanStacktrace::crash_line(&stacktrace) {
+    if let Ok(crash_line) = stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = CrashReport::sources(&debug) {

@@ -4,13 +4,11 @@ use crate::error::*;
 use crate::execution_class::*;
 use crate::gdb::GdbStacktrace;
 use crate::python::PythonStacktrace;
-use crate::stacktrace::{cluster_stacktraces, dedup_stacktraces};
-use crate::stacktrace::{Filter, ParseStacktrace};
+use crate::stacktrace::*;
 use chrono::prelude::*;
 use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::registers::Registers;
-use gdb_command::stacktrace::DebugInfo;
-use gdb_command::stacktrace::{Stacktrace, StacktraceExt};
+use gdb_command::stacktrace::StacktraceExt;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -416,39 +414,14 @@ impl CrashReport {
         self.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();
     }
 
-    /// Remove trusted frames from stack trace and reutrn it as `Stacktrace` struct
+    /// Remove trusted frames from stack trace and return it as `Stacktrace` struct
     pub fn filtered_stacktrace(&self) -> Result<Stacktrace> {
-        let mut rawtrace: Stacktrace = Default::default();
-        if !self.asan_report.is_empty() {
-            rawtrace = if let Ok(parsed_trace) = AsanStacktrace::parse_stacktrace(&self.stacktrace)
-            {
-                parsed_trace
-            } else {
-                return Err(Error::Casr(
-                    "Error while parsing asan stacktrace".to_string(),
-                ));
-            };
-        }
-
-        if !self.python_report.is_empty() {
-            rawtrace =
-                if let Ok(parsed_trace) = PythonStacktrace::parse_stacktrace(&self.stacktrace) {
-                    parsed_trace
-                } else {
-                    return Err(Error::Casr(
-                        "Error while parsing python stacktrace".to_string(),
-                    ));
-                };
-        }
-
-        if rawtrace.is_empty() {
-            rawtrace = if let Ok(parsed_trace) = GdbStacktrace::parse_stacktrace(&self.stacktrace) {
-                parsed_trace
-            } else {
-                return Err(Error::Casr(
-                    "Error while parsing gdb stacktrace".to_string(),
-                ));
-            };
+        let mut rawtrace = if !self.asan_report.is_empty() {
+            AsanStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.python_report.is_empty() {
+            PythonStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else {
+            GdbStacktrace::parse_stacktrace(&self.stacktrace)?
         };
 
         // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
@@ -628,11 +601,10 @@ impl fmt::Display for CrashReport {
 /// An vector of the same length as `casreps`.
 /// Vec[i] is false, if original casrep i is a duplicate of any element of `casreps`.
 pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
-    let mut traces: Vec<Stacktrace> = Vec::new();
-    (0..casreps.len()).into_iter().try_for_each(|i| {
-        traces.push(casreps[i].filtered_stacktrace()?);
-        Ok::<_, Error>(())
-    })?;
+    let traces: Vec<Stacktrace> = (0..casreps.len())
+        .into_iter()
+        .map(|i| casreps[i].filtered_stacktrace())
+        .collect::<Result<_>>()?;
 
     Ok(dedup_stacktraces(&traces))
 }
@@ -648,11 +620,10 @@ pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
 /// An vector of the same length as `casreps`.
 /// Vec[i] is the flat cluster number to which original casrep i belongs.
 pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<u32>> {
-    let mut traces: Vec<Stacktrace> = Vec::new();
-    (0..casreps.len()).into_iter().try_for_each(|i| {
-        traces.push(casreps[i].filtered_stacktrace()?);
-        Ok::<_, Error>(())
-    })?;
+    let traces: Vec<Stacktrace> = (0..casreps.len())
+        .into_iter()
+        .map(|i| casreps[i].filtered_stacktrace())
+        .collect::<Result<_>>()?;
 
     cluster_stacktraces(&traces)
 }

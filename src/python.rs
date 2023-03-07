@@ -3,7 +3,7 @@ use crate::stacktrace::ParseStacktrace;
 
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
-use gdb_command::stacktrace::*;
+use crate::stacktrace::*;
 use regex::Regex;
 
 /// Structure provides an interface for processing the stack trace.

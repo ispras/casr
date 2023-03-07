@@ -11,7 +11,7 @@ use gdb_command::mappings::*;
 use gdb_command::memory::*;
 use gdb_command::registers::*;
 use gdb_command::siginfo::*;
-use gdb_command::stacktrace::*;
+use gdb_command::stacktrace::StacktraceExt;
 use goblin::container::Endian;
 use goblin::elf::header;
 use regex::Regex;

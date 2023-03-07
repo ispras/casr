@@ -189,9 +189,7 @@ fn main() -> Result<()> {
         return call_casr_san(&matches, &argv);
     }
 
-    if let Ok(crash_line) =
-        PythonStacktrace::crash_line(&PythonStacktrace::parse_stacktrace(&report.stacktrace)?)
-    {
+    if let Ok(crash_line) = PythonStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = CrashReport::sources(&debug) {
