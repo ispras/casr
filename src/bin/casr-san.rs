@@ -160,6 +160,9 @@ fn main() -> Result<()> {
             .split('\n')
             .map(|l| l.trim_end().to_string())
             .collect();
+        if let Some(exception) = GoPanic::parse_exception(&sanitizers_stderr) {
+            report.execution_class = exception;
+        }
     } else {
         // Get ASAN report.
         let san_stderr_list: Vec<String> = sanitizers_stderr
@@ -241,13 +244,9 @@ fn main() -> Result<()> {
     }
 
     // Check for exceptions
-    if let Some(class) = [
-        CppException::parse_exception,
-        RustPanic::parse_exception,
-        GoPanic::parse_exception,
-    ]
-    .iter()
-    .find_map(|parse| parse(&sanitizers_stderr))
+    if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
+        .iter()
+        .find_map(|parse| parse(&sanitizers_stderr))
     {
         report.execution_class = class;
     }
