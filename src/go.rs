@@ -22,38 +22,37 @@ impl ParseStacktrace for GoStacktrace {
         let Some(goroutine_idx) = lines
             .iter()
             .enumerate()
-            .position(|(i,line)| re.is_match(line) && i < lines[i..].len() - 1) else {
+            .position(|(i,line)| re.is_match(line) && i < lines.len() - 1) else {
                 return Err(Error::Casr("Couldn't find start of stacktrace in Go panic output".to_string()));
         };
 
-        let start = goroutine_idx + 1;
-        let end = if let Some(end) = lines.iter().skip(start).position(|s| s.is_empty()) {
-            end
+        let lines = &lines[goroutine_idx + 1..];
+        let lines = if let Some(end) = lines.iter().position(|s| s.is_empty()) {
+            &lines[..end]
         } else {
-            lines[start..].len()
+            lines
         };
 
+        if lines.len() % 2 != 0 {
+            return Err(Error::Casr(
+                "Go stacktrace line count should be even".to_string(),
+            ));
+        }
+
         let mut stacktrace = Vec::new();
-        let mut entry = String::new();
-        for (i, l) in lines[start..start + end].iter().enumerate() {
-            if i % 2 == 0 {
-                entry.push_str(l.trim());
-                entry.push_str(" in ");
-            } else {
-                entry.push_str(l.trim());
-                stacktrace.push(entry);
-                entry = String::new();
-            }
+        for chunk in lines.chunks(2) {
+            let mut entry = String::new();
+            entry.push_str(chunk[0].trim());
+            entry.push_str(" in ");
+            entry.push_str(chunk[1].trim());
+            stacktrace.push(entry);
         }
         Ok(stacktrace)
     }
+
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
         let mut stacktrace = Stacktrace::new();
-        // Case 1: func() in /path/file.go:123 fp=0x123 ...
-        // Case 2: func() in /path/file.go:123 +0x123 fp=0x123 ...
-        // Case 3: func() in /path/file.go:123
-        let re =
-            Regex::new(r#"(.+) in (?:(.+):([0-9]+) (?:\+0x)?.*(?:fp=)?|(.+):([0-9]+))"#).unwrap();
+        let re = Regex::new(r#"(.+) in (.+):([0-9]+)"#).unwrap();
         for entry in entries.iter() {
             let mut stentry = StacktraceEntry::default();
             let Some(caps) = re.captures(entry.as_ref()) else {
@@ -72,20 +71,9 @@ impl ParseStacktrace for GoStacktrace {
                     };
                     stentry.debug.line = num;
                 }
-            } else if let Some(file) = caps.get(4) {
-                stentry.debug.file = file.as_str().to_string();
-                if let Some(line) = caps.get(5) {
-                    let Ok(num) = line.as_str().parse::<u64>() else {
-                        return Err(Error::Casr(
-                            "Couldn't parse line number in stack trace entry: {entry}".to_string(),
-                        ));
-                    };
-                    stentry.debug.line = num;
-                }
             }
             stacktrace.push(stentry);
         }
-
         Ok(stacktrace)
     }
 }

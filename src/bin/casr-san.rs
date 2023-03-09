@@ -151,7 +151,7 @@ fn main() -> Result<()> {
         report.stdin = file_path.display().to_string();
     }
 
-    // if it is possible to extract Go stacktrace, it is Go
+    // If it is possible to extract Go stacktrace, it is Go.
     let stacktrace: Stacktrace;
     if let Ok(raw_stacktrace) = GoStacktrace::extract_stacktrace(&sanitizers_stderr) {
         report.stacktrace = raw_stacktrace;
@@ -228,6 +228,7 @@ fn main() -> Result<()> {
             }
         }
 
+        // Get stacktrace to find crash line.
         stacktrace = if !report.asan_report.is_empty() {
             AsanStacktrace::parse_stacktrace(&report.stacktrace)?
         } else {
