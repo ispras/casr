@@ -122,7 +122,7 @@ mod tests {
 \n\
         runtime stack:\n\
         runtime.throw({0x4ef122?, 0x400000?})";
-        let Some(class) = GoPanic::parse_exception(&panic_info) else {
+        let Some(class) = GoPanic::parse_exception(panic_info) else {
         panic!("Couldn't get Go panic");
     };
 
@@ -132,7 +132,7 @@ mod tests {
 \n\
         goroutine 1 [running]:  \n\
         main.fullName(0xc00006af58, 0x0)";
-        let Some(class) = GoPanic::parse_exception(&panic_info) else {
+        let Some(class) = GoPanic::parse_exception(panic_info) else {
         panic!("Couldn't get Go panic");
     };
 
@@ -141,7 +141,7 @@ mod tests {
         let panic_info = "Error: runtime error: index out of range [0] with length 0\n\
     main.main.func1\n\
         /tmp/sandbox907722598/prog.go:17";
-        let Some(class) = GoPanic::parse_exception(&panic_info) else {
+        let Some(class) = GoPanic::parse_exception(panic_info) else {
         panic!("Couldn't get Go panic");
     };
 
@@ -359,7 +359,7 @@ created by runtime.init.6\n\
             .map(|e| e.to_string())
             .collect::<Vec<String>>();
 
-        let sttr = GoStacktrace::extract_stacktrace(&output);
+        let sttr = GoStacktrace::extract_stacktrace(output);
         if sttr.is_err() {
             panic!("{}", sttr.err().unwrap());
         }
@@ -416,7 +416,7 @@ created by _rt0_go\n\
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<String>>();
-        let sttr = GoStacktrace::extract_stacktrace(&output);
+        let sttr = GoStacktrace::extract_stacktrace(output);
         if sttr.is_err() {
             panic!("{}", sttr.err().unwrap());
         }
