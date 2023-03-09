@@ -11,6 +11,7 @@ use casr::cpp::CppException;
 use casr::exception::Exception;
 use casr::execution_class::*;
 use casr::gdb::*;
+use casr::go::*;
 use casr::init_ignored_frames;
 use casr::report::CrashReport;
 use casr::rust::RustPanic;
@@ -87,7 +88,7 @@ fn main() -> Result<()> {
         bail!("Wrong arguments for starting program");
     };
 
-    init_ignored_frames!("cpp", "rust");
+    init_ignored_frames!("cpp", "rust", "go");
 
     if let Some(path) = matches.value_of("ignore") {
         util::add_custom_ignored_frames(Path::new(path))?;
@@ -150,91 +151,107 @@ fn main() -> Result<()> {
         report.stdin = file_path.display().to_string();
     }
 
-    // Get ASAN report.
-    let san_stderr_list: Vec<String> = sanitizers_stderr
-        .split('\n')
-        .map(|l| l.trim_end().to_string())
-        .collect();
-    let rasan_start =
-        Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
-    if let Some(report_start) = san_stderr_list
-        .iter()
-        .position(|line| rasan_start.is_match(line))
-    {
-        // Set ASAN report in casr report.
-        let report_end = san_stderr_list.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
-        report.asan_report = Vec::from(&san_stderr_list[report_start..report_end]);
-        let context = AsanContext(report.asan_report.clone());
-        report.execution_class = context.severity()?;
-        report.stacktrace = AsanStacktrace::extract_stacktrace(&report.asan_report.join("\n"))?;
+    // if it is possible to extract Go stacktrace, it is Go
+    let stacktrace: Stacktrace;
+    if let Ok(raw_stacktrace) = GoStacktrace::extract_stacktrace(&sanitizers_stderr) {
+        report.stacktrace = raw_stacktrace;
+        stacktrace = GoStacktrace::parse_stacktrace(&report.stacktrace)?;
+        report.go_report = sanitizers_stderr
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect();
     } else {
-        // Get termination signal.
-        if let Some(signal) = sanitizers_result.status.signal() {
-            // Get stack trace and mappings from gdb.
-            match signal as u32 {
-                SIGINFO_SIGILL | SIGINFO_SIGSYS => {
-                    report.execution_class = ExecutionClass::find("BadInstruction").unwrap();
-                }
-                SIGINFO_SIGTRAP => {
-                    report.execution_class = ExecutionClass::find("TrapSignal").unwrap();
-                }
-                SIGINFO_SIGABRT => {
-                    report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
-                }
-                SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
-                    eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
-                    exploitability. Try using casr-gdb instead.");
-                    report.execution_class = ExecutionClass::find("AccessViolation").unwrap();
-                }
-                _ => {
-                    // "Undefined" is by default in report.
-                }
-            }
-
-            // Get stack trace and mappings from gdb.
-            let gdb_result = GdbCommand::new(&ExecType::Local(&argv))
-                .stdin(&stdin_file)
-                .r()
-                .bt()
-                .mappings()
-                .launch()
-                .with_context(|| "Unable to get results from gdb")?;
-
-            let frame = Regex::new(r"^ *#[0-9]+").unwrap();
-            report.stacktrace = gdb_result[0]
-                .split('\n')
-                .filter(|x| frame.is_match(x))
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>();
-            report.proc_maps = gdb_result[1]
-                .split('\n')
-                .skip(4)
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>();
+        // Get ASAN report.
+        let san_stderr_list: Vec<String> = sanitizers_stderr
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect();
+        let rasan_start =
+            Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
+        if let Some(report_start) = san_stderr_list
+            .iter()
+            .position(|line| rasan_start.is_match(line))
+        {
+            // Set ASAN report in casr report.
+            let report_end = san_stderr_list.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
+            report.asan_report = Vec::from(&san_stderr_list[report_start..report_end]);
+            let context = AsanContext(report.asan_report.clone());
+            report.execution_class = context.severity()?;
+            report.stacktrace = AsanStacktrace::extract_stacktrace(&report.asan_report.join("\n"))?;
         } else {
-            // Normal termination.
-            bail!("Program terminated (no crash)");
+            // Get termination signal.
+            if let Some(signal) = sanitizers_result.status.signal() {
+                // Get stack trace and mappings from gdb.
+                match signal as u32 {
+                    SIGINFO_SIGILL | SIGINFO_SIGSYS => {
+                        report.execution_class = ExecutionClass::find("BadInstruction").unwrap();
+                    }
+                    SIGINFO_SIGTRAP => {
+                        report.execution_class = ExecutionClass::find("TrapSignal").unwrap();
+                    }
+                    SIGINFO_SIGABRT => {
+                        report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
+                    }
+                    SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
+                        eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
+                        exploitability. Try using casr-gdb instead.");
+                        report.execution_class = ExecutionClass::find("AccessViolation").unwrap();
+                    }
+                    _ => {
+                        // "Undefined" is by default in report.
+                    }
+                }
+
+                // Get stack trace and mappings from gdb.
+                let gdb_result = GdbCommand::new(&ExecType::Local(&argv))
+                    .stdin(&stdin_file)
+                    .r()
+                    .bt()
+                    .mappings()
+                    .launch()
+                    .with_context(|| "Unable to get results from gdb")?;
+
+                let frame = Regex::new(r"^ *#[0-9]+").unwrap();
+                report.stacktrace = gdb_result[0]
+                    .split('\n')
+                    .filter(|x| frame.is_match(x))
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>();
+                report.proc_maps = gdb_result[1]
+                    .split('\n')
+                    .skip(4)
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>();
+            } else {
+                // Normal termination.
+                bail!("Program terminated (no crash)");
+            }
         }
+
+        stacktrace = if !report.asan_report.is_empty() {
+            AsanStacktrace::parse_stacktrace(&report.stacktrace)?
+        } else {
+            let mut parsed_stacktrace = GdbStacktrace::parse_stacktrace(&report.stacktrace)?;
+            if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
+                parsed_stacktrace.compute_module_offsets(&mfiles);
+            }
+            parsed_stacktrace
+        };
     }
 
     // Check for exceptions
-    if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
-        .iter()
-        .find_map(|parse| parse(&sanitizers_stderr))
+    if let Some(class) = [
+        CppException::parse_exception,
+        RustPanic::parse_exception,
+        GoPanic::parse_exception,
+    ]
+    .iter()
+    .find_map(|parse| parse(&sanitizers_stderr))
     {
         report.execution_class = class;
     }
 
     // Get crash line.
-    let stacktrace = if !report.asan_report.is_empty() {
-        AsanStacktrace::parse_stacktrace(&report.stacktrace)?
-    } else {
-        let mut parsed_stacktrace = GdbStacktrace::parse_stacktrace(&report.stacktrace)?;
-        if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
-            parsed_stacktrace.compute_module_offsets(&mfiles);
-        }
-        parsed_stacktrace
-    };
     if let Ok(crash_line) = stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {

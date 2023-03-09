@@ -5,6 +5,7 @@ pub mod error;
 pub mod exception;
 pub mod execution_class;
 pub mod gdb;
+pub mod go;
 pub mod python;
 pub mod report;
 pub mod rust;
