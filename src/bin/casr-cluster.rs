@@ -404,7 +404,7 @@ fn main() -> Result<()> {
                 }),
         )
         .get_matches();
-    init_ignored_frames!("cpp", "rust", "python");
+    init_ignored_frames!("cpp", "rust", "python", "go");
 
     let jobs = if let Some(jobs) = matches.value_of("jobs") {
         jobs.parse::<usize>().unwrap()

@@ -36,6 +36,12 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^panic_abort::",
 ];
 
+/// Regular expressions for Go functions to be ignored.
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO: &[&str] = &[
+    // TODO
+    r"^runtime\.",
+];
+
 /// Regular expressions for cpp functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     // Function names (exact match).
@@ -201,6 +207,9 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[
     // AFL
     r".*/afl-.*/.*\.rs",
 ];
+
+/// Regular expressions for paths to Go files that should be ignored.
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO: &[&str] = &[r".*go/src/runtime/"];
 
 /// Regular expressions for paths to cpp files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[

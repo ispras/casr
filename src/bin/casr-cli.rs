@@ -172,6 +172,7 @@ fn build_tree_report(
             .unwrap();
         tree.insert_item(report.date.clone(), Placement::LastChild, row)
             .unwrap();
+        tree.collapse_item(row);
     }
 
     if !report.uname.is_empty() {
@@ -180,6 +181,7 @@ fn build_tree_report(
             .unwrap();
         tree.insert_item(report.uname.clone(), Placement::LastChild, row)
             .unwrap();
+        tree.collapse_item(row);
     }
 
     if !report.os.is_empty() {
@@ -204,6 +206,7 @@ fn build_tree_report(
             .unwrap();
         tree.insert_item(report.architecture.clone(), Placement::LastChild, row)
             .unwrap();
+        tree.collapse_item(row);
     }
 
     if !report.executable_path.is_empty() {
@@ -353,7 +356,17 @@ fn build_tree_report(
         report.python_report.iter().for_each(|e| {
             tree.insert_item(e.clone(), Placement::LastChild, row);
         });
-        tree.expand_item(row);
+        tree.collapse_item(row);
+    }
+
+    if !report.go_report.is_empty() {
+        row = tree
+            .insert_container_item("GoReport".to_string(), Placement::After, row)
+            .unwrap();
+        report.go_report.iter().for_each(|e| {
+            tree.insert_item(e.clone(), Placement::LastChild, row);
+        });
+        tree.collapse_item(row);
     }
 
     if !report.source.is_empty() {
@@ -518,6 +531,10 @@ fn build_slider_report(
 
     if !report.python_report.is_empty() {
         select.add_item("PythonReport", report.python_report.join("\n"));
+    }
+
+    if !report.go_report.is_empty() {
+        select.add_item("GoReport", report.go_report.join("\n"));
     }
 
     if !report.source.is_empty() {

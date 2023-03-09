@@ -3,6 +3,7 @@ use crate::error;
 use crate::error::*;
 use crate::execution_class::*;
 use crate::gdb::GdbStacktrace;
+use crate::go::GoStacktrace;
 use crate::python::PythonStacktrace;
 use crate::stacktrace::*;
 use chrono::prelude::*;
@@ -121,6 +122,10 @@ pub struct CrashReport {
     #[serde(rename(serialize = "PythonReport", deserialize = "PythonReport"))]
     #[serde(default)]
     pub python_report: Vec<String>,
+    /// Go report.
+    #[serde(rename(serialize = "GoReport", deserialize = "GoReport"))]
+    #[serde(default)]
+    pub go_report: Vec<String>,
     /// Crash line from stack trace: source:line or binary+offset.
     #[serde(rename(serialize = "CrashLine", deserialize = "CrashLine"))]
     #[serde(default)]
@@ -424,6 +429,8 @@ impl CrashReport {
             AsanStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.python_report.is_empty() {
             PythonStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.go_report.is_empty() {
+            GoStacktrace::parse_stacktrace(&self.stacktrace)?
         } else {
             GdbStacktrace::parse_stacktrace(&self.stacktrace)?
         };
@@ -566,6 +573,14 @@ impl fmt::Display for CrashReport {
         if !self.python_report.is_empty() {
             report += "\n===PythonReport===\n";
             for e in self.python_report.iter() {
+                report += &format!("{e}\n");
+            }
+        }
+
+        // GoReport
+        if !self.go_report.is_empty() {
+            report += "\n===GoReport===\n";
+            for e in self.go_report.iter() {
                 report += &format!("{e}\n");
             }
         }
