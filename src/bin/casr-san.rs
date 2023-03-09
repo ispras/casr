@@ -5,24 +5,30 @@ extern crate gdb_command;
 extern crate linux_personality;
 extern crate regex;
 
-use casr::analysis::*;
-use casr::concat_slices;
-use casr::debug;
-use casr::debug::CrashLine;
+use casr::asan::{AsanContext, AsanStacktrace};
+use casr::constants::*;
+use casr::cpp::CppException;
+use casr::exception::Exception;
 use casr::execution_class::*;
+use casr::gdb::*;
+use casr::init_ignored_frames;
 use casr::report::CrashReport;
-use casr::stacktrace_constants::*;
+use casr::rust::RustPanic;
+use casr::severity::Severity;
+use casr::stacktrace::*;
 use casr::util;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
+use gdb_command::mappings::{MappedFiles, MappedFilesExt};
+use gdb_command::stacktrace::StacktraceExt;
 use gdb_command::*;
 use linux_personality::personality;
 use regex::Regex;
+
 use std::env;
-use std::os::unix::process::CommandExt;
-use std::os::unix::process::ExitStatusExt;
-use std::path::{Path, PathBuf};
+use std::os::unix::process::{CommandExt, ExitStatusExt};
+use std::path::Path;
 use std::process::Command;
 
 fn main() -> Result<()> {
@@ -81,29 +87,13 @@ fn main() -> Result<()> {
         bail!("Wrong arguments for starting program");
     };
 
-    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concat_slices!(
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
-    );
-    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concat_slices!(
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
-    );
+    init_ignored_frames!("cpp", "rust");
 
     if let Some(path) = matches.value_of("ignore") {
         util::add_custom_ignored_frames(Path::new(path))?;
     }
     // Get stdin for target program.
-    let stdin_file = if let Some(path) = matches.value_of("stdin") {
-        let file = PathBuf::from(path);
-        if file.exists() {
-            Some(file)
-        } else {
-            bail!("Stdin file not found: {}", file.display());
-        }
-    } else {
-        None
-    };
+    let stdin_file = util::stdin_from_matches(&matches)?;
 
     // Set rss limit.
     if let Ok(asan_options_str) = env::var("ASAN_OPTIONS") {
@@ -174,100 +164,27 @@ fn main() -> Result<()> {
         // Set ASAN report in casr report.
         let report_end = san_stderr_list.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
         report.asan_report = Vec::from(&san_stderr_list[report_start..report_end]);
-        if report.asan_report[0].contains("LeakSanitizer") {
-            report.execution_class = ExecutionClass::find("memory-leaks").unwrap().clone();
-        } else {
-            let summary = Regex::new(r"SUMMARY: *(AddressSanitizer|libFuzzer): (\S+)").unwrap();
-
-            if let Some(caps) = report.asan_report.iter().find_map(|s| summary.captures(s)) {
-                // Match Sanitizer.
-                match caps.get(1).unwrap().as_str() {
-                    "libFuzzer" => {
-                        if let Ok(class) =
-                            ExecutionClass::san_find(caps.get(2).unwrap().as_str(), None, false)
-                        {
-                            report.execution_class = class.clone();
-                        }
-                    }
-                    _ => {
-                        // AddressSanitizer
-                        let san_type = caps.get(2).unwrap().as_str();
-                        let mem_access = if let Some(second_line) = report.asan_report.get(1) {
-                            let raccess = Regex::new(r"(READ|WRITE|ACCESS)").unwrap();
-                            if let Some(access_type) = raccess.captures(second_line) {
-                                Some(access_type.get(1).unwrap().as_str())
-                            } else if let Some(third_line) = report.asan_report.get(2) {
-                                raccess
-                                    .captures(third_line)
-                                    .map(|access_type| access_type.get(1).unwrap().as_str())
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        };
-
-                        let rcrash_address = Regex::new("on.*address 0x([0-9a-f]+)").unwrap();
-                        let near_null = if let Some(crash_address) =
-                            rcrash_address.captures(&report.asan_report[0])
-                        {
-                            is_near_null(u64::from_str_radix(
-                                crash_address.get(1).unwrap().as_str(),
-                                16,
-                            )?)
-                        } else {
-                            false
-                        };
-                        if let Ok(class) = ExecutionClass::san_find(san_type, mem_access, near_null)
-                        {
-                            report.execution_class = class.clone();
-                        }
-                    }
-                }
-            }
-        }
-
-        // Get stack trace from asan report.
-        let first = report.asan_report.iter().position(|x| x.contains(" #0 "));
-        if first.is_none() {
-            bail!("Couldn't find stack trace in sanitizer's report");
-        }
-
-        // Stack trace is splitted by empty line.
-        let first = first.unwrap();
-        let last = report
-            .asan_report
-            .iter()
-            .skip(first)
-            .position(|val| val.is_empty());
-        if last.is_none() {
-            bail!("Couldn't find stack trace end in sanitizer's report");
-        }
-        let last = last.unwrap();
-        report.stacktrace = report.asan_report[first..first + last]
-            .iter()
-            .map(|s| s.trim().to_string())
-            .collect::<Vec<String>>();
+        let context = AsanContext(report.asan_report.clone());
+        report.execution_class = context.severity()?;
+        report.stacktrace = AsanStacktrace::extract_stacktrace(&report.asan_report.join("\n"))?;
     } else {
         // Get termination signal.
         if let Some(signal) = sanitizers_result.status.signal() {
             // Get stack trace and mappings from gdb.
             match signal as u32 {
                 SIGINFO_SIGILL | SIGINFO_SIGSYS => {
-                    report.execution_class =
-                        ExecutionClass::find("BadInstruction").unwrap().clone();
+                    report.execution_class = ExecutionClass::find("BadInstruction").unwrap();
                 }
                 SIGINFO_SIGTRAP => {
-                    report.execution_class = ExecutionClass::find("TrapSignal").unwrap().clone();
+                    report.execution_class = ExecutionClass::find("TrapSignal").unwrap();
                 }
                 SIGINFO_SIGABRT => {
-                    report.execution_class = ExecutionClass::find("AbortSignal").unwrap().clone();
+                    report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
                 }
                 SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
                     eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
                     exploitability. Try using casr-gdb instead.");
-                    report.execution_class =
-                        ExecutionClass::find("AccessViolation").unwrap().clone();
+                    report.execution_class = ExecutionClass::find("AccessViolation").unwrap();
                 }
                 _ => {
                     // "Undefined" is by default in report.
@@ -301,15 +218,27 @@ fn main() -> Result<()> {
     }
 
     // Check for exceptions
-    if let Some(class) = util::exception_from_stderr(&san_stderr_list) {
+    if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
+        .iter()
+        .find_map(|parse| parse(&sanitizers_stderr))
+    {
         report.execution_class = class;
     }
 
     // Get crash line.
-    if let Ok(crash_line) = debug::crash_line(&report) {
+    let stacktrace = if !report.asan_report.is_empty() {
+        AsanStacktrace::parse_stacktrace(&report.stacktrace)?
+    } else {
+        let mut parsed_stacktrace = GdbStacktrace::parse_stacktrace(&report.stacktrace)?;
+        if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
+            parsed_stacktrace.compute_module_offsets(&mfiles);
+        }
+        parsed_stacktrace
+    };
+    if let Ok(crash_line) = stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = debug::sources(&debug) {
+            if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
         }

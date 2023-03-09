@@ -1,17 +1,27 @@
+use crate::asan::AsanStacktrace;
 use crate::error;
+use crate::error::*;
 use crate::execution_class::*;
+use crate::gdb::GdbStacktrace;
+use crate::python::PythonStacktrace;
+use crate::stacktrace::*;
 use chrono::prelude::*;
+use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::registers::Registers;
+use gdb_command::stacktrace::StacktraceExt;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::Command;
 
+/// Represents the information about program termination.
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
-pub struct CrashReport<'a> {
+pub struct CrashReport {
     /// Pid of crashed process.
     #[serde(skip)]
     pub pid: i32,
@@ -60,7 +70,7 @@ pub struct CrashReport<'a> {
     #[serde(rename(serialize = "ProcMaps", deserialize = "ProcMaps"))]
     #[serde(default)]
     pub proc_maps: Vec<String>,
-    /// Opend files at crash : ls -lah /proc/<pid>/fd.
+    /// Opend files at crash : ls -lah /proc/\<pid\>/fd.
     #[serde(rename(serialize = "ProcFiles", deserialize = "ProcFiles"))]
     #[serde(default)]
     pub proc_fd: Vec<String>,
@@ -71,7 +81,7 @@ pub struct CrashReport<'a> {
     /// Crash classification.
     #[serde(rename(serialize = "CrashSeverity", deserialize = "CrashSeverity"))]
     #[serde(default)]
-    pub execution_class: ExecutionClass<'a>,
+    pub execution_class: ExecutionClass,
     /// Stack trace for crashed thread.
     #[serde(rename(serialize = "Stacktrace", deserialize = "Stacktrace"))]
     #[serde(default)]
@@ -111,15 +121,17 @@ pub struct CrashReport<'a> {
     #[serde(rename(serialize = "PythonReport", deserialize = "PythonReport"))]
     #[serde(default)]
     pub python_report: Vec<String>,
+    /// Crash line from stack trace: source:line or binary+offset.
     #[serde(rename(serialize = "CrashLine", deserialize = "CrashLine"))]
     #[serde(default)]
     pub crashline: String,
+    /// Source code fragment.
     #[serde(rename(serialize = "Source", deserialize = "Source"))]
     #[serde(default)]
     pub source: Vec<String>,
 }
 
-impl<'a> CrashReport<'a> {
+impl CrashReport {
     /// Create new crash report.
     pub fn new() -> Self {
         let mut report: CrashReport = Default::default();
@@ -351,9 +363,90 @@ impl<'a> CrashReport<'a> {
         }
         Ok(())
     }
+
+    /// Get source code fragment for crash line
+    ///
+    /// # Arguments
+    ///
+    /// * 'debug' - debug information
+    pub fn sources(debug: &DebugInfo) -> Option<Vec<String>> {
+        if debug.line == 0 {
+            return None;
+        }
+
+        if let Ok(file) = std::fs::File::open(&debug.file) {
+            let file = BufReader::new(file);
+            let start: usize = if debug.line > 5 {
+                debug.line as usize - 5
+            } else {
+                0
+            };
+            let mut lines: Vec<String> = file
+                .lines()
+                .skip(start)
+                .enumerate()
+                .take_while(|(i, _)| *i < 10)
+                .map(|(i, l)| {
+                    if let Ok(l) = l {
+                        format!("    {:<6} {}", start + i + 1, l.trim_end())
+                    } else {
+                        format!("    {:<6} Corrupted line", start + i + 1)
+                    }
+                })
+                .collect::<Vec<String>>();
+            let crash_line = debug.line as usize - start - 1;
+            if crash_line < lines.len() {
+                lines[crash_line].replace_range(..4, "--->");
+                return Some(lines);
+            }
+        }
+
+        None
+    }
+
+    /// Add disassembly to the report
+    ///
+    /// # Arguments
+    ///
+    /// * `gdb_asm` - disassembly from gdb
+    pub fn set_disassembly(&mut self, gdb_asm: &str) {
+        // Remove module names from disassembly for pretty view in report.
+        let rm_modules = Regex::new("<.*?>").unwrap();
+        let disassembly = rm_modules.replace_all(gdb_asm, "");
+
+        self.disassembly = disassembly.split('\n').map(|x| x.to_string()).collect();
+    }
+
+    /// Filter frames from the stack trace that are not related to analyzed code containing crash
+    /// and return it as `Stacktrace` struct
+    pub fn filtered_stacktrace(&self) -> Result<Stacktrace> {
+        let mut rawtrace = if !self.asan_report.is_empty() {
+            AsanStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.python_report.is_empty() {
+            PythonStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else {
+            GdbStacktrace::parse_stacktrace(&self.stacktrace)?
+        };
+
+        // Get Proc mappings from Casr report
+        if !self.proc_maps.is_empty() {
+            let mappings = MappedFiles::from_gdb(self.proc_maps.join("\n"))?;
+            rawtrace.compute_module_offsets(&mappings);
+        }
+
+        rawtrace.filter();
+
+        if rawtrace.is_empty() {
+            return Err(Error::Casr(
+                "Current stack trace length is null".to_string(),
+            ));
+        }
+
+        Ok(rawtrace)
+    }
 }
 
-impl<'a> fmt::Display for CrashReport<'a> {
+impl fmt::Display for CrashReport {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut report = String::new();
         // CrashLine
@@ -485,4 +578,42 @@ impl<'a> fmt::Display for CrashReport<'a> {
 
         write!(f, "{}", report.trim())
     }
+}
+
+/// Deduplicate crash reports
+///
+/// # Arguments
+///
+/// * `casreps` - slice of Casr reports
+///
+/// # Return value
+///
+/// An vector of the same length as `casreps`.
+/// Vec\[i\] is false, if original casrep i is a duplicate of any element of `casreps`.
+pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
+    let traces: Vec<Stacktrace> = casreps
+        .iter()
+        .map(|report| report.filtered_stacktrace())
+        .collect::<Result<_>>()?;
+
+    Ok(dedup_stacktraces(&traces))
+}
+
+/// Perform the clustering of casreps
+///
+/// # Arguments
+///
+/// * `casreps` - slice of Casr reports
+///
+/// # Return value
+///
+/// An vector of the same length as `casreps`.
+/// Vec\[i\] is the flat cluster number to which original casrep i belongs.
+pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<u32>> {
+    let traces: Vec<Stacktrace> = casreps
+        .iter()
+        .map(|report| report.filtered_stacktrace())
+        .collect::<Result<_>>()?;
+
+    cluster_stacktraces(&traces)
 }

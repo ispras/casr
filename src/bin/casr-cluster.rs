@@ -7,66 +7,22 @@ extern crate rayon;
 extern crate regex;
 extern crate serde_json;
 
-use anyhow::{bail, Context, Result};
-use casr::concat_slices;
-use casr::stacktrace_constants::*;
+use casr::constants::*;
+use casr::init_ignored_frames;
+use casr::report::CrashReport;
+use casr::stacktrace::*;
 use casr::util;
+
+use anyhow::{bail, Context, Result};
 use clap::{App, Arg};
-use gdb_command::mappings::*;
-use gdb_command::stacktrace::*;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
-use regex::Regex;
+use rayon::iter::{IndexedParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
+
 use std::collections::HashSet;
 use std::fs;
 use std::io::BufReader;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::process::Stdio;
 use std::sync::RwLock;
-
-/// Compute the similarity between 2 stack traces
-///
-/// # Arguments
-///
-/// * `first` - first stacktrace
-///
-/// * `second` - second stacktrace
-///
-/// # Return value
-///
-/// Similarity coefficient
-fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
-    // Initializing coefficients
-    let a: f64 = 0.04;
-    let r: f64 = 0.13;
-    // Creating the similarity matrix according to the PDM algorithm
-    let k: usize = first.len() + 1;
-    let n: usize = second.len() + 1;
-    let mut raw_matrix = vec![0 as f64; k * n];
-    let mut simatrix: Vec<_> = raw_matrix.as_mut_slice().chunks_mut(k).collect();
-    let simatrix = simatrix.as_mut_slice();
-
-    for i in 1..n {
-        for j in 1..k {
-            let cost = if first[j - 1] == second[i - 1] {
-                // Calculating addition
-                (-(i.min(j) as f64 * a + i.abs_diff(j) as f64 * r)).exp()
-            } else {
-                0.0
-            };
-
-            // Choosing maximum of three neigbors
-            simatrix[i][j] =
-                simatrix[i][j - 1].max(simatrix[i - 1][j].max(simatrix[i - 1][j - 1] + cost));
-        }
-    }
-    // Result normalization
-    let sum: f64 = (1..(k).min(n)).fold(0.0, |acc, i| acc + (-a * i as f64).exp());
-
-    simatrix[n - 1][k - 1] / sum
-}
 
 /// Extract stack trace from casr (casr-san/casr-gdb) report
 ///
@@ -79,122 +35,19 @@ fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
 /// Stack trace as a `Stacktrace` struct
 fn stacktrace(path: &Path) -> Result<Stacktrace> {
     // Opening file and reading it
-    let file = std::fs::File::open(path);
-    if file.is_err() {
+    let Ok(file) = std::fs::File::open(path) else {
         bail!("Error with opening Casr report: {}", path.display());
-    }
-    let file = file.unwrap();
+    };
     let reader = BufReader::new(file);
 
-    let u = serde_json::from_reader(reader);
-    if u.is_err() {
+    let Ok(u): Result<CrashReport, _> = serde_json::from_reader(reader) else {
         bail!("Json parse error. File: {}", path.display());
+    };
+
+    match u.filtered_stacktrace() {
+        Ok(trace) => Ok(trace),
+        Err(e) => bail!("{}. File {}", e, path.display()),
     }
-    let u: serde_json::Value = u.unwrap();
-
-    // Search stacktrace
-    if let Some(arrtrace) = u.get("Stacktrace") {
-        if let Some(arrtrace) = arrtrace.as_array() {
-            let mut trace = Vec::new();
-            arrtrace.iter().for_each(|x| {
-                if let Some(entry) = x.as_str() {
-                    trace.push(entry.to_string());
-                }
-            });
-
-            let asan_report_handle = if let Some(array) = u.get("AsanReport") {
-                if let Some(array) = array.as_array() {
-                    !array.is_empty()
-                } else {
-                    bail!("Error while parsing AsanReport. File: {}", path.display());
-                }
-            } else {
-                false
-            };
-
-            let python_report_handle = if let Some(array) = u.get("PythonReport") {
-                if let Some(array) = array.as_array() {
-                    !array.is_empty()
-                } else {
-                    bail!("Error while parsing PythonReport. File: {}", path.display());
-                }
-            } else {
-                false
-            };
-
-            let mut rawtrace = if asan_report_handle {
-                casr::asan::stacktrace_from_asan(&trace)
-                    .with_context(|| format!("File: {}", path.display()))?
-            } else if python_report_handle {
-                casr::python::stacktrace_from_python(&trace)
-                    .with_context(|| format!("File: {}", path.display()))?
-            } else {
-                Stacktrace::from_gdb(trace.join("\n"))
-                    .with_context(|| format!("File: {}", path.display()))?
-            };
-
-            // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
-            if let Some(pos) = &rawtrace
-                .iter()
-                .position(|x| x.function.contains("LLVMFuzzerTestOneInput"))
-            {
-                rawtrace.drain(pos + 1..);
-            }
-
-            if rawtrace.is_empty() {
-                bail!("Current stack trace length is null".to_string());
-            }
-
-            // Get Proc mappings from Casr report
-            if let Some(arrtrace) = u.get("ProcMaps") {
-                if let Some(arrtrace) = arrtrace.as_array() {
-                    if !arrtrace.is_empty() {
-                        let mut trace = Vec::new();
-                        arrtrace.iter().for_each(|x| {
-                            if let Some(entry) = x.as_str() {
-                                trace.push(entry.to_string());
-                            }
-                        });
-                        let trace = trace.join("\n");
-                        let mappings = MappedFiles::from_gdb(trace)
-                            .with_context(|| format!("File: {}", path.display()))?;
-                        rawtrace.compute_module_offsets(&mappings);
-                    }
-                }
-            }
-
-            // Compile function regexp.
-            let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
-                .read()
-                .unwrap()
-                .iter()
-                .map(|s| format!("({s})|"))
-                .collect::<String>();
-            let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
-
-            // Compile file regexp.
-            let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
-                .read()
-                .unwrap()
-                .iter()
-                .map(|s| format!("({s})|"))
-                .collect::<String>();
-            let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
-
-            // Remove trusted functions from stack trace
-            let pos = rawtrace.iter().position(|entry| {
-                (entry.function.is_empty() || !rfunction.is_match(&entry.function))
-                    && (entry.module.is_empty() || !rfile.is_match(&entry.module))
-                    && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
-            });
-            if let Some(pos) = pos {
-                rawtrace.drain(0..pos);
-            }
-
-            return Ok(rawtrace);
-        }
-    }
-    bail!("Json parse error, file: {}", path.display());
 }
 
 /// Perform the clustering of casreps
@@ -210,7 +63,7 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
 /// # Return value
 ///
 /// Number of clusters
-pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u32> {
+fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u32> {
     // if outpath is "None" we consider that outpath and inpath are the same
     let outpath = outpath.unwrap_or(inpath);
     let dir = fs::read_dir(inpath).with_context(|| format!("File: {}", inpath.display()))?;
@@ -233,15 +86,10 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Resu
     });
 
     // Start thread pool.
-    rayon::ThreadPoolBuilder::new()
+    let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(jobs.min(len))
-        .build_global()
+        .build()
         .unwrap();
-
-    let mut tmp_lines: Vec<String> = Vec::new();
-    tmp_lines.resize(len, "".to_string());
-    // Lines in compressed distance matrix
-    let mut lines: RwLock<Vec<String>> = RwLock::new(tmp_lines);
 
     // Stacktraces from casreps
     let traces: RwLock<Vec<Stacktrace>> = RwLock::new(Vec::new());
@@ -249,73 +97,21 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Resu
     let filtered_casreps: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
     // Casreps with stacktraces, that we cannot parse
     let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
-
-    (0..len).into_par_iter().for_each(|i| {
-        if let Ok(trace) = stacktrace(casreps[i].as_path()) {
-            traces.write().unwrap().push(trace);
-            filtered_casreps.write().unwrap().push(casreps[i].clone());
-        } else {
-            badreports.write().unwrap().push(casreps[i].clone());
-        }
+    custom_pool.install(|| {
+        (0..len).into_par_iter().for_each(|i| {
+            if let Ok(trace) = stacktrace(casreps[i].as_path()) {
+                traces.write().unwrap().push(trace);
+                filtered_casreps.write().unwrap().push(casreps[i].clone());
+            } else {
+                badreports.write().unwrap().push(casreps[i].clone());
+            }
+        })
     });
     let stacktraces = traces.read().unwrap();
     let casreps = filtered_casreps.read().unwrap();
     let badreports = badreports.get_mut().unwrap();
-    let len = casreps.len();
-    // Writing compressed distance matrix to help file
-    (0..len).into_par_iter().for_each(|i| {
-        let mut tmp_str = String::new();
-        for j in i + 1..len {
-            tmp_str += format!(
-                "{0:.3} ",
-                1.0 - similarity(&stacktraces[i], &stacktraces[j])
-            )
-            .as_str();
-        }
-        let mut lines = lines.write().unwrap();
-        lines[i] = tmp_str;
-    });
 
-    let python_cluster_script =
-        "import numpy as np;\
-        from scipy.cluster.hierarchy import fcluster, linkage;\
-        a = np.fromstring(input(), dtype=float, sep=' ');\
-        print(*fcluster(linkage([a] if type(a.tolist()) is float else a, method=\"complete\"), 0.3, criterion=\"distance\"))";
-
-    let mut python = Command::new("python3")
-        .args(["-c", python_cluster_script])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| "Failed to launch python3")?;
-    {
-        let python_stdin = python.stdin.as_mut().unwrap();
-        python_stdin
-            .write_all(lines.get_mut().unwrap().join("").as_bytes())
-            .with_context(|| "Error while writing to stdin of python script".to_string())?;
-    }
-    let python = python.wait_with_output()?;
-
-    if !python.status.success() {
-        bail!(
-            "Failed to start python script. Error: {}",
-            String::from_utf8_lossy(&python.stderr)
-        );
-    }
-    let output = String::from_utf8_lossy(&python.stdout);
-    let clusters = output
-        .split(' ')
-        .filter_map(|x| x.trim().parse::<u32>().ok())
-        .collect::<Vec<u32>>();
-
-    if clusters.len() != len {
-        bail!(
-            "Number of casreps({}) differs from array length({}) from python",
-            len,
-            clusters.len()
-        );
-    }
+    let clusters = cluster_stacktraces(&stacktraces)?;
 
     // Cluster formation
     let cluster_cnt = *clusters.iter().max().unwrap();
@@ -357,25 +153,28 @@ pub fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Resu
 ///
 /// * `outdir` - target directory for deduplication
 ///
+/// * `jobs` - number of jobs for deduplication process
+///
 /// # Return value
 ///
 /// Number of reports before/after deduplication
-fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
+fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(usize, usize)> {
     let dir = fs::read_dir(indir).with_context(|| {
         format!(
             "Error occurred while opening directory with Casr reports. File: {}",
             indir.display()
         )
     })?;
-    let mut paths: Vec<fs::DirEntry> = Vec::new();
+    let mut paths: Vec<PathBuf> = Vec::new();
     let (mut before, mut after) = (0usize, 0usize);
     for entry in dir.flatten() {
         if entry.metadata()?.is_dir() {
-            let res = dedup(
+            let res = deduplication(
                 entry.path().as_path(),
                 outdir
                     .as_ref()
                     .map(|outdir| Path::new(&outdir).join(entry.file_name())),
+                jobs,
             )?;
             before += res.0;
             after += res.1;
@@ -384,59 +183,74 @@ fn dedup(indir: &Path, outdir: Option<PathBuf>) -> Result<(usize, usize)> {
         if entry.path().extension().is_none() || entry.path().extension().unwrap() != "casrep" {
             continue;
         }
-        paths.push(entry);
+        paths.push(entry.path());
     }
 
-    paths.sort_by(|a, b| {
-        a.file_name()
-            .into_string()
-            .unwrap()
-            .cmp(&b.file_name().into_string().unwrap())
+    paths.sort_by(|a, b| a.file_name().unwrap().cmp(b.file_name().unwrap()));
+
+    // Start thread pool.
+    let custom_pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(jobs.min(paths.len()))
+        .build()
+        .unwrap();
+
+    let badrepidxs: RwLock<HashSet<usize>> = RwLock::new(HashSet::new());
+    let stacktraces: RwLock<Vec<Stacktrace>> = RwLock::new(vec![Default::default(); paths.len()]);
+    custom_pool.install(|| {
+        paths.par_iter().enumerate().for_each(|(index, report)| {
+            if let Ok(trace) = stacktrace(report.as_path()) {
+                stacktraces.write().unwrap()[index] = trace;
+            } else {
+                badrepidxs.write().unwrap().insert(index);
+            }
+        })
     });
-    let mut casreps = HashSet::new();
-    let mut badreports: Vec<PathBuf> = Vec::new();
+
+    let badrepidxs = badrepidxs.read().unwrap();
+    let stacktraces = stacktraces.read().unwrap();
+
+    let result = dedup_stacktraces(&stacktraces);
 
     if let Some(ref outdir) = outdir {
         fs::create_dir_all(outdir)?;
-
-        for x in &paths {
-            let trace = if let Ok(trace) = stacktrace(x.path().as_path()) {
-                trace
-            } else {
-                badreports.push(x.path());
-                continue;
-            };
-            if casreps.insert(trace) {
-                fs::copy(x.path().as_path(), Path::new(&outdir).join(x.file_name()))?;
-            }
-        }
+        (0..paths.len())
+            .filter(|x| !badrepidxs.contains(x))
+            .enumerate()
+            .try_for_each(|(res_idx, true_idx)| {
+                if result[res_idx] {
+                    fs::copy(
+                        &paths[true_idx],
+                        Path::new(&outdir).join(paths[true_idx].file_name().unwrap()),
+                    )?;
+                }
+                Ok::<(), anyhow::Error>(())
+            })?;
     } else {
-        for x in &paths {
-            let trace = if let Ok(trace) = stacktrace(x.path().as_path()) {
-                trace
-            } else {
-                badreports.push(x.path());
-                continue;
-            };
-            if !casreps.insert(trace) {
-                fs::remove_file(x.path().as_path())?;
-            }
-        }
+        (0..paths.len())
+            .filter(|x| !badrepidxs.contains(x))
+            .enumerate()
+            .try_for_each(|(res_idx, true_idx)| {
+                if !result[res_idx] {
+                    fs::remove_file(&paths[true_idx])
+                } else {
+                    Ok(())
+                }
+            })?;
     }
 
-    if !badreports.is_empty() {
+    if !badrepidxs.is_empty() {
         let clerr = outdir.unwrap_or_else(|| indir.to_path_buf()).join("clerr");
         fs::create_dir_all(&clerr)?;
-        for report in badreports {
+        for &index in badrepidxs.iter() {
             fs::copy(
-                &report,
-                clerr.join(report.file_name().unwrap().to_str().unwrap()),
+                &paths[index],
+                clerr.join(paths[index].file_name().unwrap().to_str().unwrap()),
             )?;
         }
     }
 
     before += paths.len();
-    after += casreps.len();
+    after += result.iter().fold(0, |acc, &x| acc + x as usize);
 
     Ok((before, after))
 }
@@ -590,14 +404,13 @@ fn main() -> Result<()> {
                 }),
         )
         .get_matches();
-    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = concat_slices!(
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP
-    );
-    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = concat_slices!(
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP
-    );
+    init_ignored_frames!("cpp", "rust", "python");
+
+    let jobs = if let Some(jobs) = matches.value_of("jobs") {
+        jobs.parse::<usize>().unwrap()
+    } else {
+        std::cmp::max(1, num_cpus::get() / 2)
+    };
 
     if let Some(path) = matches.value_of("ignore") {
         util::add_custom_ignored_frames(Path::new(path))?;
@@ -619,12 +432,6 @@ fn main() -> Result<()> {
             .map(Path::new)
             .collect();
 
-        let jobs = if let Some(jobs) = matches.value_of("jobs") {
-            jobs.parse::<usize>().unwrap()
-        } else {
-            std::cmp::max(1, num_cpus::get() / 2)
-        };
-
         let result = make_clusters(paths[0], paths.get(1).cloned(), jobs)?;
         println!("Number of clusters: {result}");
     } else if matches.is_present("deduplication") {
@@ -633,7 +440,7 @@ fn main() -> Result<()> {
             .unwrap()
             .map(Path::new)
             .collect();
-        let (before, after) = dedup(paths[0], paths.get(1).map(|x| x.to_path_buf()))?;
+        let (before, after) = deduplication(paths[0], paths.get(1).map(|x| x.to_path_buf()), jobs)?;
         println!("Number of reports before deduplication: {before}");
         println!("Number of reports after deduplication: {after}");
     } else if matches.is_present("merge") {

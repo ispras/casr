@@ -39,6 +39,7 @@ impl From<gdb_command::error::Error> for Error {
         Error::GdbCommand(err)
     }
 }
+
 impl From<goblin::error::Error> for Error {
     fn from(err: goblin::error::Error) -> Error {
         Error::Goblin(err)

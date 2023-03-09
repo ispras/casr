@@ -1,44 +1,18 @@
 extern crate clap;
 
-use casr::concat_slices;
-use casr::debug;
-use casr::debug::CrashLine;
-use casr::error;
-use casr::execution_class::*;
+use casr::constants::*;
+use casr::exception::Exception;
+use casr::init_ignored_frames;
+use casr::python::{PythonException, PythonStacktrace};
 use casr::report::CrashReport;
-use casr::stacktrace_constants::*;
+use casr::stacktrace::*;
 use casr::util;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use regex::Regex;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
-
-/// Get exception from python report.
-///
-/// # Arguments
-///
-/// * `exception_line` - python exception line
-///
-/// # Return value
-///
-/// ExecutionClass with python exception info
-fn python_exception(exception_line: &str) -> error::Result<ExecutionClass> {
-    let re = Regex::new(r#"([\w]+): (.+)"#).unwrap();
-    if let Some(cap) = re.captures(exception_line) {
-        Ok(ExecutionClass::new((
-            "UNDEFINED",
-            cap.get(1).unwrap().as_str(),
-            cap.get(2).unwrap().as_str(),
-            "",
-        )))
-    } else {
-        Err(error::Error::Casr(format!(
-            "Can't parse exception line: {exception_line}"
-        )))
-    }
-}
 
 /// Call casr-san with similar options
 ///
@@ -124,11 +98,7 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() =
-        concat_slices!(STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON);
-    *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() =
-        concat_slices!(STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON);
-
+    init_ignored_frames!("python");
     if let Some(path) = matches.value_of("ignore") {
         util::add_custom_ignored_frames(Path::new(path))?;
     }
@@ -140,16 +110,7 @@ fn main() -> Result<()> {
     };
 
     // Get stdin for target program.
-    let stdin_file = if let Some(path) = matches.value_of("stdin") {
-        let file = PathBuf::from(path);
-        if file.exists() {
-            Some(file)
-        } else {
-            bail!("Stdin file not found: {}", file.display());
-        }
-    } else {
-        None
-    };
+    let stdin_file = util::stdin_from_matches(&matches)?;
 
     // Run program.
     let mut python_cmd = Command::new(argv[0]);
@@ -186,54 +147,20 @@ fn main() -> Result<()> {
             .position(|line| line.contains("Uncaught Python exception: "))
         {
             // Set python report in casr report.
-            if let Some(report_end) = python_stdout_list.iter().rposition(|s| !s.is_empty()) {
-                let report_end = report_end + 1;
-                if report_end > python_stdout_list.len() {
-                    bail!("Corrupted output: can't parse stdout end");
-                }
-                report.python_report = Vec::from(&python_stdout_list[report_start..report_end]);
+            let Some(report_end) = python_stdout_list.iter().rposition(|s| !s.is_empty()) else {
+                bail!("Corrupted output: can't find stdout end");
+            };
+            let report_end = report_end + 1;
+            report.python_report = Vec::from(&python_stdout_list[report_start..report_end]);
 
-                // Get exception from python report.
-                if report.python_report.is_empty() {
-                    bail!("Missing exception message");
-                }
-                if let Ok(exception) = python_exception(&report.python_report[1]) {
+            report.stacktrace =
+                PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
+            // Get exception from python report.
+            if report.python_report.len() > 1 {
+                if let Some(exception) = PythonException::parse_exception(&report.python_report[1])
+                {
                     report.execution_class = exception;
                 }
-
-                // Get stack trace from python report.
-                let first = report
-                    .python_report
-                    .iter()
-                    .position(|line| line.starts_with("Traceback "));
-                if first.is_none() {
-                    bail!("Couldn't find traceback in python report");
-                }
-
-                // Stack trace is splitted by empty line.
-                let first = first.unwrap();
-                let last = report
-                    .python_report
-                    .iter()
-                    .skip(first)
-                    .rposition(|s| !s.is_empty());
-                if last.is_none() {
-                    bail!("Couldn't find traceback end in python report");
-                }
-                let last = last.unwrap();
-
-                let re = Regex::new(
-                    r#"(File ".+", line [\d]+, in .+|\[Previous line repeated (\d+) more times\])"#,
-                )
-                .unwrap();
-                report.stacktrace = report.python_report[first..first + last]
-                    .iter()
-                    .rev()
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| re.is_match(s))
-                    .collect::<Vec<String>>();
-            } else {
-                bail!("Corrupted output: can't find stdout end");
             }
         } else {
             // Call casr-san
@@ -244,46 +171,28 @@ fn main() -> Result<()> {
         .position(|line| line.contains("Traceback "))
     {
         // Set python report in casr report.
-        if let Some(report_end) = python_stderr_list.iter().rposition(|s| !s.is_empty()) {
-            let report_end = report_end + 1;
-            if report_end > python_stderr_list.len() {
-                bail!("Corrupted output: can't parse stdout end");
-            }
-            report.python_report = Vec::from(&python_stderr_list[report_start..report_end]);
+        let Some(report_end) = python_stderr_list.iter().rposition(|s| !s.is_empty()) else {
+            bail!("Corrupted output: can't find stderr end");
+        };
+        let report_end = report_end + 1;
+        report.python_report = Vec::from(&python_stderr_list[report_start..report_end]);
 
-            let re = Regex::new(
-                r#"(File ".+", line [\d]+, in .+|\[Previous line repeated (\d+) more times\])"#,
-            )
-            .unwrap();
-            report.stacktrace = report
-                .python_report
-                .iter()
-                .rev()
-                .map(|s| s.trim().to_string())
-                .filter(|s| re.is_match(s))
-                .collect::<Vec<String>>();
+        report.stacktrace = PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
 
-            // Get exception from python report.
-            let report_end = report_end - 1;
-            if report.python_report.len() < report_end {
-                bail!("Missing exception message");
-            }
-            if let Ok(exception) = python_exception(&report.python_report[report_end]) {
-                report.execution_class = exception;
-            }
-        } else {
-            bail!("Corrupted output: can't find stdout end");
+        if let Some(exception) =
+            PythonException::parse_exception(report.python_report.last().unwrap())
+        {
+            report.execution_class = exception;
         }
     } else {
         // Call casr-san
         return call_casr_san(&matches, &argv);
     }
 
-    // Get crash line.
-    if let Ok(crash_line) = debug::crash_line(&report) {
+    if let Ok(crash_line) = PythonStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = debug::sources(&debug) {
+            if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
         }

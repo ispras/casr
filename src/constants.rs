@@ -1,5 +1,5 @@
 /* Copyright 2020 Google LLC
-Modifications copyright (C) 2022 ISP RAS
+Modifications copyright (C) 2023 ISP RAS
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,15 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-//! Module contains constants for parsing stack traces.
-extern crate lazy_static;
-use std::sync::RwLock;
 
+/// Regular expressions for python functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[
     // TODO
     r"^[^.]$",
 ];
 
+/// Regular expressions for rust functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^rust_begin_unwind",
     r"^rust_fuzzer_test_input",
@@ -37,6 +36,7 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^panic_abort::",
 ];
 
+/// Regular expressions for cpp functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     // Function names (exact match).
     r"^abort$",
@@ -189,17 +189,20 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*v8::base::OS::Abort",
 ];
 
+/// Regular expressions for paths to python files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON: &[&str] = &[
     // TODO
     r"^[^.]$",
 ];
 
+/// Regular expressions for paths to rust files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[
     r".*/rust(|c)/",
     // AFL
     r".*/afl-.*/.*\.rs",
 ];
 
+/// Regular expressions for paths to cpp files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     // File paths.
     r".*/usr/include/c\+\+/",
@@ -243,12 +246,3 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*libubsan\.so",
     r".*asan_with_fuzzer\.so",
 ];
-
-lazy_static::lazy_static! {
-    // Regular expressions for functions to be ignored.
-    pub static ref STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
-        Vec::new());
-    // Regular expressions for file paths to be ignored.
-    pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
-        Vec::new());
-}

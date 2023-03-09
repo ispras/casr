@@ -11,10 +11,10 @@ extern crate nix;
 extern crate serde;
 extern crate serde_json;
 extern crate simplelog;
-
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
 use gdb_command::mappings::{MappedFiles, MappedFilesExt};
+use gdb_command::memory::*;
 use gdb_command::registers::{Registers, RegistersExt};
 use gdb_command::siginfo::Siginfo;
 use gdb_command::{ExecType, GdbCommand};
@@ -28,10 +28,10 @@ use std::io::{self, Read};
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 
-use casr::analysis;
-use casr::analysis::{CrashContext, MachineInfo};
 use casr::error::Error;
+use casr::gdb::{GdbContext, MachineInfo};
 use casr::report::*;
+use casr::severity::Severity;
 
 fn main() -> Result<()> {
     let matches = App::new("casr-core")
@@ -144,7 +144,9 @@ fn main() -> Result<()> {
                 .executable_path
                 .push_str(executable_path.to_str().unwrap());
         }
+
         let result = analyze_coredump(&mut report, &core, &core_path);
+
         if result.is_ok() {
             if matches.is_present("output") {
                 let result_path = PathBuf::from(matches.value_of("output").unwrap());
@@ -441,6 +443,10 @@ fn analyze_coredump(
     .siginfo()
     .mappings()
     .regs()
+    // We need 2 disassembles: one for severity analysis
+    // and another for the report.
+    .mem("$pc", 64)
+    .disassembly()
     .launch()?;
 
     report.stacktrace = result[0].split('\n').map(|x| x.to_string()).collect();
@@ -452,12 +458,16 @@ fn analyze_coredump(
             .collect();
     }
 
-    let mut context = CrashContext {
+    let mut context = GdbContext {
         siginfo: Siginfo::from_gdb(&result[1])?,
         mappings: MappedFiles::from_gdb(&result[2])?,
         registers: Registers::from_gdb(&result[3])?,
+        pc_memory: MemoryObject::from_gdb(&result[4])?,
         machine,
+        stacktrace: report.stacktrace.clone(),
     };
+
+    report.set_disassembly(&result[5]);
 
     // Set executable path from user.
     if !report.executable_path.is_empty() {
@@ -483,7 +493,7 @@ fn analyze_coredump(
             .collect();
     }
 
-    let severity = analysis::severity(report, &context);
+    let severity = context.severity();
 
     if let Ok(severity) = severity {
         report.execution_class = severity;
