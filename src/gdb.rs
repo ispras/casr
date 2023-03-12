@@ -3,6 +3,7 @@ extern crate capstone;
 use std::collections::HashSet;
 
 use capstone::arch::arm::ArmInsn;
+use capstone::arch::arm64::Arm64Insn;
 use capstone::arch::x86::X86Insn;
 use capstone::arch::*;
 use capstone::prelude::*;
@@ -281,18 +282,26 @@ impl GdbContext {
             ));
         };
 
-        let Ok(detail) = cs.insn_detail(&insn) else {
+        let Ok(detail) = cs.insn_detail(insn) else {
             return Err(Error::Casr(
                 "Couldn't capstone instruction details".to_string(),
             ));
         };
 
         // Check for return.
-        if detail.groups().any(|x| cs.group_name(x).unwrap() == "ret") {
+        if detail
+            .groups()
+            .iter()
+            .any(|x| cs.group_name(*x).unwrap() == "ret")
+        {
             return ExecutionClass::find("ReturnAv");
         }
         // Check for call.
-        if detail.groups().any(|x| cs.group_name(x).unwrap() == "call") {
+        if detail
+            .groups()
+            .iter()
+            .any(|x| cs.group_name(*x).unwrap() == "call")
+        {
             // Check for exceeded stack.
             if let Some(sp) = context.sp() {
                 if (*sp - context.machine.byte_width as u64) == context.siginfo.si_addr {
@@ -300,7 +309,7 @@ impl GdbContext {
                 }
             }
             // Check for Call reg, Call [reg].
-            if detail.regs_read_count() > 0 {
+            if !detail.regs_read().is_empty() {
                 if !is_near_null(context.siginfo.si_addr) || context.siginfo.si_code == SI_KERNEL {
                     return ExecutionClass::find("CallAv");
                 } else {
@@ -309,9 +318,13 @@ impl GdbContext {
             }
         }
         // Check for jump.
-        if detail.groups().any(|x| cs.group_name(x).unwrap() == "jump") {
+        if detail
+            .groups()
+            .iter()
+            .any(|x| cs.group_name(*x).unwrap() == "jump")
+        {
             // Check for Jump reg, Jump [reg].
-            if detail.regs_read_count() > 0 {
+            if !detail.regs_read().is_empty() {
                 if !is_near_null(context.siginfo.si_addr) || context.siginfo.si_code == SI_KERNEL {
                     return ExecutionClass::find("BranchAv");
                 } else {
@@ -395,7 +408,7 @@ impl GdbContext {
             ));
         };
 
-        let Ok(detail) = cs.insn_detail(&insn) else {
+        let Ok(detail) = cs.insn_detail(insn) else {
             return Err(Error::Casr(
                 "Couldn't capstone instruction details".to_string(),
             ));
@@ -459,7 +472,7 @@ pub const SI_KERNEL: u32 = 0x80;
 // Limitations: 1. Track only registers not memory cells.
 //              2. Track only within current basic block.
 
-/// Do taint analysis from first instruction from list to find new ExecutionClass.
+/// Do taint analysis from first instruction in the list to find new ExecutionClass.
 /// Returns ExecutionClass if succeed.
 /// # Arguments
 ///
@@ -469,7 +482,7 @@ pub const SI_KERNEL: u32 = 0x80;
 fn check_taint(cs: &Capstone, insns: &Instructions) -> Result<ExecutionClass> {
     let mut taint_set: HashSet<RegId> = HashSet::new();
     for (index, insn) in insns.iter().enumerate() {
-        match process_instruction(cs, &insn, index, &mut taint_set) {
+        match process_instruction(cs, insn, index, &mut taint_set) {
             InstructionType::ControlFlowTransfer | InstructionType::Unknown => break,
             InstructionType::TaintedCall => return ExecutionClass::find("CallAvTainted"),
             InstructionType::TaintedJMP => return ExecutionClass::find("BranchAvTainted"),
@@ -866,6 +879,28 @@ fn insn_type_arm(id: InsnId) -> InstructionType {
     }
 }
 
+/// Return Instruction type by Id for arm64 instruction.
+///
+/// # Arguments
+///
+/// * `id` - mnemonic id
+#[allow(dead_code)]
+fn insn_type_arm64(id: InsnId) -> InstructionType {
+    match id {
+        ARM64_INS_B | ARM64_INS_BL | ARM64_INS_CBZ | ARM64_INS_CBNZ | ARM64_INS_BLR
+        | ARM64_INS_RET => InstructionType::ControlFlowTransfer,
+        ARM64_INS_ADC | ARM64_INS_ADD | ARM64_INS_BIC | ARM64_INS_AND | ARM64_INS_EOR
+        | ARM64_INS_LSL | ARM64_INS_LSR | ARM64_INS_ASR | ARM64_INS_ORN | ARM64_INS_ROR
+        | ARM64_INS_MVN | ARM64_INS_UDIV | ARM64_INS_SUB | ARM64_INS_ORR | ARM64_INS_MUL
+        | ARM64_INS_SDIV => InstructionType::Arithmetic,
+        ARM64_INS_STR | ARM64_INS_LDR | ARM64_INS_MOV | ARM64_INS_STP | ARM64_INS_LDP
+        | ARM64_INS_ADR => InstructionType::DataTransfer,
+        ARM64_INS_REV | ARM64_INS_RBIT => InstructionType::Unary,
+        ARM64_INS_CMP | ARM64_INS_TST => InstructionType::BinaryCMP,
+        _ => InstructionType::Unknown,
+    }
+}
+
 /// Instruction types for taint propagation.
 enum InstructionType {
     Unknown,
@@ -925,6 +960,52 @@ const ARM_INS_RBIT: InsnId = InsnId(ArmInsn::ARM_INS_RBIT as u32);
 const ARM_INS_CMP: InsnId = InsnId(ArmInsn::ARM_INS_CMP as u32);
 const ARM_INS_TST: InsnId = InsnId(ArmInsn::ARM_INS_TST as u32);
 const ARM_INS_TEQ: InsnId = InsnId(ArmInsn::ARM_INS_TEQ as u32);
+
+// Arm 64bit mnemonic iDs.
+// ControlTransfer
+const ARM64_INS_B: InsnId = InsnId(Arm64Insn::ARM64_INS_B as u32);
+const ARM64_INS_BL: InsnId = InsnId(Arm64Insn::ARM64_INS_BL as u32);
+const ARM64_INS_CBZ: InsnId = InsnId(Arm64Insn::ARM64_INS_CBZ as u32);
+const ARM64_INS_CBNZ: InsnId = InsnId(Arm64Insn::ARM64_INS_CBNZ as u32);
+
+// PossibleTaint, ControlTransfer
+const ARM64_INS_BLR: InsnId = InsnId(Arm64Insn::ARM64_INS_BLR as u32);
+const ARM64_INS_RET: InsnId = InsnId(Arm64Insn::ARM64_INS_RET as u32);
+
+// Arithmetic.
+const ARM64_INS_ADC: InsnId = InsnId(Arm64Insn::ARM64_INS_ADC as u32);
+const ARM64_INS_ADD: InsnId = InsnId(Arm64Insn::ARM64_INS_ADD as u32);
+const ARM64_INS_AND: InsnId = InsnId(Arm64Insn::ARM64_INS_AND as u32);
+const ARM64_INS_BIC: InsnId = InsnId(Arm64Insn::ARM64_INS_BIC as u32);
+const ARM64_INS_EOR: InsnId = InsnId(Arm64Insn::ARM64_INS_EOR as u32);
+const ARM64_INS_LSL: InsnId = InsnId(Arm64Insn::ARM64_INS_LSL as u32);
+const ARM64_INS_LSR: InsnId = InsnId(Arm64Insn::ARM64_INS_LSR as u32);
+const ARM64_INS_ASR: InsnId = InsnId(Arm64Insn::ARM64_INS_ASR as u32);
+const ARM64_INS_ORN: InsnId = InsnId(Arm64Insn::ARM64_INS_ORN as u32);
+const ARM64_INS_ROR: InsnId = InsnId(Arm64Insn::ARM64_INS_ROR as u32);
+const ARM64_INS_SUB: InsnId = InsnId(Arm64Insn::ARM64_INS_SUB as u32);
+const ARM64_INS_ORR: InsnId = InsnId(Arm64Insn::ARM64_INS_ORR as u32);
+const ARM64_INS_MUL: InsnId = InsnId(Arm64Insn::ARM64_INS_MUL as u32);
+const ARM64_INS_MVN: InsnId = InsnId(Arm64Insn::ARM64_INS_MVN as u32);
+const ARM64_INS_SDIV: InsnId = InsnId(Arm64Insn::ARM64_INS_SDIV as u32);
+const ARM64_INS_UDIV: InsnId = InsnId(Arm64Insn::ARM64_INS_UDIV as u32);
+
+// PossibleTaint, DataTransfer.
+const ARM64_INS_STR: InsnId = InsnId(Arm64Insn::ARM64_INS_STR as u32);
+const ARM64_INS_STP: InsnId = InsnId(Arm64Insn::ARM64_INS_STP as u32);
+
+// DataTransfer.
+const ARM64_INS_LDR: InsnId = InsnId(Arm64Insn::ARM64_INS_LDR as u32);
+const ARM64_INS_LDP: InsnId = InsnId(Arm64Insn::ARM64_INS_LDP as u32);
+const ARM64_INS_MOV: InsnId = InsnId(Arm64Insn::ARM64_INS_MOV as u32);
+const ARM64_INS_ADR: InsnId = InsnId(Arm64Insn::ARM64_INS_ADR as u32);
+
+// Unary.
+const ARM64_INS_REV: InsnId = InsnId(Arm64Insn::ARM64_INS_REV as u32);
+const ARM64_INS_RBIT: InsnId = InsnId(Arm64Insn::ARM64_INS_RBIT as u32);
+// BinaryCMP.
+const ARM64_INS_CMP: InsnId = InsnId(Arm64Insn::ARM64_INS_CMP as u32);
+const ARM64_INS_TST: InsnId = InsnId(Arm64Insn::ARM64_INS_TST as u32);
 
 // x86 mnemonic iDs.
 // PossibleTaint, ControlTransfer.
