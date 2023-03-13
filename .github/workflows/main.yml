@@ -46,14 +46,15 @@ jobs:
         env: |
           CARGO_TERM_COLOR: always
           CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-          PATH: /root/.cargo/bin:$PATH
         install: |
+          export PATH=/root/.cargo/bin:$PATH
           apt-get update && apt-get install -y gdb pip curl python3.10-dev llvm build-essential
-          pip3 install numpy scipy atheris
+          pip3 install numpy scipy # atheris
           curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
           ./rustup.sh -y && rm rustup.sh
           rustup install nightly
           cargo install cargo-fuzz
         run: |
+          export PATH=/root/.cargo/bin:$PATH
           cargo build --release --verbose
           cargo test --release --verbose
