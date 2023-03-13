@@ -39,35 +39,21 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: uraimo/run-on-arch-action@v2
-      name: Build
+      name: Build and Run Tests
       with:
         arch: aarch64
         distro: ubuntu_latest
         env: |
           CARGO_TERM_COLOR: always
           CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-        run: |
-          apt update && apt install -y curl build-essential
-          curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
-          ./rustup.sh -y && rm rustup.sh
-          export PATH=/root/.cargo/bin:$PATH
-          uname -a
-          cargo build --verbose
-    - uses: uraimo/run-on-arch-action@v2
-      name: Run tests
-      with:
-        arch: aarch64
-        distro: ubuntu_latest
-        env: |
-          CARGO_TERM_COLOR: always
-          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-        run: |
-          apt update && apt install -y gdb pip curl python3.10-dev llvm build-essential
+          PATH: /root/.cargo/bin:$PATH
+        install: |
+          apt-get update && apt-get install -y gdb pip curl python3.10-dev llvm build-essential
           pip3 install numpy scipy atheris
           curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
           ./rustup.sh -y && rm rustup.sh
           rustup install nightly
-          export PATH=/root/.cargo/bin:$PATH
           cargo install cargo-fuzz
-          uname -a
+        run: |
+          cargo build --release --verbose
           cargo test --release --verbose
