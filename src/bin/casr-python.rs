@@ -131,6 +131,7 @@ fn main() -> Result<()> {
     report.executable_path = argv[0].to_string();
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
+    let _ = report.add_proc_environ();
 
     // Get python report.
     let python_stderr_list: Vec<String> =
