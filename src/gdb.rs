@@ -601,9 +601,7 @@ fn process_instruction(
                                     }
                                 }
                                 (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Imm(_)) => {
-                                    if taint_set.contains(t1) {
-                                        taint_set.remove(t1);
-                                    }
+                                    taint_set.remove(t1);
                                 }
                                 _ => {}
                             }
@@ -701,9 +699,7 @@ fn process_instruction(
                                     arm64::Arm64OperandType::Reg(t1),
                                     arm64::Arm64OperandType::Imm(_),
                                 ) => {
-                                    if taint_set.contains(t1) {
-                                        taint_set.remove(t1);
-                                    }
+                                    taint_set.remove(t1);
                                 }
                                 _ => {}
                             }
@@ -853,9 +849,7 @@ fn process_instruction(
                                 }
                                 (x86::X86OperandType::Reg(t1), x86::X86OperandType::Imm(_)) => {
                                     // Kill tainted value.
-                                    if taint_set.contains(t1) {
-                                        taint_set.remove(t1);
-                                    }
+                                    taint_set.remove(t1);
                                 }
                                 (x86::X86OperandType::Reg(t1), x86::X86OperandType::Mem(t2)) => {
                                     // Read data from memory. If address is tainted, then value is tainted.
