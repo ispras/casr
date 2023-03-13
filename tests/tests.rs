@@ -3082,6 +3082,7 @@ fn test_asan_stacktrace() {
         "#9 0x43b1a1 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /llvm -project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp",
         "#10 0x55ebfbfa0707 (/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0xfe2707) (BuildId: d2918819a864502448a61485c4b20818b0778ac2)",
         "#11 0xe086ff in xml::serializer::handle_error(genxStatus) const /xlnt/third-party/libstudxml/libstudxml/serializer.cxx:116:7",
+        "    #7 0xa180bf in typeinfo name for xlnt::detail::compound_document_istreambuf (/load_afl+0xa180bf)",
     ];
 
     let trace = raw_stacktrace
@@ -3220,6 +3221,14 @@ fn test_asan_stacktrace() {
     );
     assert_eq!(stacktrace[17].debug.line, 116);
     assert_eq!(stacktrace[17].debug.column, 7);
+
+    assert_eq!(stacktrace[18].address, 0xa180bf);
+    assert_eq!(
+        stacktrace[18].function,
+        "xlnt::detail::compound_document_istreambuf".to_string()
+    );
+    assert_eq!(stacktrace[18].module, "/load_afl".to_string());
+    assert_eq!(stacktrace[18].offset, 0xa180bf);
 }
 
 #[test]

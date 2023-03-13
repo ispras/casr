@@ -87,6 +87,11 @@ impl ParseStacktrace for AsanStacktrace {
             // TODO: source file path may contain )
             if has_function {
                 location = location[3..].trim();
+                // in typeinfo name for xlnt::detail::compound_document_istreambuf
+                // TODO: there may be no function and source path may start with for and space.
+                if let Some(f) = location.find(" for ") {
+                    location = location[f + 5..].trim();
+                }
                 if location.is_empty() {
                     return Err(Error::Casr(format!(
                         "Couldn't parse function name: {entry}"
