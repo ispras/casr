@@ -52,12 +52,12 @@ impl ParseStacktrace for PythonStacktrace {
             if entry.starts_with('[') {
                 let re = Regex::new(r#"\[Previous line repeated (\d+) more times\]"#).unwrap();
                 let Some(rep) = re.captures(entry) else {
-                    return Err(Error::Casr(
-                        "Couldn't parse stacktrace line: {entry}".to_string(),
+                    return Err(Error::Casr(format!(
+                        "Couldn't parse stacktrace line: {entry}")
                     ));
                 };
                 let Ok(rep) = rep.get(1).unwrap().as_str().parse::<u64>() else {
-                    return Err(Error::Casr("Couldn't parse num: {entry}".to_string()));
+                    return Err(Error::Casr(format!("Couldn't parse num: {entry}")));
                 };
                 let last = stacktrace.last().unwrap().clone();
                 for _ in 0..rep {
@@ -70,17 +70,17 @@ impl ParseStacktrace for PythonStacktrace {
             let re = Regex::new(r#"File "(.+)", line (\d+), in (.+)"#).unwrap();
 
             let Some(cap) = re.captures(entry) else {
-                return Err(Error::Casr(
-                    "Couldn't parse stacktrace line: {entry}".to_string(),
+                return Err(Error::Casr(format!(
+                    "Couldn't parse stacktrace line: {entry}")
                 ));
             };
             stentry.debug.file = cap.get(1).unwrap().as_str().to_string();
             if let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() {
                 stentry.debug.line = line;
             } else {
-                return Err(Error::Casr(
-                    "Couldn't parse stacktrace line num: {entry}".to_string(),
-                ));
+                return Err(Error::Casr(format!(
+                    "Couldn't parse stacktrace line num: {entry}"
+                )));
             };
             stentry.function = cap.get(3).unwrap().as_str().to_string();
 

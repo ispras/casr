@@ -56,8 +56,8 @@ impl ParseStacktrace for GoStacktrace {
         for entry in entries.iter() {
             let mut stentry = StacktraceEntry::default();
             let Some(caps) = re.captures(entry.as_ref()) else {
-                return Err(Error::Casr(
-                    "Couldn't parse stack trace entry: {entry}".to_string(),
+                return Err(Error::Casr(format!(
+                    "Couldn't parse stack trace entry: {entry}")
                 ));
             };
             stentry.function = caps.get(1).unwrap().as_str().to_string();
@@ -65,8 +65,8 @@ impl ParseStacktrace for GoStacktrace {
                 stentry.debug.file = file.as_str().to_string();
                 if let Some(line) = caps.get(3) {
                     let Ok(num) = line.as_str().parse::<u64>() else {
-                        return Err(Error::Casr(
-                            "Couldn't parse line number in stack trace entry: {entry}".to_string(),
+                        return Err(Error::Casr(format!(
+                            "Couldn't parse line number in stack trace entry: {entry}")
                         ));
                     };
                     stentry.debug.line = num;
