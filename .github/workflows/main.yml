@@ -31,3 +31,43 @@ jobs:
         export PATH=/root/.cargo/bin:$PATH
         cargo install cargo-fuzz
         cargo test --release --verbose
+
+  ubuntu-aarch64:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: uraimo/run-on-arch-action@v2
+      name: Build
+      with:
+        arch: aarch64
+        distro: ubuntu_latest
+        env: |
+          CARGO_TERM_COLOR: always
+          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+        run: |
+          apt update && apt install -y curl
+          curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
+          ./rustup.sh -y && rm rustup.sh
+          export PATH=/root/.cargo/bin:$PATH
+          uname -a
+          cargo build --verbose
+    - uses: uraimo/run-on-arch-action@v2
+      name: Run tests
+      with:
+        arch: aarch64
+        distro: ubuntu_latest
+        env: |
+          CARGO_TERM_COLOR: always
+          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+        run: |
+          apt update && apt install -y gdb pip curl python3.10-dev llvm
+          pip3 install numpy scipy atheris
+          curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
+          ./rustup.sh -y && rm rustup.sh
+          rustup install nightly
+          export PATH=/root/.cargo/bin:$PATH
+          cargo install cargo-fuzz
+          uname -a
+          cargo test --release --verbose
