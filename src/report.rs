@@ -51,7 +51,7 @@ pub struct CrashReport {
     #[serde(default)]
     pub executable_path: String,
     /// Subset of the process’ environment, from /proc/pid/env; this should only show some standard variables that.
-    /// Do not disclose potentially sensitive information, like $SHELL, $PATH, $LANG, and $LC_*
+    // TODO: Do not disclose potentially sensitive information, like $SHELL, $PATH, $LANG, and $LC_*
     #[serde(rename(serialize = "ProcEnviron", deserialize = "ProcEnviron"))]
     #[serde(default)]
     pub proc_environ: Vec<String>,
@@ -307,6 +307,12 @@ impl CrashReport {
             .into_iter()
             .map(|s| s.to_string())
             .collect();
+        Ok(())
+    }
+
+    /// Add current process environment variables.
+    pub fn add_proc_environ(&mut self) -> error::Result<()> {
+        self.proc_environ = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
         Ok(())
     }
 
