@@ -27,7 +27,9 @@ jobs:
         pip3 install numpy scipy atheris
         curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
         ./rustup.sh -y && rm rustup.sh
+        rustup install nightly
         export PATH=/root/.cargo/bin:$PATH
+        cargo install cargo-fuzz
         cargo test --release --verbose
 
   ubuntu-aarch64:
@@ -45,7 +47,7 @@ jobs:
           export CARGO_TERM_COLOR=always
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
           export PATH=/root/.cargo/bin:$PATH
-          apt-get update && apt-get install -y gdb pip curl python3.10-dev llvm build-essential
+          apt-get update && apt-get install -y gdb pip curl python3.10-dev clang llvm build-essential
           pip3 install numpy scipy # atheris
           curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
           ./rustup.sh -y && rm rustup.sh
