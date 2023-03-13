@@ -43,10 +43,9 @@ jobs:
       with:
         arch: aarch64
         distro: ubuntu_latest
-        env: |
-          CARGO_TERM_COLOR: always
-          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
         install: |
+          export CARGO_TERM_COLOR=always
+          export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
           export PATH=/root/.cargo/bin:$PATH
           apt-get update && apt-get install -y gdb pip curl python3.10-dev llvm build-essential
           pip3 install numpy scipy # atheris
@@ -55,6 +54,8 @@ jobs:
           rustup install nightly
           cargo install cargo-fuzz
         run: |
+          export CARGO_TERM_COLOR=always
+          export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
           export PATH=/root/.cargo/bin:$PATH
           cargo build --release --verbose
           cargo test --release --verbose
