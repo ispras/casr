@@ -3,8 +3,11 @@ extern crate capstone;
 use std::collections::HashSet;
 
 use capstone::arch::arm::ArmInsn;
+use capstone::arch::arm::ArmOperand;
 use capstone::arch::arm64::Arm64Insn;
+use capstone::arch::arm64::Arm64Operand;
 use capstone::arch::x86::X86Insn;
+use capstone::arch::x86::X86Operand;
 use capstone::arch::*;
 use capstone::prelude::*;
 use capstone::{Insn, InsnId, Instructions};
@@ -525,47 +528,42 @@ fn process_instruction(
 
     match detail.arch_detail() {
         ArchDetail::ArmDetail(arm_detail) => {
+            let operands: Vec<ArmOperand> = arm_detail.operands().collect();
             match insn_type_arm(insn.id()) {
                 InstructionType::ControlFlowTransfer => {
                     // Only BX, BLX with registers could lead to hijack.
-                    if let Some(first_op) = arm_detail.operands().next() {
-                        match first_op.op_type {
-                            arm::ArmOperandType::Reg(t1) => {
-                                if taint_set.contains(&t1) {
-                                    InstructionType::TaintedJMP
-                                } else {
-                                    InstructionType::ControlFlowTransfer
-                                }
+                    match operands[0].op_type {
+                        arm::ArmOperandType::Reg(t1) => {
+                            if taint_set.contains(&t1) {
+                                InstructionType::TaintedJMP
+                            } else {
+                                InstructionType::ControlFlowTransfer
                             }
-                            _ => InstructionType::ControlFlowTransfer,
                         }
-                    } else {
-                        InstructionType::ControlFlowTransfer
+                        _ => InstructionType::ControlFlowTransfer,
                     }
                 }
                 InstructionType::Arithmetic => {
                     // Propagate registers.
-                    let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
-                    let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
                     if let (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Reg(t2)) =
-                        (first_op.op_type, second_op.op_type)
+                        (&operands[0].op_type, &operands[1].op_type)
                     {
                         // Check shifter.
-                        match second_op.shift {
+                        match &operands[1].shift {
                             arm::ArmShift::AsrReg(r)
                             | arm::ArmShift::LsrReg(r)
                             | arm::ArmShift::LslReg(r)
                             | arm::ArmShift::RorReg(r)
                             | arm::ArmShift::RrxReg(r) => {
-                                if taint_set.contains(&r) {
-                                    taint_set.insert(t2);
+                                if taint_set.contains(r) {
+                                    taint_set.insert(*t2);
                                 }
                             }
                             _ => {}
                         }
                         // Propagate t2 -> t1.
-                        if taint_set.contains(&t2) {
-                            taint_set.insert(t1);
+                        if taint_set.contains(t2) {
+                            taint_set.insert(*t1);
                         }
                     }
                     InstructionType::Arithmetic
@@ -575,29 +573,27 @@ fn process_instruction(
                     match insn.id() {
                         ARM_INS_MOV => {
                             // Propagate, check pc
-                            let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
-                            let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
-                            match (first_op.op_type, second_op.op_type) {
+                            match (&operands[0].op_type, &operands[1].op_type) {
                                 (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Reg(t2)) => {
                                     // Check shifter.
-                                    match second_op.shift {
+                                    match &operands[1].shift {
                                         arm::ArmShift::AsrReg(r)
                                         | arm::ArmShift::LsrReg(r)
                                         | arm::ArmShift::LslReg(r)
                                         | arm::ArmShift::RorReg(r)
                                         | arm::ArmShift::RrxReg(r) => {
-                                            if taint_set.contains(&r) {
-                                                taint_set.insert(t2);
+                                            if taint_set.contains(r) {
+                                                taint_set.insert(*t2);
                                             }
                                         }
                                         _ => {}
                                     }
                                     // Propagate t2 -> t1
-                                    if taint_set.contains(&t2) {
-                                        taint_set.insert(t1);
+                                    if taint_set.contains(t2) {
+                                        taint_set.insert(*t1);
                                     }
-                                    if t1 == RegId(11) {
-                                        t = if taint_set.contains(&t1) {
+                                    if *t1 == RegId(11) {
+                                        t = if taint_set.contains(t1) {
                                             InstructionType::TaintedPc
                                         } else {
                                             InstructionType::ControlFlowTransfer
@@ -605,18 +601,16 @@ fn process_instruction(
                                     }
                                 }
                                 (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Imm(_)) => {
-                                    if taint_set.contains(&t1) {
-                                        taint_set.remove(&t1);
+                                    if taint_set.contains(t1) {
+                                        taint_set.remove(t1);
                                     }
                                 }
                                 _ => {}
                             }
                         }
                         ARM_INS_LDR => {
-                            let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
-                            let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
                             if let (arm::ArmOperandType::Reg(t1), arm::ArmOperandType::Mem(t2)) =
-                                (first_op.op_type, second_op.op_type)
+                                (&operands[0].op_type, &operands[1].op_type)
                             {
                                 // Read data from memory. If address is tainted, then value is tainted.
                                 // If this is a first instruction in list, value is tainted.
@@ -624,21 +618,19 @@ fn process_instruction(
                                     || taint_set.contains(&t2.index())
                                     || index == 0
                                 {
-                                    taint_set.insert(t1);
+                                    taint_set.insert(*t1);
                                     // Ldr to PC.
-                                    if t1 == RegId(11) {
+                                    if *t1 == RegId(11) {
                                         t = InstructionType::TaintedPc;
                                     }
                                 } else {
-                                    taint_set.remove(&t1);
+                                    taint_set.remove(t1);
                                 }
                             }
                         }
                         ARM_INS_STR => {
-                            let first_op: arm::ArmOperand = arm_detail.operands().next().unwrap();
-                            let second_op: arm::ArmOperand = arm_detail.operands().nth(1).unwrap();
                             if let (arm::ArmOperandType::Reg(_), arm::ArmOperandType::Mem(t1)) =
-                                (first_op.op_type, second_op.op_type)
+                                (&operands[0].op_type, &operands[1].op_type)
                             {
                                 if taint_set.contains(&t1.base()) || taint_set.contains(&t1.index())
                                 {
@@ -658,7 +650,155 @@ fn process_instruction(
                 _ => InstructionType::Unknown,
             }
         }
+        ArchDetail::Arm64Detail(arm64_detail) => {
+            let operands: Vec<Arm64Operand> = arm64_detail.operands().collect();
+            match insn_type_arm64(insn.id()) {
+                InstructionType::ControlFlowTransfer => {
+                    // Only BLR with registers could lead to hijack.
+                    if !operands.is_empty() {
+                        match operands[0].op_type {
+                            arm64::Arm64OperandType::Reg(t1) => {
+                                if taint_set.contains(&t1) {
+                                    InstructionType::TaintedCall
+                                } else {
+                                    InstructionType::ControlFlowTransfer
+                                }
+                            }
+                            _ => InstructionType::ControlFlowTransfer,
+                        }
+                    } else {
+                        InstructionType::ControlFlowTransfer
+                    }
+                }
+                InstructionType::Arithmetic => {
+                    // Propagate registers.
+                    if let (arm64::Arm64OperandType::Reg(t1), arm64::Arm64OperandType::Reg(t2)) =
+                        (&operands[0].op_type, &operands[1].op_type)
+                    {
+                        // Propagate t2 -> t1.
+                        if taint_set.contains(t2) {
+                            taint_set.insert(*t1);
+                        }
+                    }
+                    InstructionType::Arithmetic
+                }
+                InstructionType::DataTransfer => {
+                    let mut t = InstructionType::DataTransfer;
+                    match insn.id() {
+                        ARM64_INS_MOV | ARM64_INS_ADR => {
+                            // Propagate, check pc
+                            match (&operands[0].op_type, &operands[1].op_type) {
+                                (
+                                    arm64::Arm64OperandType::Reg(t1),
+                                    arm64::Arm64OperandType::Reg(t2),
+                                ) => {
+                                    // Propagate t2 -> t1
+                                    if taint_set.contains(t2) {
+                                        taint_set.insert(*t1);
+                                    }
+                                }
+                                (
+                                    arm64::Arm64OperandType::Reg(t1),
+                                    arm64::Arm64OperandType::Imm(_),
+                                ) => {
+                                    if taint_set.contains(t1) {
+                                        taint_set.remove(t1);
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        ARM64_INS_LDR | ARM64_INS_LDTR | ARM64_INS_LDUR | ARM64_INS_LDRB
+                        | ARM64_INS_LDRSB | ARM64_INS_LDRH | ARM64_INS_LDRSH | ARM64_INS_LDRSW
+                        | ARM64_INS_LDTRB | ARM64_INS_LDTRH | ARM64_INS_LDTRSB
+                        | ARM64_INS_LDTRSH | ARM64_INS_LDTRSW | ARM64_INS_LDURB
+                        | ARM64_INS_LDURSB | ARM64_INS_LDURH | ARM64_INS_LDURSH
+                        | ARM64_INS_LDURSW => {
+                            if let (
+                                arm64::Arm64OperandType::Reg(t1),
+                                arm64::Arm64OperandType::Mem(t2),
+                            ) = (&operands[0].op_type, &operands[1].op_type)
+                            {
+                                // Read data from memory. If address is tainted, then value is tainted.
+                                // If this is a first instruction in list, value is tainted.
+                                if taint_set.contains(&t2.base())
+                                    || taint_set.contains(&t2.index())
+                                    || index == 0
+                                {
+                                    taint_set.insert(*t1);
+                                } else {
+                                    taint_set.remove(t1);
+                                }
+                            }
+                        }
+                        ARM64_INS_LDP => {
+                            if let (
+                                arm64::Arm64OperandType::Reg(t1),
+                                arm64::Arm64OperandType::Reg(t2),
+                                arm64::Arm64OperandType::Mem(t3),
+                            ) = (
+                                &operands[0].op_type,
+                                &operands[1].op_type,
+                                &operands[2].op_type,
+                            ) {
+                                // Read data from memory. If address is tainted, then value is tainted.
+                                // If this is a first instruction in list, value is tainted.
+                                if taint_set.contains(&t3.base())
+                                    || taint_set.contains(&t3.index())
+                                    || index == 0
+                                {
+                                    taint_set.insert(*t1);
+                                    taint_set.insert(*t2);
+                                } else {
+                                    taint_set.remove(t1);
+                                    taint_set.remove(t2);
+                                }
+                            }
+                        }
+                        ARM64_INS_STR | ARM64_INS_STTR | ARM64_INS_STUR | ARM64_INS_STRB
+                        | ARM64_INS_STRH | ARM64_INS_STTRB | ARM64_INS_STTRH | ARM64_INS_STURB
+                        | ARM64_INS_STURH => {
+                            if let (
+                                arm64::Arm64OperandType::Reg(_),
+                                arm64::Arm64OperandType::Mem(t1),
+                            ) = (&operands[0].op_type, &operands[1].op_type)
+                            {
+                                if taint_set.contains(&t1.base()) || taint_set.contains(&t1.index())
+                                {
+                                    t = InstructionType::TaintedMemStore;
+                                }
+                            }
+                        }
+                        ARM64_INS_STP => {
+                            if let (
+                                arm64::Arm64OperandType::Reg(_),
+                                arm64::Arm64OperandType::Reg(_),
+                                arm64::Arm64OperandType::Mem(t1),
+                            ) = (
+                                &operands[0].op_type,
+                                &operands[1].op_type,
+                                &operands[2].op_type,
+                            ) {
+                                if taint_set.contains(&t1.base()) || taint_set.contains(&t1.index())
+                                {
+                                    t = InstructionType::TaintedMemStore;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                    t
+                }
+                InstructionType::BinaryCMP => {
+                    // Do nothing cmps do not propagate values.
+                    InstructionType::BinaryCMP
+                }
+                InstructionType::Unary => InstructionType::Unary,
+                _ => InstructionType::Unknown,
+            }
+        }
         ArchDetail::X86Detail(x86_detail) => {
+            let operands: Vec<X86Operand> = x86_detail.operands().collect();
             match insn_type_x86(insn.id()) {
                 InstructionType::ControlFlowTransfer => {
                     if insn.id() == X86_INS_RET {
@@ -669,10 +809,9 @@ fn process_instruction(
                             InstructionType::ControlFlowTransfer
                         }
                     } else if insn.id() == X86_INS_JMP || insn.id() == X86_INS_CALL {
-                        let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                        match first_op.op_type {
+                        match &operands[0].op_type {
                             x86::X86OperandType::Reg(t1) => {
-                                if taint_set.contains(&t1) {
+                                if taint_set.contains(t1) {
                                     if insn.id() == X86_INS_JMP {
                                         InstructionType::TaintedJMP
                                     } else {
@@ -703,21 +842,19 @@ fn process_instruction(
                 InstructionType::DataTransfer => {
                     let mut t = InstructionType::DataTransfer;
                     // Get 1st and 2nd operand.
-                    let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                    let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
                     match insn.id() {
                         X86_INS_MOV => {
-                            match (first_op.op_type, second_op.op_type) {
+                            match (&operands[0].op_type, &operands[1].op_type) {
                                 (x86::X86OperandType::Reg(t1), x86::X86OperandType::Reg(t2)) => {
                                     // Propagate t2 -> t1.
-                                    if taint_set.contains(&t2) {
-                                        taint_set.insert(t1);
+                                    if taint_set.contains(t2) {
+                                        taint_set.insert(*t1);
                                     }
                                 }
                                 (x86::X86OperandType::Reg(t1), x86::X86OperandType::Imm(_)) => {
                                     // Kill tainted value.
-                                    if taint_set.contains(&t1) {
-                                        taint_set.remove(&t1);
+                                    if taint_set.contains(t1) {
+                                        taint_set.remove(t1);
                                     }
                                 }
                                 (x86::X86OperandType::Reg(t1), x86::X86OperandType::Mem(t2)) => {
@@ -727,9 +864,9 @@ fn process_instruction(
                                         || taint_set.contains(&t2.index())
                                         || index == 0
                                     {
-                                        taint_set.insert(t1);
+                                        taint_set.insert(*t1);
                                     } else {
-                                        taint_set.remove(&t1);
+                                        taint_set.remove(t1);
                                     }
                                 }
                                 (x86::X86OperandType::Mem(t1), x86::X86OperandType::Reg(_)) => {
@@ -745,48 +882,41 @@ fn process_instruction(
                                 }
                             }
                         }
-                        X86_INS_XCHG => {
-                            let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                            let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
-                            match (first_op.op_type, second_op.op_type) {
-                                (x86::X86OperandType::Reg(t1), x86::X86OperandType::Reg(t2)) => {
-                                    if taint_set.contains(&t1) && !taint_set.contains(&t2) {
-                                        taint_set.insert(t2);
-                                        taint_set.remove(&t1);
-                                    }
-                                    if !taint_set.contains(&t1) && taint_set.contains(&t2) {
-                                        taint_set.insert(t1);
-                                        taint_set.remove(&t2);
-                                    }
+                        X86_INS_XCHG => match (&operands[0].op_type, &operands[1].op_type) {
+                            (x86::X86OperandType::Reg(t1), x86::X86OperandType::Reg(t2)) => {
+                                if taint_set.contains(t1) && !taint_set.contains(t2) {
+                                    taint_set.insert(*t2);
+                                    taint_set.remove(t1);
                                 }
-                                (x86::X86OperandType::Reg(t1), x86::X86OperandType::Mem(_)) => {
-                                    taint_set.remove(&t1);
+                                if !taint_set.contains(t1) && taint_set.contains(t2) {
+                                    taint_set.insert(*t1);
+                                    taint_set.remove(t2);
                                 }
-                                (x86::X86OperandType::Mem(_), x86::X86OperandType::Reg(t2)) => {
-                                    taint_set.remove(&t2);
-                                }
-                                _ => {}
                             }
-                        }
+                            (x86::X86OperandType::Reg(t1), x86::X86OperandType::Mem(_)) => {
+                                taint_set.remove(t1);
+                            }
+                            (x86::X86OperandType::Mem(_), x86::X86OperandType::Reg(t2)) => {
+                                taint_set.remove(t2);
+                            }
+                            _ => {}
+                        },
                         X86_INS_LEA => {
-                            let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                            let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
                             if let (x86::X86OperandType::Reg(t1), x86::X86OperandType::Mem(t2)) =
-                                (first_op.op_type, second_op.op_type)
+                                (&operands[0].op_type, &operands[1].op_type)
                             {
                                 if taint_set.contains(&t2.base()) || taint_set.contains(&t2.index())
                                 {
-                                    taint_set.insert(t1);
+                                    taint_set.insert(*t1);
                                 } else {
-                                    taint_set.remove(&t1);
+                                    taint_set.remove(t1);
                                 }
                             }
                         }
                         X86_INS_MOVZX | X86_INS_MOVSX => {
                             // Always kill.
-                            let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                            if let x86::X86OperandType::Reg(t1) = first_op.op_type {
-                                taint_set.remove(&t1);
+                            if let x86::X86OperandType::Reg(t1) = &operands[0].op_type {
+                                taint_set.remove(t1);
                             }
                         }
                         _ => {}
@@ -800,24 +930,21 @@ fn process_instruction(
                 InstructionType::Unary => {
                     // POP clears register if it is tainted.
                     if insn.id() == X86_INS_POP {
-                        let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                        if let x86::X86OperandType::Reg(t1) = first_op.op_type {
-                            taint_set.remove(&t1);
+                        if let x86::X86OperandType::Reg(t1) = &operands[0].op_type {
+                            taint_set.remove(t1);
                         }
                     }
                     InstructionType::Unary
                 }
                 InstructionType::Arithmetic => {
                     // Get 1st and 2nd operand.
-                    let first_op: x86::X86Operand = x86_detail.operands().next().unwrap();
-                    let second_op: x86::X86Operand = x86_detail.operands().nth(1).unwrap();
                     // Suppose memory always untainted. Track only registers.
                     if let (x86::X86OperandType::Reg(t1), x86::X86OperandType::Reg(t2)) =
-                        (first_op.op_type, second_op.op_type)
+                        (&operands[0].op_type, &operands[1].op_type)
                     {
                         // Propagate t2 -> t1.
-                        if taint_set.contains(&t2) {
-                            taint_set.insert(t1);
+                        if taint_set.contains(t2) {
+                            taint_set.insert(*t1);
                         }
                     }
                     InstructionType::Arithmetic
@@ -884,7 +1011,6 @@ fn insn_type_arm(id: InsnId) -> InstructionType {
 /// # Arguments
 ///
 /// * `id` - mnemonic id
-#[allow(dead_code)]
 fn insn_type_arm64(id: InsnId) -> InstructionType {
     match id {
         ARM64_INS_B | ARM64_INS_BL | ARM64_INS_CBZ | ARM64_INS_CBNZ | ARM64_INS_BLR
@@ -894,7 +1020,14 @@ fn insn_type_arm64(id: InsnId) -> InstructionType {
         | ARM64_INS_MVN | ARM64_INS_UDIV | ARM64_INS_SUB | ARM64_INS_ORR | ARM64_INS_MUL
         | ARM64_INS_SDIV => InstructionType::Arithmetic,
         ARM64_INS_STR | ARM64_INS_LDR | ARM64_INS_MOV | ARM64_INS_STP | ARM64_INS_LDP
-        | ARM64_INS_ADR => InstructionType::DataTransfer,
+        | ARM64_INS_ADR | ARM64_INS_LDTR | ARM64_INS_LDUR | ARM64_INS_STTR | ARM64_INS_STUR
+        | ARM64_INS_LDRB | ARM64_INS_LDRSB | ARM64_INS_LDRH | ARM64_INS_LDRSH | ARM64_INS_LDRSW
+        | ARM64_INS_LDTRB | ARM64_INS_LDTRH | ARM64_INS_LDTRSB | ARM64_INS_LDTRSH
+        | ARM64_INS_LDTRSW | ARM64_INS_STRB | ARM64_INS_STRH | ARM64_INS_STTRB
+        | ARM64_INS_STTRH | ARM64_INS_LDURB | ARM64_INS_LDURSB | ARM64_INS_LDURH
+        | ARM64_INS_LDURSH | ARM64_INS_LDURSW | ARM64_INS_STURB | ARM64_INS_STURH => {
+            InstructionType::DataTransfer
+        }
         ARM64_INS_REV | ARM64_INS_RBIT => InstructionType::Unary,
         ARM64_INS_CMP | ARM64_INS_TST => InstructionType::BinaryCMP,
         _ => InstructionType::Unknown,
@@ -992,10 +1125,36 @@ const ARM64_INS_UDIV: InsnId = InsnId(Arm64Insn::ARM64_INS_UDIV as u32);
 
 // PossibleTaint, DataTransfer.
 const ARM64_INS_STR: InsnId = InsnId(Arm64Insn::ARM64_INS_STR as u32);
+const ARM64_INS_STRB: InsnId = InsnId(Arm64Insn::ARM64_INS_STRB as u32);
+const ARM64_INS_STRH: InsnId = InsnId(Arm64Insn::ARM64_INS_STRH as u32);
+const ARM64_INS_STTR: InsnId = InsnId(Arm64Insn::ARM64_INS_STTR as u32);
+const ARM64_INS_STTRB: InsnId = InsnId(Arm64Insn::ARM64_INS_STTRB as u32);
+const ARM64_INS_STTRH: InsnId = InsnId(Arm64Insn::ARM64_INS_STTRH as u32);
 const ARM64_INS_STP: InsnId = InsnId(Arm64Insn::ARM64_INS_STP as u32);
+const ARM64_INS_STUR: InsnId = InsnId(Arm64Insn::ARM64_INS_STUR as u32);
+const ARM64_INS_STURB: InsnId = InsnId(Arm64Insn::ARM64_INS_STURB as u32);
+const ARM64_INS_STURH: InsnId = InsnId(Arm64Insn::ARM64_INS_STURH as u32);
 
 // DataTransfer.
 const ARM64_INS_LDR: InsnId = InsnId(Arm64Insn::ARM64_INS_LDR as u32);
+const ARM64_INS_LDRB: InsnId = InsnId(Arm64Insn::ARM64_INS_LDRB as u32);
+const ARM64_INS_LDRSB: InsnId = InsnId(Arm64Insn::ARM64_INS_LDRSB as u32);
+const ARM64_INS_LDRH: InsnId = InsnId(Arm64Insn::ARM64_INS_LDRH as u32);
+const ARM64_INS_LDRSH: InsnId = InsnId(Arm64Insn::ARM64_INS_LDRSH as u32);
+const ARM64_INS_LDRSW: InsnId = InsnId(Arm64Insn::ARM64_INS_LDRSW as u32);
+const ARM64_INS_LDTR: InsnId = InsnId(Arm64Insn::ARM64_INS_LDTR as u32);
+const ARM64_INS_LDTRB: InsnId = InsnId(Arm64Insn::ARM64_INS_LDTRB as u32);
+const ARM64_INS_LDTRSB: InsnId = InsnId(Arm64Insn::ARM64_INS_LDTRSB as u32);
+const ARM64_INS_LDTRH: InsnId = InsnId(Arm64Insn::ARM64_INS_LDTRH as u32);
+const ARM64_INS_LDTRSH: InsnId = InsnId(Arm64Insn::ARM64_INS_LDTRSH as u32);
+const ARM64_INS_LDTRSW: InsnId = InsnId(Arm64Insn::ARM64_INS_LDTRSW as u32);
+const ARM64_INS_LDUR: InsnId = InsnId(Arm64Insn::ARM64_INS_LDUR as u32);
+const ARM64_INS_LDURB: InsnId = InsnId(Arm64Insn::ARM64_INS_LDURB as u32);
+const ARM64_INS_LDURH: InsnId = InsnId(Arm64Insn::ARM64_INS_LDURH as u32);
+const ARM64_INS_LDURSB: InsnId = InsnId(Arm64Insn::ARM64_INS_LDURSB as u32);
+const ARM64_INS_LDURSH: InsnId = InsnId(Arm64Insn::ARM64_INS_LDURSH as u32);
+const ARM64_INS_LDURSW: InsnId = InsnId(Arm64Insn::ARM64_INS_LDURSW as u32);
+
 const ARM64_INS_LDP: InsnId = InsnId(Arm64Insn::ARM64_INS_LDP as u32);
 const ARM64_INS_MOV: InsnId = InsnId(Arm64Insn::ARM64_INS_MOV as u32);
 const ARM64_INS_ADR: InsnId = InsnId(Arm64Insn::ARM64_INS_ADR as u32);
@@ -1178,7 +1337,7 @@ mod tests {
 
     #[test]
     fn test_jump_av_arm() {
-        //rasm2 -a arm -b 32 'ldr r0, [r0]; mov r1, r0; and r1, 0x1; ldr r0, [r1]; blx r0'
+        // rz-asm -a arm -b 32 'ldr r0, [r0]; mov r1, r0; and r1, 0x1; ldr r0, [r1]; blx r0'
         let data: &[u8] = &[
             0x00, 0x00, 0x90, 0xe5, 0x00, 0x10, 0xa0, 0xe1, 0x01, 0x10, 0x01, 0xe2, 0x00, 0x00,
             0x91, 0xe5, 0x30, 0xff, 0x2f, 0xe1,
@@ -1201,9 +1360,10 @@ mod tests {
             }
         }
     }
+
     #[test]
     fn test_dest_av_arm() {
-        //rasm2 -a arm -b 32 'ldr r0, [r0]; mov r1, r0; orr r1, 0x1; ldr r0, [r1]; str r1, [r0]'
+        // rz-asm -a arm -b 32 'ldr r0, [r0]; mov r1, r0; orr r1, 0x1; ldr r0, [r1]; str r1, [r0]'
         let data: &[u8] = &[
             0x00, 0x00, 0x90, 0xe5, 0x00, 0x10, 0xa0, 0xe1, 0x01, 0x10, 0x81, 0xe3, 0x00, 0x00,
             0x91, 0xe5, 0x00, 0x10, 0x80, 0xe5,
@@ -1229,7 +1389,7 @@ mod tests {
 
     #[test]
     fn test_bl_arm() {
-        //rasm2 -a arm -b 32 'ldr r0, [r0]; mov r1, r0; rsb r1, 0x1; bl 0x1 '
+        // rz-asm -a arm -b 32 'ldr r0, [r0]; mov r1, r0; rsb r1, 0x1; bl 0x1 '
         let data: &[u8] = &[
             0x00, 0x00, 0x90, 0xe5, 0x00, 0x10, 0xa0, 0xe1, 0x01, 0x10, 0x61, 0xe2, 0xfb, 0xff,
             0xff, 0xeb,
@@ -1237,6 +1397,79 @@ mod tests {
         let cs = Capstone::new()
             .arm()
             .mode(arch::arm::ArchMode::Arm)
+            .endian(capstone::Endian::Little)
+            .detail(true)
+            .build();
+
+        if let Ok(cs) = cs {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
+                if check_taint(&cs, &insns).is_ok() {
+                    unreachable!();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_blr_arm64() {
+        // rz-asm -a arm -b 64 'ldur    x0, [x29, #-24]; ldr     x8, [x0]; ldr     x8, [x8]; blr x8'
+        let data: &[u8] = &[
+            0xa0, 0x83, 0x5e, 0xf8, 0x08, 0x00, 0x40, 0xf9, 0x08, 0x01, 0x40, 0xf9, 0x00, 0x01,
+            0x3f, 0xd6,
+        ];
+        let expected_class = ExecutionClass::find("CallAvTainted").unwrap();
+        let cs = Capstone::new()
+            .arm64()
+            .mode(arch::arm64::ArchMode::Arm)
+            .endian(capstone::Endian::Little)
+            .detail(true)
+            .build();
+
+        if let Ok(cs) = cs {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
+                if let Ok(result) = check_taint(&cs, &insns) {
+                    assert_eq!(expected_class, result);
+                } else {
+                    unreachable!();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_str_arm64() {
+        // rz-asm -a arm -b 64 'ldr     x8, [x0]; ldr     x8, [x8]; str x1, [x8]'
+        let data: &[u8] = &[
+            0x08, 0x00, 0x40, 0xf9, 0x08, 0x01, 0x40, 0xf9, 0x01, 0x01, 0x00, 0xf9,
+        ];
+        let expected_class = ExecutionClass::find("DestAvTainted").unwrap();
+        let cs = Capstone::new()
+            .arm64()
+            .mode(arch::arm64::ArchMode::Arm)
+            .endian(capstone::Endian::Little)
+            .detail(true)
+            .build();
+
+        if let Ok(cs) = cs {
+            if let Ok(insns) = cs.disasm_all(data, 0) {
+                if let Ok(result) = check_taint(&cs, &insns) {
+                    assert_eq!(expected_class, result);
+                } else {
+                    unreachable!();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_ldr_arm64() {
+        // rz-asm -a arm -b 64 'ldr     x8, [x0]; ldr     x8, [x8]; ret'
+        let data: &[u8] = &[
+            0x08, 0x00, 0x40, 0xf9, 0x08, 0x01, 0x40, 0xf9, 0xc0, 0x03, 0x5f, 0xd6,
+        ];
+        let cs = Capstone::new()
+            .arm64()
+            .mode(arch::arm64::ArchMode::Arm)
             .endian(capstone::Endian::Little)
             .detail(true)
             .build();
