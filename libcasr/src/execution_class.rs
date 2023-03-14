@@ -1,21 +1,37 @@
 use crate::error;
 
-use serde::{Deserialize, Serialize};
 use std::fmt;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Classified information about program's execution.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionClass {
     /// Severity type.
-    #[serde(rename(serialize = "Type", deserialize = "Type"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Type", deserialize = "Type"))
+    )]
     pub severity: String,
     /// Class name.
-    #[serde(rename(serialize = "ShortDescription", deserialize = "ShortDescription"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "ShortDescription", deserialize = "ShortDescription"))
+    )]
     pub short_description: String,
     /// Some description.
-    #[serde(rename(serialize = "Description", deserialize = "Description"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Description", deserialize = "Description"))
+    )]
     pub description: String,
     /// Execution class detailed explanation.
-    #[serde(rename(serialize = "Explanation", deserialize = "Explanation"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Explanation", deserialize = "Explanation"))
+    )]
     pub explanation: String,
 }
 
@@ -182,4 +198,13 @@ impl Default for ExecutionClass {
             explanation: "The is no execution class for this type of exception".to_string(),
         }
     }
+}
+
+/// Check if value is near null (less than 64*1024).
+///
+///  # Arguments
+///
+/// * `value` -  address value to check.
+pub fn is_near_null(value: u64) -> bool {
+    value < 64 * 1024
 }

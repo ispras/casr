@@ -1,23 +1,23 @@
 extern crate anyhow;
-extern crate casr;
 extern crate clap;
 extern crate gdb_command;
+extern crate libcasr;
 extern crate linux_personality;
 extern crate regex;
 
-use casr::asan::{AsanContext, AsanStacktrace};
-use casr::constants::*;
-use casr::cpp::CppException;
-use casr::exception::Exception;
-use casr::execution_class::*;
-use casr::gdb::*;
-use casr::go::*;
-use casr::init_ignored_frames;
-use casr::report::CrashReport;
-use casr::rust::RustPanic;
-use casr::severity::Severity;
-use casr::stacktrace::*;
 use casr::util;
+use libcasr::asan::{AsanContext, AsanStacktrace};
+use libcasr::constants::*;
+use libcasr::cpp::CppException;
+use libcasr::exception::Exception;
+use libcasr::execution_class::*;
+use libcasr::gdb::*;
+use libcasr::go::*;
+use libcasr::init_ignored_frames;
+use libcasr::report::CrashReport;
+use libcasr::rust::RustPanic;
+use libcasr::severity::Severity;
+use libcasr::stacktrace::*;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};
@@ -187,16 +187,20 @@ fn main() -> Result<()> {
             if let Some(signal) = sanitizers_result.status.signal() {
                 // Get stack trace and mappings from gdb.
                 match signal as u32 {
-                    SIGINFO_SIGILL | SIGINFO_SIGSYS => {
+                    // SIGILL, SIGSYS
+                    4 | 31 => {
                         report.execution_class = ExecutionClass::find("BadInstruction").unwrap();
                     }
-                    SIGINFO_SIGTRAP => {
+                    // SIGTRAP
+                    5 => {
                         report.execution_class = ExecutionClass::find("TrapSignal").unwrap();
                     }
-                    SIGINFO_SIGABRT => {
+                    // SIGABRT
+                    6 => {
                         report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
                     }
-                    SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
+                    // SIGBUS, SIGSEGV
+                    7 | 11 => {
                         eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
                         exploitability. Try using casr-gdb instead.");
                         report.execution_class = ExecutionClass::find("AccessViolation").unwrap();

@@ -1,6 +1,9 @@
-use crate::report::CrashReport;
-use crate::stacktrace::STACK_FRAME_FILEPATH_IGNORE_REGEXES;
-use crate::stacktrace::STACK_FRAME_FUNCTION_IGNORE_REGEXES;
+extern crate libcasr;
+
+use libcasr::report::CrashReport;
+use libcasr::stacktrace::{
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
+};
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
@@ -8,26 +11,6 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-
-/// This macro updates variables used to remove trusted functions from stack trace
-#[macro_export]
-macro_rules! init_ignored_frames {
-    ( $( $x:expr ),* ) => {
-        {
-            let (funcs, files): (Vec<_>, Vec<_>) = [$($x,)*].iter().map(|&x|
-                match x {
-                    "python" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON),
-                    "rust" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST, STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST),
-                    "cpp" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP),
-                    "go" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO, STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO),
-                    &_ => (["^[^.]$"].as_slice(), ["^[^.]$"].as_slice()),
-                }
-            ).unzip();
-           *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = funcs.concat().iter().map(|x| x.to_string()).collect::<Vec<String>>();
-           *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = files.concat().iter().map(|x| x.to_string()).collect::<Vec<String>>();
-        }
-    };
-}
 
 /// Save a report to the specified path
 ///

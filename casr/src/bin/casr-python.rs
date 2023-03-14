@@ -1,12 +1,13 @@
 extern crate clap;
+extern crate libcasr;
 
-use casr::constants::*;
-use casr::exception::Exception;
-use casr::init_ignored_frames;
-use casr::python::{PythonException, PythonStacktrace};
-use casr::report::CrashReport;
-use casr::stacktrace::*;
 use casr::util;
+use libcasr::constants::*;
+use libcasr::exception::Exception;
+use libcasr::init_ignored_frames;
+use libcasr::python::{PythonException, PythonStacktrace};
+use libcasr::report::CrashReport;
+use libcasr::stacktrace::*;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup, ArgMatches};

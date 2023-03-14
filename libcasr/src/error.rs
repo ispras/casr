@@ -14,6 +14,7 @@ pub enum Error {
     /// Casr error (any analysis or report error)
     Casr(String),
     /// Goblin error
+    #[cfg(feature = "exploitable")]
     Goblin(goblin::error::Error),
 }
 
@@ -23,6 +24,7 @@ impl fmt::Display for Error {
             Error::IO(ref err) => write!(f, "{err}"),
             Error::GdbCommand(ref err) => write!(f, "{err}"),
             Error::Casr(ref msg) => write!(f, "Casr: {msg}"),
+            #[cfg(feature = "exploitable")]
             Error::Goblin(ref msg) => write!(f, "Goblin: {msg}"),
         }
     }
@@ -40,6 +42,7 @@ impl From<gdb_command::error::Error> for Error {
     }
 }
 
+#[cfg(feature = "exploitable")]
 impl From<goblin::error::Error> for Error {
     fn from(err: goblin::error::Error) -> Error {
         Error::Goblin(err)

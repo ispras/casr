@@ -1,18 +1,19 @@
 extern crate anyhow;
-extern crate casr;
 extern crate clap;
 extern crate gdb_command;
+extern crate libcasr;
 
-use casr::constants::*;
-use casr::cpp::CppException;
-use casr::exception::Exception;
-use casr::gdb::{GdbContext, GdbStacktrace, MachineInfo};
-use casr::init_ignored_frames;
-use casr::report::CrashReport;
-use casr::rust::RustPanic;
-use casr::severity::Severity;
-use casr::stacktrace::*;
 use casr::util;
+use libcasr::constants::*;
+use libcasr::cpp::CppException;
+use libcasr::exception::Exception;
+use libcasr::gdb::exploitable::{GdbContext, MachineInfo};
+use libcasr::gdb::GdbStacktrace;
+use libcasr::init_ignored_frames;
+use libcasr::report::CrashReport;
+use libcasr::rust::RustPanic;
+use libcasr::severity::Severity;
+use libcasr::stacktrace::*;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg, ArgGroup};

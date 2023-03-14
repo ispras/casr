@@ -1,8 +1,8 @@
 extern crate anyhow;
-extern crate casr;
 extern crate clap;
 extern crate cursive;
 extern crate cursive_tree_view;
+extern crate libcasr;
 extern crate regex;
 extern crate serde_json;
 
@@ -36,7 +36,7 @@ use cursive::views::{
 use cursive::CursiveRunnable;
 use cursive_tree_view::*;
 
-use casr::report::CrashReport;
+use libcasr::report::CrashReport;
 
 fn main() -> Result<()> {
     let matches = App::new("casr-cli")

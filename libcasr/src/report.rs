@@ -11,7 +11,6 @@ use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::registers::Registers;
 use gdb_command::stacktrace::StacktraceExt;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs;
 use std::fs::File;
@@ -20,119 +19,198 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::Command;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Represents the information about program termination.
-#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Default, Clone, Debug)]
 pub struct CrashReport {
     /// Pid of crashed process.
-    #[serde(skip)]
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub pid: i32,
     /// Date and time of the problem report in ISO format. (see asctime(3)).
-    #[serde(rename(serialize = "Date", deserialize = "Date"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Date", deserialize = "Date"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub date: String,
     /// Output of uname -a.
-    #[serde(rename(serialize = "Uname", deserialize = "Uname"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Uname", deserialize = "Uname"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub uname: String,
     /// Name of the operating system. On LSB compliant systems, this can be determined with lsb_release -si.
-    #[serde(rename(serialize = "OS", deserialize = "OS"))]
-    #[serde(default)]
+    #[cfg_attr(feature = "serde", serde(rename(serialize = "OS", deserialize = "OS")))]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub os: String,
     /// Release version of the operating system. On LSB compliant systems, this can be determined with lsb_release -sr.
-    #[serde(rename(serialize = "OSRelease", deserialize = "OSRelease"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "OSRelease", deserialize = "OSRelease"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub os_release: String,
     /// OS specific notation of processor/system architecture (e. g. i386).
-    #[serde(rename(serialize = "Architecture", deserialize = "Architecture"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Architecture", deserialize = "Architecture"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub architecture: String,
     /// Contents of /proc/pid/exe for ELF files; if the process is an interpreted script, this is the script path instead.
-    #[serde(rename(serialize = "ExecutablePath", deserialize = "ExecutablePath"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "ExecutablePath", deserialize = "ExecutablePath"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub executable_path: String,
     /// Subset of the process’ environment, from /proc/pid/env; this should only show some standard variables that.
     // TODO: Do not disclose potentially sensitive information, like $SHELL, $PATH, $LANG, and $LC_*
-    #[serde(rename(serialize = "ProcEnviron", deserialize = "ProcEnviron"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "ProcEnviron", deserialize = "ProcEnviron"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub proc_environ: Vec<String>,
     /// Contents of /proc/pid/cmdline.
-    #[serde(rename(serialize = "ProcCmdline", deserialize = "ProcCmdline"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "ProcCmdline", deserialize = "ProcCmdline"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub proc_cmdline: String,
     /// Path to stdin for target
-    #[serde(rename(serialize = "Stdin", deserialize = "Stdin"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Stdin", deserialize = "Stdin"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub stdin: String,
     /// Contents of /proc/pid/status.
-    #[serde(rename(serialize = "ProcStatus", deserialize = "ProcStatus"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "ProcStatus", deserialize = "ProcStatus"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub proc_status: Vec<String>,
     /// Contents of /proc/pid/maps.
-    #[serde(rename(serialize = "ProcMaps", deserialize = "ProcMaps"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "ProcMaps", deserialize = "ProcMaps"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub proc_maps: Vec<String>,
     /// Opend files at crash : ls -lah /proc/\<pid\>/fd.
-    #[serde(rename(serialize = "ProcFiles", deserialize = "ProcFiles"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "ProcFiles", deserialize = "ProcFiles"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub proc_fd: Vec<String>,
     /// Opened network connections.
-    #[serde(rename(serialize = "NetworkConnections", deserialize = "NetworkConnections"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "NetworkConnections", deserialize = "NetworkConnections"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub network_connections: Vec<String>,
     /// Crash classification.
-    #[serde(rename(serialize = "CrashSeverity", deserialize = "CrashSeverity"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "CrashSeverity", deserialize = "CrashSeverity"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub execution_class: ExecutionClass,
     /// Stack trace for crashed thread.
-    #[serde(rename(serialize = "Stacktrace", deserialize = "Stacktrace"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Stacktrace", deserialize = "Stacktrace"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub stacktrace: Vec<String>,
     /// Registers state for crashed thread.
-    #[serde(rename(serialize = "Registers", deserialize = "Registers"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Registers", deserialize = "Registers"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub registers: Registers,
     /// Dissassembly for crashed state (16 instructions).
-    #[serde(rename(serialize = "Disassembly", deserialize = "Disassembly"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Disassembly", deserialize = "Disassembly"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub disassembly: Vec<String>,
     /// Package name.
-    #[serde(rename(serialize = "Package", deserialize = "Package"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Package", deserialize = "Package"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub package: String,
     /// Package version.
-    #[serde(rename(serialize = "PackageVersion", deserialize = "PackageVersion"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "PackageVersion", deserialize = "PackageVersion"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub package_version: String,
     /// Package architecture.
-    #[serde(rename(serialize = "PackageArchitecture", deserialize = "PackageArchitecture"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "PackageArchitecture", deserialize = "PackageArchitecture"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub package_architecture: String,
     /// Package description.
-    #[serde(rename(serialize = "PackageDescription", deserialize = "PackageDescription"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "PackageDescription", deserialize = "PackageDescription"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub package_description: String,
     /// Timestamp.
-    #[serde(skip_deserializing)]
+    #[cfg_attr(feature = "serde", serde(skip_deserializing))]
     pub timestamp: i64,
     /// Asan report.
-    #[serde(rename(serialize = "AsanReport", deserialize = "AsanReport"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "AsanReport", deserialize = "AsanReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub asan_report: Vec<String>,
     /// Python report.
-    #[serde(rename(serialize = "PythonReport", deserialize = "PythonReport"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "PythonReport", deserialize = "PythonReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub python_report: Vec<String>,
     /// Go report.
-    #[serde(rename(serialize = "GoReport", deserialize = "GoReport"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "GoReport", deserialize = "GoReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub go_report: Vec<String>,
     /// Crash line from stack trace: source:line or binary+offset.
-    #[serde(rename(serialize = "CrashLine", deserialize = "CrashLine"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "CrashLine", deserialize = "CrashLine"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub crashline: String,
     /// Source code fragment.
-    #[serde(rename(serialize = "Source", deserialize = "Source"))]
-    #[serde(default)]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "Source", deserialize = "Source"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub source: Vec<String>,
 }
 

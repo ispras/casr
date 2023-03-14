@@ -11,4 +11,3 @@ pub mod report;
 pub mod rust;
 pub mod severity;
 pub mod stacktrace;
-pub mod util;

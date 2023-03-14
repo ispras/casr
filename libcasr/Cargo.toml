@@ -1,0 +1,27 @@
+[package]
+name = "libcasr"
+authors = ["Andrey Fedotov  <fedotoff@ispras.ru>", "Alexey Vishnyakov <vishnya@ispras.ru>", "Georgy Savidov <avgor46@ispras.ru>"]
+version = "2.4.0"
+description = "Collect crash reports, triage, and estimate severity."
+keywords = ["gdb", "crash", "stacktrace", "triage", "coredump"]
+readme = "../README.md"
+repository = "https://github.com/ispras/casr.git"
+documentation = "https://docs.rs/libcasr"
+edition = "2021"
+license = "Apache-2.0"
+exclude = ["/tests"]
+
+[dependencies]
+regex = "~1.5"
+lazy_static = "~1.4"
+goblin = { version = "~0.5", optional = true }
+capstone = { version = "~0.11", optional = true }
+chrono =  "~0.4"
+serde = { version = "~1.0", features = ["derive"], optional = true }
+serde_json = { version = "~1.0", optional = true }
+gdb-command = "~0.7"
+thiserror = "~1.0"
+
+[features]
+exploitable = ["dep:capstone", "dep:goblin"]
+serde = ["dep:serde_json", "dep:serde"]

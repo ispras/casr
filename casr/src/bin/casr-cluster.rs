@@ -1,17 +1,17 @@
 extern crate anyhow;
-extern crate casr;
 extern crate clap;
 extern crate gdb_command;
+extern crate libcasr;
 extern crate num_cpus;
 extern crate rayon;
 extern crate regex;
 extern crate serde_json;
 
-use casr::constants::*;
-use casr::init_ignored_frames;
-use casr::report::CrashReport;
-use casr::stacktrace::*;
 use casr::util;
+use libcasr::constants::*;
+use libcasr::init_ignored_frames;
+use libcasr::report::CrashReport;
+use libcasr::stacktrace::*;
 
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg};

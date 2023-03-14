@@ -1,12 +1,12 @@
 extern crate anyhow;
 #[macro_use]
 extern crate log;
-extern crate casr;
 extern crate chrono;
 extern crate clap;
 extern crate gdb_command;
 extern crate goblin;
 extern crate libc;
+extern crate libcasr;
 extern crate nix;
 extern crate serde;
 extern crate serde_json;
@@ -28,10 +28,10 @@ use std::io::{self, Read};
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 
-use casr::error::Error;
-use casr::gdb::{GdbContext, MachineInfo};
-use casr::report::*;
-use casr::severity::Severity;
+use libcasr::error::Error;
+use libcasr::gdb::exploitable::{GdbContext, MachineInfo};
+use libcasr::report::*;
+use libcasr::severity::Severity;
 
 fn main() -> Result<()> {
     let matches = App::new("casr-core")
@@ -341,7 +341,7 @@ fn analyze_coredump(
     report: &mut CrashReport,
     core: &[u8],
     core_path: &Path,
-) -> casr::error::Result<()> {
+) -> libcasr::error::Result<()> {
     let mut machine = MachineInfo {
         arch: header::EM_X86_64,
         endianness: Endian::Little,
