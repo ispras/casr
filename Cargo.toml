@@ -2,8 +2,6 @@
 version = "2.4.0"
 authors = ["Andrey Fedotov  <fedotoff@ispras.ru>", "Alexey Vishnyakov <vishnya@ispras.ru>", "Georgy Savidov <avgor46@ispras.ru>"]
 
-#exclude = [".gitignore", ".github", "update_version.sh"]
-
 [workspace]
 members = ["casr", "libcasr"]
 
