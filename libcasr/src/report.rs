@@ -234,7 +234,6 @@ impl CrashReport {
             if let Ok(network_info) = String::from_utf8(ss_out.stdout) {
                 self.network_connections = network_info
                     .split_terminator('\n')
-                    .into_iter()
                     .map(|s| s.to_string())
                     .filter(|s| s.contains(&format!("pid={}", self.pid)))
                     .collect();
@@ -361,11 +360,7 @@ impl CrashReport {
         s = String::new();
         let mut file = File::open(path.clone())?;
         file.read_to_string(&mut s)?;
-        self.proc_status = s
-            .split_terminator('\n')
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect();
+        self.proc_status = s.split_terminator('\n').map(|s| s.to_string()).collect();
 
         // Get environ.
         path.pop();
@@ -381,11 +376,7 @@ impl CrashReport {
             .unwrap_or_default()
             .trim()
             .to_string();
-        self.proc_environ = s
-            .split_terminator('\n')
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect();
+        self.proc_environ = s.split_terminator('\n').map(|s| s.to_string()).collect();
         Ok(())
     }
 
@@ -427,7 +418,7 @@ impl CrashReport {
                         if dpkgl_out.status.success() {
                             if let Ok(info) = String::from_utf8(dpkgl_out.stdout) {
                                 if let Some((_, info)) = info.rsplit_once('\n') {
-                                    info.split_whitespace().into_iter().enumerate().for_each(
+                                    info.split_whitespace().enumerate().for_each(
                                         |(i, e)| match i {
                                             0 | 1 => {}
                                             2 => {

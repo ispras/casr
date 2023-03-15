@@ -190,15 +190,12 @@ fn main() -> Result<()> {
                     SIGINFO_SIGILL | SIGINFO_SIGSYS => {
                         report.execution_class = ExecutionClass::find("BadInstruction").unwrap();
                     }
-                    // SIGTRAP
                     SIGINFO_SIGTRAP => {
                         report.execution_class = ExecutionClass::find("TrapSignal").unwrap();
                     }
-                    // SIGABRT
                     SIGINFO_SIGABRT => {
                         report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
                     }
-                    // SIGBUS, SIGSEGV
                     SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
                         eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
                         exploitability. Try using casr-gdb instead.");

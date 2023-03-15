@@ -193,7 +193,6 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     let len = stacktraces.len();
     // Writing compressed distance matrix into Vector<String>
     let lines: Vec<String> = (0..len)
-        .into_iter()
         .map(|i| {
             let mut tmp_str = String::new();
             for j in i + 1..len {
