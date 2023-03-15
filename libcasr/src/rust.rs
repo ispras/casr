@@ -1,3 +1,4 @@
+//! Rust module implements `Exception` traits for Rust panic messages.
 use crate::exception::Exception;
 use crate::execution_class::ExecutionClass;
 

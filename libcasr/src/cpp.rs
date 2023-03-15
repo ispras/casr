@@ -1,3 +1,4 @@
+//! Cpp module implements `Exception` trait for C++ exception messages.
 use crate::exception::Exception;
 use crate::execution_class::ExecutionClass;
 

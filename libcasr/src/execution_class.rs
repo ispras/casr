@@ -1,3 +1,5 @@
+//! Execution_class module contains the `ExecutionClass` structure which holds an information
+//! about crash severity. `CLASSES` holds raw instances of ExecutionClass structure.
 use crate::error;
 
 use std::fmt;
@@ -35,6 +37,7 @@ pub struct ExecutionClass {
     pub explanation: String,
 }
 
+/// Instances of `ExecutionClass` structure.
 pub const CLASSES: &[(&str, &str, &str, &str); 71] = &[
     ("EXPLOITABLE", "SegFaultOnPc", "Segmentation fault on program counter", "The target tried to access data at an address that matches the program counter. This likely indicates that the program counter contents are tainted and can be controlled by an attacker."),
     ("EXPLOITABLE", "ReturnAv", "Access violation during return instruction", "The target crashed on a return instruction, which likely indicates stack corruption."),

@@ -1,3 +1,4 @@
+//! Python module implements `ParseStacktrace` and `Exception` traits for Python reports.
 use crate::exception::Exception;
 use crate::stacktrace::ParseStacktrace;
 

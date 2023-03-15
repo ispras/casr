@@ -1,3 +1,4 @@
+//! Provides `Exception` trait.
 use crate::execution_class::ExecutionClass;
 
 /// Exception processing trait.

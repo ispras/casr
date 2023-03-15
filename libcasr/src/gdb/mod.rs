@@ -1,3 +1,4 @@
+//! Gdb module implements `ParseStacktrace`, `Exception` and `Severity` traits for Gdb output.
 use gdb_command::stacktrace::StacktraceExt;
 use regex::Regex;
 

@@ -1,3 +1,5 @@
+//! Asan module implements `ParseStacktrace`, `Exception` and `Severity` traits for AddressSanitizer
+//! reports.
 use regex::Regex;
 
 use crate::error::*;

@@ -1,3 +1,4 @@
+//! Provides API's for parsing, filtering, deduplication and clustering.
 extern crate lazy_static;
 
 use crate::error::*;

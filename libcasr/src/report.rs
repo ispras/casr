@@ -1,3 +1,4 @@
+//! Report contains the main struct `CrashReport` with all information about crash.
 use crate::asan::AsanStacktrace;
 use crate::error;
 use crate::error::*;
@@ -215,7 +216,7 @@ pub struct CrashReport {
 }
 
 impl CrashReport {
-    /// Create new crash report.
+    /// Create new `CrashReport`
     pub fn new() -> Self {
         let mut report: CrashReport = Default::default();
         let local: DateTime<Local> = Local::now();
@@ -224,7 +225,7 @@ impl CrashReport {
         report
     }
 
-    /// Add information about opened network connections.
+    /// Add information about opened network connections
     pub fn add_network_connections(&mut self) -> error::Result<()> {
         let mut ss_cmd = Command::new("ss");
         ss_cmd.arg("-tuap");
@@ -242,7 +243,7 @@ impl CrashReport {
 
         Ok(())
     }
-    /// Add OS info to the report.
+    /// Add information about operation system
     pub fn add_os_info(&mut self) -> error::Result<()> {
         // Get os and os release.
         let mut info_cmd = Command::new("sh");
@@ -282,7 +283,7 @@ impl CrashReport {
 
         Ok(())
     }
-    /// Add proc info to the report.
+    /// Add information about running process
     pub fn add_proc_info(&mut self) -> error::Result<()> {
         // Get executable path.
         let mut path = PathBuf::new();
@@ -388,7 +389,7 @@ impl CrashReport {
         Ok(())
     }
 
-    /// Add current process environment variables.
+    /// Add current process environment variables
     pub fn add_proc_environ(&mut self) -> error::Result<()> {
         self.proc_environ = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
         Ok(())
@@ -493,7 +494,7 @@ impl CrashReport {
         None
     }
 
-    /// Add disassembly to the report
+    /// Add disassembly as strings
     ///
     /// # Arguments
     ///
@@ -679,16 +680,16 @@ impl fmt::Display for CrashReport {
     }
 }
 
-/// Deduplicate crash reports
+/// Deduplicate `CrashReport`'s
 ///
 /// # Arguments
 ///
-/// * `casreps` - slice of Casr reports
+/// * `casreps` - slice of `CrashReport`
 ///
 /// # Return value
 ///
-/// An vector of the same length as `casreps`.
-/// Vec\[i\] is false, if original casrep i is a duplicate of any element of `casreps`.
+/// An vector of the same length as `[CrashReport]`.
+/// Vec\[i\] is false, if original CrashReport i is a duplicate of any element of `[CrashReport]`.
 pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
     let traces: Vec<Stacktrace> = casreps
         .iter()
@@ -698,16 +699,16 @@ pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
     Ok(dedup_stacktraces(&traces))
 }
 
-/// Perform the clustering of casreps
+/// Perform the clustering of `CrashReport`'s
 ///
 /// # Arguments
 ///
-/// * `casreps` - slice of Casr reports
+/// * `casreps` - slice of `CrashReport`
 ///
 /// # Return value
 ///
-/// An vector of the same length as `casreps`.
-/// Vec\[i\] is the flat cluster number to which original casrep i belongs.
+/// An vector of the same length as `[CrashReport]`
+/// Vec\[i\] is the flat cluster number to which original `CrashReport` i belongs.
 pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<u32>> {
     let traces: Vec<Stacktrace> = casreps
         .iter()

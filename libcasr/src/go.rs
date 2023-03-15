@@ -1,5 +1,4 @@
-//! Module implements `ParseStacktrace` and `Exception` traits for Go
-
+//! Go module implements `ParseStacktrace` and `Exception` traits for Go panic output.
 use crate::exception::Exception;
 use crate::stacktrace::ParseStacktrace;
 

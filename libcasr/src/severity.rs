@@ -1,3 +1,4 @@
+//! Provides `Severity` trait.
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
 

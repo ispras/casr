@@ -1,3 +1,4 @@
+//! A custom Casr error.
 use std::fmt;
 use std::io;
 use std::result;
