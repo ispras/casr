@@ -256,3 +256,14 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*libubsan\.so",
     r".*asan_with_fuzzer\.so",
 ];
+
+// Signal numbers
+pub const SIGINFO_SIGILL: u32 = 4;
+pub const SIGINFO_SIGTRAP: u32 = 5;
+pub const SIGINFO_SIGABRT: u32 = 6;
+pub const SIGINFO_SIGBUS: u32 = 7;
+pub const SIGINFO_SIGFPE: u32 = 8;
+pub const SIGINFO_SIGSEGV: u32 = 11;
+pub const SIGINFO_SIGSYS: u32 = 31;
+
+pub const SI_KERNEL: u32 = 0x80;

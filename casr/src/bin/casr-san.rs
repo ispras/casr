@@ -187,20 +187,19 @@ fn main() -> Result<()> {
             if let Some(signal) = sanitizers_result.status.signal() {
                 // Get stack trace and mappings from gdb.
                 match signal as u32 {
-                    // SIGILL, SIGSYS
-                    4 | 31 => {
+                    SIGINFO_SIGILL | SIGINFO_SIGSYS => {
                         report.execution_class = ExecutionClass::find("BadInstruction").unwrap();
                     }
                     // SIGTRAP
-                    5 => {
+                    SIGINFO_SIGTRAP => {
                         report.execution_class = ExecutionClass::find("TrapSignal").unwrap();
                     }
                     // SIGABRT
-                    6 => {
+                    SIGINFO_SIGABRT => {
                         report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
                     }
                     // SIGBUS, SIGSEGV
-                    7 | 11 => {
+                    SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
                         eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
                         exploitability. Try using casr-gdb instead.");
                         report.execution_class = ExecutionClass::find("AccessViolation").unwrap();
