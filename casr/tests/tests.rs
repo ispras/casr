@@ -8,6 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::RwLock;
+use libcasr::stacktrace::ParseStacktrace;
 
 lazy_static::lazy_static! {
     static ref EXE_CASR_CORE: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-core"));
@@ -3507,7 +3508,7 @@ fn test_asan_stacktrace() {
         .iter()
         .map(|e| e.to_string())
         .collect::<Vec<String>>();
-    let sttr = casr::asan::AsanStacktrace::parse_stacktrace(&trace);
+    let sttr = libcasr::asan::AsanStacktrace::parse_stacktrace(&trace);
     if sttr.is_err() {
         panic!("{}", sttr.err().unwrap());
     }
