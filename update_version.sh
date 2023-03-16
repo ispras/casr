@@ -6,10 +6,12 @@ if [ "$#" -ne 2 ]; then
 fi
 
 sed -i "s/version = \"$1\"/version = \"$2\"/g" Cargo.toml
-sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-core.rs
-sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-cli.rs
-sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-cluster.rs
-sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-san.rs
-sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-gdb.rs
-sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-afl.rs
-sed -i "s/\"$1\"/\"$2\"/g" src/bin/casr-python.rs
+sed -i "s/version = \"$1\"/version = \"$2\"/g" casr/Cargo.toml
+sed -i "s/version = \"$1\"/version = \"$2\"/g" libcasr/Cargo.toml
+sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-core.rs
+sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-cli.rs
+sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-cluster.rs
+sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-san.rs
+sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-gdb.rs
+sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-afl.rs
+sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-python.rs

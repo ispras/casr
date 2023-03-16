@@ -1,3 +1,5 @@
-/target
+target
 Cargo.lock
-tests/tmp_tests_casr
+*/target
+*/Cargo.lock
+*/tests/tmp_tests_casr
