@@ -107,7 +107,7 @@ impl Exception for PythonException {
             .find_map(|x| re.captures(x))
             .map(|cap| {
                 ExecutionClass::new((
-                    "UNDEFINED",
+                    "NOT_EXPLOITABLE",
                     cap.get(1).unwrap().as_str(),
                     cap.get(2).unwrap().as_str(),
                     "",

@@ -90,8 +90,3 @@ Lists of classes:
 28. **out-of-memory**. The target has exceeded the memory limit.
 29. **fuzz target exited**. Fuzz target exited.
 30. **timeout**. Timeout after several seconds.
-
-## UNDEFINED
-
-Classes with undefined severity. 
-Now it is used for python exception. 
