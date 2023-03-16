@@ -3083,7 +3083,7 @@ fn test_casr_python() {
             .to_string();
 
         assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
-        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "ZeroDivisionError");
         assert!(report["CrashLine"]
             .as_str()
@@ -3118,7 +3118,7 @@ fn test_casr_python_atheris() {
             .to_string();
 
         assert_eq!(2, report["Stacktrace"].as_array().unwrap().iter().count());
-        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "ZeroDivisionError");
         assert!(report["CrashLine"]
             .as_str()
