@@ -1,4 +1,4 @@
-//! Constants for stack trace filtering.
+//! Constants for signals and stack trace filtering.
 /* Copyright 2020 Google LLC
 Modifications copyright (C) 2023 ISP RAS
 

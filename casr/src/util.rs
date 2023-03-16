@@ -1,3 +1,4 @@
+//! Common utility functions.
 extern crate libcasr;
 
 use libcasr::report::CrashReport;
