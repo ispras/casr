@@ -6,8 +6,9 @@ use libcasr::stacktrace::ParseStacktrace;
 use regex::Regex;
 use serde_json::Value;
 use std::fs;
-use std::path::PathBuf;
-use std::process::Command;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
