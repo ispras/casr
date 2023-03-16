@@ -31,9 +31,12 @@ Triage is based on stack trace comparison from [gdb-command](https://github.com/
 Explanation of severity classes could be found [here](docs/classes.md).
 You could take a closer look at usage details [here](docs/usage.md).
 
+![casr_report](docs/images/casr_report.png)
+
 ### LibCASR
+
 LibCASR provides API for parsing stacktraces, collecting crash reports,
-triaging crashes (deduplication and clustering) and estimating severity of
+triaging crashes (deduplication and clustering), and estimating severity of
 crashes.
 
 It can analyze crashes from different sources:
@@ -48,7 +51,8 @@ and program languages:
 * Go
 * Python
 
-![casr_report](docs/images/casr_report.png)
+It could be built with `exploitable` feature for severity estimation crashes
+collected from gdb. To save crash reports as json use `serde` feature.
 
 ## Getting started
 
