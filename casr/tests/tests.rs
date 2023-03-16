@@ -2,13 +2,13 @@ extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
 
+use libcasr::stacktrace::ParseStacktrace;
 use regex::Regex;
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::RwLock;
-use libcasr::stacktrace::ParseStacktrace;
 
 lazy_static::lazy_static! {
     static ref EXE_CASR_CORE: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-core"));
