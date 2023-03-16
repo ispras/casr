@@ -26,7 +26,7 @@ Create CASR reports (.casrep) from gdb execution
 
 Example:
 
-    $ casr-gdb -o destAv.gdb.casrep -- tests/casr_tests/bin/test_destAv $(printf 'A%.s' {1..200})
+    $ casr-gdb -o destAv.gdb.casrep -- casr/tests/casr_tests/bin/test_destAv $(printf 'A%.s' {1..200})
 
 ## casr-san
 
@@ -50,7 +50,7 @@ Create CASR reports (.casrep) from sanitizer reports
 
 Compile binary with ASAN:
 
-    $ clang++ -fsanitize=address -O0 -g tests/casr_tests/test_asan_df.cpp -o test_asan_df
+    $ clang++ -fsanitize=address -O0 -g casr/tests/casr_tests/test_asan_df.cpp -o test_asan_df
 
 Run casr-san:
 
@@ -78,7 +78,7 @@ Create CASR reports (.casrep) from python reports
 
 Example:
 
-    $ casr-python -o python.casrep -- tests/casr_tests/python/test_casr_python.py
+    $ casr-python -o python.casrep -- casr/tests/casr_tests/python/test_casr_python.py
 
 ## casr-core
 
@@ -104,7 +104,7 @@ may create report when you already have a coredump file.
 
 Example:
 
-    $ casr-core -f tests/casr_tests/bin/core.test_destAv -e tests/casr_tests/bin/test_destAv -o destAv.casrep
+    $ casr-core -f casr/tests/casr_tests/bin/core.test_destAv -e casr/tests/casr_tests/bin/test_destAv -o destAv.casrep
 
 In online mode `casr-core` could intercept crashes via core\_pattern. You
 should do the following steps.
@@ -123,7 +123,7 @@ Set core ulimit to unlimited or another non-zero value:
 
 To test just crash some programs:
 
-    $ cd tests/casr_tests/bin && ./run.sh
+    $ cd casr/tests/casr_tests/bin && ./run.sh
 
 Reports and coredumps will be stored in `/var/crash` directory.
 
@@ -172,7 +172,7 @@ reports.
 
 Example:
 
-    $ casr-cluster -d tests/casr_tests/casrep/test_clustering_gdb out-dedup
+    $ casr-cluster -d casr/tests/casr_tests/casrep/test_clustering_gdb out-dedup
     $ casr-cluster -c out-dedup out-cluster
 
 After clustering result directory will have the following structure:
@@ -245,7 +245,7 @@ There are three view modes: tree, slider (list), and stdout. In stdout mode
 
 Example:
 
-    $ casr-cli tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
+    $ casr-cli casr/tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
 
 Joint statistics about crash clusters:
 
@@ -280,9 +280,9 @@ disassembly, and even source code fragment where crash appeared.
 
 Example (Ubuntu 20.04+):
 
-    $ cp tests/casr_tests/bin/load_afl /tmp/load_afl
-    $ cp tests/casr_tests/bin/load_sydr /tmp/load_sydr
-    $ casr-afl -i tests/casr_tests/bin/afl-out-xlnt -o tests/tmp_tests_casr/casr_afl_out
+    $ cp casr/tests/casr_tests/bin/load_afl /tmp/load_afl
+    $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
+    $ casr-afl -i casr/tests/casr_tests/bin/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
 
     $ tree tests/tmp_tests_casr/casr_afl_out
     tests/tmp_tests_casr/casr_afl_out
