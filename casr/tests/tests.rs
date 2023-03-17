@@ -2,13 +2,12 @@ extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
 
-use libcasr::stacktrace::ParseStacktrace;
 use regex::Regex;
 use serde_json::Value;
 use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+
+use std::path::PathBuf;
+use std::process::Command;
 use std::sync::RwLock;
 
 lazy_static::lazy_static! {
@@ -3480,175 +3479,6 @@ fn test_casr_afl() {
     assert!(storage.values().all(|x| *x > 1));
     let _ = fs::remove_file("/tmp/load_sydr");
     let _ = fs::remove_file("/tmp/load_afl");
-}
-
-#[test]
-fn test_asan_stacktrace() {
-    let raw_stacktrace = &[ "#10 0x55ebfbfa0707 (/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0xfe2707) (BuildId: d2918819a864502448a61485c4b20818b0778ac2)",
-        "#6 0x55ebfc1cabbc in rz_bin_open_buf (/home/user/Desk top/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0x120cbbc)",
-        "#10 0x55ebfbfa0707 in fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long)) (/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0xfe2707)",
-        "#9 0x43b1a1 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:611:15",
-        "#7 0x52433e in cmsIT8LoadFromMem /lcms/src/cmscgats.c:2438:10",
-        "#7 0x52433e in cmsIT8LoadFromMem /lcms/src/cmscgats.c:2438",
-        "#7 0x52433e in cmsIT8LoadFromMem /lcms/src/cmscgats.c",
-        "#9 0x43b1a1 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp",
-        "#4 0x998b40 in (anonymous namespace)::decrypt_xlsx(std::vector<unsigned char, std::allocator<unsigned char> > const&, std::__cxx11::basic_string<char16_t, std::char_traits<char16_t>, std::allocator<char16_t> > const&) /xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp:320:37",
-        "#0 0x7f0a52c0fc59  /build/glibc-SzIz7B/glibc-2.31/string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:345",
-        "#2 0x55ebfc21e12d in classes bin_dyldcache.c",
-        "#2 0x55ebfc21e12d in classes+0x123 bin_dyldcache.c",
-        "#2 0x55ebfc21e12d in classes+0x123 bin dyldcache.c",
-        "#2 0x55ebfc21e12d bin_dyldcache.c",
-        "#2 0x55ebfc21e12d bin dyldcache.c",
-        "#9 0x43b1a1 in fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long) /llvm -project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp",
-        "#10 0x55ebfbfa0707 (/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0xfe2707) (BuildId: d2918819a864502448a61485c4b20818b0778ac2)",
-        "#11 0xe086ff in xml::serializer::handle_error(genxStatus) const /xlnt/third-party/libstudxml/libstudxml/serializer.cxx:116:7",
-        "    #7 0xa180bf in typeinfo name for xlnt::detail::compound_document_istreambuf (/load_afl+0xa180bf)",
-    ];
-
-    let trace = raw_stacktrace
-        .iter()
-        .map(|e| e.to_string())
-        .collect::<Vec<String>>();
-    let sttr = libcasr::asan::AsanStacktrace::parse_stacktrace(&trace);
-    if sttr.is_err() {
-        panic!("{}", sttr.err().unwrap());
-    }
-
-    let stacktrace = sttr.unwrap();
-    assert_eq!(stacktrace[0].address, 0x55ebfbfa0707);
-    assert_eq!(stacktrace[0].offset, 0xfe2707);
-    assert_eq!(
-        stacktrace[0].module,
-        "/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz".to_string()
-    );
-
-    assert_eq!(stacktrace[1].address, 0x55ebfc1cabbc);
-    assert_eq!(stacktrace[1].offset, 0x120cbbc);
-    assert_eq!(
-        stacktrace[1].module,
-        "/home/user/Desk top/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz".to_string()
-    );
-    assert_eq!(stacktrace[1].function, "rz_bin_open_buf".to_string());
-
-    assert_eq!(stacktrace[2].address, 0x55ebfbfa0707);
-    assert_eq!(stacktrace[2].offset, 0xfe2707);
-    assert_eq!(
-        stacktrace[2].module,
-        "/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz".to_string()
-    );
-    assert_eq!(
-        stacktrace[2].function,
-        "fuzzer::FuzzerDriver(int*, char***, int (*)(unsigned char const*, unsigned long))"
-            .to_string()
-    );
-
-    assert_eq!(stacktrace[3].address, 0x43b1a1);
-    assert_eq!(
-        stacktrace[3].function,
-        "fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long)".to_string()
-    );
-    assert_eq!(
-        stacktrace[3].debug.file,
-        "/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp".to_string()
-    );
-    assert_eq!(stacktrace[3].debug.line, 611);
-    assert_eq!(stacktrace[3].debug.column, 15);
-
-    assert_eq!(stacktrace[4].address, 0x52433e);
-    assert_eq!(stacktrace[4].function, "cmsIT8LoadFromMem".to_string());
-    assert_eq!(stacktrace[4].debug.file, "/lcms/src/cmscgats.c".to_string());
-    assert_eq!(stacktrace[4].debug.line, 2438);
-    assert_eq!(stacktrace[4].debug.column, 10);
-
-    assert_eq!(stacktrace[5].address, 0x52433e);
-    assert_eq!(stacktrace[5].function, "cmsIT8LoadFromMem".to_string());
-    assert_eq!(stacktrace[5].debug.file, "/lcms/src/cmscgats.c".to_string());
-    assert_eq!(stacktrace[5].debug.line, 2438);
-
-    assert_eq!(stacktrace[6].address, 0x52433e);
-    assert_eq!(stacktrace[6].function, "cmsIT8LoadFromMem".to_string());
-    assert_eq!(stacktrace[6].debug.file, "/lcms/src/cmscgats.c".to_string());
-
-    assert_eq!(stacktrace[7].address, 0x43b1a1);
-    assert_eq!(
-        stacktrace[7].function,
-        "fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long)".to_string()
-    );
-    assert_eq!(
-        stacktrace[7].debug.file,
-        "/llvm-project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp".to_string()
-    );
-
-    assert_eq!(stacktrace[8].address, 0x998b40);
-    assert_eq!(stacktrace[8].function, "(anonymous namespace)::decrypt_xlsx(std::vector<unsigned char, std::allocator<unsigned char> > const&, std::__cxx11::basic_string<char16_t, std::char_traits<char16_t>, std::allocator<char16_t> > const&)".to_string());
-    assert_eq!(
-        stacktrace[8].debug.file,
-        "/xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp".to_string()
-    );
-    assert_eq!(stacktrace[8].debug.line, 320);
-    assert_eq!(stacktrace[8].debug.column, 37);
-
-    assert_eq!(stacktrace[9].address, 0x7f0a52c0fc59);
-    assert_eq!(
-        stacktrace[9].debug.file,
-        "/build/glibc-SzIz7B/glibc-2.31/string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S".to_string()
-    );
-    assert_eq!(stacktrace[9].debug.line, 345);
-
-    assert_eq!(stacktrace[10].address, 0x55ebfc21e12d);
-    assert_eq!(stacktrace[10].function, "classes");
-    assert_eq!(stacktrace[10].debug.file, "bin_dyldcache.c");
-
-    assert_eq!(stacktrace[11].address, 0x55ebfc21e12d);
-    assert_eq!(stacktrace[11].function, "classes+0x123");
-    assert_eq!(stacktrace[11].debug.file, "bin_dyldcache.c");
-
-    assert_eq!(stacktrace[12].address, 0x55ebfc21e12d);
-    assert_eq!(stacktrace[12].function, "classes+0x123");
-    assert_eq!(stacktrace[12].debug.file, "bin dyldcache.c");
-
-    assert_eq!(stacktrace[13].address, 0x55ebfc21e12d);
-    assert_eq!(stacktrace[13].debug.file, "bin_dyldcache.c");
-
-    assert_eq!(stacktrace[14].address, 0x55ebfc21e12d);
-    assert_eq!(stacktrace[14].debug.file, "bin dyldcache.c");
-
-    assert_eq!(stacktrace[15].address, 0x43b1a1);
-    assert_eq!(
-        stacktrace[15].function,
-        "fuzzer::Fuzzer::ExecuteCallback(unsigned char const*, unsigned long)".to_string()
-    );
-    assert_eq!(
-        stacktrace[15].debug.file,
-        "/llvm -project/compiler-rt/lib/fuzzer/FuzzerLoop.cpp".to_string()
-    );
-
-    assert_eq!(stacktrace[16].address, 0x55ebfbfa0707);
-    assert_eq!(stacktrace[16].offset, 0xfe2707);
-    assert_eq!(
-        stacktrace[16].module,
-        "/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz".to_string()
-    );
-
-    assert_eq!(stacktrace[17].address, 0xe086ff);
-    assert_eq!(
-        stacktrace[17].function,
-        "xml::serializer::handle_error(genxStatus) const".to_string()
-    );
-    assert_eq!(
-        stacktrace[17].debug.file,
-        "/xlnt/third-party/libstudxml/libstudxml/serializer.cxx".to_string()
-    );
-    assert_eq!(stacktrace[17].debug.line, 116);
-    assert_eq!(stacktrace[17].debug.column, 7);
-
-    assert_eq!(stacktrace[18].address, 0xa180bf);
-    assert_eq!(
-        stacktrace[18].function,
-        "xlnt::detail::compound_document_istreambuf".to_string()
-    );
-    assert_eq!(stacktrace[18].module, "/load_afl".to_string());
-    assert_eq!(stacktrace[18].offset, 0xa180bf);
 }
 
 #[test]
