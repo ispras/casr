@@ -578,6 +578,11 @@ impl fmt::Display for CrashReport {
             report += &format!("\nProcCmdline: {}\n", &self.proc_cmdline);
         }
 
+        // Stdin
+        if !self.stdin.is_empty() {
+            report += &format!("\nStdin: {}\n", &self.stdin);
+        }
+
         // ProcStatus
         if !self.proc_status.is_empty() {
             report += "\n===ProcStatus===\n";
