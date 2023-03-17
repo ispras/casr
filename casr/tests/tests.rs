@@ -7,7 +7,7 @@ use serde_json::Value;
 use std::fs;
 
 use std::io::Write;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::RwLock;
 
