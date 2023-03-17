@@ -245,6 +245,7 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*Inline Function @",
     r"^<unknown>$",
     r"^\[vdso\]$",
+    r"^linux-vdso.so.*$",
     r"^linux-gate.so.*$",
     r".*libc\.so",
     r".*libc\+\+\.so",
