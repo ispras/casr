@@ -140,6 +140,9 @@ fn main() -> Result<()> {
     if sanitizers_stderr.contains("AddressSanitizer: hard rss limit exhausted") {
         bail!("Out of memory: hard_rss_limit_mb exhausted");
     }
+    if sanitizers_stderr.contains("AddressSanitizer: out-of-memory") {
+        bail!("Out of memory");
+    }
 
     // Create report.
     let mut report = CrashReport::new();
