@@ -1,5 +1,5 @@
 [workspace.package]
-version = "2.4.0"
+version = "2.5.0"
 authors = ["Andrey Fedotov  <fedotoff@ispras.ru>", "Alexey Vishnyakov <vishnya@ispras.ru>", "Georgy Savidov <avgor46@ispras.ru>"]
 
 [workspace]

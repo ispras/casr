@@ -35,7 +35,7 @@ use libcasr::severity::Severity;
 
 fn main() -> Result<()> {
     let matches = App::new("casr-core")
-        .version("2.4.0")
+        .version("2.5.0")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Analyze coredump for security goals and provide detailed report with severity estimation")
         .term_width(90)

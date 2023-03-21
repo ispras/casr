@@ -34,7 +34,7 @@ use std::process::Command;
 
 fn main() -> Result<()> {
     let matches = App::new("casr-san")
-        .version("2.4.0")
+        .version("2.5.0")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Create CASR reports (.casrep) from sanitizer reports")
         .term_width(90)
