@@ -239,13 +239,19 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
     }
 
     if !badrepidxs.is_empty() {
-        let clerr = outdir.unwrap_or_else(|| indir.to_path_buf()).join("clerr");
+        let clerr = outdir
+            .clone()
+            .unwrap_or_else(|| indir.to_path_buf())
+            .join("clerr");
         fs::create_dir_all(&clerr)?;
         for &index in badrepidxs.iter() {
             fs::copy(
                 &paths[index],
                 clerr.join(paths[index].file_name().unwrap().to_str().unwrap()),
             )?;
+            if outdir.is_none() {
+                fs::remove_file(&paths[index])?;
+            }
         }
     }
 
