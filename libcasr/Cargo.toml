@@ -25,3 +25,6 @@ thiserror = "~1.0"
 [features]
 exploitable = ["dep:capstone", "dep:goblin"]
 serde = ["dep:serde_json", "dep:serde"]
+
+[package.metadata.docs.rs]
+features = ["exploitable", "serde"]

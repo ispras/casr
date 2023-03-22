@@ -14,6 +14,7 @@
 //! * Rust
 //! * Go
 //! * Python
+//!
 //! It could be built with `exploitable` feature for severity estimation crashes
 //! collected from gdb. To save crash reports as json use `serde` feature.
 
