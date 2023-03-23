@@ -126,7 +126,7 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
     }
 
     if stacktraces.len() < 2 {
-        bail!("{} valid reports, nothing to cluster...", len);
+        bail!("{} valid reports, nothing to cluster...", stacktraces.len());
     }
 
     let clusters = cluster_stacktraces(&stacktraces)?;
