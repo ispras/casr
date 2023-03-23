@@ -111,6 +111,24 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
     let casreps = filtered_casreps.read().unwrap();
     let badreports = badreports.get_mut().unwrap();
 
+    if !badreports.is_empty() {
+        fs::create_dir_all(format!("{}/clerr", &outpath.display()))?;
+        for report in badreports {
+            fs::copy(
+                &report,
+                format!(
+                    "{}/clerr/{}",
+                    &outpath.display(),
+                    &report.file_name().unwrap().to_str().unwrap()
+                ),
+            )?;
+        }
+    }
+
+    if stacktraces.len() < 2 {
+        bail!("{} valid reports, nothing to cluster...", len);
+    }
+
     let clusters = cluster_stacktraces(&stacktraces)?;
 
     // Cluster formation
@@ -128,19 +146,6 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
                 &casreps[i].file_name().unwrap().to_str().unwrap()
             ),
         )?;
-    }
-    if !badreports.is_empty() {
-        fs::create_dir_all(format!("{}/clerr", &outpath.display()))?;
-        for report in badreports {
-            fs::copy(
-                &report,
-                format!(
-                    "{}/clerr/{}",
-                    &outpath.display(),
-                    &report.file_name().unwrap().to_str().unwrap()
-                ),
-            )?;
-        }
     }
     Ok(cluster_cnt)
 }
