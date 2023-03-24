@@ -99,8 +99,12 @@ fn main() -> Result<()> {
     };
     let _ = TermLogger::init(
         log_level,
-        ConfigBuilder::new().set_time_to_local(true).build(),
+        ConfigBuilder::new()
+            .set_time_offset_to_local()
+            .unwrap()
+            .build(),
         TerminalMode::Stderr,
+        ColorChoice::Auto,
     );
 
     let output_dir = Path::new(matches.value_of("output").unwrap());
