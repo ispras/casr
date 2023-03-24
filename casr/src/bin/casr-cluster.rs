@@ -227,6 +227,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
                         &paths[true_idx],
                         Path::new(&outdir).join(paths[true_idx].file_name().unwrap()),
                     )?;
+                    after += 1;
                 }
                 Ok::<(), anyhow::Error>(())
             })?;
@@ -238,6 +239,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
                 if !result[res_idx] {
                     fs::remove_file(&paths[true_idx])
                 } else {
+                    after += 1;
                     Ok(())
                 }
             })?;
@@ -261,7 +263,6 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
     }
 
     before += paths.len();
-    after += result.iter().fold(0, |acc, &x| acc + x as usize);
 
     Ok((before, after))
 }
