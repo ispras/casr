@@ -169,7 +169,10 @@ fn main() -> Result<()> {
     // Online mode.
     WriteLogger::init(
         LevelFilter::Info,
-        ConfigBuilder::new().set_time_to_local(true).build(),
+        ConfigBuilder::new()
+            .set_time_offset_to_local()
+            .unwrap()
+            .build(),
         OpenOptions::new()
             .append(true)
             .create(true)
