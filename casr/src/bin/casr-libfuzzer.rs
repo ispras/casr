@@ -11,29 +11,15 @@ use anyhow::{bail, Context, Result};
 use clap::{App, Arg};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
-#[derive(Debug, Clone, Default)]
-/// Information about crash to reproduce it.
-struct AflCrashInfo {
-    /// Path to crash input.
-    pub path: PathBuf,
-    /// Target command line args.
-    pub target_args: Vec<String>,
-    /// Input index, None for stdin.
-    pub at_index: Option<usize>,
-    /// ASAN.
-    pub is_asan: bool,
-}
-
 fn main() -> Result<()> {
-    let matches = App::new("casr-afl")
+    let matches = App::new("casr-libfuzzer")
         .version("2.5.1")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
-        .about("Triage crashes found by AFL++")
+        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>, Ilya Yegorov <Yegorov_Ilya@ispras.ru>")
+        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)")
         .term_width(90)
         .arg(
             Arg::new("log-level")
@@ -62,13 +48,13 @@ fn main() -> Result<()> {
                 .short('i')
                 .long("input")
                 .takes_value(true)
+                .default_value(".")
                 .value_name("INPUT_DIR")
-                .required(true)
-                .help("AFL++ work directory")
+                .help("Directory containing crashes found by libFuzzer")
                 .validator(|arg| {
                     let i_dir = Path::new(arg);
                     if !i_dir.exists() {
-                        bail!("Input directory doesn't exist.");
+                        bail!("Crash directory doesn't exist.");
                     }
                     if !i_dir.is_dir() {
                         bail!("Input path should be an AFL++ work directory.");
@@ -90,10 +76,22 @@ fn main() -> Result<()> {
                 .long("no-cluster")
                 .help("Do not cluster CASR reports")
         )
+        .arg(
+            Arg::new("ARGS")
+                .multiple_values(true)
+                .takes_value(true)
+                .last(true)
+                .help("Add \"-- ./fuzz_target <arguments>\""),
+        )
         .get_matches();
 
     // Init log.
     util::initialize_logging(&matches);
+
+    let input_dir = Path::new(matches.value_of("input").unwrap());
+    if !input_dir.exists() {
+        bail!("Input directory does not exist.");
+    }
 
     let output_dir = Path::new(matches.value_of("output").unwrap());
     if !output_dir.exists() {
@@ -104,69 +102,26 @@ fn main() -> Result<()> {
         bail!("Output directory is not empty.");
     }
 
+    // Get fuzz target args.
+    let argv: Vec<&str> = if let Some(argvs) = matches.values_of("ARGS") {
+        argvs.collect()
+    } else {
+        bail!("Invalid fuzz target arguments");
+    };
+
     // Get all crashes.
-    let mut crashes: HashMap<String, AflCrashInfo> = HashMap::new();
-    for node_dir in fs::read_dir(matches.value_of("input").unwrap())? {
-        let path = node_dir?.path();
-        if !path.is_dir() {
-            continue;
-        }
-
-        // Get crashes from one node.
-        let mut crash_info = AflCrashInfo::default();
-        let cmdline_path = path.join("cmdline");
-        if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
-            crash_info.target_args = cmdline.split_whitespace().map(|s| s.to_string()).collect();
-            crash_info.at_index = crash_info
-                .target_args
-                .iter()
-                .skip(1)
-                .position(|s| s.contains("@@"));
-
-            if let Some(target) = crash_info.target_args.first() {
-                if let Ok(buffer) = fs::read(Path::new(target)) {
-                    if let Ok(elf) = goblin::elf::Elf::parse(&buffer) {
-                        for sym in elf.syms.iter() {
-                            if let Some(name) = elf.strtab.get_at(sym.st_name) {
-                                if name.contains("__asan") {
-                                    crash_info.is_asan = true;
-                                    break;
-                                }
-                            }
-                        }
-                    } else {
-                        error!("Fuzz target: {} must be an ELF executable.", target);
-                        continue;
-                    }
-                } else {
-                    error!("Couldn't read fuzz target binary: {}.", target);
-                    continue;
-                }
-            } else {
-                error!("{} is empty.", cmdline);
-                continue;
-            }
-        } else {
-            error!("Couldn't read {}.", cmdline_path.display());
-            continue;
-        }
-
-        // Push crash paths.
-        for crash in fs::read_dir(path.join("crashes"))? {
-            let crash_path = crash?.path();
-            let fname = crash_path
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string();
-
-            if fname.starts_with("id:") {
-                crash_info.path = crash_path.to_path_buf();
-                crashes.insert(fname, crash_info.clone());
-            }
-        }
-    }
+    let crashes: Vec<_> = fs::read_dir(input_dir)?
+        .flatten()
+        .map(|p| p.path())
+        .filter(|p| p.is_file())
+        .map(|p| {
+            (
+                p.clone(),
+                p.file_name().unwrap().to_str().unwrap().to_string(),
+            )
+        })
+        .filter(|(_, fname)| fname.starts_with("crash-") || fname.starts_with("leak-"))
+        .collect();
 
     let jobs = if let Some(jobs) = matches.value_of("jobs") {
         jobs.parse::<usize>().unwrap()
@@ -183,33 +138,16 @@ fn main() -> Result<()> {
     info!("Generating CASR reports...");
     info!("Using {} threads", num_of_threads);
     custom_pool.install(|| {
-        crashes.par_iter().try_for_each(|(_, crash)| {
-            let mut args: Vec<String> = vec!["-o".to_string()];
-            let report_path = output_dir.join(crash.path.file_name().unwrap());
-            if crash.is_asan {
-                args.push(format!("{}.casrep", report_path.display()));
-            } else {
-                args.push(format!("{}.gdb.casrep", report_path.display()));
-            }
-
-            if let Some(at_index) = crash.at_index {
-                args.push("--".to_string());
-                args.extend_from_slice(&crash.target_args);
-                let input = args[at_index + 4].replace("@@", crash.path.to_str().unwrap());
-                args[at_index + 4] = input;
-            } else {
-                args.push("--stdin".to_string());
-                args.push(crash.path.to_str().unwrap().to_string());
-                args.push("--".to_string());
-                args.extend_from_slice(&crash.target_args);
-            }
-            let tool = if crash.is_asan {
-                "casr-san"
-            } else {
-                "casr-gdb"
-            };
-            let mut casr_cmd = Command::new(tool);
-            casr_cmd.args(&args);
+        crashes.par_iter().try_for_each(|(crash, fname)| {
+            // TODO: Atheris
+            let mut casr_cmd = Command::new("casr-san");
+            casr_cmd.args([
+                "-o",
+                format!("{}.casrep", output_dir.join(fname).display()).as_str(),
+                "--",
+            ]);
+            casr_cmd.args(argv.clone());
+            casr_cmd.arg(crash);
             debug!("{:?}", casr_cmd);
             let casr_output = casr_cmd
                 .output()
@@ -217,9 +155,9 @@ fn main() -> Result<()> {
             if !casr_output.status.success() {
                 let err = String::from_utf8_lossy(&casr_output.stderr);
                 if err.contains("Program terminated (no crash)") {
-                    warn!("{}: no crash on input {}", tool, crash.path.display());
+                    warn!("casr-san: no crash on input {}", crash.display());
                 } else {
-                    error!("{} for input: {}", err, crash.path.display());
+                    error!("{} for input: {}", err, crash.display());
                 }
             }
             Ok::<(), anyhow::Error>(())
@@ -289,7 +227,7 @@ fn main() -> Result<()> {
     }
 
     // Copy crashes next to reports
-    copy_crashes(output_dir, &crashes)?;
+    copy_crashes(input_dir, output_dir)?;
 
     // print summary
     let status = Command::new("casr-cli")
@@ -310,20 +248,15 @@ fn main() -> Result<()> {
 ///
 /// # Arguments
 ///
-/// `dir` - directory with casr reports
-fn copy_crashes(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<()> {
-    for e in fs::read_dir(dir)?.flatten().map(|x| x.path()) {
+/// `input` - directory containing crashes found by libFuzzer
+/// `output` - output directory with triaged reports
+fn copy_crashes(input: &Path, output: &Path) -> Result<()> {
+    for e in fs::read_dir(output)?.flatten().map(|x| x.path()) {
         if e.is_dir() && e.file_name().unwrap().to_str().unwrap().starts_with("cl") {
-            copy_crashes(&e, crashes)?;
+            copy_crashes(input, &e)?;
         } else if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
-            let mut e = e.with_extension("");
-            if e.extension().is_some() && e.extension().unwrap() == "gdb" {
-                e = e.with_extension("");
-            }
-            let fname = e.file_name().unwrap().to_str().unwrap();
-            if let Some(crash) = crashes.get(fname) {
-                let _ = fs::copy(&crash.path, e);
-            }
+            let e = e.with_extension("");
+            let _ = fs::copy(input.join(e.file_name().unwrap()), e);
         }
     }
 

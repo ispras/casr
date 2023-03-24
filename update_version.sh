@@ -15,3 +15,4 @@ sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-san.rs
 sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-gdb.rs
 sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-afl.rs
 sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-python.rs
+sed -i "s/\"$1\"/\"$2\"/g" casr/src/bin/casr-libfuzzer.rs
