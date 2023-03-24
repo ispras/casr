@@ -70,7 +70,6 @@ pub struct CrashReport {
     #[cfg_attr(feature = "serde", serde(default))]
     pub executable_path: String,
     /// Subset of the process’ environment, from /proc/pid/env; this should only show some standard variables that.
-    // TODO: Do not disclose potentially sensitive information, like $SHELL, $PATH, $LANG, and $LC_*
     #[cfg_attr(
         feature = "serde",
         serde(rename(serialize = "ProcEnviron", deserialize = "ProcEnviron"))
@@ -242,6 +241,7 @@ impl CrashReport {
 
         Ok(())
     }
+
     /// Add information about operation system
     pub fn add_os_info(&mut self) -> error::Result<()> {
         // Get os and os release.
@@ -282,6 +282,19 @@ impl CrashReport {
 
         Ok(())
     }
+
+    /// Anonymize environment variables.
+    fn anonymize_env(&mut self) {
+        // TODO: Add more.
+        let sensitive = Regex::new(concat!(
+            "^CI=|^HOSTNAME=|^LOGNAME=|^USERNAME=|^LANG=|^SESSION_MANAGER=|",
+            "^XAUTHORITY=|^CI_|^GITLAB_|^FF_|^LC_|^SSH_|^XDG_|^GTK_|^GIO_|",
+            "^DESKTOP_|^DBUS_|^GNOME_|^TERMINATOR_|^GPG_",
+        ))
+        .unwrap();
+        self.proc_environ.retain(|e| !sensitive.is_match(e));
+    }
+
     /// Add information about running process
     pub fn add_proc_info(&mut self) -> error::Result<()> {
         // Get executable path.
@@ -377,12 +390,14 @@ impl CrashReport {
             .trim()
             .to_string();
         self.proc_environ = s.split_terminator('\n').map(|s| s.to_string()).collect();
+        self.anonymize_env();
         Ok(())
     }
 
     /// Add current process environment variables
     pub fn add_proc_environ(&mut self) -> error::Result<()> {
         self.proc_environ = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
+        self.anonymize_env();
         Ok(())
     }
 
