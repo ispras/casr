@@ -3,3 +3,4 @@ Cargo.lock
 */target
 */Cargo.lock
 */tests/tmp_tests_casr
+*.swp

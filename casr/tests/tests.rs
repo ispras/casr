@@ -1719,7 +1719,7 @@ fn test_div_by_zero_stdin_gdb() {
     // Test casr-san stdin
     let paths = [
         abs_path("tests/casr_tests/test_asan_stdin.cpp"),
-        abs_path("tests/casr_tests/bin/test_stdin"),
+        abs_path("tests/tmp_tests_casr/test_stdin"),
     ];
 
     let clang = Command::new("bash")
@@ -2296,7 +2296,7 @@ fn test_casr_cluster_s() {
 fn test_casr_gdb_exception() {
     let paths = [
         abs_path("tests/casr_tests/test_exception.cpp"),
-        abs_path("tests/casr_tests/bin/test_exception"),
+        abs_path("tests/tmp_tests_casr/test_exception"),
     ];
 
     let clang = Command::new("bash")
@@ -2572,7 +2572,7 @@ fn test_casr_san() {
     // Double free test
     let paths = [
         abs_path("tests/casr_tests/test_asan_df.cpp"),
-        abs_path("tests/casr_tests/bin/test_asan_df"),
+        abs_path("tests/tmp_tests_casr/test_asan_df"),
     ];
 
     let clang = Command::new("bash")
@@ -2636,7 +2636,7 @@ fn test_casr_san() {
     // Stack-buffer-overflow test
     let paths = [
         abs_path("tests/casr_tests/test_asan_sbo.cpp"),
-        abs_path("tests/casr_tests/bin/test_asan_sbo"),
+        abs_path("tests/tmp_tests_casr/test_asan_sbo"),
     ];
 
     let clang = Command::new("bash")
@@ -2737,7 +2737,7 @@ fn test_casr_san() {
     // Memory leaks test
     let paths = [
         abs_path("tests/casr_tests/test_asan_leak.cpp"),
-        abs_path("tests/casr_tests/bin/test_asan_leak"),
+        abs_path("tests/tmp_tests_casr/test_asan_leak"),
     ];
 
     let clang = Command::new("bash")
@@ -2797,7 +2797,7 @@ fn test_casr_san() {
     // Test casr-san stdin
     let paths = [
         abs_path("tests/casr_tests/test_asan_stdin.cpp"),
-        abs_path("tests/casr_tests/bin/test_asan_stdin"),
+        abs_path("tests/tmp_tests_casr/test_asan_stdin"),
     ];
 
     let clang = Command::new("bash")
@@ -2867,7 +2867,7 @@ fn test_casr_san() {
     // Test casr-san ASLR
     let paths = [
         abs_path("tests/casr_tests/test_asan_sbo.cpp"),
-        abs_path("tests/casr_tests/bin/test_asan_sbo"),
+        abs_path("tests/tmp_tests_casr/test_asan_sbo"),
     ];
 
     let clang = Command::new("bash")
@@ -2956,7 +2956,7 @@ fn test_casr_san() {
 fn test_casr_san_segf_near_null() {
     let paths = [
         abs_path("tests/casr_tests/test_asan_segf.cpp"),
-        abs_path("tests/casr_tests/bin/test_asan_segfnearnull"),
+        abs_path("tests/tmp_tests_casr/test_asan_segfnearnull"),
     ];
 
     let clang = Command::new("bash")
@@ -3056,7 +3056,7 @@ fn test_casr_san_segf_near_null() {
 fn test_casr_san_segf() {
     let paths = [
         abs_path("tests/casr_tests/test_asan_segf.cpp"),
-        abs_path("tests/casr_tests/bin/test_asan_segf"),
+        abs_path("tests/tmp_tests_casr/test_asan_segf"),
     ];
 
     let clang = Command::new("bash")
@@ -3155,7 +3155,7 @@ fn test_casr_san_segf() {
 fn test_casr_san_exception() {
     let paths = [
         abs_path("tests/casr_tests/test_exception.cpp"),
-        abs_path("tests/casr_tests/bin/test_asan_exception"),
+        abs_path("tests/tmp_tests_casr/test_asan_exception"),
     ];
 
     let clang = Command::new("bash")
@@ -3276,7 +3276,7 @@ fn test_casr_san_rust_panic() {
 fn test_casr_san_sigbus() {
     let paths = [
         abs_path("tests/casr_tests/test_sigbus.c"),
-        abs_path("tests/casr_tests/bin/test_asan_sigbus"),
+        abs_path("tests/tmp_tests_casr/test_asan_sigbus"),
     ];
 
     let clang = Command::new("bash")
@@ -3567,7 +3567,7 @@ fn test_casr_san_python_df() {
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
-    let test_dir = abs_path("tests/casr_tests/test_casr_san_python_df");
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_python_df");
 
     let output = Command::new("cp")
         .args(["-r", &work_dir, &test_dir])
@@ -3582,9 +3582,9 @@ fn test_casr_san_python_df() {
     );
 
     let paths = [
-        abs_path("tests/casr_tests/test_casr_san_python_df/cpp_module.cpp"),
-        abs_path("tests/casr_tests/test_casr_san_python_df/cpp_module.so"),
-        abs_path("tests/casr_tests/test_casr_san_python_df/test_casr_python_asan_df.py"),
+        abs_path("tests/tmp_tests_casr/test_casr_san_python_df/cpp_module.cpp"),
+        abs_path("tests/tmp_tests_casr/test_casr_san_python_df/cpp_module.so"),
+        abs_path("tests/tmp_tests_casr/test_casr_san_python_df/test_casr_python_asan_df.py"),
     ];
 
     let python_path = fs::read_dir("/usr/include")
@@ -3674,7 +3674,7 @@ fn test_casr_san_atheris_df() {
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
-    let test_dir = abs_path("tests/casr_tests/test_casr_san_atheris_df");
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df");
 
     let output = Command::new("cp")
         .args(["-r", &work_dir, &test_dir])
@@ -3689,10 +3689,12 @@ fn test_casr_san_atheris_df() {
     );
 
     let paths = [
-        abs_path("tests/casr_tests/test_casr_san_atheris_df/cpp_module.cpp"),
-        abs_path("tests/casr_tests/test_casr_san_atheris_df/cpp_module.so"),
-        abs_path("tests/casr_tests/test_casr_san_atheris_df/test_casr_python_asan_df_atheris.py"),
-        abs_path("tests/casr_tests/test_casr_san_atheris_df/crash"),
+        abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df/cpp_module.cpp"),
+        abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df/cpp_module.so"),
+        abs_path(
+            "tests/tmp_tests_casr/test_casr_san_atheris_df/test_casr_python_asan_df_atheris.py",
+        ),
+        abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df/crash"),
     ];
 
     let python_path = fs::read_dir("/usr/include")
@@ -3783,7 +3785,7 @@ fn test_casr_python_call_san_df() {
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
-    let test_dir = abs_path("tests/casr_tests/test_casr_python_call_san_df");
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df");
 
     let output = Command::new("cp")
         .args(["-r", &work_dir, &test_dir])
@@ -3798,9 +3800,9 @@ fn test_casr_python_call_san_df() {
     );
 
     let paths = [
-        abs_path("tests/casr_tests/test_casr_python_call_san_df/cpp_module.cpp"),
-        abs_path("tests/casr_tests/test_casr_python_call_san_df/cpp_module.so"),
-        abs_path("tests/casr_tests/test_casr_python_call_san_df/test_casr_python_asan_df.py"),
+        abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df/cpp_module.cpp"),
+        abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df/cpp_module.so"),
+        abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df/test_casr_python_asan_df.py"),
     ];
 
     let python_path = fs::read_dir("/usr/include")
