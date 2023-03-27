@@ -1,7 +1,7 @@
 [package]
 name = "libcasr"
 authors = ["Andrey Fedotov  <fedotoff@ispras.ru>", "Alexey Vishnyakov <vishnya@ispras.ru>", "Georgy Savidov <avgor46@ispras.ru>"]
-version = "2.5.0"
+version = "2.5.1"
 description = "Collect crash reports, triage, and estimate severity."
 keywords = ["gdb", "crash", "stacktrace", "triage", "coredump"]
 readme = "../README.md"

@@ -52,7 +52,7 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
 
 fn main() -> Result<()> {
     let matches = App::new("casr-python")
-        .version("2.5.0")
+        .version("2.5.1")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>, Ilya Yegorov <Yegorov_Ilya@ispras.ru>")
         .about("Create CASR reports (.casrep) from python reports")
         .term_width(90)
