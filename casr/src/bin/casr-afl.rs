@@ -219,7 +219,7 @@ fn main() -> Result<()> {
                 if err.contains("Program terminated (no crash)") {
                     warn!("{}: no crash on input {}", tool, crash.path.display());
                 } else {
-                    error!("{} for input: {}", err, crash.path.display());
+                    error!("{} for input: {}", err.trim(), crash.path.display());
                 }
             }
             Ok::<(), anyhow::Error>(())

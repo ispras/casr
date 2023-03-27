@@ -157,7 +157,7 @@ fn main() -> Result<()> {
                 if err.contains("Program terminated (no crash)") {
                     warn!("casr-san: no crash on input {}", crash.display());
                 } else {
-                    error!("{} for input: {}", err, crash.display());
+                    error!("{} for input: {}", err.trim(), crash.display());
                 }
             }
             Ok::<(), anyhow::Error>(())
