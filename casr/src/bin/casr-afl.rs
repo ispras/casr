@@ -185,7 +185,7 @@ fn main() -> Result<()> {
     } else {
         std::cmp::max(1, num_cpus::get() / 2)
     };
-    let num_of_threads = jobs.min(crashes.len());
+    let num_of_threads = jobs.min(crashes.len()).max(1);
     let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(num_of_threads)
         .build()
@@ -263,7 +263,14 @@ fn main() -> Result<()> {
     }
 
     if !matches.is_present("no-cluster") {
-        if output_dir.read_dir()?.count() < 2 {
+        if output_dir
+            .read_dir()?
+            .flatten()
+            .map(|e| e.path())
+            .filter(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
+            .count()
+            < 2
+        {
             info!("There are less than 2 CASR reports, nothing to cluster.");
             return Ok(());
         }
@@ -284,11 +291,10 @@ fn main() -> Result<()> {
         }
 
         // Remove reports from deduplication phase. They are in clusters now.
-        for casrep in fs::read_dir(output_dir)? {
-            let casrep_path = casrep?.path();
-            if let Some(ext) = casrep_path.extension() {
+        for casrep in fs::read_dir(output_dir)?.flatten().map(|e| e.path()) {
+            if let Some(ext) = casrep.extension() {
                 if ext == "casrep" {
-                    let _ = fs::remove_file(casrep_path);
+                    let _ = fs::remove_file(casrep);
                 }
             }
         }
@@ -318,13 +324,11 @@ fn main() -> Result<()> {
 ///
 /// `dir` - directory with casr reports
 fn copy_crashes(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<()> {
-    for entry in fs::read_dir(dir)? {
-        let mut e = entry?.path();
-        let fname = e.file_name().unwrap().to_str().unwrap();
-        if fname.starts_with("cl") && e.is_dir() {
+    for e in fs::read_dir(dir)?.flatten().map(|x| x.path()) {
+        if e.is_dir() && e.file_name().unwrap().to_str().unwrap().starts_with("cl") {
             copy_crashes(&e, crashes)?;
         } else if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
-            e = e.with_extension("");
+            let mut e = e.with_extension("");
             if e.extension().is_some() && e.extension().unwrap() == "gdb" {
                 e = e.with_extension("");
             }
