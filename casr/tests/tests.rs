@@ -14,6 +14,7 @@ use std::sync::RwLock;
 lazy_static::lazy_static! {
     static ref EXE_CASR_CORE: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-core"));
     static ref EXE_CASR_AFL: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-afl"));
+    static ref EXE_CASR_LIBFUZZER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-libfuzzer"));
     static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
     static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
     static ref EXE_CASR_PYTHON: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-python"));
@@ -3480,6 +3481,101 @@ fn test_casr_afl() {
     assert!(storage.values().all(|x| *x > 1));
     let _ = fs::remove_file("/tmp/load_sydr");
     let _ = fs::remove_file("/tmp/load_afl");
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_libfuzzer() {
+    use std::collections::HashMap;
+
+    let paths = [
+        abs_path("tests/casr_tests/casrep/libfuzzer_crashes"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_out"),
+        abs_path("tests/casr_tests/bin/load_fuzzer"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+
+    let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
+        .parent()
+        .unwrap();
+    let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
+    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2]])
+        .env(
+            "PATH",
+            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+        );
+    println!("CMD: {:?}", &cmd);
+    let output = cmd.output().expect("failed to start casr-libfuzzer");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let res = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!res.is_empty());
+
+    assert!(res.contains("casr-san: no crash on input"));
+    assert!(res.contains("Error: Out of memory for input"));
+    assert!(res.contains("EXPLOITABLE"));
+    assert!(res.contains("NOT_EXPLOITABLE"));
+    assert!(res.contains("PROBABLY_EXPLOITABLE"));
+    assert!(res.contains("heap-buffer-overflow(read)"));
+    assert!(res.contains("heap-buffer-overflow(write)"));
+    assert!(res.contains("DestAvNearNull"));
+    assert!(res.contains("xml::serialization"));
+    assert!(res.contains("AbortSignal"));
+    assert!(res.contains("compound_document.hpp:83"));
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 45, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 23, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
 }
 
 #[test]
