@@ -98,6 +98,12 @@ impl ParseStacktrace for AsanStacktrace {
                         "Couldn't parse function name: {entry}"
                     )));
                 }
+                if location.ends_with(") const") {
+                    // There is no source file path.
+                    stentry.function = location.to_string();
+                    stacktrace.push(stentry);
+                    continue;
+                }
                 let i = if let Some(p) = location.rfind(')') {
                     if location[p..].starts_with(") const ") {
                         p + 7
