@@ -3515,25 +3515,27 @@ fn test_casr_libfuzzer() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let res = String::from_utf8_lossy(&output.stderr);
+    let out = String::from_utf8_lossy(&output.stdout);
+    let err = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!res.is_empty());
+    assert!(!out.is_empty());
+    assert!(!err.is_empty());
 
-    assert!(res.contains("casr-san: no crash on input"));
-    assert!(res.contains("Error: Out of memory for input"));
-    assert!(res.contains("EXPLOITABLE"));
-    assert!(res.contains("NOT_EXPLOITABLE"));
-    assert!(res.contains("PROBABLY_EXPLOITABLE"));
-    assert!(res.contains("heap-buffer-overflow(read)"));
-    assert!(res.contains("heap-buffer-overflow(write)"));
-    assert!(res.contains("DestAvNearNull"));
-    assert!(res.contains("xml::serialization"));
-    assert!(res.contains("AbortSignal"));
-    assert!(res.contains("compound_document.hpp:83"));
+    assert!(err.contains("casr-san: no crash on input"));
+    assert!(err.contains("Error: Out of memory for input"));
+    assert!(out.contains("EXPLOITABLE"));
+    assert!(out.contains("NOT_EXPLOITABLE"));
+    assert!(out.contains("PROBABLY_EXPLOITABLE"));
+    assert!(out.contains("heap-buffer-overflow(read)"));
+    assert!(out.contains("heap-buffer-overflow(write)"));
+    assert!(out.contains("DestAvNearNull"));
+    assert!(out.contains("xml::serialization"));
+    assert!(out.contains("AbortSignal"));
+    assert!(out.contains("compound_document.hpp:83"));
 
     let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
     let unique_cnt = re
-        .captures(&res)
+        .captures(&err)
         .unwrap()
         .name("unique")
         .map(|x| x.as_str())
@@ -3545,7 +3547,7 @@ fn test_casr_libfuzzer() {
 
     let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
     let clusters_cnt = re
-        .captures(&res)
+        .captures(&err)
         .unwrap()
         .name("clusters")
         .map(|x| x.as_str())
