@@ -13,7 +13,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use std::fs;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 fn main() -> Result<()> {
     let matches = App::new("casr-libfuzzer")
@@ -109,6 +109,25 @@ fn main() -> Result<()> {
         bail!("Invalid fuzz target arguments");
     };
 
+    let mut atheris_asan_lib = String::new();
+    if argv[0].ends_with(".py") {
+        // Get Atheris asan_with_fuzzer library path.
+        let mut cmd = Command::new("python3");
+        cmd.arg("-c")
+            .arg("import atheris; print(atheris.path(), end='')")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        let output = cmd
+            .output()
+            .with_context(|| format!("Couldn't launch {cmd:?}"))?;
+        let out = String::from_utf8_lossy(&output.stdout);
+        let err = String::from_utf8_lossy(&output.stderr);
+        if !err.is_empty() {
+            bail!("Failed to get Atheris path: {}", err);
+        }
+        atheris_asan_lib = format!("{out}/asan_with_fuzzer.so");
+    }
+
     // Get all crashes.
     let crashes: Vec<_> = fs::read_dir(input_dir)?
         .flatten()
@@ -139,13 +158,16 @@ fn main() -> Result<()> {
     info!("Using {} threads", num_of_threads);
     custom_pool.install(|| {
         crashes.par_iter().try_for_each(|(crash, fname)| {
-            // TODO: Atheris
             let mut casr_cmd = Command::new("casr-san");
             casr_cmd.args([
                 "-o",
                 format!("{}.casrep", output_dir.join(fname).display()).as_str(),
                 "--",
             ]);
+            if !atheris_asan_lib.is_empty() {
+                casr_cmd.arg("python3");
+                casr_cmd.env("LD_PRELOAD", &atheris_asan_lib);
+            }
             casr_cmd.args(argv.clone());
             casr_cmd.arg(crash);
             debug!("{:?}", casr_cmd);
