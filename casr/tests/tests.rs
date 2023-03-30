@@ -3489,7 +3489,7 @@ fn test_casr_libfuzzer() {
     use std::collections::HashMap;
 
     let paths = [
-        abs_path("tests/casr_tests/casrep/libfuzzer_crashes"),
+        abs_path("tests/casr_tests/casrep/libfuzzer_crashes_xlnt"),
         abs_path("tests/tmp_tests_casr/casr_libfuzzer_out"),
         abs_path("tests/casr_tests/bin/load_fuzzer"),
     ];
