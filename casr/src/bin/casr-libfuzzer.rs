@@ -158,7 +158,12 @@ fn main() -> Result<()> {
     info!("Using {} threads", num_of_threads);
     custom_pool.install(|| {
         crashes.par_iter().try_for_each(|(crash, fname)| {
-            let mut casr_cmd = Command::new("casr-san");
+            let tool = if atheris_asan_lib.is_empty() {
+                "casr-san"
+            } else {
+                "casr-python"
+            };
+            let mut casr_cmd = Command::new(tool);
             casr_cmd.args([
                 "-o",
                 format!("{}.casrep", output_dir.join(fname).display()).as_str(),
@@ -177,7 +182,7 @@ fn main() -> Result<()> {
             if !casr_output.status.success() {
                 let err = String::from_utf8_lossy(&casr_output.stderr);
                 if err.contains("Program terminated (no crash)") {
-                    warn!("casr-san: no crash on input {}", crash.display());
+                    warn!("{}: no crash on input {}", tool, crash.display());
                 } else {
                     error!("{} for input: {}", err.trim(), crash.display());
                 }
