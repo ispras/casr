@@ -98,6 +98,12 @@ impl ParseStacktrace for AsanStacktrace {
                         "Couldn't parse function name: {entry}"
                     )));
                 }
+                if location.ends_with(") const") {
+                    // There is no source file path.
+                    stentry.function = location.to_string();
+                    stacktrace.push(stentry);
+                    continue;
+                }
                 let i = if let Some(p) = location.rfind(')') {
                     if location[p..].starts_with(") const ") {
                         p + 7
@@ -245,6 +251,7 @@ mod tests {
             "#10 0x55ebfbfa0707 (/home/user/Desktop/fuzz-targets/rz-installation-libfuzzer-asan/bin/rz-fuzz+0xfe2707) (BuildId: d2918819a864502448a61485c4b20818b0778ac2)",
             "#11 0xe086ff in xml::serializer::handle_error(genxStatus) const /xlnt/third-party/libstudxml/libstudxml/serializer.cxx:116:7",
             "    #7 0xa180bf in typeinfo name for xlnt::detail::compound_document_istreambuf (/load_afl+0xa180bf)",
+            "    #9 0xb98663 in xlnt::detail::number_serialiser::deserialise(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, long*) const (/casr_tests/bin/load_fuzzer+0xb98663)",
         ];
 
         let trace = raw_stacktrace
@@ -395,5 +402,16 @@ mod tests {
         );
         assert_eq!(stacktrace[18].module, "/load_afl".to_string());
         assert_eq!(stacktrace[18].offset, 0xa180bf);
+
+        assert_eq!(stacktrace[19].address, 0xb98663);
+        assert_eq!(
+            stacktrace[19].function,
+            "xlnt::detail::number_serialiser::deserialise(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, long*) const".to_string()
+        );
+        assert_eq!(
+            stacktrace[19].module,
+            "/casr_tests/bin/load_fuzzer".to_string()
+        );
+        assert_eq!(stacktrace[19].offset, 0xb98663);
     }
 }
