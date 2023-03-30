@@ -229,7 +229,7 @@ fn main() -> Result<()> {
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
         info!("There are less than 2 CASR reports, nothing to deduplicate.");
-        return Ok(());
+        return summarize_results(output_dir, &crashes);
     }
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
@@ -260,7 +260,7 @@ fn main() -> Result<()> {
             < 2
         {
             info!("There are less than 2 CASR reports, nothing to cluster.");
-            return Ok(());
+            return summarize_results(output_dir, &crashes);
         }
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new("casr-cluster")
@@ -288,12 +288,22 @@ fn main() -> Result<()> {
         }
     }
 
-    // Copy crashes next to reports
-    copy_crashes(output_dir, &crashes)?;
+    summarize_results(output_dir, &crashes)
+}
 
-    // print summary
+/// Copy crashes next to reports and print summary.
+///
+/// # Arguments
+///
+/// `dir` - directory with casr reports
+/// `crashes` - crashes info
+fn summarize_results(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<()> {
+    // Copy crashes next to reports
+    copy_crashes(dir, crashes)?;
+
+    // Print summary
     let status = Command::new("casr-cli")
-        .arg(matches.value_of("output").unwrap())
+        .arg(dir)
         .stderr(std::process::Stdio::inherit())
         .stdout(std::process::Stdio::inherit())
         .status()
@@ -311,6 +321,7 @@ fn main() -> Result<()> {
 /// # Arguments
 ///
 /// `dir` - directory with casr reports
+/// `crashes` - crashes info
 fn copy_crashes(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<()> {
     for e in fs::read_dir(dir)?.flatten().map(|x| x.path()) {
         if e.is_dir() && e.file_name().unwrap().to_str().unwrap().starts_with("cl") {

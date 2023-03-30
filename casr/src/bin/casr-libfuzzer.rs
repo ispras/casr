@@ -189,7 +189,7 @@ fn main() -> Result<()> {
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
         info!("There are less than 2 CASR reports, nothing to deduplicate.");
-        return Ok(());
+        return summarize_results(input_dir, output_dir);
     }
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
@@ -220,7 +220,7 @@ fn main() -> Result<()> {
             < 2
         {
             info!("There are less than 2 CASR reports, nothing to cluster.");
-            return Ok(());
+            return summarize_results(input_dir, output_dir);
         }
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new("casr-cluster")
@@ -248,12 +248,22 @@ fn main() -> Result<()> {
         }
     }
 
-    // Copy crashes next to reports
-    copy_crashes(input_dir, output_dir)?;
+    summarize_results(input_dir, output_dir)
+}
 
-    // print summary
+/// Copy crashes next to reports and print summary.
+///
+/// # Arguments
+///
+/// `input` - directory containing crashes found by libFuzzer
+/// `output` - output directory with triaged reports
+fn summarize_results(input: &Path, output: &Path) -> Result<()> {
+    // Copy crashes next to reports
+    copy_crashes(input, output)?;
+
+    // Print summary
     let status = Command::new("casr-cli")
-        .arg(matches.value_of("output").unwrap())
+        .arg(output)
         .stderr(std::process::Stdio::inherit())
         .stdout(std::process::Stdio::inherit())
         .status()
