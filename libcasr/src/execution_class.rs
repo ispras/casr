@@ -163,6 +163,7 @@ impl ExecutionClass {
             },
             "stack-overflow" => ExecutionClass::find("StackOverflow"),
             "deadly" => ExecutionClass::find("AbortSignal"), // hack: regexp matches word without spaces
+            "fuzz" => ExecutionClass::find("fuzz target exited"), // hack: regexp matches word without spaces
             _ => {
                 let pattern = match rw.unwrap_or("UNDEF") {
                     "READ" => format!("{short_desc}(read)"),
