@@ -1,0 +1,20 @@
+-: :
+%YAML 1.1
+---
+[0, 0, 3]
+%YAML 2.1
+---
+[1, 2-]
+[1, 2, 3]
+%TAG ! tag:clarkevans.com,2002:
+--- !shape
+  # Use the !Khandle for presentingבבבבבבבבבבבבבבבבבבב
+  # tag:clarkevans.com,.............................2002:circle
+- !circle
+  center: &ORIGIN {x: 73, y: 129}
+  radius:mm-: :
+unqouted: string
+'lis
+emmt
+
+remr:r1on:.3e+k9 of text 

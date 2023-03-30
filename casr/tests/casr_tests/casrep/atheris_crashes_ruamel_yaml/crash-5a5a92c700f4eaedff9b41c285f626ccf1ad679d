@@ -1,0 +1,32 @@
+[%YAM� 1.0
+---
+:[:: ̥1.1
+--[ .:5011b  name: Everyone 0,2,|-130,' 1.3has same name
+
+efoo: &foo
+  -
+:[:: 1:,1.1
+---
+:[:: ̥1.1
+---
+:[  <<ase: &base
+   2,|-130,' 1.3has same name
+
+efoo: &foo
+  -
+:[:: 1:,1.1
+---
+:[:: ̥1.1
+---
+:[  << name: Everyon' 1.3has same name
+
+efoo: &foo
+    <<  name: Eve:::]
+
+efoo: &foo
+    <<ase: &be 0,2, -130,' 1.3has same nam|-130 ,,' 1.3has same name]
+
+efoo: &foo
+ 
+   <<ase: &base
+    nam
