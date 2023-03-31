@@ -3629,6 +3629,12 @@ fn test_casr_libfuzzer_atheris() {
     let out = String::from_utf8_lossy(&output.stdout);
     let err = String::from_utf8_lossy(&output.stderr);
 
+    println!("=========");
+    println!("{}", out);
+    println!("=========");
+    println!("{}", err);
+    println!("=========");
+
     assert!(!out.is_empty());
     assert!(!err.is_empty());
 
