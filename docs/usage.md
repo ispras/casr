@@ -341,3 +341,39 @@ Example (Ubuntu 20.04+):
     │   └── id:000004,sig:00,sync:afl_s01-worker,src:000180.casrep
     └── cl9
         └── id:000001,sig:00,sync:afl_s01-worker,src:000111.casrep
+
+## casr-libfuzzer
+
+Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)
+
+    USAGE:
+        casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> [-- <ARGS>...]
+
+    ARGS:
+        <ARGS>...    Add "-- ./fuzz_target <arguments>"
+
+    OPTIONS:
+        -h, --help                     Print help information
+        -i, --input <INPUT_DIR>        Directory containing crashes found by libFuzzer
+                                       [default: .]
+        -j, --jobs <jobs>              Number of parallel jobs for generating CASR reports
+                                       [default: half of cpu cores]
+        -l, --log-level <log-level>    Logging level [default: info] [possible values: info,
+                                       debug]
+            --no-cluster               Do not cluster CASR reports
+        -o, --output <OUTPUT_DIR>      Output directory with triaged reports
+        -V, --version                  Print version information
+
+`casr-libfuzzer` provides integration with
+[libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers
+(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)). It is pretty much like `casr-afl`.
+
+libFuzzer example:
+
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt -o casr/tests/tmp_tests_casr/casr_libfuzzer_out -- casr/tests/casr_tests/bin/load_fuzzer
+
+Atheris example:
+
+    $ unzip casr/tests/casr_tests/python/ruamel.zip
+    $ cp casr/tests/casr_tests/python/yaml_fuzzer.py .
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- ./yaml_fuzzer.py
