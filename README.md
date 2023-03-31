@@ -19,7 +19,7 @@ CASR is maintained by:
 
 CASR is a set of tools that allows you to collect crash reports in different
 ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze ASAN
-reports. Try `casr-gdb` to get reports from gdb. Use `casr-python` to analyze python reports and get report from [atheris](https://github.com/google/atheris).
+reports. Try `casr-gdb` to get reports from gdb. Use `casr-python` to analyze python reports and get report from [Atheris](https://github.com/google/atheris).
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable)),
 OS and package versions, command line, stack trace, register values,
@@ -28,6 +28,9 @@ stored in JSON format. `casr-cli` is meant to provide TUI for viewing reports.
 Reports triage (deduplication, clustering) is done by `casr-cluster`.
 Triage is based on stack trace comparison from [gdb-command](https://github.com/anfedotoff/gdb-command).
 `casr-afl` is used to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
+`casr-libfuzzer` can triage crashes found by
+[libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
+(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)).
 
 Explanation of severity classes could be found [here](docs/classes.md).
 You could take a closer look at usage details [here](docs/usage.md).
@@ -124,6 +127,16 @@ Triage crashes after AFL++ fuzzing with casr-afl:
     $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
     $ casr-afl -i casr/tests/casr_tests/bin/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
 
+Triage libFuzzer crashes with casr-libfuzzer:
+
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt -o casr/tests/tmp_tests_casr/casr_libfuzzer_out -- casr/tests/casr_tests/bin/load_fuzzer
+
+Triage Atheris crashes with casr-libfuzzer:
+
+    $ unzip casr/tests/casr_tests/python/ruamel.zip
+    $ cp casr/tests/casr_tests/python/yaml_fuzzer.py .
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- ./yaml_fuzzer.py
+
 ## Fuzzing Crash Triage Pipeline
 
 When you have crashes from fuzzing you may do the following steps:
@@ -134,8 +147,12 @@ When you have crashes from fuzzing you may do the following steps:
 3. Cluster deduplicated reports via `casr-cluster -c`.
 4. View reports from clusters using `casr-cli`.
 
-If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus) steps from 1 to 3
+If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus), whole pipeline
 could be done automatically by `casr-afl`.
+
+If you use [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
+(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)),
+whole pipeline could be done automatically by `casr-libfuzzer`.
 
 ## Contributing
 
