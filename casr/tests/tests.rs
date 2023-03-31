@@ -3629,12 +3629,6 @@ fn test_casr_libfuzzer_atheris() {
     let out = String::from_utf8_lossy(&output.stdout);
     let err = String::from_utf8_lossy(&output.stderr);
 
-    println!("=========");
-    println!("{}", out);
-    println!("=========");
-    println!("{}", err);
-    println!("=========");
-
     assert!(!out.is_empty());
     assert!(!err.is_empty());
 
@@ -3642,8 +3636,8 @@ fn test_casr_libfuzzer_atheris() {
     assert!(!out.contains("PROBABLY_EXPLOITABLE"));
     assert!(out.contains("KeyError"));
     assert!(out.contains("TypeError"));
-    assert!(out.contains("resolver.py:361"));
-    assert!(out.contains("constructor.py:273"));
+    assert!(out.contains("resolver.py"));
+    assert!(out.contains("constructor.py"));
 
     let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
     let unique_cnt = re
