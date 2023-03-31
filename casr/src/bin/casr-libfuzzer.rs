@@ -156,13 +156,13 @@ fn main() -> Result<()> {
     // Generate CASR reports.
     info!("Generating CASR reports...");
     info!("Using {} threads", num_of_threads);
+    let tool = if atheris_asan_lib.is_empty() {
+        "casr-san"
+    } else {
+        "casr-python"
+    };
     custom_pool.install(|| {
         crashes.par_iter().try_for_each(|(crash, fname)| {
-            let tool = if atheris_asan_lib.is_empty() {
-                "casr-san"
-            } else {
-                "casr-python"
-            };
             let mut casr_cmd = Command::new(tool);
             casr_cmd.args([
                 "-o",
