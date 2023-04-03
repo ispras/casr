@@ -57,7 +57,7 @@ fn main() -> Result<()> {
                         bail!("Crash directory doesn't exist.");
                     }
                     if !i_dir.is_dir() {
-                        bail!("Input path should be an AFL++ work directory.");
+                        bail!("Input path should be a directory.");
                     }
                     Ok(())
                 })
@@ -89,9 +89,6 @@ fn main() -> Result<()> {
     util::initialize_logging(&matches);
 
     let input_dir = Path::new(matches.value_of("input").unwrap());
-    if !input_dir.exists() {
-        bail!("Input directory does not exist.");
-    }
 
     let output_dir = Path::new(matches.value_of("output").unwrap());
     if !output_dir.exists() {
