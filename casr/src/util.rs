@@ -8,6 +8,7 @@ use libcasr::stacktrace::{
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
+use simplelog::*;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
@@ -134,4 +135,22 @@ pub fn stdin_from_matches(matches: &ArgMatches) -> Result<Option<PathBuf>> {
     } else {
         Ok(None)
     }
+}
+
+/// Initialize logging with level from command line arguments (debug or info).
+pub fn initialize_logging(matches: &ArgMatches) {
+    let log_level = if matches.value_of("log-level").unwrap() == "debug" {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
+    };
+    let _ = TermLogger::init(
+        log_level,
+        ConfigBuilder::new()
+            .set_time_offset_to_local()
+            .unwrap()
+            .build(),
+        TerminalMode::Stderr,
+        ColorChoice::Auto,
+    );
 }

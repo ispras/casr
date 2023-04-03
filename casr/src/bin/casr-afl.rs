@@ -5,10 +5,11 @@ extern crate goblin;
 #[macro_use]
 extern crate log;
 
+use casr::util;
+
 use anyhow::{bail, Context, Result};
 use clap::{App, Arg};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use simplelog::*;
 
 use std::collections::HashMap;
 use std::fs;
@@ -92,20 +93,7 @@ fn main() -> Result<()> {
         .get_matches();
 
     // Init log.
-    let log_level = if matches.value_of("log-level").unwrap() == "debug" {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Info
-    };
-    let _ = TermLogger::init(
-        log_level,
-        ConfigBuilder::new()
-            .set_time_offset_to_local()
-            .unwrap()
-            .build(),
-        TerminalMode::Stderr,
-        ColorChoice::Auto,
-    );
+    util::initialize_logging(&matches);
 
     let output_dir = Path::new(matches.value_of("output").unwrap());
     if !output_dir.exists() {
@@ -231,7 +219,7 @@ fn main() -> Result<()> {
                 if err.contains("Program terminated (no crash)") {
                     warn!("{}: no crash on input {}", tool, crash.path.display());
                 } else {
-                    error!("{} for input: {}", err, crash.path.display());
+                    error!("{} for input: {}", err.trim(), crash.path.display());
                 }
             }
             Ok::<(), anyhow::Error>(())
@@ -241,7 +229,7 @@ fn main() -> Result<()> {
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
         info!("There are less than 2 CASR reports, nothing to deduplicate.");
-        return Ok(());
+        return summarize_results(output_dir, &crashes);
     }
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
@@ -272,7 +260,7 @@ fn main() -> Result<()> {
             < 2
         {
             info!("There are less than 2 CASR reports, nothing to cluster.");
-            return Ok(());
+            return summarize_results(output_dir, &crashes);
         }
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new("casr-cluster")
@@ -300,12 +288,22 @@ fn main() -> Result<()> {
         }
     }
 
-    // Copy crashes next to reports
-    copy_crashes(output_dir, &crashes)?;
+    summarize_results(output_dir, &crashes)
+}
 
-    // print summary
+/// Copy crashes next to reports and print summary.
+///
+/// # Arguments
+///
+/// `dir` - directory with casr reports
+/// `crashes` - crashes info
+fn summarize_results(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<()> {
+    // Copy crashes next to reports
+    copy_crashes(dir, crashes)?;
+
+    // Print summary
     let status = Command::new("casr-cli")
-        .arg(matches.value_of("output").unwrap())
+        .arg(dir)
         .stderr(std::process::Stdio::inherit())
         .stdout(std::process::Stdio::inherit())
         .status()
@@ -323,6 +321,7 @@ fn main() -> Result<()> {
 /// # Arguments
 ///
 /// `dir` - directory with casr reports
+/// `crashes` - crashes info
 fn copy_crashes(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<()> {
     for e in fs::read_dir(dir)?.flatten().map(|x| x.path()) {
         if e.is_dir() && e.file_name().unwrap().to_str().unwrap().starts_with("cl") {
