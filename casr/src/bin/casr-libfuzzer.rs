@@ -14,6 +14,7 @@ use std::process::{Command, Stdio};
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
+        .color(clap::ColorChoice::Auto)
         .version("2.5.1")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>, Ilya Yegorov <Yegorov_Ilya@ispras.ru>")
         .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)")

@@ -23,6 +23,7 @@ use libcasr::severity::Severity;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-core")
+        .color(clap::ColorChoice::Auto)
         .version("2.5.1")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Analyze coredump for security goals and provide detailed report with severity estimation")

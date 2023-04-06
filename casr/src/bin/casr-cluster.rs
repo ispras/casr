@@ -324,6 +324,7 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-cluster")
+        .color(clap::ColorChoice::Auto)
         .version("2.5.1")
         .author(
             "Andrey Fedotov <fedotoff@ispras.ru>, \

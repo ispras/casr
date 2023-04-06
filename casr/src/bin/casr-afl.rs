@@ -29,6 +29,7 @@ struct AflCrashInfo {
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-afl")
         .version("2.5.1")
+        .color(clap::ColorChoice::Auto)
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Triage crashes found by AFL++")
         .term_width(90)

@@ -49,6 +49,7 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-python")
+        .color(clap::ColorChoice::Auto)
         .version("2.5.1")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>, Ilya Yegorov <Yegorov_Ilya@ispras.ru>")
         .about("Create CASR reports (.casrep) from python reports")

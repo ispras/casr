@@ -27,6 +27,7 @@ use std::path::{Path, PathBuf};
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-gdb")
+        .color(clap::ColorChoice::Auto)
         .version("2.5.1")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Create CASR reports (.casrep) from gdb execution")
