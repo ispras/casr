@@ -125,7 +125,7 @@ Triage crashes after AFL++ fuzzing with casr-afl:
 
     $ cp casr/tests/casr_tests/bin/load_afl /tmp/load_afl
     $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
-    $ casr-afl -i casr/tests/casr_tests/bin/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
 
 Triage libFuzzer crashes with casr-libfuzzer:
 
