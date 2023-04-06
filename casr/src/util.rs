@@ -27,12 +27,12 @@ pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) 
     // Convert report to string.
     let repstr = serde_json::to_string_pretty(&report).unwrap();
 
-    if matches.is_present("stdout") {
+    if matches.get_flag("stdout") {
         println!("{repstr}\n");
     }
 
-    if matches.is_present("output") {
-        let mut report_path = PathBuf::from(matches.value_of("output").unwrap());
+    if matches.contains_id("output") {
+        let mut report_path = PathBuf::from(matches.get_one::<String>("output").unwrap());
         if report_path.is_dir() {
             let executable_name = PathBuf::from(&argv[0]);
             let file_name = match argv.iter().skip(1).find(|&x| Path::new(&x).exists()) {
@@ -125,7 +125,7 @@ pub fn add_custom_ignored_frames(path: &Path) -> Result<()> {
 ///
 /// Path to file with stdin
 pub fn stdin_from_matches(matches: &ArgMatches) -> Result<Option<PathBuf>> {
-    if let Some(path) = matches.value_of("stdin") {
+    if let Some(path) = matches.get_one::<String>("stdin") {
         let file = PathBuf::from(path);
         if file.exists() {
             Ok(Some(file))
@@ -139,7 +139,7 @@ pub fn stdin_from_matches(matches: &ArgMatches) -> Result<Option<PathBuf>> {
 
 /// Initialize logging with level from command line arguments (debug or info).
 pub fn initialize_logging(matches: &ArgMatches) {
-    let log_level = if matches.value_of("log-level").unwrap() == "debug" {
+    let log_level = if matches.get_one::<String>("log-level").unwrap() == "debug" {
         LevelFilter::Debug
     } else {
         LevelFilter::Info

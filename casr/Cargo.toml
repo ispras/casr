@@ -12,7 +12,7 @@ exclude = ["/tests"]
 
 [dependencies]
 anyhow = "1.0"
-clap = "3.2"
+clap = "4.2"
 chrono =  "0.4"
 goblin = "0.6"
 log = "0.4"

@@ -1,8 +1,3 @@
-extern crate anyhow;
-extern crate clap;
-extern crate gdb_command;
-extern crate libcasr;
-
 use casr::util;
 use libcasr::constants::*;
 use libcasr::cpp::CppException;
@@ -16,7 +11,7 @@ use libcasr::severity::Severity;
 use libcasr::stacktrace::*;
 
 use anyhow::{bail, Context, Result};
-use clap::{App, Arg, ArgGroup};
+use clap::{Arg, ArgAction, ArgGroup};
 use gdb_command::mappings::*;
 use gdb_command::memory::*;
 use gdb_command::registers::*;
@@ -31,7 +26,7 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 fn main() -> Result<()> {
-    let matches = App::new("casr-gdb")
+    let matches = clap::Command::new("casr-gdb")
         .version("2.5.1")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .about("Create CASR reports (.casrep) from gdb execution")
@@ -40,54 +35,55 @@ fn main() -> Result<()> {
             Arg::new("output")
                 .short('o')
                 .long("output")
-                .takes_value(true)
-                .value_names(&["REPORT"])
+                .action(ArgAction::Set)
+                .value_name("REPORT")
                 .help(
                     "Path to save report. Path can be a directory, then report name is generated",
                 ),
         )
         .arg(
             Arg::new("stdout")
+                .action(ArgAction::SetTrue)
                 .long("stdout")
                 .help("Print CASR report to stdout"),
         )
         .group(
             ArgGroup::new("out")
-                .args(&["stdout", "output"])
+                .args(["stdout", "output"])
                 .required(true),
         )
         .arg(
             Arg::new("stdin")
                 .long("stdin")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("FILE")
                 .help("Stdin file for program"),
         )
         .arg(
             Arg::new("ignore")
                 .long("ignore")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("FILE")
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
             Arg::new("ARGS")
-                .multiple_values(true)
-                .takes_value(true)
+                .action(ArgAction::Set)
+                .num_args(1..)
                 .last(true)
                 .help("Add \"-- ./binary <arguments>\" to run executable"),
         )
         .get_matches();
 
     // Get program args.
-    let argv: Vec<&str> = if let Some(argvs) = matches.values_of("ARGS") {
-        argvs.collect()
+    let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
+        argvs.map(|s| s.as_str()).collect()
     } else {
         bail!("Wrong arguments for starting program");
     };
 
     init_ignored_frames!("cpp", "rust");
-    if let Some(path) = matches.value_of("ignore") {
+    if let Some(path) = matches.get_one::<String>("ignore") {
         util::add_custom_ignored_frames(Path::new(path))?;
     }
     // Get stdin for target program.

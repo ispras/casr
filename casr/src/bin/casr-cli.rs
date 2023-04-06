@@ -1,12 +1,4 @@
-extern crate anyhow;
-extern crate clap;
-extern crate cursive;
-extern crate cursive_tree_view;
-extern crate libcasr;
-extern crate regex;
-extern crate serde_json;
-
-use clap::{App, Arg};
+use clap::{Arg, ArgAction};
 use colored::Colorize;
 use cursive::event::EventTrigger;
 use cursive::View;
@@ -39,7 +31,7 @@ use cursive_tree_view::*;
 use libcasr::report::CrashReport;
 
 fn main() -> Result<()> {
-    let matches = App::new("casr-cli")
+    let matches = clap::Command::new("casr-cli")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
         .version("2.5.1")
         .about("App provides text-based user interface to view CASR reports and print joint statistics for all reports.")
@@ -48,15 +40,15 @@ fn main() -> Result<()> {
             Arg::new("view")
                 .long("view")
                 .short('v')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("MODE")
                 .default_value("tree")
                 .help("View mode")
-                .possible_values(["tree", "slider", "stdout"]),
+                .value_parser(["tree", "slider", "stdout"]),
         )
         .arg(
             Arg::new("target")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .required(true)
                 .value_name("REPORT|DIR")
                 .help("CASR report file to view or directory with reports"),
@@ -64,15 +56,16 @@ fn main() -> Result<()> {
         .arg(
             Arg::new("unique")
                 .long("unique")
+                .action(ArgAction::SetTrue)
                 .short('u')
                 .help("Print only unique crash lines in joint statistics"),
         )
         .get_matches();
 
-    let report_path = PathBuf::from(matches.value_of("target").unwrap());
+    let report_path = PathBuf::from(matches.get_one::<String>("target").unwrap());
 
     if report_path.is_dir() {
-        print_summary(report_path, matches.is_present("unique"));
+        print_summary(report_path, matches.get_flag("unique"));
         return Ok(());
     }
 
@@ -131,8 +124,8 @@ fn main() -> Result<()> {
     let header = Panel::new(TextView::new_with_content(header_content.clone()));
     let footer = TextView::new("Press q to exit").align(Align::bot_right());
 
-    let view = matches.value_of("view").unwrap();
-    match view {
+    let view = matches.get_one::<String>("view").unwrap();
+    match view.as_str() {
         "tree" => build_tree_report(&mut siv, header, footer, &report),
         "slider" => build_slider_report(&mut siv, header, footer, &report),
         _ => println!(

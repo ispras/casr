@@ -1,22 +1,19 @@
-extern crate anyhow;
-extern crate casr;
-extern crate clap;
-extern crate goblin;
-#[macro_use]
-extern crate log;
-
 use casr::util;
 
 use anyhow::{bail, Context, Result};
-use clap::{App, Arg};
+use clap::{
+    error::{ContextKind, ContextValue, ErrorKind},
+    Arg, ArgAction,
+};
+use log::{debug, error, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 fn main() -> Result<()> {
-    let matches = App::new("casr-libfuzzer")
+    let matches = clap::Command::new("casr-libfuzzer")
         .version("2.5.1")
         .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>, Ilya Yegorov <Yegorov_Ilya@ispras.ru>")
         .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)")
@@ -25,61 +22,59 @@ fn main() -> Result<()> {
             Arg::new("log-level")
                 .long("log-level")
                 .short('l')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("info")
-                .possible_values(["info", "debug"])
+                .value_parser(["info", "debug"])
                 .help("Logging level")
         )
         .arg(Arg::new("jobs")
             .long("jobs")
             .short('j')
-            .takes_value(true)
+            .action(ArgAction::Set)
             .help("Number of parallel jobs for generating CASR reports [default: half of cpu cores]")
-            .validator(|arg| {
-                if let Ok(x) = arg.parse::<u64>() {
-                    if x > 0 {
-                        return Ok(());
-                    }
-                }
-                Err(String::from("Couldn't parse jobs value"))
-        }))
+            .value_parser(clap::value_parser!(u32).range(1..)))
         .arg(
             Arg::new("input")
                 .short('i')
                 .long("input")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value(".")
                 .value_name("INPUT_DIR")
                 .help("Directory containing crashes found by libFuzzer")
-                .validator(|arg| {
+                .value_parser(move |arg: &str| {
                     let i_dir = Path::new(arg);
                     if !i_dir.exists() {
-                        bail!("Crash directory doesn't exist.");
+                        let mut err = clap::Error::new(ErrorKind::ValueValidation);
+                        err.insert(ContextKind::InvalidValue, ContextValue::String("Crash directory doesn't exist.".to_owned()));
+                        return Err(err);
                     }
                     if !i_dir.is_dir() {
-                        bail!("Input path should be a directory.");
+                        let mut err = clap::Error::new(ErrorKind::ValueValidation);
+                        err.insert(ContextKind::InvalidValue, ContextValue::String("Input path should be a directory.".to_owned()));
+                        return Err(err);
                     }
-                    Ok(())
+                    Ok(i_dir.to_owned())
                 })
         )
         .arg(
             Arg::new("output")
                 .short('o')
                 .long("output")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .required(true)
                 .value_name("OUTPUT_DIR")
                 .help("Output directory with triaged reports")
         )
         .arg(
             Arg::new("no-cluster")
+                .action(ArgAction::SetTrue)
                 .long("no-cluster")
                 .help("Do not cluster CASR reports")
         )
         .arg(
             Arg::new("ARGS")
-                .multiple_values(true)
-                .takes_value(true)
+                .action(ArgAction::Set)
+                .num_args(1..)
                 .last(true)
                 .help("Add \"-- ./fuzz_target <arguments>\""),
         )
@@ -88,9 +83,9 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
-    let input_dir = Path::new(matches.value_of("input").unwrap());
+    let input_dir = matches.get_one::<PathBuf>("input").unwrap().as_path();
 
-    let output_dir = Path::new(matches.value_of("output").unwrap());
+    let output_dir = Path::new(matches.get_one::<String>("output").unwrap());
     if !output_dir.exists() {
         fs::create_dir_all(output_dir).with_context(|| {
             format!("Couldn't create output directory {}", output_dir.display())
@@ -100,8 +95,8 @@ fn main() -> Result<()> {
     }
 
     // Get fuzz target args.
-    let argv: Vec<&str> = if let Some(argvs) = matches.values_of("ARGS") {
-        argvs.collect()
+    let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
+        argvs.map(|v| v.as_str()).collect()
     } else {
         bail!("Invalid fuzz target arguments");
     };
@@ -139,8 +134,8 @@ fn main() -> Result<()> {
         .filter(|(_, fname)| fname.starts_with("crash-") || fname.starts_with("leak-"))
         .collect();
 
-    let jobs = if let Some(jobs) = matches.value_of("jobs") {
-        jobs.parse::<usize>().unwrap()
+    let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
+        *jobs as usize
     } else {
         std::cmp::max(1, num_cpus::get() / 2)
     };
@@ -196,7 +191,7 @@ fn main() -> Result<()> {
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
         .arg("-d")
-        .arg(matches.value_of("output").unwrap())
+        .arg(matches.get_one::<String>("output").unwrap())
         .output()
         .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 
@@ -212,7 +207,7 @@ fn main() -> Result<()> {
         bail!("{}", String::from_utf8_lossy(&casr_cluster_d.stderr));
     }
 
-    if !matches.is_present("no-cluster") {
+    if !matches.get_flag("no-cluster") {
         if output_dir
             .read_dir()?
             .flatten()
@@ -227,7 +222,7 @@ fn main() -> Result<()> {
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new("casr-cluster")
             .arg("-c")
-            .arg(matches.value_of("output").unwrap())
+            .arg(matches.get_one::<String>("output").unwrap())
             .output()
             .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 
