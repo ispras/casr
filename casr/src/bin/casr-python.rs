@@ -130,6 +130,14 @@ fn main() -> Result<()> {
     // Create report.
     let mut report = CrashReport::new();
     report.executable_path = argv[0].to_string();
+    if argv.len() > 1 {
+        if let Some(fname) = Path::new(argv[0]).file_name() {
+            let fname = fname.to_string_lossy();
+            if fname.starts_with("python") && !fname.ends_with(".py") && argv[1].ends_with(".py") {
+                report.executable_path = argv[1].to_string();
+            }
+        }
+    }
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
