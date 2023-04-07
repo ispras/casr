@@ -9,7 +9,7 @@ use libcasr::stacktrace::*;
 use anyhow::{bail, Context, Result};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches};
 use regex::Regex;
-use std::path::Path;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 /// Call casr-san with similar options
@@ -49,9 +49,7 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-python")
-        .color(clap::ColorChoice::Auto)
-        .version("2.5.1")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>, Ilya Yegorov <Yegorov_Ilya@ispras.ru>")
+        .version(clap::crate_version!())
         .about("Create CASR reports (.casrep) from python reports")
         .term_width(90)
         .arg(
@@ -59,6 +57,7 @@ fn main() -> Result<()> {
                 .short('o')
                 .long("output")
                 .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_name("REPORT")
                 .help(
                     "Path to save report. Path can be a directory, then report name is generated",
@@ -79,6 +78,7 @@ fn main() -> Result<()> {
             Arg::new("stdin")
                 .long("stdin")
                 .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_name("FILE")
                 .help("Stdin file for program"),
         )
@@ -86,6 +86,7 @@ fn main() -> Result<()> {
             Arg::new("ignore")
                 .long("ignore")
                 .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_name("FILE")
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
@@ -99,8 +100,8 @@ fn main() -> Result<()> {
         .get_matches();
 
     init_ignored_frames!("python");
-    if let Some(path) = matches.get_one::<String>("ignore") {
-        util::add_custom_ignored_frames(Path::new(path))?;
+    if let Some(path) = matches.get_one::<PathBuf>("ignore") {
+        util::add_custom_ignored_frames(path)?;
     }
     // Get program args.
     let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {

@@ -22,14 +22,12 @@ use regex::Regex;
 
 use std::env;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
-use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-san")
-        .color(clap::ColorChoice::Auto)
-        .version("2.5.1")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .version(clap::crate_version!())
         .about("Create CASR reports (.casrep) from sanitizer reports")
         .term_width(90)
         .arg(
@@ -38,6 +36,7 @@ fn main() -> Result<()> {
                 .long("output")
                 .action(ArgAction::Set)
                 .value_name("REPORT")
+                .value_parser(clap::value_parser!(PathBuf))
                 .help(
                     "Path to save report. Path can be a directory, then report name is generated",
                 ),
@@ -58,6 +57,7 @@ fn main() -> Result<()> {
                 .long("stdin")
                 .action(ArgAction::Set)
                 .value_name("FILE")
+                .value_parser(clap::value_parser!(PathBuf))
                 .help("Stdin file for program"),
         )
         .arg(
@@ -65,6 +65,7 @@ fn main() -> Result<()> {
                 .long("ignore")
                 .action(ArgAction::Set)
                 .value_name("FILE")
+                .value_parser(clap::value_parser!(PathBuf))
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
@@ -85,8 +86,8 @@ fn main() -> Result<()> {
 
     init_ignored_frames!("cpp", "rust", "go");
 
-    if let Some(path) = matches.get_one::<String>("ignore") {
-        util::add_custom_ignored_frames(Path::new(path))?;
+    if let Some(path) = matches.get_one::<PathBuf>("ignore") {
+        util::add_custom_ignored_frames(path)?;
     }
     // Get stdin for target program.
     let stdin_file = util::stdin_from_matches(&matches)?;

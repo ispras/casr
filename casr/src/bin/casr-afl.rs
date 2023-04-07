@@ -28,9 +28,7 @@ struct AflCrashInfo {
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-afl")
-        .version("2.5.1")
-        .color(clap::ColorChoice::Auto)
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .version(clap::crate_version!())
         .about("Triage crashes found by AFL++")
         .term_width(90)
         .arg(
@@ -78,6 +76,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .required(true)
                 .value_name("OUTPUT_DIR")
+                .value_parser(clap::value_parser!(PathBuf))
                 .help("Output directory with triaged reports")
         )
         .arg(
@@ -91,7 +90,7 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
-    let output_dir = Path::new(matches.get_one::<String>("output").unwrap());
+    let output_dir = matches.get_one::<PathBuf>("output").unwrap();
     if !output_dir.exists() {
         fs::create_dir_all(output_dir).with_context(|| {
             format!("Couldn't create output directory {}", output_dir.display())
@@ -230,7 +229,7 @@ fn main() -> Result<()> {
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
         .arg("-d")
-        .arg(matches.get_one::<String>("output").unwrap())
+        .arg(output_dir.clone().into_os_string())
         .output()
         .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 
@@ -261,7 +260,7 @@ fn main() -> Result<()> {
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new("casr-cluster")
             .arg("-c")
-            .arg(matches.get_one::<String>("output").unwrap())
+            .arg(output_dir.clone().into_os_string())
             .output()
             .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 

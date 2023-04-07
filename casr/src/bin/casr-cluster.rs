@@ -324,12 +324,7 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-cluster")
-        .color(clap::ColorChoice::Auto)
-        .version("2.5.1")
-        .author(
-            "Andrey Fedotov <fedotoff@ispras.ru>, \
-            Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>",
-        )
+        .version(clap::crate_version!())
         .about("Tool for clustering CASR reports")
         .term_width(90)
         .arg(
@@ -338,6 +333,7 @@ fn main() -> Result<()> {
                 .long("similarity")
                 .action(ArgAction::Set)
                 .num_args(2)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_names(["CASREP1", "CASREP2"])
                 .help("Similarity between two CASR reports"),
         )
@@ -347,6 +343,7 @@ fn main() -> Result<()> {
                 .long("cluster")
                 .action(ArgAction::Set)
                 .num_args(1..=2)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_names(["INPUT_DIR", "OUTPUT_DIR"])
                 .help(
                     "Cluster CASR reports. If two directories are set, \
@@ -361,6 +358,7 @@ fn main() -> Result<()> {
                 .long("deduplicate")
                 .action(ArgAction::Set)
                 .num_args(1..=2)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_names(["INPUT_DIR", "OUTPUT_DIR"])
                 .help(
                     "Deduplicate CASR reports. If two directories are set, \
@@ -374,6 +372,7 @@ fn main() -> Result<()> {
                 .long("merge")
                 .action(ArgAction::Set)
                 .num_args(2)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_names(["INPUT_DIR", "OUTPUT_DIR"])
                 .help(
                     "Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from \
@@ -384,6 +383,7 @@ fn main() -> Result<()> {
             Arg::new("ignore")
                 .long("ignore")
                 .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_name("FILE")
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
@@ -405,43 +405,30 @@ fn main() -> Result<()> {
         std::cmp::max(1, num_cpus::get() / 2)
     };
 
-    if let Some(path) = matches.get_one::<String>("ignore") {
-        util::add_custom_ignored_frames(Path::new(path))?;
+    if let Some(path) = matches.get_one::<PathBuf>("ignore") {
+        util::add_custom_ignored_frames(path)?;
     }
     if matches.contains_id("similarity") {
-        let casreps: Vec<&Path> = matches
-            .get_many::<String>("similarity")
-            .unwrap()
-            .map(Path::new)
-            .collect();
+        let casreps: Vec<&PathBuf> = matches.get_many::<PathBuf>("similarity").unwrap().collect();
         println!(
             "{0:.5}",
             similarity(&stacktrace(casreps[0])?, &stacktrace(casreps[1])?)
         );
     } else if matches.contains_id("clustering") {
-        let paths: Vec<&Path> = matches
-            .get_many::<String>("clustering")
-            .unwrap()
-            .map(Path::new)
-            .collect();
+        let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("clustering").unwrap().collect();
 
-        let result = make_clusters(paths[0], paths.get(1).cloned(), jobs)?;
+        let result = make_clusters(paths[0], paths.get(1).map(|x| x.as_path()), jobs)?;
         println!("Number of clusters: {result}");
     } else if matches.contains_id("deduplication") {
-        let paths: Vec<&Path> = matches
-            .get_many::<String>("deduplication")
+        let paths: Vec<&PathBuf> = matches
+            .get_many::<PathBuf>("deduplication")
             .unwrap()
-            .map(Path::new)
             .collect();
         let (before, after) = deduplication(paths[0], paths.get(1).map(|x| x.to_path_buf()), jobs)?;
         println!("Number of reports before deduplication: {before}");
         println!("Number of reports after deduplication: {after}");
     } else if matches.contains_id("merge") {
-        let paths: Vec<&Path> = matches
-            .get_many::<String>("merge")
-            .unwrap()
-            .map(Path::new)
-            .collect();
+        let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("merge").unwrap().collect();
         let new = merge_dirs(paths[0], paths[1])?;
         println!(
             "Merged {} new reports into {} directory",

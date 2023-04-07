@@ -23,9 +23,7 @@ use libcasr::severity::Severity;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-core")
-        .color(clap::ColorChoice::Auto)
-        .version("2.5.1")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+        .version(clap::crate_version!())
         .about("Analyze coredump for security goals and provide detailed report with severity estimation")
         .term_width(90)
         .arg(Arg::new("mode")
@@ -41,6 +39,7 @@ fn main() -> Result<()> {
             .short('f')
             .long("file")
             .value_name("FILE")
+            .value_parser(clap::value_parser!(PathBuf))
             .help("Path to input core file")
             .required_if_eq("mode","offline")
             .action(ArgAction::Set))
@@ -48,6 +47,7 @@ fn main() -> Result<()> {
             .short('o')
             .long("output")
             .value_name("FILE")
+            .value_parser(clap::value_parser!(PathBuf))
             .help("Path to save report in JSON format")
             .action(ArgAction::Set))
         .arg(Arg::new("stdout")
@@ -73,6 +73,7 @@ fn main() -> Result<()> {
             .long("uid")
             .hide(true)
             .value_name("UID")
+            .value_parser(clap::value_parser!(u32))
             .help("(Numeric) real UID of dumped process")
             .action(ArgAction::Set))
         .arg(Arg::new("pid")
@@ -80,6 +81,7 @@ fn main() -> Result<()> {
             .long("pid")
             .hide(true)
             .value_name("PID")
+            .value_parser(clap::value_parser!(i32))
             .help("PID of dumped process, as seen in the PID namespace in which the process resides")
             .action(ArgAction::Set))
         .arg(Arg::new("gid")
@@ -87,6 +89,7 @@ fn main() -> Result<()> {
             .hide(true)
             .long("gid")
             .value_name("GID")
+            .value_parser(clap::value_parser!(u32))
             .help("(Numeric) Real GID of dumped process")
             .action(ArgAction::Set))
         .arg(Arg::new("hpid")
@@ -94,6 +97,7 @@ fn main() -> Result<()> {
             .hide(true)
             .long("host-pid")
             .value_name("HPID")
+            .value_parser(clap::value_parser!(i32))
             .help("PID of dumped process, as seen in the initial PID namespace (since Linux 3.12)")
             .action(ArgAction::Set))
         .group(ArgGroup::new("online_analysis")
@@ -113,13 +117,13 @@ fn main() -> Result<()> {
             bail!("--stdout or --output should be specified in offline mode.");
         }
 
-        let core_path = PathBuf::from(matches.get_one::<String>("file").unwrap());
+        let core_path = matches.get_one::<PathBuf>("file").unwrap();
         if !core_path.exists() {
             bail!("{} doesn't exist", core_path.to_str().unwrap());
         }
 
         let mut core: Vec<u8> = Vec::new();
-        let mut file = File::open(&core_path)
+        let mut file = File::open(core_path)
             .with_context(|| format!("Couldn't open core: {}", core_path.display()))?;
         file.read_to_end(&mut core)
             .with_context(|| format!("Couldn't read core: {}", core_path.display()))?;
@@ -135,12 +139,11 @@ fn main() -> Result<()> {
                 .push_str(executable_path.to_str().unwrap());
         }
 
-        let result = analyze_coredump(&mut report, &core, &core_path);
+        let result = analyze_coredump(&mut report, &core, core_path);
 
         if result.is_ok() {
-            if matches.contains_id("output") {
-                let result_path = PathBuf::from(matches.get_one::<String>("output").unwrap());
-                let mut file = File::create(&result_path).with_context(|| {
+            if let Some(result_path) = matches.get_one::<PathBuf>("output") {
+                let mut file = File::create(result_path).with_context(|| {
                     format!("Couldn't create report: {}", result_path.display())
                 })?;
                 file.write_all(serde_json::to_string_pretty(&report).unwrap().as_bytes())
@@ -196,7 +199,12 @@ fn main() -> Result<()> {
             .collect::<String>(),
     );
     let pid = *matches.get_one::<i32>("pid").unwrap();
-    let culimit = *matches.get_one::<i32>("core").unwrap_or(&-1);
+    let culimit = matches
+        .get_one::<String>("core")
+        .map(|c| c.as_str())
+        .unwrap_or("0")
+        .parse::<i32>()
+        .unwrap_or(-1);
     let uid = *matches.get_one::<u32>("uid").unwrap();
     let gid = *matches.get_one::<u32>("gid").unwrap();
     let mut file_name_to_save = matches

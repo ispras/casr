@@ -31,8 +31,8 @@ pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) 
         println!("{repstr}\n");
     }
 
-    if matches.contains_id("output") {
-        let mut report_path = PathBuf::from(matches.get_one::<String>("output").unwrap());
+    if let Some(report_path) = matches.get_one::<PathBuf>("output") {
+        let mut report_path = report_path.clone();
         if report_path.is_dir() {
             let executable_name = PathBuf::from(&argv[0]);
             let file_name = match argv.iter().skip(1).find(|&x| Path::new(&x).exists()) {
@@ -119,16 +119,15 @@ pub fn add_custom_ignored_frames(path: &Path) -> Result<()> {
 ///
 /// # Arguments
 ///
-/// * `matches` - command line argumnets
+/// * `matches` - command line arguments
 ///
 /// # Return value
 ///
 /// Path to file with stdin
 pub fn stdin_from_matches(matches: &ArgMatches) -> Result<Option<PathBuf>> {
-    if let Some(path) = matches.get_one::<String>("stdin") {
-        let file = PathBuf::from(path);
+    if let Some(file) = matches.get_one::<PathBuf>("stdin") {
         if file.exists() {
-            Ok(Some(file))
+            Ok(Some(file.to_owned()))
         } else {
             bail!("Stdin file not found: {}", file.display());
         }
