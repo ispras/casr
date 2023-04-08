@@ -9,7 +9,7 @@ use libcasr::stacktrace::*;
 use anyhow::{bail, Context, Result};
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches};
 use regex::Regex;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 /// Call casr-san with similar options
