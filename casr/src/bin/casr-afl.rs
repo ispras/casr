@@ -1,14 +1,11 @@
-extern crate anyhow;
-extern crate casr;
-extern crate clap;
-extern crate goblin;
-#[macro_use]
-extern crate log;
-
 use casr::util;
 
 use anyhow::{bail, Context, Result};
-use clap::{App, Arg};
+use clap::{
+    error::{ContextKind, ContextValue, ErrorKind},
+    Arg, ArgAction,
+};
+use log::{debug, error, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use std::collections::HashMap;
@@ -30,63 +27,61 @@ struct AflCrashInfo {
 }
 
 fn main() -> Result<()> {
-    let matches = App::new("casr-afl")
-        .version("2.5.1")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+    let matches = clap::Command::new("casr-afl")
+        .version(clap::crate_version!())
         .about("Triage crashes found by AFL++")
         .term_width(90)
         .arg(
             Arg::new("log-level")
                 .long("log-level")
                 .short('l')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .default_value("info")
-                .possible_values(["info", "debug"])
+                .value_parser(["info", "debug"])
                 .help("Logging level")
         )
         .arg(Arg::new("jobs")
             .long("jobs")
             .short('j')
-            .takes_value(true)
+            .action(ArgAction::Set)
             .help("Number of parallel jobs for generating CASR reports [default: half of cpu cores]")
-            .validator(|arg| {
-                if let Ok(x) = arg.parse::<u64>() {
-                    if x > 0 {
-                        return Ok(());
-                    }
-                }
-                Err(String::from("Couldn't parse jobs value"))
-        }))
+            .value_parser(clap::value_parser!(u32).range(1..)))
         .arg(
             Arg::new("input")
                 .short('i')
                 .long("input")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("INPUT_DIR")
                 .required(true)
                 .help("AFL++ work directory")
-                .validator(|arg| {
+                .value_parser(move |arg: &str| {
                     let i_dir = Path::new(arg);
                     if !i_dir.exists() {
-                        bail!("Input directory doesn't exist.");
+                        let mut err = clap::Error::new(ErrorKind::ValueValidation);
+                        err.insert(ContextKind::InvalidValue, ContextValue::String("Input directory doesn't exist.".to_owned()));
+                        return Err(err);
                     }
                     if !i_dir.is_dir() {
-                        bail!("Input path should be an AFL++ work directory.");
+                        let mut err = clap::Error::new(ErrorKind::ValueValidation);
+                        err.insert(ContextKind::InvalidValue, ContextValue::String("Input path should be an AFL++ work directory.".to_owned()));
+                        return Err(err);
                     }
-                    Ok(())
+                    Ok(i_dir.to_path_buf())
                 })
         )
         .arg(
             Arg::new("output")
                 .short('o')
                 .long("output")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .required(true)
                 .value_name("OUTPUT_DIR")
+                .value_parser(clap::value_parser!(PathBuf))
                 .help("Output directory with triaged reports")
         )
         .arg(
             Arg::new("no-cluster")
+                .action(ArgAction::SetTrue)
                 .long("no-cluster")
                 .help("Do not cluster CASR reports")
         )
@@ -95,7 +90,7 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
-    let output_dir = Path::new(matches.value_of("output").unwrap());
+    let output_dir = matches.get_one::<PathBuf>("output").unwrap();
     if !output_dir.exists() {
         fs::create_dir_all(output_dir).with_context(|| {
             format!("Couldn't create output directory {}", output_dir.display())
@@ -106,7 +101,7 @@ fn main() -> Result<()> {
 
     // Get all crashes.
     let mut crashes: HashMap<String, AflCrashInfo> = HashMap::new();
-    for node_dir in fs::read_dir(matches.value_of("input").unwrap())? {
+    for node_dir in fs::read_dir(matches.get_one::<PathBuf>("input").unwrap())? {
         let path = node_dir?.path();
         if !path.is_dir() {
             continue;
@@ -168,8 +163,8 @@ fn main() -> Result<()> {
         }
     }
 
-    let jobs = if let Some(jobs) = matches.value_of("jobs") {
-        jobs.parse::<usize>().unwrap()
+    let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
+        *jobs as usize
     } else {
         std::cmp::max(1, num_cpus::get() / 2)
     };
@@ -234,7 +229,7 @@ fn main() -> Result<()> {
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
         .arg("-d")
-        .arg(matches.value_of("output").unwrap())
+        .arg(output_dir.clone().into_os_string())
         .output()
         .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 
@@ -250,7 +245,7 @@ fn main() -> Result<()> {
         bail!("{}", String::from_utf8_lossy(&casr_cluster_d.stderr));
     }
 
-    if !matches.is_present("no-cluster") {
+    if !matches.get_flag("no-cluster") {
         if output_dir
             .read_dir()?
             .flatten()
@@ -265,7 +260,7 @@ fn main() -> Result<()> {
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new("casr-cluster")
             .arg("-c")
-            .arg(matches.value_of("output").unwrap())
+            .arg(output_dir.clone().into_os_string())
             .output()
             .with_context(|| "Couldn't launch casr-cluster".to_string())?;
 

@@ -1,12 +1,4 @@
-extern crate anyhow;
-extern crate clap;
-extern crate cursive;
-extern crate cursive_tree_view;
-extern crate libcasr;
-extern crate regex;
-extern crate serde_json;
-
-use clap::{App, Arg};
+use clap::{Arg, ArgAction};
 use colored::Colorize;
 use cursive::event::EventTrigger;
 use cursive::View;
@@ -17,7 +9,7 @@ use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use cursive::align::Align;
@@ -39,44 +31,45 @@ use cursive_tree_view::*;
 use libcasr::report::CrashReport;
 
 fn main() -> Result<()> {
-    let matches = App::new("casr-cli")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
-        .version("2.5.1")
+    let matches = clap::Command::new("casr-cli")
+        .version(clap::crate_version!())
         .about("App provides text-based user interface to view CASR reports and print joint statistics for all reports.")
         .term_width(90)
         .arg(
             Arg::new("view")
                 .long("view")
                 .short('v')
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .value_name("MODE")
                 .default_value("tree")
                 .help("View mode")
-                .possible_values(["tree", "slider", "stdout"]),
+                .value_parser(["tree", "slider", "stdout"]),
         )
         .arg(
             Arg::new("target")
-                .takes_value(true)
+                .action(ArgAction::Set)
                 .required(true)
                 .value_name("REPORT|DIR")
+                .value_parser(clap::value_parser!(PathBuf))
                 .help("CASR report file to view or directory with reports"),
         )
         .arg(
             Arg::new("unique")
                 .long("unique")
+                .action(ArgAction::SetTrue)
                 .short('u')
                 .help("Print only unique crash lines in joint statistics"),
         )
         .get_matches();
 
-    let report_path = PathBuf::from(matches.value_of("target").unwrap());
+    let report_path = matches.get_one::<PathBuf>("target").unwrap();
 
     if report_path.is_dir() {
-        print_summary(report_path, matches.is_present("unique"));
+        print_summary(report_path, matches.get_flag("unique"));
         return Ok(());
     }
 
-    let mut file = File::open(&report_path)
+    let mut file = File::open(report_path)
         .with_context(|| format!("Couldn't open report file: {}", &report_path.display()))?;
 
     let mut report_string = String::new();
@@ -131,8 +124,8 @@ fn main() -> Result<()> {
     let header = Panel::new(TextView::new_with_content(header_content.clone()));
     let footer = TextView::new("Press q to exit").align(Align::bot_right());
 
-    let view = matches.value_of("view").unwrap();
-    match view {
+    let view = matches.get_one::<String>("view").unwrap();
+    match view.as_str() {
         "tree" => build_tree_report(&mut siv, header, footer, &report),
         "slider" => build_slider_report(&mut siv, header, footer, &report),
         _ => println!(
@@ -673,7 +666,7 @@ fn change_text_view(layout1: &mut LinearLayout, act: Action) -> Option<EventResu
 ///
 /// * 'unique_crash_line' - print summary only for unique crash lines
 ///
-fn print_summary(dir: PathBuf, unique_crash_line: bool) {
+fn print_summary(dir: &Path, unique_crash_line: bool) {
     // Hash each class in whole casr directory
     let mut casr_classes: HashMap<String, i32> = HashMap::new();
 
@@ -699,7 +692,7 @@ fn print_summary(dir: PathBuf, unique_crash_line: bool) {
 
     let mut corrupted_reports = Vec::new();
     let mut clusters: Vec<(PathBuf, i32)> = Vec::new();
-    for cl_path in fs::read_dir(&dir).unwrap().flatten() {
+    for cl_path in fs::read_dir(dir).unwrap().flatten() {
         let cluster = cl_path.path();
         let filename = cluster.file_name().unwrap().to_str().unwrap();
 
@@ -712,13 +705,13 @@ fn print_summary(dir: PathBuf, unique_crash_line: bool) {
     }
     clusters.sort_by(|a, b| a.1.cmp(&b.1));
     if clusters.is_empty()
-        && fs::read_dir(&dir)
+        && fs::read_dir(dir)
             .unwrap()
             .filter(|res| res.is_ok())
             .map(|res| res.unwrap().path())
             .any(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
     {
-        clusters.push((dir, 0));
+        clusters.push((dir.to_path_buf(), 0));
     }
 
     for (clpath, _) in clusters {

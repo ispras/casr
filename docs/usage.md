@@ -10,19 +10,20 @@ TUI for viewing reports. Reports triage (deduplication, clustering) is done by
 
 Create CASR reports (.casrep) from gdb execution
 
-    USAGE:
-        casr-gdb [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-gdb [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
 
-    ARGS:
-        <ARGS>...    Add "-- ./binary <arguments>" to run executable
+    Arguments:
+      [ARGS]...  Add "-- ./binary <arguments>" to run executable
 
-    OPTIONS:
-        -h, --help               Print help information
-        -o, --output <REPORT>    Path to save report. Path can be a directory, then report
-                                 name is generated
-            --stdin <FILE>       Stdin file for program
-            --stdout             Print CASR report to stdout
-        -V, --version            Print version information
+    Options:
+      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
+                             generated
+          --stdout           Print CASR report to stdout
+          --stdin <FILE>     Stdin file for program
+          --ignore <FILE>    File with regular expressions for functions and file paths that
+                             should be ignored
+      -h, --help             Print help
+      -V, --version          Print version
 
 Example:
 
@@ -32,21 +33,20 @@ Example:
 
 Create CASR reports (.casrep) from sanitizer reports
 
-    USAGE:
-        casr-san [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-san [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
 
-    ARGS:
-        <ARGS>...    Add "-- ./binary <arguments>" to run executable
+    Arguments:
+      [ARGS]...  Add "-- ./binary <arguments>" to run executable
 
-    OPTIONS:
-        -h, --help               Print help information
-            --ignore <FILE>      File with regular expressions for functions and file paths
-                                 that should be ignored
-        -o, --output <REPORT>    Path to save report. Path can be a directory, then report
-                                 name is generated
-            --stdin <FILE>       Stdin file for program
-            --stdout             Print CASR report to stdout
-        -V, --version            Print version information
+    Options:
+      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
+                             generated
+          --stdout           Print CASR report to stdout
+          --stdin <FILE>     Stdin file for program
+          --ignore <FILE>    File with regular expressions for functions and file paths that
+                             should be ignored
+      -h, --help             Print help
+      -V, --version          Print version
 
 Compile binary with ASAN:
 
@@ -60,21 +60,20 @@ Run casr-san:
 
 Create CASR reports (.casrep) from python reports
 
-    USAGE:
-        casr-python [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-python [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
 
-    ARGS:
-        <ARGS>...    Add "-- <path> <arguments>" to run
+    Arguments:
+      [ARGS]...  Add "-- <path> <arguments>" to run
 
-    OPTIONS:
-        -h, --help               Print help information
-            --ignore <FILE>      File with regular expressions for functions and file paths
-                                 that should be ignored
-        -o, --output <REPORT>    Path to save report. Path can be a directory, then report
-                                 name is generated
-            --stdin <FILE>       Stdin file for program
-            --stdout             Print CASR report to stdout
-        -V, --version            Print version information
+    Options:
+      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
+                             generated
+          --stdout           Print CASR report to stdout
+          --stdin <FILE>     Stdin file for program
+          --ignore <FILE>    File with regular expressions for functions and file paths that
+                             should be ignored
+      -h, --help             Print help
+      -V, --version          Print version
 
 Example:
 
@@ -82,22 +81,20 @@ Example:
 
 ## casr-core
 
-Analyze coredump for security goals and provide detailed report with severity
-estimation
+Analyze coredump for security goals and provide detailed report with severity estimation
 
-    USAGE:
-        casr-core [OPTIONS]
+    Usage: casr-core [OPTIONS]
 
-    OPTIONS:
-        -e, --executable <FILE>    Path to executable
-        -f, --file <FILE>          Path to input core file
-        -h, --help                 Print help information
-        -m, --mode <MODE>          Offline mode analyzes collected coredumps, online mode
-                                   intercepts coredumps via core_pattern [default: offline]
-                                   [possible values: online, offline]
-        -o, --output <FILE>        Path to save report in JSON format
-            --stdout               Print CASR report to stdout
-        -V, --version              Print version information
+    Options:
+      -m, --mode <MODE>        Offline mode analyzes collected coredumps, online mode
+                               intercepts coredumps via core_pattern [default: offline]
+                               [possible values: online, offline]
+      -f, --file <FILE>        Path to input core file
+      -o, --output <FILE>      Path to save report in JSON format
+          --stdout             Print CASR report to stdout
+      -e, --executable <FILE>  Path to executable
+      -h, --help               Print help
+      -V, --version            Print version
 
 `casr-core` have two modes: offline and online. Offline mode is used by default. You
 may create report when you already have a coredump file.
@@ -131,39 +128,31 @@ Reports and coredumps will be stored in `/var/crash` directory.
 
 Tool for clustering CASR reports
 
-    USAGE:
-        casr-cluster [OPTIONS]
+    Usage: casr-cluster [OPTIONS]
 
-    OPTIONS:
-        -c, --cluster <INPUT_DIR> <OUTPUT_DIR>...
-                Cluster CASR reports. If two directories are set, clusters will be placed in
-                the second directory. If one directory is provided, clusters will be placed
-                there, but reports in this directory will not be deleted.
-
-        -d, --deduplicate <INPUT_DIR> <OUTPUT_DIR>...
-                Deduplicate CASR reports. If two directories are set, deduplicated reports are
-                copied to the second directory. If one directory is provided, duplicated
-                reports are deleted.
-
-        -h, --help
-                Print help information
-
-            --ignore <FILE>
-                File with regular expressions for functions and file paths that should be
-                ignored
-
-        -j, --jobs <N>
-                Number of parallel jobs to collect CASR reports
-
-        -m, --merge <INPUT_DIR> <OUTPUT_DIR>
-                Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from INPUT_DIR will be
-                added to OUTPUT_DIR.
-
-        -s, --similarity <CASREP1> <CASREP2>
-                Similarity between two CASR reports
-
-        -V, --version
-                Print version information
+    Options:
+      -s, --similarity <CASREP1> <CASREP2>
+              Similarity between two CASR reports
+      -c, --cluster <INPUT_DIR> <OUTPUT_DIR>
+              Cluster CASR reports. If two directories are set, clusters will be placed in the
+              second directory. If one directory is provided, clusters will be placed there,
+              but reports in this directory will not be deleted.
+      -d, --deduplicate <INPUT_DIR> <OUTPUT_DIR>
+              Deduplicate CASR reports. If two directories are set, deduplicated reports are
+              copied to the second directory. If one directory is provided, duplicated reports
+              are deleted.
+      -m, --merge <INPUT_DIR> <OUTPUT_DIR>
+              Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from INPUT_DIR will be
+              added to OUTPUT_DIR.
+          --ignore <FILE>
+              File with regular expressions for functions and file paths that should be
+              ignored
+      -j, --jobs <N>
+              Number of parallel jobs to collect CASR reports
+      -h, --help
+              Print help
+      -V, --version
+              Print version
 
 Report deduplication and clustering is based on stack trace comparison from
 [gdb-command](https://github.com/anfedotoff/gdb-command). The idea is to run
@@ -228,17 +217,16 @@ Frames that match these regular expressions will be not considered during analys
 App provides text-based user interface to view CASR reports and print joint statistics for
 all reports.
 
-    USAGE:
-        casr-cli [OPTIONS] <REPORT|DIR>
+    Usage: casr-cli [OPTIONS] <REPORT|DIR>
 
-    ARGS:
-        <REPORT|DIR>    CASR report file to view or directory with reports
+    Arguments:
+      <REPORT|DIR>  CASR report file to view or directory with reports
 
-    OPTIONS:
-        -h, --help           Print help information
-        -u, --unique         Print only unique crash lines in joint statistics
-        -v, --view <MODE>    View mode [default: tree] [possible values: tree, slider, stdout]
-        -V, --version        Print version information
+    Options:
+      -v, --view <MODE>  View mode [default: tree] [possible values: tree, slider, stdout]
+      -u, --unique       Print only unique crash lines in joint statistics
+      -h, --help         Print help
+      -V, --version      Print version
 
 There are three view modes: tree, slider (list), and stdout. In stdout mode
 `casr-cli` prints text-based CASR report to stdout.
@@ -255,19 +243,18 @@ Joint statistics about crash clusters:
 
 Triage crashes found by AFL++
 
-    USAGE:
-        casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR>
+    Usage: casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR>
 
-    OPTIONS:
-        -h, --help                     Print help information
-        -i, --input <INPUT_DIR>        AFL++ work directory
-        -j, --jobs <jobs>              Number of parallel jobs for generating CASR reports
-                                       [default: half of cpu cores]
-        -l, --log-level <log-level>    Logging level [default: info] [possible values: info,
-                                       debug]
-            --no-cluster               Do not cluster CASR reports
-        -o, --output <OUTPUT_DIR>      Output directory with triaged reports
-        -V, --version                  Print version information
+    Options:
+      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
+                                   debug]
+      -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
+                                   [default: half of cpu cores]
+      -i, --input <INPUT_DIR>      AFL++ work directory
+      -o, --output <OUTPUT_DIR>    Output directory with triaged reports
+          --no-cluster             Do not cluster CASR reports
+      -h, --help                   Print help
+      -V, --version                Print version
 
 `casr-afl` provides a straightforward CASR integration with AFL++. While walking through afl
 instances, `casr-afl` generates crash reports depending on target binary. For
@@ -346,23 +333,22 @@ Example (Ubuntu 20.04+):
 
 Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)
 
-    USAGE:
-        casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> [-- <ARGS>...]
+    Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> [-- <ARGS>...]
 
-    ARGS:
-        <ARGS>...    Add "-- ./fuzz_target <arguments>"
+    Arguments:
+      [ARGS]...  Add "-- ./fuzz_target <arguments>"
 
-    OPTIONS:
-        -h, --help                     Print help information
-        -i, --input <INPUT_DIR>        Directory containing crashes found by libFuzzer
-                                       [default: .]
-        -j, --jobs <jobs>              Number of parallel jobs for generating CASR reports
-                                       [default: half of cpu cores]
-        -l, --log-level <log-level>    Logging level [default: info] [possible values: info,
-                                       debug]
-            --no-cluster               Do not cluster CASR reports
-        -o, --output <OUTPUT_DIR>      Output directory with triaged reports
-        -V, --version                  Print version information
+    Options:
+      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
+                                   debug]
+      -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
+                                   [default: half of cpu cores]
+      -i, --input <INPUT_DIR>      Directory containing crashes found by libFuzzer [default:
+                                   .]
+      -o, --output <OUTPUT_DIR>    Output directory with triaged reports
+          --no-cluster             Do not cluster CASR reports
+      -h, --help                   Print help
+      -V, --version                Print version
 
 `casr-libfuzzer` provides integration with
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers

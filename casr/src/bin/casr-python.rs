@@ -1,6 +1,3 @@
-extern crate clap;
-extern crate libcasr;
-
 use casr::util;
 use libcasr::constants::*;
 use libcasr::exception::Exception;
@@ -10,9 +7,9 @@ use libcasr::report::CrashReport;
 use libcasr::stacktrace::*;
 
 use anyhow::{bail, Context, Result};
-use clap::{App, Arg, ArgGroup, ArgMatches};
+use clap::{Arg, ArgAction, ArgGroup, ArgMatches};
 use regex::Regex;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 /// Call casr-san with similar options
@@ -24,15 +21,15 @@ use std::process::{Command, Stdio};
 /// * `argv` - executable file options
 fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
     let mut python_cmd = Command::new("casr-san");
-    if let Some(report_path) = matches.value_of("output") {
+    if let Some(report_path) = matches.get_one::<String>("output") {
         python_cmd.args(["--output", report_path]);
     } else {
         python_cmd.args(["--stdout"]);
     }
-    if let Some(path) = matches.value_of("stdin") {
+    if let Some(path) = matches.get_one::<String>("stdin") {
         python_cmd.args(["--stdin", path]);
     }
-    if let Some(path) = matches.value_of("ignore") {
+    if let Some(path) = matches.get_one::<String>("ignore") {
         python_cmd.args(["--ignore", path]);
     }
     python_cmd.arg("--").args(argv);
@@ -51,61 +48,64 @@ fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let matches = App::new("casr-python")
-        .version("2.5.1")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>, Ilya Yegorov <Yegorov_Ilya@ispras.ru>")
+    let matches = clap::Command::new("casr-python")
+        .version(clap::crate_version!())
         .about("Create CASR reports (.casrep) from python reports")
         .term_width(90)
         .arg(
             Arg::new("output")
                 .short('o')
                 .long("output")
-                .takes_value(true)
-                .value_names(&["REPORT"])
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
+                .value_name("REPORT")
                 .help(
                     "Path to save report. Path can be a directory, then report name is generated",
                 ),
         )
         .arg(
             Arg::new("stdout")
+                .action(ArgAction::SetTrue)
                 .long("stdout")
                 .help("Print CASR report to stdout"),
         )
         .group(
             ArgGroup::new("out")
-                .args(&["stdout", "output"])
+                .args(["stdout", "output"])
                 .required(true),
         )
         .arg(
             Arg::new("stdin")
                 .long("stdin")
-                .takes_value(true)
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_name("FILE")
                 .help("Stdin file for program"),
         )
         .arg(
             Arg::new("ignore")
                 .long("ignore")
-                .takes_value(true)
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
                 .value_name("FILE")
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
             Arg::new("ARGS")
-                .multiple_values(true)
-                .takes_value(true)
+                .action(ArgAction::Set)
+                .num_args(1..)
                 .last(true)
                 .help("Add \"-- <path> <arguments>\" to run"),
         )
         .get_matches();
 
     init_ignored_frames!("python");
-    if let Some(path) = matches.value_of("ignore") {
-        util::add_custom_ignored_frames(Path::new(path))?;
+    if let Some(path) = matches.get_one::<PathBuf>("ignore") {
+        util::add_custom_ignored_frames(path)?;
     }
     // Get program args.
-    let argv: Vec<&str> = if let Some(args) = matches.values_of("ARGS") {
-        args.collect()
+    let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
+        argvs.map(|s| s.as_str()).collect()
     } else {
         bail!("Wrong arguments for starting program");
     };

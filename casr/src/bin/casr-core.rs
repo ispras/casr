@@ -1,18 +1,5 @@
-extern crate anyhow;
-#[macro_use]
-extern crate log;
-extern crate chrono;
-extern crate clap;
-extern crate gdb_command;
-extern crate goblin;
-extern crate libc;
-extern crate libcasr;
-extern crate nix;
-extern crate serde;
-extern crate serde_json;
-extern crate simplelog;
 use anyhow::{bail, Context, Result};
-use clap::{App, Arg, ArgGroup};
+use clap::{Arg, ArgAction, ArgGroup};
 use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::memory::*;
 use gdb_command::registers::{Registers, RegistersExt};
@@ -20,6 +7,7 @@ use gdb_command::siginfo::Siginfo;
 use gdb_command::{ExecType, GdbCommand};
 use goblin::container::Endian;
 use goblin::elf::{header, note, Elf};
+use log::{error, warn};
 use nix::fcntl::{flock, FlockArg};
 use simplelog::*;
 use std::fs::{File, OpenOptions};
@@ -34,17 +22,16 @@ use libcasr::report::*;
 use libcasr::severity::Severity;
 
 fn main() -> Result<()> {
-    let matches = App::new("casr-core")
-        .version("2.5.1")
-        .author("Andrey Fedotov <fedotoff@ispras.ru>, Alexey Vishnyakov <vishnya@ispras.ru>, Georgy Savidov <avgor46@ispras.ru>")
+    let matches = clap::Command::new("casr-core")
+        .version(clap::crate_version!())
         .about("Analyze coredump for security goals and provide detailed report with severity estimation")
         .term_width(90)
         .arg(Arg::new("mode")
             .short('m')
             .long("mode")
-            .takes_value(true)
+            .action(ArgAction::Set)
             .value_name("MODE")
-            .possible_values(["online", "offline"])
+            .value_parser(["online", "offline"])
             .default_value("offline")
             .help("Offline mode analyzes collected coredumps, online mode intercepts coredumps via core_pattern")
 )
@@ -52,24 +39,27 @@ fn main() -> Result<()> {
             .short('f')
             .long("file")
             .value_name("FILE")
+            .value_parser(clap::value_parser!(PathBuf))
             .help("Path to input core file")
             .required_if_eq("mode","offline")
-            .takes_value(true))
+            .action(ArgAction::Set))
         .arg(Arg::new("output")
             .short('o')
             .long("output")
             .value_name("FILE")
+            .value_parser(clap::value_parser!(PathBuf))
             .help("Path to save report in JSON format")
-            .takes_value(true))
+            .action(ArgAction::Set))
         .arg(Arg::new("stdout")
             .long("stdout")
+            .action(ArgAction::SetTrue)
             .help("Print CASR report to stdout")
             )
         .arg(Arg::new("core")
             .help("Core file size soft resource limit of crashing process")
             .short('c')
             .long("core")
-            .takes_value(true)
+            .action(ArgAction::Set)
             .hide(true)
             .value_name("LIMIT"))
         .arg(Arg::new("executable")
@@ -77,66 +67,70 @@ fn main() -> Result<()> {
             .long("executable")
             .value_name("FILE")
             .help("Path to executable")
-            .takes_value(true))
+            .action(ArgAction::Set))
         .arg(Arg::new("uid")
             .short('u')
             .long("uid")
             .hide(true)
             .value_name("UID")
+            .value_parser(clap::value_parser!(u32))
             .help("(Numeric) real UID of dumped process")
-            .takes_value(true))
+            .action(ArgAction::Set))
         .arg(Arg::new("pid")
             .short('p')
             .long("pid")
             .hide(true)
             .value_name("PID")
+            .value_parser(clap::value_parser!(i32))
             .help("PID of dumped process, as seen in the PID namespace in which the process resides")
-            .takes_value(true))
+            .action(ArgAction::Set))
         .arg(Arg::new("gid")
             .short('g')
             .hide(true)
             .long("gid")
             .value_name("GID")
+            .value_parser(clap::value_parser!(u32))
             .help("(Numeric) Real GID of dumped process")
-            .takes_value(true))
+            .action(ArgAction::Set))
         .arg(Arg::new("hpid")
             .short('P')
             .hide(true)
             .long("host-pid")
             .value_name("HPID")
+            .value_parser(clap::value_parser!(i32))
             .help("PID of dumped process, as seen in the initial PID namespace (since Linux 3.12)")
-            .takes_value(true))
+            .action(ArgAction::Set))
         .group(ArgGroup::new("online_analysis")
-            .args(&["core","uid","pid", "hpid"])
+            .args(["core","uid","pid", "hpid"])
             .multiple(true)
-            .conflicts_with_all(&["offline_analysis"]))
+            .conflicts_with_all(["offline_analysis"]))
         .group(ArgGroup::new("offline_analysis")
-            .args(&["file","output"])
+            .args(["file","output"])
             .arg("stdout")
             .multiple(true)
-            .conflicts_with_all(&["online_analysis"]))
+            .conflicts_with_all(["online_analysis"]))
         .get_matches();
 
-    let mode = matches.value_of("mode").unwrap();
-    if mode == "offline" {
-        if !matches.is_present("output") && !matches.is_present("stdout") {
+    let mode = matches.get_one::<String>("mode").unwrap();
+    if *mode == "offline" {
+        if !matches.contains_id("output") && !matches.contains_id("stdout") {
             bail!("--stdout or --output should be specified in offline mode.");
         }
 
-        let core_path = PathBuf::from(matches.value_of("file").unwrap());
+        let core_path = matches.get_one::<PathBuf>("file").unwrap();
         if !core_path.exists() {
             bail!("{} doesn't exist", core_path.to_str().unwrap());
         }
 
         let mut core: Vec<u8> = Vec::new();
-        let mut file = File::open(&core_path)
+        let mut file = File::open(core_path)
             .with_context(|| format!("Couldn't open core: {}", core_path.display()))?;
         file.read_to_end(&mut core)
             .with_context(|| format!("Couldn't read core: {}", core_path.display()))?;
         let mut report = CrashReport::new();
 
-        if matches.is_present("executable") {
-            let executable_path = PathBuf::from(matches.value_of("executable").unwrap());
+        if matches.contains_id("executable") {
+            let executable_path = PathBuf::from(matches.get_one::<String>("executable").unwrap());
             if !executable_path.exists() {
                 bail!("{} doesn't exist", executable_path.to_str().unwrap());
             }
@@ -145,19 +139,18 @@ fn main() -> Result<()> {
                 .push_str(executable_path.to_str().unwrap());
         }
 
-        let result = analyze_coredump(&mut report, &core, &core_path);
+        let result = analyze_coredump(&mut report, &core, core_path);
 
         if result.is_ok() {
-            if matches.is_present("output") {
-                let result_path = PathBuf::from(matches.value_of("output").unwrap());
-                let mut file = File::create(&result_path).with_context(|| {
+            if let Some(result_path) = matches.get_one::<PathBuf>("output") {
+                let mut file = File::create(result_path).with_context(|| {
                     format!("Couldn't create report: {}", result_path.display())
                 })?;
                 file.write_all(serde_json::to_string_pretty(&report).unwrap().as_bytes())
                     .with_context(|| format!("Couldn't write report: {}", result_path.display()))?;
             }
 
-            if matches.is_present("stdout") {
+            if matches.get_flag("stdout") {
                 println!("{}\n", serde_json::to_string_pretty(&report).unwrap());
             }
         } else {
@@ -199,22 +192,23 @@ fn main() -> Result<()> {
 
     let executable_path = PathBuf::from(
         matches
-            .value_of("executable")
+            .get_one::<String>("executable")
             .unwrap()
             .chars()
             .map(|c| if c == '!' { '/' } else { c })
             .collect::<String>(),
     );
-    let pid = matches.value_of("pid").unwrap().parse::<i32>().unwrap();
+    let pid = *matches.get_one::<i32>("pid").unwrap();
     let culimit = matches
-        .value_of("core")
+        .get_one::<String>("core")
+        .map(|c| c.as_str())
         .unwrap_or("0")
         .parse::<i32>()
         .unwrap_or(-1);
-    let uid = matches.value_of("uid").unwrap().parse::<u32>().unwrap();
-    let gid = matches.value_of("gid").unwrap().parse::<u32>().unwrap();
+    let uid = *matches.get_one::<u32>("uid").unwrap();
+    let gid = *matches.get_one::<u32>("gid").unwrap();
     let mut file_name_to_save = matches
-        .value_of("executable")
+        .get_one::<String>("executable")
         .unwrap()
         .chars()
         .map(|c| if c == '!' { '_' } else { c })
