@@ -3413,7 +3413,15 @@ fn test_casr_afl() {
 
     let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
     let output = Command::new(*EXE_CASR_AFL.read().unwrap())
-        .args(["-i", &paths[0], "-o", &paths[1], "--", "/tmp/load_sydr", "@@"])
+        .args([
+            "-i",
+            &paths[0],
+            "-o",
+            &paths[1],
+            "--",
+            "/tmp/load_sydr",
+            "@@",
+        ])
         .env(
             "PATH",
             format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
