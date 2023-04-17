@@ -7,6 +7,7 @@ use clap::{
 };
 use log::{debug, error, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use walkdir::WalkDir;
 
 use std::collections::HashMap;
 use std::fs;
@@ -20,10 +21,60 @@ struct AflCrashInfo {
     pub path: PathBuf,
     /// Target command line args.
     pub target_args: Vec<String>,
-    /// Input index, None for stdin.
+    /// Input file argument index starting from argv[1], None for stdin.
     pub at_index: Option<usize>,
     /// ASAN.
     pub is_asan: bool,
+}
+
+impl<'a> AflCrashInfo {
+    /// Generate Casr report for crash.
+    ///
+    /// # Arguments
+    ///
+    /// `output_dir` - save report to specified directory or use the same directory as crash
+    pub fn run_casr<T: Into<Option<&'a Path>>>(&self, output_dir: T) -> anyhow::Result<()> {
+        let mut args: Vec<String> = vec!["-o".to_string()];
+        let report_path = if let Some(out) = output_dir.into() {
+            out.join(self.path.file_name().unwrap())
+        } else {
+            self.path.clone()
+        };
+        if self.is_asan {
+            args.push(format!("{}.casrep", report_path.display()));
+        } else {
+            args.push(format!("{}.gdb.casrep", report_path.display()));
+        }
+
+        if self.at_index.is_none() {
+            args.push("--stdin".to_string());
+            args.push(self.path.to_str().unwrap().to_string());
+        }
+        args.push("--".to_string());
+        args.extend_from_slice(&self.target_args);
+        if let Some(at_index) = self.at_index {
+            let input = args[at_index + 4].replace("@@", self.path.to_str().unwrap());
+            args[at_index + 4] = input;
+        }
+
+        let tool = if self.is_asan { "casr-san" } else { "casr-gdb" };
+        let mut casr_cmd = Command::new(tool);
+        casr_cmd.args(&args);
+        debug!("{:?}", casr_cmd);
+        let casr_output = casr_cmd
+            .output()
+            .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
+        if !casr_output.status.success() {
+            let err = String::from_utf8_lossy(&casr_output.stderr);
+            if err.contains("Program terminated (no crash)") {
+                warn!("{}: no crash on input {}", tool, self.path.display());
+            } else {
+                error!("{} for input: {}", err.trim(), self.path.display());
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
@@ -85,6 +136,14 @@ fn main() -> Result<()> {
                 .long("no-cluster")
                 .help("Do not cluster CASR reports")
         )
+        .arg(
+            Arg::new("ARGS")
+                .action(ArgAction::Set)
+                .required(false)
+                .num_args(1..)
+                .last(true)
+                .help("Add \"-- ./gdb_fuzz_target <arguments>\" for additional triaging with casr-gdb"),
+        )
         .get_matches();
 
     // Init log.
@@ -98,6 +157,13 @@ fn main() -> Result<()> {
     } else if output_dir.read_dir()?.next().is_some() {
         bail!("Output directory is not empty.");
     }
+
+    // Get optional gdb fuzz target args.
+    let gdb_argv: Vec<String> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
+        argvs.cloned().collect()
+    } else {
+        Vec::new()
+    };
 
     // Get all crashes.
     let mut crashes: HashMap<String, AflCrashInfo> = HashMap::new();
@@ -178,53 +244,15 @@ fn main() -> Result<()> {
     info!("Generating CASR reports...");
     info!("Using {} threads", num_of_threads);
     custom_pool.install(|| {
-        crashes.par_iter().try_for_each(|(_, crash)| {
-            let mut args: Vec<String> = vec!["-o".to_string()];
-            let report_path = output_dir.join(crash.path.file_name().unwrap());
-            if crash.is_asan {
-                args.push(format!("{}.casrep", report_path.display()));
-            } else {
-                args.push(format!("{}.gdb.casrep", report_path.display()));
-            }
-
-            if let Some(at_index) = crash.at_index {
-                args.push("--".to_string());
-                args.extend_from_slice(&crash.target_args);
-                let input = args[at_index + 4].replace("@@", crash.path.to_str().unwrap());
-                args[at_index + 4] = input;
-            } else {
-                args.push("--stdin".to_string());
-                args.push(crash.path.to_str().unwrap().to_string());
-                args.push("--".to_string());
-                args.extend_from_slice(&crash.target_args);
-            }
-            let tool = if crash.is_asan {
-                "casr-san"
-            } else {
-                "casr-gdb"
-            };
-            let mut casr_cmd = Command::new(tool);
-            casr_cmd.args(&args);
-            debug!("{:?}", casr_cmd);
-            let casr_output = casr_cmd
-                .output()
-                .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
-            if !casr_output.status.success() {
-                let err = String::from_utf8_lossy(&casr_output.stderr);
-                if err.contains("Program terminated (no crash)") {
-                    warn!("{}: no crash on input {}", tool, crash.path.display());
-                } else {
-                    error!("{} for input: {}", err.trim(), crash.path.display());
-                }
-            }
-            Ok::<(), anyhow::Error>(())
-        })
+        crashes
+            .par_iter()
+            .try_for_each(|(_, crash)| crash.run_casr(output_dir.as_path()))
     })?;
 
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
         info!("There are less than 2 CASR reports, nothing to deduplicate.");
-        return summarize_results(output_dir, &crashes);
+        return summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads);
     }
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
@@ -255,7 +283,7 @@ fn main() -> Result<()> {
             < 2
         {
             info!("There are less than 2 CASR reports, nothing to cluster.");
-            return summarize_results(output_dir, &crashes);
+            return summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads);
         }
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new("casr-cluster")
@@ -283,18 +311,59 @@ fn main() -> Result<()> {
         }
     }
 
-    summarize_results(output_dir, &crashes)
+    summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads)
 }
 
 /// Copy crashes next to reports and print summary.
+/// Run casr-gdb on uninstrumented binary if specified in ARGS.
 ///
 /// # Arguments
 ///
 /// `dir` - directory with casr reports
 /// `crashes` - crashes info
-fn summarize_results(dir: &Path, crashes: &HashMap<String, AflCrashInfo>) -> Result<()> {
+/// `gdb_args` - run casr-gdb on uninstrumented binary if specified
+/// `jobs` - number of threads for casr-gdb reports generation
+fn summarize_results(
+    dir: &Path,
+    crashes: &HashMap<String, AflCrashInfo>,
+    gdb_args: &Vec<String>,
+    jobs: usize,
+) -> Result<()> {
     // Copy crashes next to reports
     copy_crashes(dir, crashes)?;
+
+    if !gdb_args.is_empty() {
+        // Run casr-gdb on uninstrumented binary.
+        let crashes: Vec<_> = WalkDir::new(dir)
+            .into_iter()
+            .flatten()
+            .map(|e| e.into_path())
+            .filter(|e| e.is_file())
+            .filter(|e| e.extension().is_none() || e.extension().unwrap() != "casrep")
+            .filter(|e| !Path::new(format!("{}.gdb.casrep", e.display()).as_str()).exists())
+            .collect();
+        let num_of_threads = jobs.min(crashes.len());
+        if num_of_threads > 0 {
+            info!("casr-gdb: adding crash reports...");
+            info!("Using {} threads", num_of_threads);
+            let custom_pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(num_of_threads)
+                .build()
+                .unwrap();
+            let at_index = gdb_args.iter().skip(1).position(|s| s.contains("@@"));
+            custom_pool.install(|| {
+                crashes.par_iter().try_for_each(|crash| {
+                    AflCrashInfo {
+                        path: crash.to_path_buf(),
+                        target_args: gdb_args.clone(),
+                        at_index,
+                        is_asan: false,
+                    }
+                    .run_casr(None)
+                })
+            })?;
+        }
+    }
 
     // Print summary
     let status = Command::new("casr-cli")
