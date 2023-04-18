@@ -142,7 +142,7 @@ fn main() -> Result<()> {
                 .required(false)
                 .num_args(1..)
                 .last(true)
-                .help("Add \"-- ./gdb_fuzz_target <arguments>\" for additional triaging with casr-gdb"),
+                .help("Add \"-- ./gdb_fuzz_target <arguments>\" to generate additional crash reports with casr-gdb (e.g., test whether program crashes without sanitizers)"),
         )
         .get_matches();
 

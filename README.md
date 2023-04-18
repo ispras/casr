@@ -126,7 +126,7 @@ Triage crashes after AFL++ fuzzing with casr-afl:
     $ cp casr/tests/casr_tests/bin/load_afl /tmp/load_afl
     $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
-    $ # You may also additionally triage crashes on uninstrumented binary with casr-gdb
+    $ # You may also additionally generate crash reports for uninstrumented binary with casr-gdb
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out -- /tmp/load_sydr @@
 
 Triage libFuzzer crashes with casr-libfuzzer:
