@@ -243,7 +243,11 @@ Joint statistics about crash clusters:
 
 Triage crashes found by AFL++
 
-    Usage: casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR>
+    Usage: casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR> [-- <ARGS>...]
+
+    Arguments:
+      [ARGS]...  Add "-- ./gdb_fuzz_target <arguments>" to generate additional crash reports
+                 with casr-gdb (e.g., test whether program crashes without sanitizers)
 
     Options:
       -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
@@ -328,6 +332,14 @@ Example (Ubuntu 20.04+):
     │   └── id:000004,sig:00,sync:afl_s01-worker,src:000180.casrep
     └── cl9
         └── id:000001,sig:00,sync:afl_s01-worker,src:000111.casrep
+
+You may also run `casr-afl` with additional report generation for uninstrumented
+binary with `casr-gdb`:
+
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out -- /tmp/load_sydr @@
+
+Thus, `casr-afl` will generate GDB crash report for each unique ASAN crash. So,
+you can estimate crash severity for program built without sanitizers.
 
 ## casr-libfuzzer
 
