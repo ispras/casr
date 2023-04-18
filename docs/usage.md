@@ -338,8 +338,8 @@ binary with `casr-gdb`:
 
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out -- /tmp/load_sydr @@
 
-Thus, `casr-afl` will generate GDB crash report for each unique crash. So, you
-can estimate crash severity for program built without sanitizers.
+Thus, `casr-afl` will generate GDB crash report for each unique ASAN crash. So,
+you can estimate crash severity for program built without sanitizers.
 
 ## casr-libfuzzer
 
