@@ -1,12 +1,12 @@
 //! Provides API's for parsing, filtering, deduplication and clustering.
+extern crate kodama;
 extern crate lazy_static;
 
 use crate::error::*;
+use kodama::{linkage, Method};
 use regex::Regex;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::io::Write;
-use std::process::{Command, Stdio};
 use std::sync::RwLock;
 
 // Re-export types from gdb_command for convenient use from Casr library
@@ -190,67 +190,68 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
 /// An vector of the same length as `stacktraces`.
 /// Vec\[i\] is the flat cluster number to which original stacktrace i belongs.
 pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
+    // Writing distance matrix
+    // Only the values in the upper triangle are explicitly represented,
+    // not including the diagonal
     let len = stacktraces.len();
-    // Writing compressed distance matrix into Vector<String>
-    let lines: Vec<String> = (0..len)
-        .map(|i| {
-            let mut tmp_str = String::new();
-            for j in i + 1..len {
-                tmp_str += format!(
-                    "{0:.3} ",
-                    1.0 - similarity(&stacktraces[i], &stacktraces[j])
-                )
-                .as_str();
-            }
-            tmp_str
-        })
-        .collect();
-
-    let python_cluster_script =
-        "import numpy as np;\
-        from scipy.cluster.hierarchy import fcluster, linkage;\
-        a = np.fromstring(input(), dtype=float, sep=' ');\
-        print(*fcluster(linkage([a] if type(a.tolist()) is float else a, method=\"complete\"), 0.3, criterion=\"distance\"))";
-
-    let Ok(mut python) = Command::new("python3")
-        .args(["-c", python_cluster_script])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn() else {
-        return Err(Error::Casr("Failed to launch python3".to_string()));
-    };
-    {
-        let python_stdin = python.stdin.as_mut().unwrap();
-        if python_stdin.write_all(lines.join("").as_bytes()).is_err() {
-            return Err(Error::Casr(
-                "Error while writing to stdin of python script".to_string(),
-            ));
+    let size = len * (len - 1) / 2;
+    let mut condensed_dissimilarity_matrix = vec![0f64; size];
+    for i in 0..len {
+        let offset = (i + 1) * (i + 2) / 2;
+        for j in i + 1..len {
+            condensed_dissimilarity_matrix[i * len + j - offset] =
+                1.0 - similarity(&stacktraces[i], &stacktraces[j]);
         }
     }
-    let python = python.wait_with_output()?;
 
-    if !python.status.success() {
-        return Err(Error::Casr(format!(
-            "Failed to start python script. Error: {}",
-            String::from_utf8_lossy(&python.stderr)
-        )));
+    // Get hierarchical clustering binary tree
+    let dendrogram = linkage(&mut condensed_dissimilarity_matrix, len, Method::Complete);
+
+    // Iterate through merging step until threshold is reached
+    // at the beginning every node is in its own cluster
+    let mut clusters = (0..len).map(|x| (x, vec![x])).collect::<HashMap<_, _>>();
+
+    // Set threshold
+    let distance = 0.3;
+
+    // Counter for new clusters, which are formed as unions of previous ones
+    let mut counter = len;
+
+    for step in dendrogram.steps() {
+        // Break if threshold is reached
+        if step.dissimilarity >= distance {
+            break;
+        }
+
+        // Combine nums from both clusters
+        let mut nums = Vec::with_capacity(2);
+        let mut cl = clusters.remove(&step.cluster1).unwrap();
+        nums.append(&mut cl);
+        let mut cl = clusters.remove(&step.cluster2).unwrap();
+        nums.append(&mut cl);
+
+        // Insert into hashmap and increase counter
+        clusters.insert(counter, nums);
+        counter += 1;
     }
-    let output = String::from_utf8_lossy(&python.stdout);
-    let clusters = output
-        .split(' ')
-        .filter_map(|x| x.trim().parse::<u32>().ok())
-        .collect::<Vec<u32>>();
 
-    if clusters.len() != len {
+    // Flatten resulting clusters and reverse numbers
+    let mut flat_clusters = vec![0; len];
+    for (i, (_, nums)) in clusters.into_iter().enumerate() {
+        for num in nums {
+            flat_clusters[num] = i as u32 + 1; // Number clusters from 1, not 0
+        }
+    }
+
+    if flat_clusters.len() != len {
         return Err(Error::Casr(format!(
-            "Number of casreps({}) differs from array length({}) from python",
+            "Number of casreps({}) differs from array length({}) from kodama",
             len,
-            clusters.len()
+            flat_clusters.len()
         )));
     }
 
-    Ok(clusters)
+    Ok(flat_clusters)
 }
 
 /// Stack trace filtering trait.

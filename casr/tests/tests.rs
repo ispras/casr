@@ -2430,20 +2430,19 @@ fn test_casr_cluster_c_huge_san() {
         .unwrap();
 
     assert_eq!(clusters_cnt, 12, "Invalid number of clusters");
-    assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl1")
+
+    let mut max = std::fs::read_dir(paths[1].to_owned() + "/cl1")
+        .unwrap()
+        .count();
+    for i in 2..clusters_cnt + 1 {
+        let count = std::fs::read_dir(paths[1].to_owned() + "/cl" + &i.to_string())
             .unwrap()
-            .count(),
-        2,
-        "Invalid number of reports in cluster 1"
-    );
-    assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl12")
-            .unwrap()
-            .count(),
-        1,
-        "Invalid number of reports in cluster 12"
-    );
+            .count();
+        if max < count {
+            max = count;
+        }
+    }
+    assert_eq!(max, 2, "Invalid max number of reports in cluster");
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }
@@ -2496,20 +2495,19 @@ fn test_casr_cluster_c_huge_gdb() {
         .unwrap();
 
     assert_eq!(clusters_cnt, 12, "Invalid number of clusters");
-    assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl1")
+
+    let mut max = std::fs::read_dir(paths[1].to_owned() + "/cl1")
+        .unwrap()
+        .count();
+    for i in 2..clusters_cnt + 1 {
+        let count = std::fs::read_dir(paths[1].to_owned() + "/cl" + &i.to_string())
             .unwrap()
-            .count(),
-        3,
-        "Invalid number of reports in cluster 1"
-    );
-    assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl2")
-            .unwrap()
-            .count(),
-        2,
-        "Invalid number of reports in cluster 2"
-    );
+            .count();
+        if max < count {
+            max = count;
+        }
+    }
+    assert_eq!(max, 3, "Invalid max number of reports in cluster");
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }
