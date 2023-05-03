@@ -58,29 +58,30 @@ and program languages:
 It could be built with `exploitable` feature for severity estimation crashes
 collected from gdb. To save crash reports as json use `serde` feature.
 
-## Getting started
+## Dependencies
 
-1. Install Rust or update it to latest version via `rustup update`. Installation instructions can be found [here](https://www.rust-lang.org/tools/install).
-2. Clone CASR repository:
+Install [Rust](https://www.rust-lang.org/tools/install):
 
-```
-$ git clone https://github.com/ispras/casr
-```
-3. Build CASR:
+    $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-```
-$ cargo build --release
-```
-4. Install runtime dependencies:
-
-```
-$ sudo apt install gdb python3 python3-pip lsb-release
-$ sudo -H python3 -m pip install numpy scipy
-```
-
-Instead of steps 2-3 you may just install Casr from crates.io:
+Or update existing Rust installation:
 
     $ rustup update
+
+Install runtime dependencies:
+
+    $ sudo apt install gdb python3 python3-pip lsb-release
+    $ sudo -H python3 -m pip install numpy scipy
+
+## Install
+
+Build from Git repository:
+
+    $ git clone https://github.com/ispras/casr
+    $ cargo build --release
+
+Or you may just install Casr from [crates.io](https://crates.io/crates/casr):
+
     $ cargo install casr
 
 ## Usage
