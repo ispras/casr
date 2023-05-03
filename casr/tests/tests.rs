@@ -2443,12 +2443,7 @@ fn test_casr_cluster_c_huge_san() {
     cluster_sizes.sort();
 
     for (i, x) in cluster_sizes.iter().enumerate() {
-        let size: usize;
-        if i < 8 {
-            size = 1;
-        } else {
-            size = 2;
-        }
+        let size = if i < 8 { 1 } else { 2 };
         assert_eq!(*x, size);
     }
 
