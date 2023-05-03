@@ -197,8 +197,7 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     let mut condensed_dissimilarity_matrix = vec![];
     for i in 0..len {
         for j in i + 1..len {
-            condensed_dissimilarity_matrix
-                .push(1.0 - similarity(&stacktraces[i], &stacktraces[j]));
+            condensed_dissimilarity_matrix.push(1.0 - similarity(&stacktraces[i], &stacktraces[j]));
         }
     }
 
