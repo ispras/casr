@@ -60,11 +60,7 @@ collected from gdb. To save crash reports as json use `serde` feature.
 
 ## Dependencies
 
-Install [Rust](https://www.rust-lang.org/tools/install):
-
-    $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-Or update existing Rust installation:
+Install [Rust](https://www.rust-lang.org/tools/install) or update existing Rust installation:
 
     $ rustup update
 
