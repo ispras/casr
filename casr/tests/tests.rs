@@ -2446,8 +2446,7 @@ fn test_casr_cluster_c_huge_san() {
         let size: usize;
         if i < 8 {
             size = 1;
-        }
-        else {
+        } else {
             size = 2;
         }
         assert_eq!(*x, size);
@@ -2520,11 +2519,9 @@ fn test_casr_cluster_c_huge_gdb() {
         let size: usize;
         if i < 7 {
             size = 1;
-        }
-        else if i < 11 {
+        } else if i < 11 {
             size = 2;
-        }
-        else {
+        } else {
             size = 3;
         }
         assert_eq!(*x, size);
