@@ -78,7 +78,7 @@ $ sudo apt install gdb python3 python3-pip lsb-release
 $ sudo -H python3 -m pip install numpy scipy
 ```
 
-Instead of steps 2-4 you may just install Casr from crates.io:
+Instead of steps 2-3 you may just install Casr from crates.io:
 
     $ rustup update
     $ cargo install casr
