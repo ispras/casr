@@ -2431,18 +2431,27 @@ fn test_casr_cluster_c_huge_san() {
 
     assert_eq!(clusters_cnt, 12, "Invalid number of clusters");
 
-    let mut max = std::fs::read_dir(paths[1].to_owned() + "/cl1")
-        .unwrap()
-        .count();
-    for i in 2..clusters_cnt + 1 {
-        let count = std::fs::read_dir(paths[1].to_owned() + "/cl" + &i.to_string())
+    let mut cluster_sizes = vec![];
+
+    for i in 1..clusters_cnt + 1 {
+        let size = std::fs::read_dir(paths[1].to_owned() + "/cl" + &i.to_string())
             .unwrap()
             .count();
-        if max < count {
-            max = count;
-        }
+        cluster_sizes.push(size);
     }
-    assert_eq!(max, 2, "Invalid max number of reports in cluster");
+
+    cluster_sizes.sort();
+
+    for (i, x) in cluster_sizes.iter().enumerate() {
+        let size: usize;
+        if i < 8 {
+            size = 1;
+        }
+        else {
+            size = 2;
+        }
+        assert_eq!(*x, size);
+    }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }
@@ -2496,18 +2505,30 @@ fn test_casr_cluster_c_huge_gdb() {
 
     assert_eq!(clusters_cnt, 12, "Invalid number of clusters");
 
-    let mut max = std::fs::read_dir(paths[1].to_owned() + "/cl1")
-        .unwrap()
-        .count();
-    for i in 2..clusters_cnt + 1 {
-        let count = std::fs::read_dir(paths[1].to_owned() + "/cl" + &i.to_string())
+    let mut cluster_sizes = vec![];
+
+    for i in 1..clusters_cnt + 1 {
+        let size = std::fs::read_dir(paths[1].to_owned() + "/cl" + &i.to_string())
             .unwrap()
             .count();
-        if max < count {
-            max = count;
-        }
+        cluster_sizes.push(size);
     }
-    assert_eq!(max, 3, "Invalid max number of reports in cluster");
+
+    cluster_sizes.sort();
+
+    for (i, x) in cluster_sizes.iter().enumerate() {
+        let size: usize;
+        if i < 7 {
+            size = 1;
+        }
+        else if i < 11 {
+            size = 2;
+        }
+        else {
+            size = 3;
+        }
+        assert_eq!(*x, size);
+    }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }
