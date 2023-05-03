@@ -194,13 +194,11 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     // Only the values in the upper triangle are explicitly represented,
     // not including the diagonal
     let len = stacktraces.len();
-    let size = len * (len - 1) / 2;
-    let mut condensed_dissimilarity_matrix = vec![0f64; size];
+    let mut condensed_dissimilarity_matrix = vec![];
     for i in 0..len {
-        let offset = (i + 1) * (i + 2) / 2;
         for j in i + 1..len {
-            condensed_dissimilarity_matrix[i * len + j - offset] =
-                1.0 - similarity(&stacktraces[i], &stacktraces[j]);
+            condensed_dissimilarity_matrix
+                .push(1.0 - similarity(&stacktraces[i], &stacktraces[j]));
         }
     }
 
@@ -241,14 +239,6 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
         for num in nums {
             flat_clusters[num] = i as u32 + 1; // Number clusters from 1, not 0
         }
-    }
-
-    if flat_clusters.len() != len {
-        return Err(Error::Casr(format!(
-            "Number of casreps({}) differs from array length({}) from kodama",
-            len,
-            flat_clusters.len()
-        )));
     }
 
     Ok(flat_clusters)
