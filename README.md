@@ -60,23 +60,18 @@ collected from gdb. To save crash reports as json use `serde` feature.
 
 ## Getting started
 
-1. Install Rust. Instructions can be found [here](https://www.rust-lang.org/tools/install).
-2. Update Rust to latest version:
-
-```
-$ rustup update
-```
-3. Clone CASR repository:
+1. Install Rust or update it to latest version via `rustup update`. Installation instructions can be found [here](https://www.rust-lang.org/tools/install).
+2. Clone CASR repository:
 
 ```
 $ git clone https://github.com/ispras/casr
 ```
-4. Build CASR:
+3. Build CASR:
 
 ```
 $ cargo build --release
 ```
-5. Install runtime dependencies:
+4. Install runtime dependencies:
 
 ```
 $ sudo apt install gdb python3 python3-pip lsb-release
