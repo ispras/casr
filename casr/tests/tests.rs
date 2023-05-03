@@ -2430,20 +2430,22 @@ fn test_casr_cluster_c_huge_san() {
         .unwrap();
 
     assert_eq!(clusters_cnt, 12, "Invalid number of clusters");
-    assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl1")
+
+    let mut cluster_sizes = vec![];
+
+    for i in 1..clusters_cnt + 1 {
+        let size = std::fs::read_dir(paths[1].to_owned() + "/cl" + &i.to_string())
             .unwrap()
-            .count(),
-        2,
-        "Invalid number of reports in cluster 1"
-    );
-    assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl12")
-            .unwrap()
-            .count(),
-        1,
-        "Invalid number of reports in cluster 12"
-    );
+            .count();
+        cluster_sizes.push(size);
+    }
+
+    cluster_sizes.sort();
+
+    for (i, x) in cluster_sizes.iter().enumerate() {
+        let size = if i < 8 { 1 } else { 2 };
+        assert_eq!(*x, size);
+    }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }
@@ -2496,20 +2498,29 @@ fn test_casr_cluster_c_huge_gdb() {
         .unwrap();
 
     assert_eq!(clusters_cnt, 12, "Invalid number of clusters");
-    assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl1")
+
+    let mut cluster_sizes = vec![];
+
+    for i in 1..clusters_cnt + 1 {
+        let size = std::fs::read_dir(paths[1].to_owned() + "/cl" + &i.to_string())
             .unwrap()
-            .count(),
-        3,
-        "Invalid number of reports in cluster 1"
-    );
-    assert_eq!(
-        std::fs::read_dir(paths[1].to_owned() + "/cl2")
-            .unwrap()
-            .count(),
-        2,
-        "Invalid number of reports in cluster 2"
-    );
+            .count();
+        cluster_sizes.push(size);
+    }
+
+    cluster_sizes.sort();
+
+    for (i, x) in cluster_sizes.iter().enumerate() {
+        let size: usize;
+        if i < 7 {
+            size = 1;
+        } else if i < 11 {
+            size = 2;
+        } else {
+            size = 3;
+        }
+        assert_eq!(*x, size);
+    }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }

@@ -21,6 +21,7 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 gdb-command = "0.7"
 thiserror = "1.0"
+kodama = "0.3"
 
 [features]
 exploitable = ["dep:capstone", "dep:goblin"]

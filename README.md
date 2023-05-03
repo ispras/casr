@@ -66,8 +66,7 @@ Install [Rust](https://www.rust-lang.org/tools/install) or update existing Rust 
 
 Install runtime dependencies:
 
-    $ sudo apt install gdb python3 python3-pip lsb-release
-    $ sudo -H python3 -m pip install numpy scipy
+    $ sudo apt install gdb lsb-release
 
 ## Install
 
