@@ -3182,7 +3182,7 @@ fn test_casr_san_exception() {
     let clang = Command::new("bash")
         .arg("-c")
         .arg(format!(
-            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            "g++ -O0 -g {} -o {}",
             &paths[0], &paths[1]
         ))
         .status()
