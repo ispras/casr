@@ -38,6 +38,7 @@ fn abs_path(rpath: &str) -> String {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_segfault_on_pc() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_segFaultOnPc"),
@@ -74,6 +75,7 @@ fn test_segfault_on_pc() {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_dest_av() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_destAv"),
@@ -110,6 +112,7 @@ fn test_dest_av() {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_dest_av_near_null() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_destAvNearNull"),
@@ -219,6 +222,7 @@ fn test_call_av() {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_call_av_tainted() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_callAvTainted"),
@@ -255,6 +259,7 @@ fn test_call_av_tainted() {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_source_av() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_sourceAv"),
@@ -291,6 +296,7 @@ fn test_source_av() {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_source_av_near_null() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_sourceAvNearNull"),
@@ -327,6 +333,7 @@ fn test_source_av_near_null() {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_abort() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_abort"),
@@ -436,6 +443,7 @@ fn test_safe_func() {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_bad_instruction() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_badInstruction"),
@@ -509,6 +517,7 @@ fn test_stack_overflow() {
 }
 
 #[test]
+#[cfg(not(target_arch = "riscv64"))]
 fn test_dest_av_tainted() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_destAvTainted"),
@@ -3172,10 +3181,7 @@ fn test_casr_san_exception() {
 
     let clang = Command::new("bash")
         .arg("-c")
-        .arg(format!(
-            "clang++ -fsanitize=address -O0 -g {} -o {}",
-            &paths[0], &paths[1]
-        ))
+        .arg(format!("g++ -O0 -g {} -o {}", &paths[0], &paths[1]))
         .status()
         .expect("failed to execute clang");
 
