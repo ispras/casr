@@ -81,5 +81,6 @@ jobs:
           export PATH=/root/.cargo/bin:$PATH
           export CARGO_TERM_COLOR=always
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+          rustup target list
           cargo build --release --verbose
           cargo test --release --verbose
