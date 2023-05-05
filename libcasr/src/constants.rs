@@ -194,6 +194,17 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*logging::LogMessage",
     r".*stdext::exception::what",
     r".*v8::base::OS::Abort",
+    // Pybindings
+    r".*pybind.*",
+    r"^PyCFunction.*",
+    r"^PyObject.*",
+    r"^PyEval.*",
+    r"^PyRun.*",
+    r"^Py_.*",
+    r"^_start",
+    r"^__libc_start_main",
+    r"^fuzzer::.*",
+    r"^atheris::.*",
 ];
 
 /// Regular expressions for paths to python files that should be ignored.
