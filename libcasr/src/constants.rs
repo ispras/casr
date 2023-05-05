@@ -201,7 +201,7 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     r"^PyObject",
     r"^PyEval",
     r"^PyRun",
-    r"^Py_*",
+    r"^Py_",
     r"^atheris::",
 ];
 
