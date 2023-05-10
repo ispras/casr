@@ -246,8 +246,8 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*/vctools/crt/",
     r".*/win_toolchain/",
     r".*libc\+\+/",
-    // LibFuzzer
-    r".*/compiler\-rt/lib/fuzzer/",
+    // Sanitizers and LibFuzzer
+    r".*/compiler\-rt/lib/",
     // Others (uncategorized).
     r".*\+Unknown",
     r".*<unknown module>",
