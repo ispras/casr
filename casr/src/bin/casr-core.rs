@@ -379,9 +379,11 @@ fn analyze_coredump(
     }
 
     match elf.header.e_machine {
-        header::EM_386 | header::EM_ARM | header::EM_X86_64 | header::EM_AARCH64 => {
-            machine.arch = elf.header.e_machine
-        }
+        header::EM_386
+        | header::EM_ARM
+        | header::EM_X86_64
+        | header::EM_AARCH64
+        | header::EM_RISCV => machine.arch = elf.header.e_machine,
         _ => {
             return Err(Error::Casr(format!(
                 "Unsupported architecture: {}",
