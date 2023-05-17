@@ -6,6 +6,7 @@
 //! It can analyze crashes from different sources:
 //!
 //! * AddressSanitizer
+//! * UndefinedBehaviorSanitizer
 //! * Gdb output
 //!
 //! and program languages:
@@ -33,3 +34,4 @@ pub mod report;
 pub mod rust;
 pub mod severity;
 pub mod stacktrace;
+pub mod ubsan;

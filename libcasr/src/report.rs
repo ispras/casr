@@ -185,6 +185,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub asan_report: Vec<String>,
+    /// Ubsan report.
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "UbsanReport", deserialize = "UbsanReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub ubsan_report: Vec<String>,
     /// Python report.
     #[cfg_attr(
         feature = "serde",
@@ -674,6 +681,12 @@ impl fmt::Display for CrashReport {
         if !self.asan_report.is_empty() {
             report += "\n===AsanReport===\n";
             report += &(self.asan_report.join("\n") + "\n");
+        }
+
+        // UBSANreport
+        if !self.ubsan_report.is_empty() {
+            report += "\n===UbsanReport===\n";
+            report += &(self.ubsan_report.join("\n") + "\n");
         }
 
         // PythonReport

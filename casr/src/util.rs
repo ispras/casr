@@ -65,7 +65,7 @@ pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) 
     // Convert report to string.
     let repstr = serde_json::to_string_pretty(&report).unwrap();
 
-    if matches.get_flag("stdout") {
+    if matches.contains_id("stdout") && matches.get_flag("stdout") {
         println!("{repstr}\n");
     }
 

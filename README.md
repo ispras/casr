@@ -18,10 +18,11 @@ CASR is maintained by:
 ## Overview
 
 CASR is a set of tools that allows you to collect crash reports in different
-ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze ASAN
-reports. Try `casr-gdb` to get reports from gdb. Use `casr-python` to analyze python
-reports and get report from [Atheris](https://github.com/google/atheris).
-Use `casr-java` to analyze java reports and get report from
+ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze
+ASAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
+reports from gdb. Use `casr-python` to analyze python reports and get report
+from [Atheris](https://github.com/google/atheris). Use `casr-java` to analyze
+java reports and get report from
 [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer).
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable))
@@ -56,6 +57,7 @@ crashes.
 It can analyze crashes from different sources:
 
 * AddressSanitizer
+* UndefinedBehaviorSanitizer
 * Gdb output
 
 and program languages:
@@ -104,10 +106,16 @@ Create report from coredump:
 
     $ casr-core -f casr/tests/casr_tests/bin/core.test_destAv -e casr/tests/casr_tests/bin/test_destAv -o destAv.casrep
 
-Create report from sanitizers output:
+Create report from AddressSanitizer output:
 
     $ clang++ -fsanitize=address -O0 -g casr/tests/casr_tests/test_asan_df.cpp -o test_asan_df
     $ casr-san -o asan.casrep -- ./test_asan_df
+
+Create report from UndefinedBehaviorSanitizer output:
+
+    $ clang++ -fsanitize=undefined -O0 -g casr/tests/casr_tests/ubsan/test_ubsan.cpp -o test_ubsan
+    $ casr-ubsan -i casr/tests/casr_tests/ubsan/input1/input -o output -- ./test_ubsan @@
+    $ casr-cli output
 
 Create report from gdb:
 
@@ -176,18 +184,21 @@ When you have crashes from fuzzing you may do the following steps:
 
 1. Create reports for all crashes via `casr-san`, `casr-gdb` (if no sanitizers
    are present), `casr-python`, or `casr-java`.
-2. Deduplicate collected reports via `casr-cluster -d`.
-3. Cluster deduplicated reports via `casr-cluster -c`.
-4. View reports from clusters using `casr-cli` or upload them to
+2. Deduplicate collected crash reports via `casr-cluster -d`.
+3. Cluster deduplicated crash reports via `casr-cluster -c`.
+4. Create reports and deduplicate them for all UBSAN errors via `casr-ubsan`.
+5. View reports from clusters using `casr-cli` or upload them to
    [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) with
    `casr-dojo`.
 
-If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus), whole pipeline
-could be done automatically by `casr-afl`.
+If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus), the pipeline
+(without `casr-ubsan` and `casr-dojo`) could be done automatically by
+`casr-afl`.
 
 If you use [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)),
-whole pipeline could be done automatically by `casr-libfuzzer`.
+the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically
+by `casr-libfuzzer`.
 
 ## Contributing
 
