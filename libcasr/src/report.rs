@@ -289,7 +289,8 @@ impl CrashReport {
         let sensitive = Regex::new(concat!(
             "^CI=|^HOSTNAME=|^LOGNAME=|^USERNAME=|^LANG=|^SESSION_MANAGER=|",
             "^XAUTHORITY=|^CI_|^GITLAB_|^FF_|^LC_|^SSH_|^XDG_|^GTK_|^GIO_|",
-            "^DESKTOP_|^DBUS_|^GNOME_|^TERMINATOR_|^GPG_",
+            "^DESKTOP_|^DBUS_|^GNOME_|^TERMINATOR_|^GPG_|^LS_COLORS=|",
+            "^LESSCLOSE=|^LESSOPEN=",
         ))
         .unwrap();
         self.proc_environ.retain(|e| !sensitive.is_match(e));
