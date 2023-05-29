@@ -1,7 +1,6 @@
 use casr::util;
 use libcasr::constants::*;
 use libcasr::init_ignored_frames;
-use libcasr::report::CrashReport;
 use libcasr::stacktrace::*;
 
 use anyhow::{bail, Context, Result};
@@ -11,7 +10,6 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 
 use std::collections::HashSet;
 use std::fs;
-use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
@@ -25,17 +23,7 @@ use std::sync::RwLock;
 ///
 /// Stack trace as a `Stacktrace` struct
 fn stacktrace(path: &Path) -> Result<Stacktrace> {
-    // Opening file and reading it
-    let Ok(file) = std::fs::File::open(path) else {
-        bail!("Error with opening Casr report: {}", path.display());
-    };
-    let reader = BufReader::new(file);
-
-    let Ok(u): Result<CrashReport, _> = serde_json::from_reader(reader) else {
-        bail!("Json parse error. File: {}", path.display());
-    };
-
-    match u.filtered_stacktrace() {
+    match util::report_from_file(path)?.filtered_stacktrace() {
         Ok(trace) => Ok(trace),
         Err(e) => bail!("{}. File {}", e, path.display()),
     }

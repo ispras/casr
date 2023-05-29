@@ -32,11 +32,16 @@ Triage is based on stack trace comparison from [gdb-command](https://github.com/
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)).
+`casr-dojo` allows to upload new and unique CASR reports to
+[DefectDojo](https://github.com/DefectDojo/django-DefectDojo) (available with
+`dojo` feature).
 
 Explanation of severity classes could be found [here](docs/classes.md).
 You could take a closer look at usage details [here](docs/usage.md).
 
 ![casr_report](docs/images/casr_report.png)
+
+![casr_dojo_finding](/docs/images/casr_dojo_finding.png)
 
 ### LibCASR
 
@@ -79,6 +84,10 @@ Build from Git repository:
 Or you may just install Casr from [crates.io](https://crates.io/crates/casr):
 
     $ cargo install casr
+
+Add `dojo` feature if you want to install `casr-dojo` (the same for `cargo build`):
+
+    $ cargo install -F dojo casr
 
 ## Usage
 
@@ -137,6 +146,17 @@ Triage Atheris crashes with casr-libfuzzer:
     $ cp casr/tests/casr_tests/python/yaml_fuzzer.py .
     $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- ./yaml_fuzzer.py
 
+Upload new and unique CASR reports to
+[DefectDojo](https://github.com/DefectDojo/django-DefectDojo):
+
+    $ echo '[product]' > dojo.toml
+    $ echo 'name = "xlnt"' >> dojo.toml
+    $ echo '[engagement]' >> dojo.toml
+    $ echo "name = \"load_fuzzer $(date -Isec)\"" >> dojo.toml
+    $ echo '[test]' >> dojo.toml
+    $ echo 'test_type = "CASR DAST Report"' >> dojo.toml
+    $ casr-dojo -i casr/tests/casr_tests/casrep/test_clustering_san -u http://localhost:8080 -t 382f5dfdf2a339f7c3bb35442f9deb9b788a98d5 dojo.toml
+
 ## Fuzzing Crash Triage Pipeline
 
 When you have crashes from fuzzing you may do the following steps:
@@ -145,7 +165,9 @@ When you have crashes from fuzzing you may do the following steps:
    are present), or `casr-python`.
 2. Deduplicate collected reports via `casr-cluster -d`.
 3. Cluster deduplicated reports via `casr-cluster -c`.
-4. View reports from clusters using `casr-cli`.
+4. View reports from clusters using `casr-cli` or upload them to
+   [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) with
+   `casr-dojo`.
 
 If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus), whole pipeline
 could be done automatically by `casr-afl`.
