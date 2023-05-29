@@ -157,7 +157,7 @@ impl ExecutionClass {
             return ExecutionClass::find("param-overlap");
         }
         match short_desc {
-            "SEGV" => match (rw.unwrap_or("UNDEF"), near_null) {
+            "SEGV" | "BUS" => match (rw.unwrap_or("UNDEF"), near_null) {
                 ("READ", false) => ExecutionClass::find("SourceAv"),
                 ("READ", true) => ExecutionClass::find("SourceAvNearNull"),
                 ("WRITE", false) => ExecutionClass::find("DestAv"),
