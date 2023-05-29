@@ -141,8 +141,8 @@ Triage Atheris crashes with casr-libfuzzer:
 
 When you have crashes from fuzzing you may do the following steps:
 
-1. Create reports for all crashes via `casr-san` or `casr-gdb` (if no sanitizers
-   are present).
+1. Create reports for all crashes via `casr-san`, `casr-gdb` (if no sanitizers
+   are present), or `casr-python`.
 2. Deduplicate collected reports via `casr-cluster -d`.
 3. Cluster deduplicated reports via `casr-cluster -c`.
 4. View reports from clusters using `casr-cli`.
