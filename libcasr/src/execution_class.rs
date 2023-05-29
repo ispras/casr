@@ -153,6 +153,9 @@ impl ExecutionClass {
     ///
     /// * `near_null` - is crash address near null
     pub fn san_find(short_desc: &str, rw: Option<&str>, near_null: bool) -> error::Result<Self> {
+        if short_desc.ends_with("-param-overlap") {
+            return ExecutionClass::find("param-overlap");
+        }
         match short_desc {
             "SEGV" => match (rw.unwrap_or("UNDEF"), near_null) {
                 ("READ", false) => ExecutionClass::find("SourceAv"),
