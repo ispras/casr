@@ -427,7 +427,7 @@ analyze with CASR.
 
 You must specify DefectDojo URL (`-u`) and API v2 Key (`-t`). `casr-dojo`
 recursively searches for all `.casrep` files in input directory (`-i`).
-[Parameters](https://demo.defectdojo.org/api/v2/oa3/swagger-ui/) DefectDojo
+[Parameters](https://demo.defectdojo.org/api/v2/oa3/swagger-ui/) for DefectDojo
 [entities](https://documentation.defectdojo.com/usage/models/) are specified in
 [TOML](https://toml.io/en/) (`PARAMS`):
 
