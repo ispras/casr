@@ -213,19 +213,18 @@ fn main() -> Result<()> {
         }
 
         // Push crash paths.
-        for crash in fs::read_dir(path.join("crashes"))? {
-            let crash_path = crash?.path();
-            let fname = crash_path
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string();
-
-            if fname.starts_with("id:") {
-                crash_info.path = crash_path.to_path_buf();
-                crashes.insert(fname, crash_info.clone());
-            }
+        for crash in path
+            .read_dir()?
+            .flatten()
+            .filter(|e| e.file_name().into_string().unwrap().starts_with("crashes"))
+            .flat_map(|e| e.path().read_dir())
+            .flatten()
+            .flatten()
+            .filter(|e| e.file_name().into_string().unwrap().starts_with("id:"))
+        {
+            let mut info = crash_info.clone();
+            info.path = crash.path();
+            crashes.insert(crash.file_name().into_string().unwrap(), info);
         }
     }
 
