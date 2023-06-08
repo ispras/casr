@@ -548,7 +548,7 @@ async fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .value_name("INPUT_DIR")
                 .required(true)
-                .help("Directory containing CASR reports and crashes")
+                .help("Directory that is recursively searched for CASR reports (also, crash seeds and CASR GDB reports if they are present)")
                 .value_parser(move |arg: &str| {
                     let i_dir = Path::new(arg);
                     if !i_dir.exists() {

@@ -390,22 +390,25 @@ Tool for uploading new and unique CASR reports to DefectDojo
                                    debug]
       -u, --url <URL>              DefectDojo base URL
       -t, --token <TOKEN>          DefectDojo API key
-      -i, --input <INPUT_DIR>      Directory containing CASR reports and crashes
+      -i, --input <INPUT_DIR>      Directory that is recursively searched for CASR reports
+                                   (also, crash seeds and CASR GDB reports if they are
+                                   present)
       -h, --help                   Print help
       -V, --version                Print version
 
 `casr-dojo` provides a convenient way of uploading new and unique CASR reports
 to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) vulnerability
 management system. The findings deduplication is the same as in `casr-cluster
--d` and based on filtered stack trace hashing. The `casr-dojo` crash analysis
-pipeline is the following:
+-d` and based on filtered stack trace hashing. The `casr-dojo` tool performs
+crash analysis by the following steps:
 
 1. Fill the default values for required DefectDojo [API
    parameters](https://demo.defectdojo.org/api/v2/oa3/swagger-ui/). You may
    override most parameters in `PARAMS` [TOML](https://toml.io/en/) that is
-   passed to `casr-dojo`. Moreover, you can provide string value for
-   `test.test_type` and `casr-dojo` will get existing or create new
-   corresponding `test_type`.
+   passed to `casr-dojo`. Moreover, you can provide a string value for
+   `test.test_type` (instead of integer id as specified in [API
+   reference](https://demo.defectdojo.org/api/v2/oa3/swagger-ui/)), and
+   `casr-dojo` will get existing or create new corresponding `test_type`.
 2. Get existing or create new DefectDojo product (i.e. project being fuzzed),
    engagement (i.e. fuzz target and/or corresponding CI job), and test (i.e.
    fuzzer that found bugs) with specified names (more details
