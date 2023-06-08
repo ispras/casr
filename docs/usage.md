@@ -375,3 +375,110 @@ Atheris example:
     $ unzip casr/tests/casr_tests/python/ruamel.zip
     $ cp casr/tests/casr_tests/python/yaml_fuzzer.py .
     $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- ./yaml_fuzzer.py
+
+## casr-dojo
+
+Tool for uploading new and unique CASR reports to DefectDojo
+
+    Usage: casr-dojo [OPTIONS] --url <URL> --token <TOKEN> --input <INPUT_DIR> <PARAMS>
+
+    Arguments:
+      <PARAMS>  TOML file with parameters for DefectDojo product, engagement, and test
+
+    Options:
+      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
+                                   debug]
+      -u, --url <URL>              DefectDojo base URL
+      -t, --token <TOKEN>          DefectDojo API key
+      -i, --input <INPUT_DIR>      Directory that is recursively searched for CASR reports
+                                   (also, crash seeds and CASR GDB reports if they are
+                                   present)
+      -h, --help                   Print help
+      -V, --version                Print version
+
+`casr-dojo` provides a convenient way of uploading new and unique CASR reports
+to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) vulnerability
+management system. The findings deduplication is the same as in `casr-cluster
+-d` and based on filtered stack trace hashing. The `casr-dojo` tool performs
+crash analysis by the following steps:
+
+1. Fill the default values for required DefectDojo [API
+   parameters](https://demo.defectdojo.org/api/v2/oa3/swagger-ui/). You may
+   override most parameters in `PARAMS` [TOML](https://toml.io/en/) that is
+   passed to `casr-dojo`. Moreover, you can provide a string value for
+   `test.test_type` (instead of integer id as specified in [API
+   reference](https://demo.defectdojo.org/api/v2/oa3/swagger-ui/)), and
+   `casr-dojo` will get existing or create new corresponding `test_type`.
+2. Get existing or create new DefectDojo product (i.e. project being fuzzed),
+   engagement (i.e. fuzz target and/or corresponding CI job), and test (i.e.
+   fuzzer that found bugs) with specified names (more details
+   [here](https://documentation.defectdojo.com/usage/models/)).
+3. Get all active, false positive, and out of scope findings from DefectDojo. We
+   eager to skip uploading duplicate findings and avoid discovering the same
+   false positives.
+4. Compute
+   [filtered](https://github.com/ispras/casr/blob/master/libcasr/src/constants.rs)
+   stack trace hashes for downloaded findings.
+5. Upload new CASR reports to DefectDojo that have unique filtered stack trace
+   hashes. Each finding will have a generated description with CASR report
+   fields like crash line, severity, error description, source, stack trace,
+   etc. Furthermore, `casr-dojo` uploads CASR report, GDB CASR report (if
+   `.gdb.casrep` exists), and crash seed files for corresponding finding.
+
+Thus, you can have a single entry point (DefectDojo) for all the crashes you
+analyze with CASR.
+
+You must specify DefectDojo URL (`-u`) and API v2 Key (`-t`). `casr-dojo`
+recursively searches for all `.casrep` files in input directory (`-i`).
+[Parameters](https://demo.defectdojo.org/api/v2/oa3/swagger-ui/) for DefectDojo
+[entities](https://documentation.defectdojo.com/usage/models/) are specified in
+[TOML](https://toml.io/en/) (`PARAMS`):
+
+```toml
+[product]
+name = "xlnt"
+
+[engagement]
+name = "load_fuzzer 2023-06-07T16:47:18+03:00"
+
+[test]
+test_type = "CASR DAST Report"
+```
+
+CASR must be built with `dojo` feature via `cargo install -F dojo casr` or
+`cargo build -F dojo --release`.
+
+DefectDojo installation instructions can be found
+[here](https://github.com/DefectDojo/django-DefectDojo/blob/dev/readme-docs/DOCKER.md).
+The following commands can be used for a quick start:
+
+    $ git clone https://github.com/DefectDojo/django-DefectDojo.git
+    $ cd django-DefectDojo
+    $ ./dc-build.sh
+    $ ./dc-up.sh
+    $ # Wait for complete initialization: django-defectdojo_initializer_1 exited with code 0
+    $ # Get password for user "admin":
+    $ docker-compose logs initializer | grep "Admin password:"
+
+Upload new and unique CASR reports to
+[DefectDojo](https://github.com/DefectDojo/django-DefectDojo):
+
+    $ echo '[product]' > dojo.toml
+    $ echo 'name = "xlnt"' >> dojo.toml
+    $ echo '[engagement]' >> dojo.toml
+    $ echo "name = \"load_fuzzer $(date -Isec)\"" >> dojo.toml
+    $ echo '[test]' >> dojo.toml
+    $ echo 'test_type = "CASR DAST Report"' >> dojo.toml
+    $ casr-dojo -i casr/tests/casr_tests/casrep/test_clustering_san -u http://localhost:8080 -t 382f5dfdf2a339f7c3bb35442f9deb9b788a98d5 dojo.toml
+
+### Screenshots
+
+![dashboard](/docs/images/casr_dojo_dashboard.png)
+
+![product](/docs/images/casr_dojo_product.png)
+
+![findings](/docs/images/casr_dojo_findings.png)
+
+![finding](/docs/images/casr_dojo_finding.png)
+
+![finding-files](/docs/images/casr_dojo_finding_files.png)

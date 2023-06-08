@@ -18,9 +18,9 @@ jobs:
     - name: Code Style
       run: cargo fmt -- --check
     - name: Clippy
-      run: RUSTFLAGS="-Dwarnings" cargo clippy --all --tests
+      run: RUSTFLAGS="-Dwarnings" cargo clippy --all-features --all --tests
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --all-features --verbose
     - name: Run tests
       run: |
         sudo apt update && sudo apt install -y gdb pip curl python3.10-dev llvm
@@ -55,7 +55,7 @@ jobs:
           export PATH=/root/.cargo/bin:$PATH
           export CARGO_TERM_COLOR=always
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
-          cargo build --release --verbose
+          cargo build --all-features --release --verbose
           cargo test --release --verbose
 
   ubuntu-riscv64:

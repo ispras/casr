@@ -21,7 +21,7 @@ struct AflCrashInfo {
     pub path: PathBuf,
     /// Target command line args.
     pub target_args: Vec<String>,
-    /// Input file argument index starting from argv[1], None for stdin.
+    /// Input file argument index starting from argv\[1\], None for stdin.
     pub at_index: Option<usize>,
     /// ASAN.
     pub is_asan: bool,

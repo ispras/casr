@@ -153,3 +153,19 @@ pub fn initialize_logging(matches: &ArgMatches) {
         ColorChoice::Auto,
     );
 }
+
+/// Parse CASR report from file.
+///
+/// # Arguments
+///
+/// * `path` - path to CASR report.
+pub fn report_from_file(path: &Path) -> Result<CrashReport> {
+    let Ok(file) = std::fs::File::open(path) else {
+        bail!("Error with opening Casr report: {}", path.display());
+    };
+    let report: Result<CrashReport, _> = serde_json::from_reader(BufReader::new(file));
+    if let Err(e) = report {
+        bail!("Error with parsing JSON {}: {}", path.display(), e);
+    }
+    Ok(report.unwrap())
+}
