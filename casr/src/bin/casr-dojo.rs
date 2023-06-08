@@ -99,7 +99,9 @@ impl DefectDojoClient {
         // Get existing entity.
         info!("Trying to find existing {}", entity_name);
         let response = self.request(GET, &url)?.query(&query).send().await?;
-        if let Some(id) = get_first_result_id(response).await? {
+        let results = get_results(response).await?;
+        if !results.is_empty() {
+            let id = get_result_id(&results[0])?;
             info!("Found existing {} with id={}", entity_name, id);
             return Ok(id);
         }
@@ -201,7 +203,7 @@ impl DefectDojoClient {
     /// * `path` - CASR report file path.
     /// * `report` - CASR report.
     /// * `gdb` - additional CASR report from GDB.
-    /// * `gdb_no_crash` - when true, print "No crash" if `gdb` is None.
+    /// * `extra_gdb_report` - when true, print "No crash" if `gdb` is None.
     /// * `product_name` - DefectDojo product name.
     /// * `test_id` - DefectDojo test id.
     pub async fn upload_finding(
@@ -209,7 +211,7 @@ impl DefectDojoClient {
         path: &Path,
         report: &CrashReport,
         gdb: &Option<CrashReport>,
-        gdb_no_crash: bool,
+        extra_gdb_report: bool,
         product_name: String,
         test_id: i64,
     ) -> Result<()> {
@@ -284,7 +286,7 @@ impl DefectDojoClient {
         );
         finding.insert(
             "description".to_string(),
-            serde_json::Value::String(get_report_description(report, gdb, gdb_no_crash)),
+            serde_json::Value::String(get_report_description(report, gdb, extra_gdb_report)),
         );
         let response = self
             .request(POST, "findings/")?
@@ -385,19 +387,6 @@ fn get_result_id(result: &serde_json::Value) -> Result<i64> {
     Ok(result["id"].as_i64().unwrap())
 }
 
-/// Return id for the first result of DefectDojo query.
-///
-/// # Arguments
-///
-/// * `response` - HTTP response.
-async fn get_first_result_id(response: Response) -> Result<Option<i64>> {
-    let results = get_results(response).await?;
-    if results.is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(get_result_id(&results[0])?))
-}
-
 /// Return ids for the results of DefectDojo query.
 ///
 /// # Arguments
@@ -449,11 +438,11 @@ fn compute_report_hash(report: &CrashReport, name: &str) -> Result<u64> {
 ///
 /// * `report` - CASR report.
 /// * `gdb` - additional CASR report from GDB.
-/// * `gdb_no_crash` - when true, print "No crash" if `gdb` is None.
+/// * `extra_gdb_report` - when true, print "No crash" if `gdb` is None.
 fn get_report_description(
     report: &CrashReport,
     gdb: &Option<CrashReport>,
-    gdb_no_crash: bool,
+    extra_gdb_report: bool,
 ) -> String {
     let mut d = format!("**Crash line:** {}\n", report.crashline);
     let e = &report.execution_class;
@@ -467,7 +456,7 @@ fn get_report_description(
             "**GDB severity (without ASAN):** {}: {}: {}\n{}\n",
             e.severity, e.short_description, e.description, e.explanation
         );
-    } else if gdb_no_crash {
+    } else if extra_gdb_report {
         d += "**GDB severity (without ASAN):** No crash\n";
     }
     d += &format!("**Command:** {}", report.proc_cmdline);
@@ -816,18 +805,12 @@ async fn main() -> Result<()> {
         .filter(|(_, _, hash)| casr_hash.insert(*hash))
         .map(|(e, report, _)| {
             let gdb = e.with_extension("gdb.casrep");
-            (e, report, gdb)
-        })
-        .map(|(e, report, gdb)| {
-            Ok((
-                e,
-                report,
-                if gdb.exists() {
-                    Some(util::report_from_file(gdb.as_path())?)
-                } else {
-                    None
-                },
-            ))
+            let gdb = if gdb.exists() {
+                Some(util::report_from_file(gdb.as_path())?)
+            } else {
+                None
+            };
+            Ok((e, report, gdb))
         })
         .collect::<Result<Vec<_>>>()?;
     info!(
@@ -839,13 +822,13 @@ async fn main() -> Result<()> {
         "Uploading {} new unique CASR reports to DefectDojo",
         new_casr_reports.len()
     );
-    let gdb_no_crash = new_casr_reports.iter().any(|(_, _, gdb)| gdb.is_some());
+    let extra_gdb_report = new_casr_reports.iter().any(|(_, _, gdb)| gdb.is_some());
     let mut tasks = tokio::task::JoinSet::new();
     for (path, report, gdb) in new_casr_reports {
         let c = Arc::clone(&client);
         let pname = product_name.clone();
         tasks.spawn(async move {
-            c.upload_finding(&path, &report, &gdb, gdb_no_crash, pname, test_id)
+            c.upload_finding(&path, &report, &gdb, extra_gdb_report, pname, test_id)
                 .await
         });
     }
