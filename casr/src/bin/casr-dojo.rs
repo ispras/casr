@@ -275,9 +275,12 @@ impl DefectDojoClient {
             "found_by".to_string(),
             serde_json::Value::Array(vec![serde_json::Value::Number(1.into())]),
         );
+        let Some(date) = report.date.split('T').next() else {
+            bail!("Failed to parse date {} for CASR report {}", report.date, path.display());
+        };
         finding.insert(
             "date".to_string(),
-            serde_json::Value::String(report.date.split('T').next().unwrap().to_string()),
+            serde_json::Value::String(date.to_string()),
         );
         finding.insert(
             "description".to_string(),
@@ -424,6 +427,9 @@ async fn get_findings_ids(request: RequestBuilder) -> Result<Vec<i64>> {
 /// * `report` - CASR report.
 /// * `name` - CASR report name.
 fn compute_report_hash(report: &CrashReport, name: &str) -> Result<u64> {
+    if report.stacktrace.is_empty() {
+        bail!("Empty stack trace for CASR report {}", name);
+    }
     let stacktrace = report.filtered_stacktrace();
     if let Err(e) = stacktrace {
         bail!(
