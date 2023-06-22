@@ -79,6 +79,29 @@ Example:
 
     $ casr-python -o python.casrep -- casr/tests/casr_tests/python/test_casr_python.py
 
+## casr-java
+
+Create CASR reports (.casrep) from java reports
+
+    Usage: casr-java [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+
+    Arguments:
+      [ARGS]...  Add "-- <path> <arguments>" to run
+
+    Options:
+      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
+                             generated
+          --stdout           Print CASR report to stdout
+          --stdin <FILE>     Stdin file for program
+          --ignore <FILE>    File with regular expressions for functions and file paths that
+                             should be ignored
+      -h, --help             Print help
+      -V, --version          Print version
+
+Run casr-java:
+
+    $ casr-java -o java.casrep -- java casr/tests/casr_tests/java/Test1.java
+
 ## casr-core
 
 Analyze coredump for security goals and provide detailed report with severity estimation

@@ -19,7 +19,9 @@ CASR is maintained by:
 
 CASR is a set of tools that allows you to collect crash reports in different
 ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze ASAN
-reports. Try `casr-gdb` to get reports from gdb. Use `casr-python` to analyze python reports and get report from [Atheris](https://github.com/google/atheris).
+reports. Try `casr-gdb` to get reports from gdb. Use `casr-python` to analyze python
+reports and get report from [Atheris](https://github.com/google/atheris).
+Use `casr-java` to analyze java reports and get report from [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable))
 for x86, x86\_64, arm32, aarch64, rv32g, rv64g architectures,
@@ -31,7 +33,8 @@ Triage is based on stack trace comparison from [gdb-command](https://github.com/
 `casr-afl` is used to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
-(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)).
+(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)
+/[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)).
 `casr-dojo` allows to upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) (available with
 `dojo` feature).
@@ -112,6 +115,10 @@ Create report from python:
 
     $ casr-python -o python.casrep -- casr/tests/casr_tests/python/test_casr_python.py
 
+Create report from java:
+
+    $ casr-java -o java.casrep -- java casr/tests/casr_tests/java/Test1.java
+
 View report:
 
     $ casr-cli casr/tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
@@ -166,7 +173,7 @@ Upload new and unique CASR reports to
 When you have crashes from fuzzing you may do the following steps:
 
 1. Create reports for all crashes via `casr-san`, `casr-gdb` (if no sanitizers
-   are present), or `casr-python`.
+   are present), `casr-python`, or `casr-java`.
 2. Deduplicate collected reports via `casr-cluster -d`.
 3. Cluster deduplicated reports via `casr-cluster -c`.
 4. View reports from clusters using `casr-cli` or upload them to

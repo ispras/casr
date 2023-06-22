@@ -5,6 +5,7 @@ use crate::error::*;
 use crate::execution_class::*;
 use crate::gdb::GdbStacktrace;
 use crate::go::GoStacktrace;
+use crate::java::JavaStacktrace;
 use crate::python::PythonStacktrace;
 use crate::stacktrace::*;
 use chrono::prelude::*;
@@ -198,6 +199,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub go_report: Vec<String>,
+    /// Java report.
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "JavaReport", deserialize = "JavaReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub java_report: Vec<String>,
     /// Crash line from stack trace: source:line or binary+offset.
     #[cfg_attr(
         feature = "serde",
@@ -521,6 +529,8 @@ impl CrashReport {
             AsanStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.python_report.is_empty() {
             PythonStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.java_report.is_empty() {
+            JavaStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.go_report.is_empty() {
             GoStacktrace::parse_stacktrace(&self.stacktrace)?
         } else {
@@ -670,6 +680,14 @@ impl fmt::Display for CrashReport {
         if !self.python_report.is_empty() {
             report += "\n===PythonReport===\n";
             for e in self.python_report.iter() {
+                report += &format!("{e}\n");
+            }
+        }
+
+        // JavaReport
+        if !self.java_report.is_empty() {
+            report += "\n===JavaReport===\n";
+            for e in self.java_report.iter() {
                 report += &format!("{e}\n");
             }
         }

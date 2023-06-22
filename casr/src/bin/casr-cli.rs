@@ -352,6 +352,16 @@ fn build_tree_report(
         tree.collapse_item(row);
     }
 
+    if !report.java_report.is_empty() {
+        row = tree
+            .insert_container_item("JavaReport".to_string(), Placement::After, row)
+            .unwrap();
+        report.java_report.iter().for_each(|e| {
+            tree.insert_item(e.clone(), Placement::LastChild, row);
+        });
+        tree.collapse_item(row);
+    }
+
     if !report.go_report.is_empty() {
         row = tree
             .insert_container_item("GoReport".to_string(), Placement::After, row)
@@ -524,6 +534,10 @@ fn build_slider_report(
 
     if !report.python_report.is_empty() {
         select.add_item("PythonReport", report.python_report.join("\n"));
+    }
+
+    if !report.java_report.is_empty() {
+        select.add_item("JavaReport", report.java_report.join("\n"));
     }
 
     if !report.go_report.is_empty() {

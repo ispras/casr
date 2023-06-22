@@ -15,6 +15,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/// Regular expressions for java functions to be ignored.
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA: &[&str] = &[
+    // TODO
+    r"^[^.]$",
+];
+
 /// Regular expressions for python functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[
     // TODO
@@ -203,6 +209,12 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     r"^PyRun",
     r"^Py_",
     r"^atheris::",
+];
+
+/// Regular expressions for paths to java files that should be ignored.
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA: &[&str] = &[
+    // TODO
+    r"^[^.]$",
 ];
 
 /// Regular expressions for paths to python files that should be ignored.

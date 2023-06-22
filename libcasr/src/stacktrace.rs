@@ -37,6 +37,7 @@ macro_rules! init_ignored_frames {
                     "rust" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST, STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST),
                     "cpp" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP),
                     "go" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO, STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO),
+                    "java" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA, STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA),
                     &_ => (["^[^.]$"].as_slice(), ["^[^.]$"].as_slice()),
                 }
             ).unzip();

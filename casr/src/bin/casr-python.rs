@@ -7,45 +7,10 @@ use libcasr::report::CrashReport;
 use libcasr::stacktrace::*;
 
 use anyhow::{bail, Context, Result};
-use clap::{Arg, ArgAction, ArgGroup, ArgMatches};
+use clap::{Arg, ArgAction, ArgGroup};
 use regex::Regex;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-
-/// Call casr-san with similar options
-///
-/// # Arguments
-///
-/// * `matches` - casr options
-///
-/// * `argv` - executable file options
-fn call_casr_san(matches: &ArgMatches, argv: &[&str]) -> Result<()> {
-    let mut python_cmd = Command::new("casr-san");
-    if let Some(report_path) = matches.get_one::<String>("output") {
-        python_cmd.args(["--output", report_path]);
-    } else {
-        python_cmd.args(["--stdout"]);
-    }
-    if let Some(path) = matches.get_one::<String>("stdin") {
-        python_cmd.args(["--stdin", path]);
-    }
-    if let Some(path) = matches.get_one::<String>("ignore") {
-        python_cmd.args(["--ignore", path]);
-    }
-    python_cmd.arg("--").args(argv);
-
-    let output = python_cmd
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .output()
-        .with_context(|| format!("Couldn't launch {python_cmd:?}"))?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        bail!("casr-san error when calling from casr-python");
-    }
-}
+use std::process::Command;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-python")
@@ -174,7 +139,7 @@ fn main() -> Result<()> {
             }
         } else {
             // Call casr-san
-            return call_casr_san(&matches, &argv);
+            return util::call_casr_san(&matches, &argv, "casr-python");
         }
     } else if let Some(report_start) = python_stderr_list
         .iter()
@@ -196,7 +161,7 @@ fn main() -> Result<()> {
         }
     } else {
         // Call casr-san
-        return call_casr_san(&matches, &argv);
+        return util::call_casr_san(&matches, &argv, "casr-python");
     }
 
     if let Ok(crash_line) = PythonStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
