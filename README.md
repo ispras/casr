@@ -66,6 +66,10 @@ collected from gdb. To save crash reports as json use `serde` feature.
 
 ## Dependencies
 
+Install build dependencies:
+
+    $ sudo apt install build-essential clang
+
 Install [Rust](https://www.rust-lang.org/tools/install) or update existing Rust installation:
 
     $ rustup update
