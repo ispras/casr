@@ -116,7 +116,6 @@ impl ParseStacktrace for JavaStacktrace {
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
         let mut stacktrace = Stacktrace::new();
         let re = Regex::new(r"(?:\s|\t)*at (.*)\((.*)\)").unwrap();
-        let rd = Regex::new(r"(.*):(\d+)").unwrap();
 
         for entry in entries.iter() {
             let Some(cap) = re.captures(entry) else {
@@ -129,12 +128,14 @@ impl ParseStacktrace for JavaStacktrace {
                 continue;
             }
             let mut stentry = StacktraceEntry::default();
-            stentry.debug.file = if let Some(decap) = rd.captures(&debug) {
-                stentry.debug.line = decap.get(2).unwrap().as_str().parse::<u64>().unwrap();
-                decap.get(1).unwrap().as_str().to_string()
+            let debug: Vec<&str> = debug.split(':').collect();
+            stentry.debug.file = if debug.len() > 1 {
+                stentry.debug.line = debug[1].parse::<u64>().unwrap();
+                debug[0]
             } else {
-                debug
-            };
+                debug[0]
+            }
+            .to_string();
             stentry.function = cap.get(1).unwrap().as_str().to_string();
 
             stacktrace.push(stentry);
@@ -149,7 +150,7 @@ pub struct JavaException;
 impl Exception for JavaException {
     fn parse_exception(description: &str) -> Option<ExecutionClass> {
         let re = Regex::new(
-            r"(?:Caused by: |Exception in thread .*? |== Java Exception: )(?:(\S+?): |)(\S+)?",
+            r"(?:Caused by: |Exception in thread .*? |== Java Exception: )(?:(\S+?): )?(\S+)?",
         )
         .unwrap();
         re.captures(description).map(|cap| {

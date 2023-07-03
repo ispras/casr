@@ -21,7 +21,8 @@ CASR is a set of tools that allows you to collect crash reports in different
 ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze ASAN
 reports. Try `casr-gdb` to get reports from gdb. Use `casr-python` to analyze python
 reports and get report from [Atheris](https://github.com/google/atheris).
-Use `casr-java` to analyze java reports and get report from [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)
+Use `casr-java` to analyze java reports and get report from
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer).
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable))
 for x86, x86\_64, arm32, aarch64, rv32g, rv64g architectures,

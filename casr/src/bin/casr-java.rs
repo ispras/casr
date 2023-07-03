@@ -101,8 +101,8 @@ fn main() -> Result<()> {
             || x.starts_with("-class-path")
             || x.starts_with("--classpath")
     }) {
-        report.executable_path = if argv[pos].contains('=') {
-            argv[pos].split('=').nth(1).unwrap()
+        report.executable_path = if let Some(classes) = argv[pos].split('=').nth(1) {
+            classes
         } else {
             let Some(classes) = argv.get(pos + 1) else {
                 bail!("Class path is empty.");

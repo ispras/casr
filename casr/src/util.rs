@@ -15,11 +15,13 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-/// Call casr-san with similar options
+/// Call casr-san with the provided options
 ///
 /// # Arguments
 ///
 /// * `matches` - casr options
+///
+/// * `tool` - tool, that called casr-san
 ///
 /// * `argv` - executable file options
 pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], tool: &str) -> Result<()> {
