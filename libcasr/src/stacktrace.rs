@@ -83,8 +83,17 @@ pub trait ParseStacktrace {
     /// Extract stack trace from stream.
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>>;
 
+    /// Transform stack trace line into StacktraceEntry type.
+    fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry>;
+
     /// Transform stack trace strings into Stacktrace type.
-    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace>;
+    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
+        entries
+            .iter()
+            .map(String::as_str)
+            .map(Self::parse_stacktrace_entry)
+            .collect()
+    }
 }
 
 /// Extract crash line from stack trace.

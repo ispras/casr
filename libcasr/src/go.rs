@@ -49,31 +49,27 @@ impl ParseStacktrace for GoStacktrace {
         Ok(stacktrace)
     }
 
-    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
-        let mut stacktrace = Stacktrace::new();
+    fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
         let re = Regex::new(r#"(.+) in (.+):([0-9]+)"#).unwrap();
-        for entry in entries.iter() {
-            let mut stentry = StacktraceEntry::default();
-            let Some(caps) = re.captures(entry.as_ref()) else {
-                return Err(Error::Casr(format!(
-                    "Couldn't parse stack trace entry: {entry}")
-                ));
-            };
-            stentry.function = caps.get(1).unwrap().as_str().to_string();
-            if let Some(file) = caps.get(2) {
-                stentry.debug.file = file.as_str().to_string();
-                if let Some(line) = caps.get(3) {
-                    let Ok(num) = line.as_str().parse::<u64>() else {
-                        return Err(Error::Casr(format!(
-                            "Couldn't parse line number in stack trace entry: {entry}")
-                        ));
-                    };
-                    stentry.debug.line = num;
-                }
+        let mut stentry = StacktraceEntry::default();
+        let Some(caps) = re.captures(entry.as_ref()) else {
+            return Err(Error::Casr(format!(
+                "Couldn't parse stack trace entry: {entry}")
+            ));
+        };
+        stentry.function = caps.get(1).unwrap().as_str().to_string();
+        if let Some(file) = caps.get(2) {
+            stentry.debug.file = file.as_str().to_string();
+            if let Some(line) = caps.get(3) {
+                let Ok(num) = line.as_str().parse::<u64>() else {
+                    return Err(Error::Casr(format!(
+                        "Couldn't parse line number in stack trace entry: {entry}")
+                    ));
+                };
+                stentry.debug.line = num;
             }
-            stacktrace.push(stentry);
         }
-        Ok(stacktrace)
+        Ok(stentry)
     }
 }
 
