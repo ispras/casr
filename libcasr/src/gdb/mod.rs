@@ -21,6 +21,10 @@ impl ParseStacktrace for GdbStacktrace {
             .collect())
     }
 
+    fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
+        Ok(StacktraceEntry::new(entry)?)
+    }
+
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
         Ok(Stacktrace::from_gdb(entries.join("\n"))?)
     }

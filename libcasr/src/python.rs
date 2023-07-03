@@ -44,12 +44,32 @@ impl ParseStacktrace for PythonStacktrace {
             .collect::<Vec<String>>())
     }
 
+    fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
+        let mut stentry = StacktraceEntry::default();
+        let re = Regex::new(r#"File "(.+)", line (\d+), in (.+)"#).unwrap();
+
+        let Some(cap) = re.captures(entry) else {
+            return Err(Error::Casr(format!(
+                "Couldn't parse stacktrace line: {entry}")
+            ));
+        };
+        stentry.debug.file = cap.get(1).unwrap().as_str().to_string();
+        if let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() {
+            stentry.debug.line = line;
+        } else {
+            return Err(Error::Casr(format!(
+                "Couldn't parse stacktrace line num: {entry}"
+            )));
+        };
+        stentry.function = cap.get(3).unwrap().as_str().to_string();
+
+        Ok(stentry)
+    }
+
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
         let mut stacktrace = Stacktrace::new();
 
         for entry in entries.iter() {
-            let mut stentry = StacktraceEntry::default();
-
             if entry.starts_with('[') {
                 let re = Regex::new(r#"\[Previous line repeated (\d+) more times\]"#).unwrap();
                 let Some(rep) = re.captures(entry) else {
@@ -62,31 +82,14 @@ impl ParseStacktrace for PythonStacktrace {
                 };
                 let last = stacktrace.last().unwrap().clone();
                 for _ in 0..rep {
-                    stentry = last.clone();
-                    stacktrace.push(stentry);
+                    stacktrace.push(last.clone());
                 }
                 continue;
             }
 
-            let re = Regex::new(r#"File "(.+)", line (\d+), in (.+)"#).unwrap();
-
-            let Some(cap) = re.captures(entry) else {
-                return Err(Error::Casr(format!(
-                    "Couldn't parse stacktrace line: {entry}")
-                ));
-            };
-            stentry.debug.file = cap.get(1).unwrap().as_str().to_string();
-            if let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() {
-                stentry.debug.line = line;
-            } else {
-                return Err(Error::Casr(format!(
-                    "Couldn't parse stacktrace line num: {entry}"
-                )));
-            };
-            stentry.function = cap.get(3).unwrap().as_str().to_string();
-
-            stacktrace.push(stentry);
+            stacktrace.push(Self::parse_stacktrace_entry(entry)?);
         }
+
         Ok(stacktrace)
     }
 }
