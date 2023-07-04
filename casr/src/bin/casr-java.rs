@@ -138,8 +138,7 @@ fn main() -> Result<()> {
         return util::call_casr_san(&matches, &argv, "casr-java");
     }
 
-    if let Ok(crash_line) = java_crash_line(&JavaStacktrace::parse_stacktrace(&report.stacktrace)?)
-    {
+    if let Ok(crash_line) = JavaStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = CrashReport::sources(&debug) {

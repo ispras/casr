@@ -6,32 +6,6 @@ use crate::stacktrace::ParseStacktrace;
 use crate::stacktrace::*;
 
 use regex::Regex;
-use std::sync::Mutex;
-
-// Variable to extract crash line from java stack trace.
-static JAVA_CRASH_LINE: Mutex<String> = Mutex::new(String::new());
-
-/// Get crash line from stack trace.
-///
-/// # Argument
-///
-/// * `trace` - stack trace as 'Stacktrace' struct
-///
-/// # Return value
-///
-/// Crash line as 'CrashLine' struct
-pub fn java_crash_line(trace: &Stacktrace) -> Result<CrashLine> {
-    let mut trace = trace.clone();
-    trace.filter();
-
-    let crash_line_st =
-        JavaStacktrace::parse_stacktrace(&[(*JAVA_CRASH_LINE.lock().unwrap()).clone()])?;
-    if trace.contains(&crash_line_st[0]) {
-        crash_line_st.crash_line()
-    } else {
-        trace.crash_line()
-    }
-}
 
 /// Structure provides an interface for processing the stack trace.
 pub struct JavaStacktrace;
@@ -63,54 +37,31 @@ impl ParseStacktrace for JavaStacktrace {
             return Err(Error::Casr("Couldn't find stacktrace".to_string()));
         }
         let last_block = blocks.last().unwrap();
-        let Some(mut prev_num) = last_block.footer else {
-            let stacktrace = last_block.body.iter().rev().map(|x| x.to_string()).collect::<Vec<String>>();
-            if stacktrace.is_empty() {
-                return Err(Error::Casr(
-                    "Empty stacktrace.".to_string()
-                ));
-            }
-            *JAVA_CRASH_LINE.lock().unwrap() = stacktrace[0].clone();
-            return Ok(stacktrace);
-        };
-        let mut backward_stacktrace = Vec::new();
+        let mut prev_num = last_block.footer.unwrap_or(0);
         let mut forward_stacktrace: Vec<&str> = Vec::new();
         forward_stacktrace
             .extend_from_slice(&last_block.body.iter().rev().copied().collect::<Vec<&str>>());
 
-        for block in blocks.iter().rev().skip(1) {
-            if let Some(cur_num) = block.footer {
-                let diff = prev_num - cur_num;
-                forward_stacktrace.extend_from_slice(
-                    &block.body[..diff]
-                        .iter()
-                        .rev()
-                        .copied()
-                        .collect::<Vec<&str>>(),
-                );
-                backward_stacktrace.extend_from_slice(&block.body[diff..]);
-                prev_num = cur_num;
-            } else {
-                forward_stacktrace.extend_from_slice(
-                    &block.body[..prev_num]
-                        .iter()
-                        .rev()
-                        .copied()
-                        .collect::<Vec<&str>>(),
-                );
-                backward_stacktrace.extend_from_slice(&block.body[prev_num..]);
+        for block in blocks.iter().rev() {
+            let cur_num = block.footer.unwrap_or(0);
+            let diff = prev_num - cur_num;
+            forward_stacktrace.extend_from_slice(
+                &block.body[..diff]
+                    .iter()
+                    .rev()
+                    .copied()
+                    .collect::<Vec<&str>>(),
+            );
+            prev_num = cur_num;
+            if cur_num == 0 {
                 break;
             }
         }
-
-        backward_stacktrace.reverse();
-        backward_stacktrace.extend_from_slice(forward_stacktrace.as_slice());
         if forward_stacktrace.is_empty() {
             return Err(Error::Casr("Empty stacktrace.".to_string()));
         }
-        *JAVA_CRASH_LINE.lock().unwrap() = forward_stacktrace[0].to_string();
 
-        Ok(backward_stacktrace.iter().map(|x| x.to_string()).collect())
+        Ok(forward_stacktrace.iter().map(|x| x.to_string()).collect())
     }
 
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {

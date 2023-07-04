@@ -3775,7 +3775,7 @@ fn test_casr_java() {
             .unwrap()
             .to_string();
 
-        assert_eq!(16, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(14, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "LowLevelException");
         assert!(report["CrashLine"]
