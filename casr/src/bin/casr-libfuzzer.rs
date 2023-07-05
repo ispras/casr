@@ -15,7 +15,7 @@ use std::process::{Command, Stdio};
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
         .version(clap::crate_version!())
-        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)")
+        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)")
         .term_width(90)
         .arg(
             Arg::new("log-level")

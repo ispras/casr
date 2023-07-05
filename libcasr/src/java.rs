@@ -12,12 +12,15 @@ pub struct JavaStacktrace;
 
 impl ParseStacktrace for JavaStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
+        /// Stucture represents the Java stack trace exception block.
         struct JavaExceptionBlock<'a> {
+            /// Vector of stack trace entries.
             body: Vec<&'a str>,
-            footer: Option<usize>,
+            /// Number of convolute frames.
+            conv_counter: usize,
         }
         // Get java stack trace.
-        let re = Regex::new(r"(?m)^(?:Caused by:|Exception in thread|== Java Exception:).*?\n((?:(?:\s|\t)+at .*\(.*\)(?:\n|))*)(?:(?:\s|\t)+\.\.\. (\d+) more)?").unwrap();
+        let re = Regex::new(r"(?m)^(?:Caused by:|Exception in thread|== Java Exception:).*((?:\n(?:\s|\t)+at .*\(.*\))*)(?:\n(?:\s|\t)+\.\.\. (\d+) more)?").unwrap();
         let mut blocks = Vec::new();
         for cap in re.captures_iter(stream) {
             let body: Vec<&'_ str> = cap
@@ -28,22 +31,20 @@ impl ParseStacktrace for JavaStacktrace {
                 .filter(|x| !x.is_empty())
                 .rev()
                 .collect();
-            let footer = cap
+            let conv_counter = cap
                 .get(2)
-                .map(|number| number.as_str().parse::<usize>().unwrap());
-            blocks.push(JavaExceptionBlock { body, footer });
+                .map(|number| number.as_str().parse::<usize>().unwrap())
+                .unwrap_or_default();
+            blocks.push(JavaExceptionBlock { body, conv_counter });
         }
-        if blocks.is_empty() {
+        let Some(last_block) = blocks.last() else {
             return Err(Error::Casr("Couldn't find stacktrace".to_string()));
-        }
-        let last_block = blocks.last().unwrap();
-        let mut prev_num = last_block.footer.unwrap_or(0);
-        let mut forward_stacktrace: Vec<&str> = Vec::new();
-        forward_stacktrace
-            .extend_from_slice(&last_block.body.iter().rev().copied().collect::<Vec<&str>>());
+        };
+        let mut prev_num = last_block.conv_counter;
+        let mut forward_stacktrace = last_block.body.iter().rev().copied().collect::<Vec<&str>>();
 
         for block in blocks.iter().rev() {
-            let cur_num = block.footer.unwrap_or(0);
+            let cur_num = block.conv_counter;
             let diff = prev_num - cur_num;
             forward_stacktrace.extend_from_slice(
                 &block.body[..diff]
@@ -75,13 +76,17 @@ impl ParseStacktrace for JavaStacktrace {
         let debug = cap.get(2).unwrap().as_str().to_string();
         let mut stentry = StacktraceEntry::default();
         let debug: Vec<&str> = debug.split(':').collect();
-        stentry.debug.file = if debug.len() > 1 {
-            stentry.debug.line = debug[1].parse::<u64>().unwrap();
-            debug[0]
-        } else {
-            debug[0]
+        stentry.debug.file = debug[0].to_string();
+        if debug.len() > 1 {
+            stentry.debug.line = if let Ok(line) = debug[1].parse::<u64>() {
+                line
+            } else {
+                return Err(Error::Casr(format!(
+                    "Couldn't parse line number {}. Entry: {entry}",
+                    debug[1]
+                )));
+            };
         }
-        .to_string();
         stentry.function = cap.get(1).unwrap().as_str().to_string();
 
         Ok(stentry)
@@ -91,15 +96,8 @@ impl ParseStacktrace for JavaStacktrace {
         entries
             .iter()
             .map(String::as_str)
+            .filter(|entry| !entry.contains("Unknown Source") && !entry.contains("Native Method"))
             .map(Self::parse_stacktrace_entry)
-            .filter(|res| {
-                if let Ok(entry) = res {
-                    !entry.debug.file.contains("Unknown Source")
-                        && !entry.debug.file.contains("Native Method")
-                } else {
-                    true
-                }
-            })
             .collect()
     }
 }
@@ -110,7 +108,7 @@ pub struct JavaException;
 impl Exception for JavaException {
     fn parse_exception(description: &str) -> Option<ExecutionClass> {
         let re = Regex::new(
-            r"(?:Caused by: |Exception in thread .*? |== Java Exception: )(?:(\S+?): )?(\S+)?",
+            r"(?:Caused by: |Exception in thread .*? |== Java Exception: )(?:(\S+?): )?(.+)",
         )
         .unwrap();
         re.captures(description).map(|cap| {

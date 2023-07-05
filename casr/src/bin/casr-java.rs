@@ -129,7 +129,16 @@ fn main() -> Result<()> {
         }
         report.stacktrace = JavaStacktrace::extract_stacktrace(&report.java_report.join("\n"))?;
         if let Some(exception) = JavaException::parse_exception(
-            &report.java_report.iter().rev().cloned().collect::<String>(),
+            &report
+                .java_report
+                .iter()
+                .rev()
+                .cloned()
+                .map(|mut x| {
+                    x.push('\n');
+                    x
+                })
+                .collect::<String>(),
         ) {
             report.execution_class = exception;
         }
