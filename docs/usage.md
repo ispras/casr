@@ -366,7 +366,7 @@ you can estimate crash severity for program built without sanitizers.
 
 ## casr-libfuzzer
 
-Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)
+Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
 
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> [-- <ARGS>...]
 
@@ -387,7 +387,9 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)
 
 `casr-libfuzzer` provides integration with
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers
-(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)). It is pretty much like `casr-afl`.
+(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)/
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)).
+It is pretty much like `casr-afl`.
 
 libFuzzer example:
 

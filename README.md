@@ -64,6 +64,7 @@ and program languages:
 * Rust
 * Go
 * Python
+* Java
 
 It could be built with `exploitable` feature for severity estimation crashes
 collected from gdb. To save crash reports as json use `serde` feature.

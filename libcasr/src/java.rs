@@ -64,34 +64,43 @@ impl ParseStacktrace for JavaStacktrace {
         Ok(forward_stacktrace.iter().map(|x| x.to_string()).collect())
     }
 
-    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
-        let mut stacktrace = Stacktrace::new();
+    fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
         let re = Regex::new(r"(?:\s|\t)*at (.*)\((.*)\)").unwrap();
 
-        for entry in entries.iter() {
-            let Some(cap) = re.captures(entry) else {
-                return Err(Error::Casr(format!(
-                    "Couldn't parse stacktrace line: {entry}")
-                ));
-            };
-            let debug = cap.get(2).unwrap().as_str().to_string();
-            if debug.contains("Unknown Source") || debug.contains("Native Method") {
-                continue;
-            }
-            let mut stentry = StacktraceEntry::default();
-            let debug: Vec<&str> = debug.split(':').collect();
-            stentry.debug.file = if debug.len() > 1 {
-                stentry.debug.line = debug[1].parse::<u64>().unwrap();
-                debug[0]
-            } else {
-                debug[0]
-            }
-            .to_string();
-            stentry.function = cap.get(1).unwrap().as_str().to_string();
-
-            stacktrace.push(stentry);
+        let Some(cap) = re.captures(entry) else {
+            return Err(Error::Casr(format!(
+                "Couldn't parse stacktrace line: {entry}")
+            ));
+        };
+        let debug = cap.get(2).unwrap().as_str().to_string();
+        let mut stentry = StacktraceEntry::default();
+        let debug: Vec<&str> = debug.split(':').collect();
+        stentry.debug.file = if debug.len() > 1 {
+            stentry.debug.line = debug[1].parse::<u64>().unwrap();
+            debug[0]
+        } else {
+            debug[0]
         }
-        Ok(stacktrace)
+        .to_string();
+        stentry.function = cap.get(1).unwrap().as_str().to_string();
+
+        Ok(stentry)
+    }
+
+    fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
+        entries
+            .iter()
+            .map(String::as_str)
+            .map(Self::parse_stacktrace_entry)
+            .filter(|res| {
+                if let Ok(entry) = res {
+                    !entry.debug.file.contains("Unknown Source")
+                        && !entry.debug.file.contains("Native Method")
+                } else {
+                    true
+                }
+            })
+            .collect()
     }
 }
 
