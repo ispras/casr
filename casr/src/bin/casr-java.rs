@@ -128,19 +128,9 @@ fn main() -> Result<()> {
             report.java_report.drain(end..);
         }
         report.java_report.retain(|x| !x.is_empty());
-        report.stacktrace = JavaStacktrace::extract_stacktrace(&report.java_report.join("\n"))?;
-        if let Some(exception) = JavaException::parse_exception(
-            &report
-                .java_report
-                .iter()
-                .rev()
-                .cloned()
-                .map(|mut x| {
-                    x.push('\n');
-                    x
-                })
-                .collect::<String>(),
-        ) {
+        let report_str = report.java_report.join("\n");
+        report.stacktrace = JavaStacktrace::extract_stacktrace(&report_str)?;
+        if let Some(exception) = JavaException::parse_exception(&report_str) {
             report.execution_class = exception;
         }
     } else {

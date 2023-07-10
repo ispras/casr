@@ -107,11 +107,12 @@ pub struct JavaException;
 
 impl Exception for JavaException {
     fn parse_exception(description: &str) -> Option<ExecutionClass> {
+        let description = description.split_inclusive('\n').rev().collect::<String>();
         let re = Regex::new(
             r"(?:Caused by: |Exception in thread .*? |== Java Exception: )(?:(\S+?): )?(.+)",
         )
         .unwrap();
-        re.captures(description).map(|cap| {
+        re.captures(&description).map(|cap| {
             ExecutionClass::new((
                 "NOT_EXPLOITABLE",
                 if let Some(class) = cap.get(1) {
