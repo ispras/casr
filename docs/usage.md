@@ -102,8 +102,8 @@ Run casr-java:
 
     $ casr-java -o java.casrep -- java casr/tests/casr_tests/java/Test1.java
 
-You can specify path to Java source files via environment variable
-CASR\_SOURCE\_LOCATIONS  (list separated by ':').
+You can specify paths to directories with source files via environment variable
+CASR\_SOURCE\_DIRECTORIES  (list separated by ':').
 
 ## casr-core
 
