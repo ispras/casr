@@ -480,7 +480,8 @@ impl CrashReport {
         }
 
         // Search for file
-        let sources: Vec<PathBuf> = if let Ok(sources) = std::env::var("CASR_SOURCE_LOCATIONS") {
+        let mut sources: Vec<PathBuf> = if let Ok(sources) = std::env::var("CASR_SOURCE_LOCATIONS")
+        {
             sources
                 .split(':')
                 .map(|x| PathBuf::from(x).join(&debug.file))
@@ -488,10 +489,9 @@ impl CrashReport {
         } else {
             Vec::new()
         };
-        let source_file = if let Some(source) = sources.iter().find(|x| x.exists()) {
-            source.clone()
-        } else {
-            PathBuf::from(&debug.file)
+        sources.push(PathBuf::from(&debug.file));
+        let Some(source_file) = sources.iter().find(|x| x.exists()) else {
+            return None;
         };
 
         if let Ok(file) = std::fs::File::open(source_file) {
