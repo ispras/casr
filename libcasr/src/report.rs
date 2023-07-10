@@ -479,30 +479,7 @@ impl CrashReport {
             return None;
         }
 
-        // Search for file
-        let mut sources: Vec<PathBuf> =
-            if let Ok(sources) = std::env::var("CASR_SOURCE_DIRECTORIES") {
-                let debug_file_name = PathBuf::from(&debug.file)
-                    .file_name()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string();
-                sources
-                    .split(':')
-                    .map(PathBuf::from)
-                    .filter(|x| x.is_dir())
-                    .map(|x| x.join(&debug_file_name))
-                    .collect()
-            } else {
-                Vec::new()
-            };
-        sources.push(PathBuf::from(&debug.file));
-        let Some(source_file) = sources.iter().find(|x| x.exists()) else {
-            return None;
-        };
-
-        if let Ok(file) = std::fs::File::open(source_file) {
+        if let Ok(file) = std::fs::File::open(&debug.file) {
             let file = BufReader::new(file);
             let start: usize = if debug.line > 5 {
                 debug.line as usize - 5

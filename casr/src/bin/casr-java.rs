@@ -11,6 +11,7 @@ use clap::{Arg, ArgAction, ArgGroup};
 use regex::Regex;
 use std::path::PathBuf;
 use std::process::Command;
+use walkdir::WalkDir;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-java")
@@ -140,7 +141,30 @@ fn main() -> Result<()> {
 
     if let Ok(crash_line) = JavaStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
         report.crashline = crash_line.to_string();
-        if let CrashLine::Source(debug) = crash_line {
+        if let CrashLine::Source(mut debug) = crash_line {
+            // Modify DebugInfo to find sources
+            let source_dirs: Vec<PathBuf> = if let Ok(sources) = std::env::var("CASR_SOURCE_DIRS") {
+                sources
+                    .split(':')
+                    .map(PathBuf::from)
+                    .filter(|x| x.is_dir())
+                    .collect()
+            } else {
+                Vec::new()
+            };
+
+            if let Some(file) = source_dirs.iter().find_map(|dir| {
+                WalkDir::new(dir)
+                    .into_iter()
+                    .flatten()
+                    .map(|e| e.into_path())
+                    .filter(|e| e.is_file())
+                    .filter(|e| e.extension().is_some() && e.extension().unwrap() == "java")
+                    .find(|x| x.file_name().unwrap().to_str().unwrap().eq(&debug.file))
+            }) {
+                debug.file = file.display().to_string();
+            }
+
             if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
