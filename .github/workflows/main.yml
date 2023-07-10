@@ -23,7 +23,8 @@ jobs:
       run: cargo build --all-features --verbose
     - name: Run tests
       run: |
-        sudo apt update && sudo apt install -y gdb pip curl python3.10-dev llvm
+        sudo apt update && sudo apt install -y gdb pip curl python3.10-dev llvm \
+            openjdk-17-jdk
         pip3 install atheris
         curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
         ./rustup.sh -y && rm rustup.sh

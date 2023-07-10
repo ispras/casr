@@ -15,7 +15,7 @@ use std::process::{Command, Stdio};
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
         .version(clap::crate_version!())
-        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)")
+        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)")
         .term_width(90)
         .arg(
             Arg::new("log-level")
@@ -148,10 +148,12 @@ fn main() -> Result<()> {
     // Generate CASR reports.
     info!("Generating CASR reports...");
     info!("Using {} threads", num_of_threads);
-    let tool = if atheris_asan_lib.is_empty() {
-        "casr-san"
-    } else {
+    let tool = if !atheris_asan_lib.is_empty() {
         "casr-python"
+    } else if argv[0].ends_with("jazzer") || argv[0].ends_with("java") {
+        "casr-java"
+    } else {
+        "casr-san"
     };
     custom_pool.install(|| {
         crashes.par_iter().try_for_each(|(crash, fname)| {

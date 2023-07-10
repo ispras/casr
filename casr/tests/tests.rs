@@ -18,6 +18,7 @@ lazy_static::lazy_static! {
     static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
     static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
     static ref EXE_CASR_PYTHON: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-python"));
+    static ref EXE_CASR_JAVA: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-java"));
     static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
     static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
 }
@@ -3736,6 +3737,128 @@ fn test_casr_python() {
             .as_str()
             .unwrap()
             .contains("test_casr_python.py:4"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_java() {
+    let paths = [
+        abs_path("tests/casr_tests/java/Test1.java"),
+        abs_path("tests/casr_tests/java/Test2.java"),
+        abs_path("tests/casr_tests/java/Test2.cpp"),
+        abs_path("tests/tmp_tests_casr/libnative.so"),
+        abs_path("tests/tmp_tests_casr/"),
+    ];
+
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    // Test only java
+    let output = Command::new(*EXE_CASR_JAVA.read().unwrap())
+        .args(["--stdout", "--", "java", &paths[0]])
+        .output()
+        .expect("failed to start casr-java");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(14, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "LowLevelException");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("Test1.java:33"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    // Test java with native lib
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g -shared \
+            -I/usr/lib/jvm/java-17-openjdk-amd64/include \
+            -I/usr/lib/jvm/java-17-openjdk-amd64/include/linux \
+            -fPIC {} -o {}",
+            &paths[2], &paths[3]
+        ))
+        .output()
+        .expect("failed to execute clang++");
+
+    assert!(
+        clang.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&clang.stdout),
+        String::from_utf8_lossy(&clang.stderr)
+    );
+
+    let output = Command::new("bash")
+        .arg("-c")
+        .arg("clang++ -print-file-name=libclang_rt.asan-x86_64.so")
+        .output()
+        .expect("failed to execute clang++");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let clang_rt = String::from_utf8_lossy(&output.stdout);
+    let cargo_target_dir = PathBuf::from(env!("CARGO_BIN_EXE_casr-san"))
+        .parent()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    let output = Command::new(*EXE_CASR_JAVA.read().unwrap())
+        .args(["--stdout", "--", "java", &paths[1]])
+        .env("LD_PRELOAD", clang_rt.trim())
+        .env("LD_LIBRARY_PATH", &paths[4])
+        .env("PATH", format!("{}:{}", env!("PATH"), cargo_target_dir))
+        .output()
+        .expect("failed to start casr-java");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert!(report["Stacktrace"].as_array().unwrap()[0]
+            .as_str()
+            .unwrap()
+            .contains("Java_Test2_heapbufferoverflow"));
+        assert_eq!(severity_type, "EXPLOITABLE");
+        assert_eq!(severity_desc, "stack-buffer-overflow(write)");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("Test2.cpp:5"));
     } else {
         panic!("Couldn't parse json report file.");
     }

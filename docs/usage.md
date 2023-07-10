@@ -79,6 +79,29 @@ Example:
 
     $ casr-python -o python.casrep -- casr/tests/casr_tests/python/test_casr_python.py
 
+## casr-java
+
+Create CASR reports (.casrep) from java reports
+
+    Usage: casr-java [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+
+    Arguments:
+      [ARGS]...  Add "-- <path> <arguments>" to run
+
+    Options:
+      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
+                             generated
+          --stdout           Print CASR report to stdout
+          --stdin <FILE>     Stdin file for program
+          --ignore <FILE>    File with regular expressions for functions and file paths that
+                             should be ignored
+      -h, --help             Print help
+      -V, --version          Print version
+
+Run casr-java:
+
+    $ casr-java -o java.casrep -- java casr/tests/casr_tests/java/Test1.java
+
 ## casr-core
 
 Analyze coredump for security goals and provide detailed report with severity estimation
@@ -343,7 +366,7 @@ you can estimate crash severity for program built without sanitizers.
 
 ## casr-libfuzzer
 
-Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)
+Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
 
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> [-- <ARGS>...]
 
@@ -364,7 +387,9 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris)
 
 `casr-libfuzzer` provides integration with
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers
-(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)). It is pretty much like `casr-afl`.
+(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)/
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)).
+It is pretty much like `casr-afl`.
 
 libFuzzer example:
 
