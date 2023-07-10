@@ -479,7 +479,22 @@ impl CrashReport {
             return None;
         }
 
-        if let Ok(file) = std::fs::File::open(&debug.file) {
+        // Search for file
+        let sources: Vec<PathBuf> = if let Ok(sources) = std::env::var("CASR_SOURCE_LOCATIONS") {
+            sources
+                .split(':')
+                .map(|x| PathBuf::from(x).join(&debug.file))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let source_file = if let Some(source) = sources.iter().find(|x| x.exists()) {
+            source.clone()
+        } else {
+            PathBuf::from(&debug.file)
+        };
+
+        if let Ok(file) = std::fs::File::open(source_file) {
             let file = BufReader::new(file);
             let start: usize = if debug.line > 5 {
                 debug.line as usize - 5
