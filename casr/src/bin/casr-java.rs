@@ -160,7 +160,11 @@ fn main() -> Result<()> {
                     .map(|e| e.into_path())
                     .filter(|e| e.is_file())
                     .filter(|e| e.extension().is_some() && e.extension().unwrap() == "java")
-                    .find(|x| x.file_name().unwrap().to_str().unwrap().eq(&debug.file))
+                    .find(|x| {
+                        x.file_name()
+                            .unwrap()
+                            .eq(PathBuf::from(&debug.file).file_name().unwrap())
+                    })
             }) {
                 debug.file = file.display().to_string();
             }
