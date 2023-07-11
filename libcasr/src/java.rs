@@ -20,7 +20,7 @@ impl ParseStacktrace for JavaStacktrace {
             conv_counter: usize,
         }
         // Get java stack trace.
-        let re = Regex::new(r"(?m)^(?:Caused by:|Exception in thread|== Java Exception:).*((?:\n(?:\s|\t)+at .*\(.*\))*)(?:\n(?:\s|\t)+\.\.\. (\d+) more)?").unwrap();
+        let re = Regex::new(r"(?m)^(?:Caused by:|Exception in thread|== Java Exception:)(?:.|\n)*?((?:\n(?:\s|\t)+at .*\(.*\))+)(?:\n(?:\s|\t)+\.\.\. (\d+) more)?").unwrap();
         let mut blocks = Vec::new();
         for cap in re.captures_iter(stream) {
             let body: Vec<&'_ str> = cap
