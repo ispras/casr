@@ -92,7 +92,7 @@ Compile binary with UBSAN:
 
 Run casr-ubsan:
 
-    $ casr-ubsan -i casr/tests/casr_tests/ubsan/input1/input -o output -- ./test_ubsan @@
+    $ casr-ubsan -i casr/tests/casr_tests/ubsan/input1 -o output -- ./test_ubsan @@
 
 Get summary:
 

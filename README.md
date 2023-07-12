@@ -114,7 +114,7 @@ Create report from AddressSanitizer output:
 Create report from UndefinedBehaviorSanitizer output:
 
     $ clang++ -fsanitize=undefined -O0 -g casr/tests/casr_tests/ubsan/test_ubsan.cpp -o test_ubsan
-    $ casr-ubsan -i casr/tests/casr_tests/ubsan/input1/input -o output -- ./test_ubsan @@
+    $ casr-ubsan -i casr/tests/casr_tests/ubsan/input1 -o output -- ./test_ubsan @@
     $ casr-cli output
 
 Create report from gdb:
