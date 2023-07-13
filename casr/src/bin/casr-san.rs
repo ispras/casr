@@ -28,7 +28,7 @@ use std::process::Command;
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-san")
         .version(clap::crate_version!())
-        .about("Create CASR reports (.casrep) from sanitizer reports")
+        .about("Create CASR reports (.casrep) from AddressSanitizer reports")
         .term_width(90)
         .arg(
             Arg::new("output")

@@ -17,6 +17,7 @@ lazy_static::lazy_static! {
     static ref EXE_CASR_LIBFUZZER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-libfuzzer"));
     static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
     static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
+    static ref EXE_CASR_UBSAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-ubsan"));
     static ref EXE_CASR_PYTHON: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-python"));
     static ref EXE_CASR_JAVA: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-java"));
     static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
@@ -3499,6 +3500,102 @@ fn test_casr_afl() {
     assert_eq!(storage.values().filter(|x| **x == 3).count(), 13); // casr-gdb
     let _ = fs::remove_file("/tmp/load_sydr");
     let _ = fs::remove_file("/tmp/load_afl");
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_ubsan() {
+    // Copy files to tmp dir
+    let work_dir = abs_path("tests/casr_tests/ubsan");
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_ubsan");
+
+    let output = Command::new("cp")
+        .args(["-r", &work_dir, &test_dir])
+        .output()
+        .expect("failed to copy dir");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let paths = [
+        abs_path("tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp"),
+        abs_path("tests/tmp_tests_casr/test_casr_ubsan/test_ubsan"),
+        abs_path("tests/tmp_tests_casr/test_casr_ubsan/input1"),
+        abs_path("tests/tmp_tests_casr/test_casr_ubsan/input2"),
+        abs_path("tests/tmp_tests_casr/test_casr_ubsan/out"),
+    ];
+
+    // Create out dir
+    let output = Command::new("mkdir")
+        .arg(&paths[4])
+        .output()
+        .expect("failed to create dir");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=undefined -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_UBSAN.read().unwrap())
+        .args(["--input", &paths[2], &paths[3]])
+        .args(["--output", &paths[4]])
+        .args(["--", &paths[1], "@@"])
+        .output()
+        .expect("failed to start casr-ubsan");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let res = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of UBSAN warnings: (?P<casrep>\d+)").unwrap();
+    let casrep_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("casrep")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(casrep_cnt, 6, "Invalid number of warnings");
+
+    let re = Regex::new(r"Number of UBSAN warnings after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 2, "Invalid number of deduplicated reports");
+
+    let _ = fs::remove_dir_all(&test_dir);
 }
 
 #[test]

@@ -1,10 +1,19 @@
 # Usage
 
 CASR is a set of tools that allows you to collect crash reports in different
-ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze ASAN
-reports. Try `casr-gdb` to get reports from gdb. `casr-cli` is meant to provide
-TUI for viewing reports. Reports triage (deduplication, clustering) is done by
-`casr-cluster`.
+ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze
+ASAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
+reports from gdb. Use `casr-python` to analyze python reports and get report
+from [Atheris](https://github.com/google/atheris). Use `casr-java` to analyze
+java reports and get report from
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). `casr-afl` is used
+to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
+`casr-libfuzzer` can triage crashes found by
+[libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,
+Atheris, Jazzer). `casr-dojo` allows to upload new and unique CASR reports to
+[DefectDojo](https://github.com/DefectDojo/django-DefectDojo). `casr-cli` is
+meant to provide TUI for viewing reports. Reports triage (deduplication,
+clustering) is done by `casr-cluster`.
 
 ## casr-gdb
 
@@ -31,7 +40,7 @@ Example:
 
 ## casr-san
 
-Create CASR reports (.casrep) from sanitizer reports
+Create CASR reports (.casrep) from AddressSanitizer reports
 
     Usage: casr-san [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
 
@@ -55,6 +64,42 @@ Compile binary with ASAN:
 Run casr-san:
 
     $ casr-san -o asan.casrep -- ./test_asan_df
+
+## casr-ubsan
+
+Triage errors found by UndefinedBehaviorSanitizer and create CASR reports (.casrep)
+
+    Usage: casr-ubsan [OPTIONS] --input <INPUT_DIRS>... --output <OUTPUT_DIR> [-- <ARGS>...]
+
+    Arguments:
+      [ARGS]...  Add "-- <path> <arguments>" to run
+
+    Options:
+      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
+                                   debug]
+      -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
+                                   [default: half of cpu cores]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
+                                   disabled]
+      -i, --input <INPUT_DIRS>...  Target input directory list
+      -o, --output <OUTPUT_DIR>    Output directory with triaged reports
+      -h, --help                   Print help
+      -V, --version                Print version
+
+Compile binary with UBSAN:
+
+    $ clang++ -fsanitize=undefined -O0 -g casr/tests/casr_tests/ubsan/test_ubsan.cpp -o test_ubsan
+
+Run casr-ubsan:
+
+    $ casr-ubsan -i casr/tests/casr_tests/ubsan/input1 -o output -- ./test_ubsan @@
+
+Get summary:
+
+    $ casr-cli output
+
+Ubsan error deduplication is based on crashline comparison. The idea is to run
+deduplication to remove equal ubsan errors, then run report generation.
 
 ## casr-python
 
