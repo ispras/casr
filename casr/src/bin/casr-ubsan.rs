@@ -125,7 +125,7 @@ fn extract_warnings(
 ///
 /// * `argv` - target program argument vector
 ///
-/// * `pre_report` - report template containing identic values
+/// * `report` - report template containing identic values
 ///
 /// # Returns value
 ///
@@ -135,7 +135,7 @@ fn gen_report(
     warning: &UbsanWarning,
     crashline: &CrashLine,
     argv: &[&str],
-    pre_report: &CrashReport,
+    report: &CrashReport,
 ) -> CrashReport {
     // Get command line argv
     let mut argv = argv.to_owned();
@@ -150,7 +150,7 @@ fn gen_report(
     let args = argv.join(" ");
     debug!("Generating report for {:?}", args);
     // Create report
-    let mut report = pre_report.clone();
+    let mut report = report.clone();
     report.proc_cmdline = args;
     report.ubsan_report = warning.ubsan_report();
     if stdin {
@@ -307,7 +307,6 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
-    debug!("Get args");
     // Get input dir list
     let input_dirs: Vec<_> = matches.get_many::<PathBuf>("input").unwrap().collect();
     // Get output dir
@@ -336,7 +335,6 @@ fn main() -> Result<()> {
     };
 
     // Get input path list
-    debug!("Get input path list");
     let mut inputs: Vec<PathBuf> = vec![];
     // Do without paralleling to preserve the specified order
     for input_dir in input_dirs {
@@ -352,7 +350,6 @@ fn main() -> Result<()> {
     }
 
     // Get number of threads
-    debug!("Get number of threads");
     let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
         *jobs as usize
     } else {
@@ -365,7 +362,6 @@ fn main() -> Result<()> {
         .unwrap();
 
     // Set ubsan env options
-    debug!("Set environment");
     if let Ok(mut ubsan_options) = env::var("UBSAN_OPTIONS") {
         if ubsan_options.starts_with(',') {
             ubsan_options.remove(0);

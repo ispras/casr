@@ -37,17 +37,16 @@ impl UbsanWarning {
     }
     /// Get ubsan runtime error message as a vector of lines.
     pub fn ubsan_report(&self) -> Vec<String> {
-        self.message.split('\n').map(|s| s.to_string()).collect()
+        self.message
+            .split('\n')
+            .map(|s| s.trim_end().to_string())
+            .collect()
     }
 }
 
 impl Severity for UbsanWarning {
     fn severity(&self) -> Result<ExecutionClass> {
-        let message: Vec<String> = self
-            .message
-            .split('\n')
-            .map(|l| l.trim_end().to_string())
-            .collect();
+        let message = self.ubsan_report();
         if message.len() <= 1 {
             return Err(Error::Casr("Malformed ubsan message".to_string()));
         }
@@ -81,23 +80,22 @@ impl Severity for UbsanWarning {
 
 impl CrashLineExt for UbsanWarning {
     fn crash_line(&self) -> Result<CrashLine> {
-        let message: Vec<String> = self
-            .message
-            .split('\n')
-            .map(|l| l.trim_end().to_string())
-            .collect();
+        let message = self.ubsan_report();
         if message.is_empty() {
             return Err(Error::Casr("Empty ubsan message".to_string()));
         }
         // If there is no stacktrace use crashline from first string
         // May be not absolute
         // Else use first string from stacktrace
-        let mut crashline = &message[0];
-        for line in message.iter().skip(1) {
-            if line.starts_with("    #0 ") {
-                crashline = line;
-            }
-        }
+        let crashline = if let Some(crashline) = message
+            .iter()
+            .skip(1)
+            .find(|line| line.starts_with("    #0 "))
+        {
+            crashline
+        } else {
+            &message[0]
+        };
 
         if let Ok(crashline) = UbsanWarning::parse_stacktrace_entry(crashline) {
             if !crashline.debug.file.is_empty() {
