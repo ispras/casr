@@ -9,7 +9,7 @@ use crate::execution_class::ExecutionClass;
 use regex::Regex;
 
 /// Structure provides an interface for parsing ubsan runtime error message.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UbsanWarning {
     pub message: String,
 }
