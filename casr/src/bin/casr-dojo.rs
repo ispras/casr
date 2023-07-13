@@ -7,7 +7,7 @@ use libcasr::stacktrace::*;
 use anyhow::{bail, Result};
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Arg, ArgAction};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use reqwest::header::{HeaderMap, AUTHORIZATION};
 use reqwest::{Client, Method, RequestBuilder, Response, Url};
 use walkdir::WalkDir;
@@ -30,6 +30,14 @@ struct DefectDojoClient {
     api_url: Url,
     /// HTTP headers.
     headers: HeaderMap,
+}
+
+/// CASR report hash used for deduplication.
+enum ReportHash {
+    /// Filtered stack trace hash for ASAN reports.
+    Asan(u64),
+    /// Crash line string for UBSAN reports.
+    Ubsan(String),
 }
 
 impl DefectDojoClient {
@@ -119,12 +127,12 @@ impl DefectDojoClient {
         Ok(id)
     }
 
-    /// Download CASR report for finding and return its stack trace hash.
+    /// Download CASR report for finding and return its hash.
     ///
     /// # Arguments
     ///
     /// * `id` - finding id.
-    pub async fn get_finding_hash(&self, id: i64) -> Result<Option<u64>> {
+    pub async fn get_finding_hash(&self, id: i64) -> Result<Option<ReportHash>> {
         let url = format!("findings/{id}/files/");
         let response = self.request(GET, &url)?.send().await?;
         if let Err(e) = response.error_for_status_ref() {
@@ -228,7 +236,13 @@ impl DefectDojoClient {
         let (num_severity, severity) = match report.execution_class.severity.as_str() {
             "EXPLOITABLE" => ("S0", "Critical"),
             "PROBABLY_EXPLOITABLE" => ("S1", "High"),
-            "NOT_EXPLOITABLE" => ("S2", "Medium"),
+            "NOT_EXPLOITABLE" => {
+                if report.ubsan_report.is_empty() {
+                    ("S2", "Medium")
+                } else {
+                    ("S3", "Low")
+                }
+            }
             _ => ("S3", "Low"),
         };
         let mut finding = serde_json::Map::new();
@@ -411,11 +425,28 @@ async fn get_findings_ids(request: RequestBuilder) -> Result<Vec<i64>> {
 
 /// Return hash for CASR report.
 ///
+/// Return crash line string for UBSAN report, and filtered stack trace hash for
+/// other report type (e.g., ASAN).
+///
 /// # Arguments
 ///
 /// * `report` - CASR report.
 /// * `name` - CASR report name.
-fn compute_report_hash(report: &CrashReport, name: &str) -> Result<u64> {
+fn compute_report_hash(report: &CrashReport, name: &str) -> Result<ReportHash> {
+    if !report.ubsan_report.is_empty() {
+        if report.crashline.is_empty() {
+            bail!("Empty crash line for CASR report {}", name);
+        }
+        let crash_line: Vec<&str> = report.crashline.split(':').collect();
+        if crash_line.len() < 2 {
+            warn!(
+                "Crash line for CASR report {} does not have a line number: {}",
+                name, report.crashline
+            );
+            return Ok(ReportHash::Ubsan(report.crashline.clone()));
+        }
+        return Ok(ReportHash::Ubsan(crash_line[..2].join(":")));
+    }
     if report.stacktrace.is_empty() {
         bail!("Empty stack trace for CASR report {}", name);
     }
@@ -429,7 +460,7 @@ fn compute_report_hash(report: &CrashReport, name: &str) -> Result<u64> {
     }
     let mut hasher = DefaultHasher::new();
     stacktrace.unwrap().hash(&mut hasher);
-    Ok(hasher.finish())
+    Ok(ReportHash::Asan(hasher.finish()))
 }
 
 /// Return CASR report description to be saved in DefectDojo finding.
@@ -456,7 +487,7 @@ fn get_report_description(
             "**GDB severity (without ASAN):** {}: {}: {}\n{}\n",
             e.severity, e.short_description, e.description, e.explanation
         );
-    } else if extra_gdb_report {
+    } else if extra_gdb_report && report.ubsan_report.is_empty() {
         d += "**GDB severity (without ASAN):** No crash\n";
     }
     d += &format!("**Command:** {}", report.proc_cmdline);
@@ -475,6 +506,11 @@ fn get_report_description(
     if !report.asan_report.is_empty() {
         d += "# ASAN report\n\n```\n";
         d += &report.asan_report.join("\n");
+        d += "\n```\n\n";
+    }
+    if !report.ubsan_report.is_empty() {
+        d += "# UBSAN report\n\n```\n";
+        d += &report.ubsan_report.join("\n");
         d += "\n```\n\n";
     }
     if !report.python_report.is_empty() {
@@ -497,7 +533,6 @@ fn get_report_description(
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-    // TODO: Handle CASR reports for UBSAN warnings.
     let options = clap::Command::new("casr-dojo")
         .version(clap::crate_version!())
         .about("Tool for uploading new and unique CASR reports to DefectDojo")
@@ -779,7 +814,8 @@ async fn main() -> Result<()> {
     }
 
     info!("Getting CASR reports for findings and computing stack trace hashes");
-    let mut casr_hash = HashSet::new();
+    let mut casr_asan_hash = HashSet::new();
+    let mut casr_ubsan_hash = HashSet::new();
     let mut tasks = tokio::task::JoinSet::new();
     for f in findings {
         let c = Arc::clone(&client);
@@ -787,13 +823,16 @@ async fn main() -> Result<()> {
     }
     while let Some(r) = tasks.join_next().await {
         if let Some(hash) = r?? {
-            casr_hash.insert(hash);
+            match hash {
+                ReportHash::Asan(h) => casr_asan_hash.insert(h),
+                ReportHash::Ubsan(h) => casr_ubsan_hash.insert(h),
+            };
         }
     }
 
     // Skip duplicate new CASR reports and parse additional GDB reports for unique ones.
     let total_reports_cnt = new_casr_reports.len();
-    let new_casr_reports: Vec<(PathBuf, CrashReport, u64)> = new_casr_reports
+    let new_casr_reports: Vec<(PathBuf, CrashReport, ReportHash)> = new_casr_reports
         .into_iter()
         .map(|(e, report)| {
             let hash = compute_report_hash(&report, e.to_str().unwrap())?;
@@ -802,7 +841,10 @@ async fn main() -> Result<()> {
         .collect::<Result<Vec<_>>>()?;
     let new_casr_reports: Vec<(PathBuf, CrashReport, Option<CrashReport>)> = new_casr_reports
         .into_iter()
-        .filter(|(_, _, hash)| casr_hash.insert(*hash))
+        .filter(|(_, _, hash)| match hash {
+            ReportHash::Asan(h) => casr_asan_hash.insert(*h),
+            ReportHash::Ubsan(h) => casr_ubsan_hash.insert(h.to_string()),
+        })
         .map(|(e, report, _)| {
             let gdb = e.with_extension("gdb.casrep");
             let gdb = if gdb.exists() {

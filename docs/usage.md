@@ -472,8 +472,9 @@ Tool for uploading new and unique CASR reports to DefectDojo
 `casr-dojo` provides a convenient way of uploading new and unique CASR reports
 to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) vulnerability
 management system. The findings deduplication is the same as in `casr-cluster
--d` and based on filtered stack trace hashing. The `casr-dojo` tool performs
-crash analysis by the following steps:
+-d` and based on filtered stack trace hashing for all CASR reports except UBSAN.
+UBSAN reports deduplication is based on crash source file and line number.
+The `casr-dojo` tool performs crash analysis by the following steps:
 
 1. Fill the default values for required DefectDojo [API
    parameters](https://demo.defectdojo.org/api/v2/oa3/swagger-ui/). You may
@@ -491,9 +492,11 @@ crash analysis by the following steps:
    false positives.
 4. Compute
    [filtered](https://github.com/ispras/casr/blob/master/libcasr/src/constants.rs)
-   stack trace hashes for downloaded findings.
+   stack trace hashes (or get crash lines for UBSAN reports) for downloaded
+   findings.
 5. Upload new CASR reports to DefectDojo that have unique filtered stack trace
-   hashes. Each finding will have a generated description with CASR report
+   hashes (or unique crash lines for UBSAN reports). Each finding will have a
+   generated description with CASR report
    fields like crash line, severity, error description, source, stack trace,
    etc. Furthermore, `casr-dojo` uploads CASR report, GDB CASR report (if
    `.gdb.casrep` exists), and crash seed files for corresponding finding.
