@@ -7,7 +7,7 @@ use libcasr::stacktrace::*;
 use anyhow::{bail, Result};
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Arg, ArgAction};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use reqwest::header::{HeaderMap, AUTHORIZATION};
 use reqwest::{Client, Method, RequestBuilder, Response, Url};
 use walkdir::WalkDir;
@@ -439,11 +439,11 @@ fn compute_report_hash(report: &CrashReport, name: &str) -> Result<ReportHash> {
         }
         let crash_line: Vec<&str> = report.crashline.split(':').collect();
         if crash_line.len() < 2 {
-            bail!(
+            warn!(
                 "Crash line for CASR report {} does not have a line number: {}",
-                name,
-                report.crashline
+                name, report.crashline
             );
+            return Ok(ReportHash::Ubsan(report.crashline.clone()));
         }
         return Ok(ReportHash::Ubsan(crash_line[..2].join(":")));
     }
