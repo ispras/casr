@@ -17,9 +17,18 @@ limitations under the License.
 
 /// Regular expressions for java functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA: &[&str] = &[
-    // TODO
     r"^java\.base",
     r"^java\.lang",
+    r"^java\.beans",
+    r"^java\.time",
+    r"^java\.math",
+    r"^java\.rmi",
+    r"^java\.net",
+    r"^java\.security",
+    r"^java\.text",
+    r"^java\.awt",
+    r"^java\.n?io",
+    r"^javax\.",
 ];
 
 /// Regular expressions for python functions to be ignored.
