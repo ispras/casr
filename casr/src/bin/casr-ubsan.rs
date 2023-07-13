@@ -104,8 +104,9 @@ fn extract_warnings(
             warnings.push((warning, crashline));
         } else {
             warn!(
-                "Cannot get warning crashline {:?} from {:?}",
-                warning, input
+                "Cannot get warning crash line for {}: {}",
+                input.display(),
+                warning.message
             );
         }
     }

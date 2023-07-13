@@ -8,18 +8,10 @@ use crate::error::*;
 use crate::execution_class::ExecutionClass;
 use regex::Regex;
 
-use std::fmt;
-
 /// Structure provides an interface for parsing ubsan runtime error message.
 #[derive(Clone)]
 pub struct UbsanWarning {
-    message: String,
-}
-
-impl fmt::Debug for UbsanWarning {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
+    pub message: String,
 }
 
 impl UbsanWarning {
