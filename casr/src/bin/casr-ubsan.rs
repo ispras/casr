@@ -1,4 +1,4 @@
-use casr::util;
+use casr::util::{initialize_logging, log_progress};
 use libcasr::report::CrashReport;
 use libcasr::severity::Severity;
 use libcasr::stacktrace::{CrashLine, CrashLineExt};
@@ -23,6 +23,7 @@ use std::fs::OpenOptions;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::RwLock;
 use std::time::Duration;
 
 /// Extract ubsan warnings for specified input file
@@ -35,6 +36,8 @@ use std::time::Duration;
 ///
 /// * `timeout` - target program timeout
 ///
+/// * `counter` - counter of viewed files
+///
 /// # Returns value
 ///
 /// Vector of extracted ubsan warnings with crashlines
@@ -42,6 +45,7 @@ fn extract_warnings(
     input: &PathBuf,
     argv: &[&str],
     timeout: u64,
+    counter: &RwLock<usize>,
 ) -> Result<Vec<(UbsanWarning, CrashLine)>> {
     // Get command line argv
     let mut argv = argv.to_owned();
@@ -110,6 +114,9 @@ fn extract_warnings(
             );
         }
     }
+
+    // Update counter
+    *counter.write().unwrap() += 1;
 
     Ok(warnings)
 }
@@ -306,7 +313,7 @@ fn main() -> Result<()> {
         .get_matches();
 
     // Init log.
-    util::initialize_logging(&matches);
+    initialize_logging(&matches);
 
     // Get input dir list
     let input_dirs: Vec<_> = matches.get_many::<PathBuf>("input").unwrap().collect();
@@ -356,7 +363,7 @@ fn main() -> Result<()> {
     } else {
         std::cmp::max(1, num_cpus::get() / 2)
     };
-    let num_of_threads = jobs.min(inputs.len()).max(1);
+    let num_of_threads = jobs.min(inputs.len()).max(1) + 1;
     let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(num_of_threads)
         .build()
@@ -384,19 +391,25 @@ fn main() -> Result<()> {
 
     // Extract ubsan warnings
     info!("Extracting UBSAN warnings...");
-    info!("Using {} threads", num_of_threads);
-    let warnings: Vec<(&PathBuf, Vec<(UbsanWarning, CrashLine)>)> = custom_pool.install(|| {
-        inputs
-            .par_iter()
-            .filter_map(|input| {
-                let Ok(input_warnings) = extract_warnings(input, &argv, timeout) else {
-                    warn!("Failed to run program with input file {:?}", input);
-                    return None
-                };
-                Some((input, input_warnings))
-            })
-            .collect()
-    });
+    info!("Using {} threads", num_of_threads - 1);
+    let counter = RwLock::new(0_usize);
+    let total = inputs.len();
+    type Warning<'a> = (&'a PathBuf, Vec<(UbsanWarning, CrashLine)>);
+    let (warnings, _): (Vec<Warning>, _) = custom_pool.join(
+        || {
+            inputs
+                .par_iter()
+                .filter_map(|input| {
+                    let Ok(input_warnings) = extract_warnings(input, &argv, timeout, &counter) else {
+                        warn!("Failed to run program with input file {:?}", input);
+                        return None
+                    };
+                    Some((input, input_warnings))
+                })
+                .collect()
+        },
+        || log_progress(&counter, total),
+    );
 
     info!(
         "Number of UBSAN warnings: {}",
@@ -436,6 +449,13 @@ fn main() -> Result<()> {
         "Number of UBSAN warnings after deduplication: {}",
         crashlines.len()
     );
+
+    // Rebuild thread pool (different number of threads)
+    let num_of_threads = jobs.min(inputs.len()).max(1) + 1;
+    let custom_pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(num_of_threads)
+        .build()
+        .unwrap();
 
     // Generate CASR reports
     info!("Generating CASR reports...");
