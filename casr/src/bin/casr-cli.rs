@@ -854,7 +854,7 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
         for info in cluster_hash.values() {
             if ubsan {
                 // /path/to/report.casrep: Description: crashline (path:line:column)
-                println!("{}: {}", info.0.last().unwrap(), info.0[0],);
+                println!("{}: {}", info.0.last().unwrap(), info.0[0]);
                 continue;
             }
             // Crash: /path/to/input or /path/to/report.casrep
@@ -936,7 +936,11 @@ fn process_report(report: &str, extension: &str) -> Option<(String, String, Stri
         String::new()
     };
     let ubsan = if let Some(rep) = jreport.get("UbsanReport") {
-        !rep.as_array().unwrap().is_empty()
+        if let Some(rep) = rep.as_array() {
+            !rep.is_empty()
+        } else {
+            false
+        }
     } else {
         false
     };
