@@ -746,6 +746,9 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
         let cluster = clpath.as_path();
         let filename = cluster.file_name().unwrap().to_str().unwrap();
 
+        // Ubsan indicator for minimize logging
+        let mut ubsan = true;
+
         // Hash each crash in cluster
         let mut cluster_hash: HashMap<String, (Vec<String>, i32)> = HashMap::new();
         // Hash each class in cluster
@@ -782,21 +785,25 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
                 let mut report = input.to_str().unwrap().to_string();
                 report.push_str(".casrep");
 
-                let (san_desc, san_line) = if let Some((report_sum, san_desc, san_line)) =
-                    process_report(&report, "casrep")
-                {
-                    if skip_crash(&san_line) {
-                        continue;
-                    }
-                    result.push(report_sum);
-                    (san_desc, san_line)
-                } else {
-                    (String::new(), String::new())
-                };
+                let (san_desc, san_line) =
+                    if let Some((report_sum, san_desc, san_line, ubsan_flag)) =
+                        process_report(&report, "casrep")
+                    {
+                        if !ubsan_flag {
+                            ubsan = false;
+                        }
+                        if skip_crash(&san_line) {
+                            continue;
+                        }
+                        result.push(report_sum);
+                        (san_desc, san_line)
+                    } else {
+                        (String::new(), String::new())
+                    };
 
                 let report = report.replace(".casrep", ".gdb.casrep");
                 let (casr_gdb_desc, casr_gdb_line) =
-                    if let Some((report_sum, casr_gdb_desc, casr_gdb_line)) =
+                    if let Some((report_sum, casr_gdb_desc, casr_gdb_line, _)) =
                         process_report(&report, "gdb.casrep")
                     {
                         if san_line.is_empty() && skip_crash(&casr_gdb_line) {
@@ -845,6 +852,11 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
 
         println!("==> <{}>", filename.magenta());
         for info in cluster_hash.values() {
+            if ubsan {
+                // /path/to/report.casrep: Description: crashline (path:line:column)
+                println!("{}: {}", info.0.last().unwrap(), info.0[0],);
+                continue;
+            }
             // Crash: /path/to/input or /path/to/report.casrep
             println!("{}: {}", "Crash".green(), info.0.last().unwrap());
             // casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
@@ -864,7 +876,9 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
                 casr_classes.get(class).unwrap_or(&0) + number,
             );
         });
-        println!("Cluster summary ->{classes}");
+        if !ubsan {
+            println!("Cluster summary ->{classes}");
+        }
     }
     let mut classes = String::new();
     casr_classes
@@ -895,7 +909,8 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
 /// 1 String - summary of one report in cluster
 /// 2 String - crash description
 /// 3 String - crashline (path:line:column)
-fn process_report(report: &str, extension: &str) -> Option<(String, String, String)> {
+/// bool - ubsan report indicator
+fn process_report(report: &str, extension: &str) -> Option<(String, String, String, bool)> {
     let Ok(file) = fs::File::open(report) else {
         return None;
     };
@@ -920,7 +935,22 @@ fn process_report(report: &str, extension: &str) -> Option<(String, String, Stri
     } else {
         String::new()
     };
-    Some((
+    let ubsan = if let Some(rep) = jreport.get("UbsanReport") {
+        !rep.as_array().unwrap().is_empty()
+    } else {
+        false
+    };
+    let summary = if ubsan {
+        format!(
+            "{}: {}",
+            desc.red(),
+            if crashline.is_empty() {
+                report
+            } else {
+                &crashline
+            }
+        )
+    } else {
         format!(
             "{}: {}: {}: {}",
             extension,
@@ -936,8 +966,7 @@ fn process_report(report: &str, extension: &str) -> Option<(String, String, Stri
             } else {
                 &crashline
             }
-        ),
-        desc,
-        crashline,
-    ))
+        )
+    };
+    Some((summary, desc, crashline, ubsan))
 }
