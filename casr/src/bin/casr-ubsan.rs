@@ -36,8 +36,6 @@ use std::time::Duration;
 ///
 /// * `timeout` - target program timeout
 ///
-/// * `counter` - counter of viewed files
-///
 /// # Returns value
 ///
 /// Vector of extracted ubsan warnings with crashlines
@@ -45,7 +43,6 @@ fn extract_warnings(
     input: &PathBuf,
     argv: &[&str],
     timeout: u64,
-    counter: &RwLock<usize>,
 ) -> Result<Vec<(UbsanWarning, CrashLine)>> {
     // Get command line argv
     let mut argv = argv.to_owned();
@@ -114,9 +111,6 @@ fn extract_warnings(
             );
         }
     }
-
-    // Update counter
-    *counter.write().unwrap() += 1;
 
     Ok(warnings)
 }
@@ -400,10 +394,12 @@ fn main() -> Result<()> {
             inputs
                 .par_iter()
                 .filter_map(|input| {
-                    let Ok(input_warnings) = extract_warnings(input, &argv, timeout, &counter) else {
+                    let Ok(input_warnings) = extract_warnings(input, &argv, timeout) else {
                         warn!("Failed to run program with input file {:?}", input);
+                        *counter.write().unwrap() += 1;
                         return None
                     };
+                    *counter.write().unwrap() += 1;
                     Some((input, input_warnings))
                 })
                 .collect()
@@ -451,7 +447,7 @@ fn main() -> Result<()> {
     );
 
     // Rebuild thread pool (different number of threads)
-    let num_of_threads = jobs.min(inputs.len()).max(1) + 1;
+    let num_of_threads = jobs.min(to_gen.len()).max(1);
     let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(num_of_threads)
         .build()
