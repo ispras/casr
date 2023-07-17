@@ -8,12 +8,14 @@ use libcasr::stacktrace::{
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
+use log::info;
 use simplelog::*;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::RwLock;
 
 /// Call casr-san with the provided options
 ///
@@ -206,4 +208,29 @@ pub fn report_from_file(path: &Path) -> Result<CrashReport> {
         bail!("Error with parsing JSON {}: {}", path.display(), e);
     }
     Ok(report.unwrap())
+}
+
+/// Function logs progress
+///
+/// # Arguments
+///
+/// * `processed_items` - current number of processed elements
+///
+/// * `total` - total number of elements
+pub fn log_progress(processed_items: &RwLock<usize>, total: usize) {
+    let mut cnt = 0;
+
+    loop {
+        let current = *processed_items.read().unwrap();
+
+        if current == total {
+            return;
+        }
+
+        if current > 0 && current > cnt {
+            info!("Progress: {}/{}", current, total);
+        }
+        cnt = current;
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+    }
 }
