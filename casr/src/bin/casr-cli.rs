@@ -4,7 +4,7 @@ use cursive::event::EventTrigger;
 use cursive::View;
 use regex::Regex;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
@@ -697,7 +697,7 @@ fn change_text_view(layout1: &mut LinearLayout, act: Action) -> Option<EventResu
 ///
 fn print_summary(dir: &Path, unique_crash_line: bool) {
     // Hash each class in whole casr directory
-    let mut casr_classes: HashMap<String, i32> = HashMap::new();
+    let mut casr_classes: BTreeMap<String, i32> = BTreeMap::new();
 
     // Unique crash lines hash
     let mut crash_lines: HashSet<String> = HashSet::new();
@@ -751,9 +751,9 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
         let mut ubsan = true;
 
         // Hash each crash in cluster
-        let mut cluster_hash: HashMap<String, (Vec<String>, i32)> = HashMap::new();
+        let mut cluster_hash: BTreeMap<String, (Vec<String>, i32)> = BTreeMap::new();
         // Hash each class in cluster
-        let mut cluster_classes: HashMap<String, i32> = HashMap::new();
+        let mut cluster_classes: BTreeMap<String, i32> = BTreeMap::new();
         // Hash files
         let mut filestems: HashSet<PathBuf> = HashSet::new();
         for report in WalkDir::new(cluster)
