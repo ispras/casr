@@ -4,7 +4,7 @@ use cursive::event::EventTrigger;
 use cursive::View;
 use regex::Regex;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
@@ -27,6 +27,7 @@ use cursive::views::{
 };
 use cursive::CursiveRunnable;
 use cursive_tree_view::*;
+use walkdir::WalkDir;
 
 use libcasr::report::CrashReport;
 
@@ -696,7 +697,7 @@ fn change_text_view(layout1: &mut LinearLayout, act: Action) -> Option<EventResu
 ///
 fn print_summary(dir: &Path, unique_crash_line: bool) {
     // Hash each class in whole casr directory
-    let mut casr_classes: HashMap<String, i32> = HashMap::new();
+    let mut casr_classes: BTreeMap<String, i32> = BTreeMap::new();
 
     // Unique crash lines hash
     let mut crash_lines: HashSet<String> = HashSet::new();
@@ -750,100 +751,102 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
         let mut ubsan = true;
 
         // Hash each crash in cluster
-        let mut cluster_hash: HashMap<String, (Vec<String>, i32)> = HashMap::new();
+        let mut cluster_hash: BTreeMap<String, (Vec<String>, i32)> = BTreeMap::new();
         // Hash each class in cluster
-        let mut cluster_classes: HashMap<String, i32> = HashMap::new();
+        let mut cluster_classes: BTreeMap<String, i32> = BTreeMap::new();
         // Hash files
         let mut filestems: HashSet<PathBuf> = HashSet::new();
-        for report_path in fs::read_dir(cluster).unwrap().flatten() {
-            let report = report_path.path();
-            if report.is_file()
-                && report.extension().is_some()
-                && report.extension().unwrap() == "casrep"
-            {
-                // report == .*/crash.gdb.casrep
-                let mut input = report.canonicalize().unwrap().with_extension("");
-                // input == .*/crash.gdb
-                if input.extension().is_some() && input.extension().unwrap() == "gdb" {
-                    input.set_extension("");
-                }
-                // input == .*/crash
-                if !filestems.insert(input.clone()) {
-                    continue;
-                }
-
-                let mut result: Vec<String> = Vec::new();
-                let crash = if input.exists() {
-                    input.clone()
-                } else {
-                    report
-                }
-                .to_str()
-                .unwrap()
-                .to_string();
-
-                let mut report = input.to_str().unwrap().to_string();
-                report.push_str(".casrep");
-
-                let (san_desc, san_line) =
-                    if let Some((report_sum, san_desc, san_line, ubsan_flag)) =
-                        process_report(&report, "casrep")
-                    {
-                        if !ubsan_flag {
-                            ubsan = false;
-                        }
-                        if skip_crash(&san_line) {
-                            continue;
-                        }
-                        result.push(report_sum);
-                        (san_desc, san_line)
-                    } else {
-                        (String::new(), String::new())
-                    };
-
-                let report = report.replace(".casrep", ".gdb.casrep");
-                let (casr_gdb_desc, casr_gdb_line) =
-                    if let Some((report_sum, casr_gdb_desc, casr_gdb_line, _)) =
-                        process_report(&report, "gdb.casrep")
-                    {
-                        if san_line.is_empty() && skip_crash(&casr_gdb_line) {
-                            continue;
-                        }
-                        result.push(report_sum);
-                        (casr_gdb_desc, casr_gdb_line)
-                    } else {
-                        (String::new(), String::new())
-                    };
-
-                if result.is_empty() {
-                    corrupted_reports.push(format!("Cannot read casrep: {report}"));
-                    continue;
-                } else {
-                    result.push(crash);
-                }
-
-                let mut hash = String::new();
-                hash.push_str(san_desc.as_str());
-                hash.push_str(san_line.as_str());
-                hash.push_str(casr_gdb_desc.as_str());
-                hash.push_str(casr_gdb_line.as_str());
-
-                if !san_desc.is_empty() {
-                    let san_cnt = cluster_classes.get(&san_desc).unwrap_or(&0) + 1;
-                    cluster_classes.insert(san_desc, san_cnt);
-                }
-                if !casr_gdb_desc.is_empty() {
-                    let casr_gdb_cnt = cluster_classes.get(&casr_gdb_desc).unwrap_or(&0) + 1;
-                    cluster_classes.insert(casr_gdb_desc, casr_gdb_cnt);
-                }
-
-                let value = if let Some(res) = cluster_hash.get(&hash) {
-                    (res.0.clone(), res.1 + 1)
-                } else {
-                    (result, 1)
-                };
-                cluster_hash.insert(hash, value);
+        for report in WalkDir::new(cluster)
+            .max_depth(1)
+            .sort_by_file_name()
+            .into_iter()
+            .filter_map(|file| file.ok())
+            .filter(|file| file.metadata().unwrap().is_file())
+            .map(|file| file.path().to_path_buf())
+            .filter(|file| file.extension().is_some())
+            .filter(|file| file.extension().unwrap() == "casrep")
+        {
+            // report == .*/crash.gdb.casrep
+            let mut input = report.canonicalize().unwrap().with_extension("");
+            // input == .*/crash.gdb
+            if input.extension().is_some() && input.extension().unwrap() == "gdb" {
+                input.set_extension("");
             }
+            // input == .*/crash
+            if !filestems.insert(input.clone()) {
+                continue;
+            }
+
+            let mut result: Vec<String> = Vec::new();
+            let crash = if input.exists() {
+                input.clone()
+            } else {
+                report
+            }
+            .to_str()
+            .unwrap()
+            .to_string();
+
+            let mut report = input.to_str().unwrap().to_string();
+            report.push_str(".casrep");
+
+            let (san_desc, san_line) = if let Some((report_sum, san_desc, san_line, ubsan_flag)) =
+                process_report(&report, "casrep")
+            {
+                if !ubsan_flag {
+                    ubsan = false;
+                }
+                if skip_crash(&san_line) {
+                    continue;
+                }
+                result.push(report_sum);
+                (san_desc, san_line)
+            } else {
+                (String::new(), String::new())
+            };
+
+            let report = report.replace(".casrep", ".gdb.casrep");
+            let (casr_gdb_desc, casr_gdb_line) =
+                if let Some((report_sum, casr_gdb_desc, casr_gdb_line, _)) =
+                    process_report(&report, "gdb.casrep")
+                {
+                    if san_line.is_empty() && skip_crash(&casr_gdb_line) {
+                        continue;
+                    }
+                    result.push(report_sum);
+                    (casr_gdb_desc, casr_gdb_line)
+                } else {
+                    (String::new(), String::new())
+                };
+
+            if result.is_empty() {
+                corrupted_reports.push(format!("Cannot read casrep: {report}"));
+                continue;
+            } else {
+                result.push(crash);
+            }
+
+            let mut hash = String::new();
+            hash.push_str(san_desc.as_str());
+            hash.push_str(san_line.as_str());
+            hash.push_str(casr_gdb_desc.as_str());
+            hash.push_str(casr_gdb_line.as_str());
+
+            if !san_desc.is_empty() {
+                let san_cnt = cluster_classes.get(&san_desc).unwrap_or(&0) + 1;
+                cluster_classes.insert(san_desc, san_cnt);
+            }
+            if !casr_gdb_desc.is_empty() {
+                let casr_gdb_cnt = cluster_classes.get(&casr_gdb_desc).unwrap_or(&0) + 1;
+                cluster_classes.insert(casr_gdb_desc, casr_gdb_cnt);
+            }
+
+            let value = if let Some(res) = cluster_hash.get(&hash) {
+                (res.0.clone(), res.1 + 1)
+            } else {
+                (result, 1)
+            };
+            cluster_hash.insert(hash, value);
         }
 
         if cluster_hash.is_empty() {
