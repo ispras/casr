@@ -378,9 +378,17 @@ fn main() -> Result<()> {
         } else {
             ubsan_options.push_str(",report_error_type=1");
         }
+        if ubsan_options.contains("symbolize=0") {
+            ubsan_options = ubsan_options.replace("symbolize=0", "symbolize=1");
+        } else {
+            ubsan_options.push_str(",symbolize=1");
+        }
         env::set_var("UBSAN_OPTIONS", ubsan_options);
     } else {
-        env::set_var("UBSAN_OPTIONS", "print_stacktrace=1,report_error_type=1");
+        env::set_var(
+            "UBSAN_OPTIONS",
+            "print_stacktrace=1,report_error_type=1,symbolize=1",
+        );
     }
 
     // Extract ubsan warnings
