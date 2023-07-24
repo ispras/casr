@@ -348,10 +348,10 @@ fn add_interval(
     };
     let (left, right) = (shift + pos, shift + pos + 2 * l - 1);
     let interval_len = right - left + 1;
-    if !intervals
+    if intervals
         .iter()
         .filter(|x| !(x.1 < left || right < x.0))
-        .any(|x| x.2 >= interval_len)
+        .all(|x| x.2 < interval_len)
     {
         intervals.retain(|x| x.1 < left || right < x.0);
         intervals.push((left, right, right - left + 1));
