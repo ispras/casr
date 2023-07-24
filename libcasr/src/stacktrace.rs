@@ -7,6 +7,7 @@ use kodama::{linkage, Method};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::ops::AddAssign;
 use std::sync::RwLock;
 
 // Re-export types from gdb_command for convenient use from Casr library
@@ -287,11 +288,115 @@ impl Filter for Stacktrace {
             self.drain(pos + 1..);
         }
 
-        // Remove trusted functions from stack trace
+        let links = self.iter().collect::<Vec<&StacktraceEntry>>();
+        let mut intervals = Vec::new();
+        main_lorentz(&links, 0, &mut intervals);
+        println!("{intervals:?}");
+        let mut indices = Vec::new();
+        indices.resize(self.len(), true);
+        intervals
+            .iter()
+            .for_each(|x| (x.0..x.1 + 1).for_each(|idx| indices[idx] = false));
+        let mut keep = indices.iter();
+
+        // Remove recursive and trusted functions from stack trace
         self.retain(|entry| {
-            (entry.function.is_empty() || !rfunction.is_match(&entry.function))
+            *keep.next().unwrap()
+                && (entry.function.is_empty() || !rfunction.is_match(&entry.function))
                 && (entry.module.is_empty() || !rfile.is_match(&entry.module))
                 && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
         });
+        println!("{self:?}");
+    }
+}
+
+fn prefix_function<T: PartialEq>(arr: &[T]) -> Vec<usize> {
+    let mut z = Vec::new();
+    let (n, mut r, mut l) = (arr.len(), 0, 0);
+    z.resize(n, 0);
+    for i in 1..n {
+        if i <= r {
+            z[i] = z[i - l].min(r - i + 1);
+        }
+        while i + z[i] < n && arr[z[i]] == arr[i + z[i]] {
+            z[i].add_assign(1);
+        }
+        if i + z[i] - 1 > r {
+            l = i;
+            r = i + z[i] - 1;
+        }
+    }
+    z
+}
+
+fn add_interval(
+    intervals: &mut Vec<(usize, usize, usize)>,
+    shift: usize,
+    left: bool,
+    cntr: usize,
+    l: usize,
+    k1: usize,
+    _k2: usize,
+) {
+    let l1 = k1.min(l);
+    let l2 = l - l1;
+    let pos = if left {
+        cntr - l1
+    } else {
+        cntr + 1 - 2 * l1 - l2
+    };
+    let (left, right) = (shift + pos, shift + pos + 2 * l - 1);
+    let interval_len = right - left + 1;
+    if !intervals
+        .iter()
+        .filter(|x| !(x.1 < left || right < x.0))
+        .any(|x| x.2 >= interval_len)
+    {
+        intervals.retain(|x| x.1 < left || right < x.0);
+        intervals.push((left, right, right - left + 1));
+    }
+}
+
+fn main_lorentz<T: PartialEq + Default>(
+    s: &[&T],
+    shift: usize,
+    intervals: &mut Vec<(usize, usize, usize)>,
+) {
+    let n = s.len();
+    if n < 2 {
+        return;
+    }
+
+    let len_u = n / 2;
+    let len_v = n - len_u;
+    let (u, v): (Vec<&T>, Vec<&T>) = (s[..len_u].to_vec(), s[len_u..].to_vec());
+    let (mut ru, mut rv) = (u.clone(), v.clone());
+    ru.reverse();
+    rv.reverse();
+    main_lorentz(&u, shift, intervals);
+    main_lorentz(&v, shift + len_u, intervals);
+
+    let pr1 = prefix_function(&ru);
+    let pr2 = prefix_function(&[v.clone(), vec![&T::default()], u].concat());
+    let pr3 = prefix_function(&[ru, vec![&T::default()], rv].concat());
+    let pr4 = prefix_function(&v);
+    for cntr in 0..n {
+        let (l, k1, k2) = if cntr < len_u {
+            (
+                len_u - cntr,
+                pr1.get(len_u - cntr).unwrap_or(&0),
+                pr2.get(len_v + 1 + cntr).unwrap_or(&0),
+            )
+        } else {
+            (
+                cntr - len_u + 1,
+                pr3.get(2 * len_u + len_v - cntr).unwrap_or(&0),
+                pr4.get(cntr - len_u + 1).unwrap_or(&0),
+            )
+        };
+        if k1 + k2 >= l {
+            //println!("{cntr} {l} {k1} {k2}");
+            add_interval(intervals, shift, cntr < len_u, cntr, l, *k1, *k2);
+        }
     }
 }
