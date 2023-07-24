@@ -288,15 +288,17 @@ impl Filter for Stacktrace {
             self.drain(pos + 1..);
         }
 
-        let links = self.iter().collect::<Vec<&StacktraceEntry>>();
-        let mut intervals = Vec::new();
-        main_lorentz(&links, 0, &mut intervals);
-        println!("{intervals:?}");
         let mut indices = Vec::new();
         indices.resize(self.len(), true);
-        intervals
-            .iter()
-            .for_each(|x| (x.0..x.1 + 1).for_each(|idx| indices[idx] = false));
+        let mut not_an_element = StacktraceEntry::default();
+        not_an_element.debug.file = "not_equal_to_other_names".to_string();
+        not_an_element.debug.line = 1;
+        if !self.iter().any(|x| x == &not_an_element) {
+            let intervals = get_interval_repetitions(self, &not_an_element);
+            intervals.iter().for_each(|(start, end, seq_len)| {
+                (start + seq_len..end + 1).for_each(|idx| indices[idx] = false)
+            });
+        }
         let mut keep = indices.iter();
 
         // Remove recursive and trusted functions from stack trace
@@ -306,7 +308,6 @@ impl Filter for Stacktrace {
                 && (entry.module.is_empty() || !rfile.is_match(&entry.module))
                 && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
         });
-        println!("{self:?}");
     }
 }
 
@@ -357,10 +358,11 @@ fn add_interval(
     }
 }
 
-fn main_lorentz<T: PartialEq + Default>(
+fn main_lorentz<T: PartialEq>(
     s: &[&T],
     shift: usize,
     intervals: &mut Vec<(usize, usize, usize)>,
+    nae: &T,
 ) {
     let n = s.len();
     if n < 2 {
@@ -373,12 +375,12 @@ fn main_lorentz<T: PartialEq + Default>(
     let (mut ru, mut rv) = (u.clone(), v.clone());
     ru.reverse();
     rv.reverse();
-    main_lorentz(&u, shift, intervals);
-    main_lorentz(&v, shift + len_u, intervals);
+    main_lorentz(&u, shift, intervals, nae);
+    main_lorentz(&v, shift + len_u, intervals, nae);
 
     let pr1 = prefix_function(&ru);
-    let pr2 = prefix_function(&[v.clone(), vec![&T::default()], u].concat());
-    let pr3 = prefix_function(&[ru, vec![&T::default()], rv].concat());
+    let pr2 = prefix_function(&[v.clone(), vec![nae], u.clone()].concat());
+    let pr3 = prefix_function(&[ru, vec![nae], rv].concat());
     let pr4 = prefix_function(&v);
     for cntr in 0..n {
         let (l, k1, k2) = if cntr < len_u {
@@ -395,8 +397,65 @@ fn main_lorentz<T: PartialEq + Default>(
             )
         };
         if k1 + k2 >= l {
-            //println!("{cntr} {l} {k1} {k2}");
             add_interval(intervals, shift, cntr < len_u, cntr, l, *k1, *k2);
         }
+    }
+}
+
+fn get_interval_repetitions<T: PartialEq>(
+    arr: &[T],
+    not_an_element: &T,
+) -> Vec<(usize, usize, usize)> {
+    let links = arr.iter().collect::<Vec<&T>>();
+    let mut result = Vec::new();
+    main_lorentz(&links, 0, &mut result, not_an_element);
+    fn get_period<T: PartialEq>(seq: &[&T]) -> usize {
+        let pr = prefix_function(seq);
+        let n = seq.len();
+        for (i, item) in pr.iter().enumerate().take(n / 2).skip(1) {
+            if *item == n - i {
+                return i;
+            }
+        }
+        n / 2
+    }
+    result
+        .iter()
+        .map(|(start, end, _)| (*start, *end, get_period(&links[*start..*end + 1])))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::stacktrace::*;
+
+    #[test]
+    fn test_main_lorentz() {
+        let tests = [
+            "aaaaa",
+            "aabcaabca",
+            "bcabcabcacbaagfgfgfgf",
+            "aacaacaac",
+            "aacaacaacaac",
+        ]
+        .iter()
+        .map(|x| x.chars().collect::<Vec<char>>())
+        .collect::<Vec<_>>();
+        let answer = get_interval_repetitions(&tests[0], &char::default());
+        assert!(answer.contains(&(0, 3, 1)));
+
+        let answer = get_interval_repetitions(&tests[1], &char::default());
+        assert!(answer.contains(&(0, 7, 4)));
+
+        let answer = get_interval_repetitions(&tests[2], &char::default());
+        assert!(answer.contains(&(0, 5, 3)));
+        assert!(answer.contains(&(11, 12, 1)));
+        assert!(answer.contains(&(13, 20, 2)));
+
+        let answer = get_interval_repetitions(&tests[3], &char::default());
+        assert!(answer.contains(&(0, 5, 3)));
+
+        let answer = get_interval_repetitions(&tests[4], &char::default());
+        assert!(answer.contains(&(0, 11, 3)));
     }
 }
