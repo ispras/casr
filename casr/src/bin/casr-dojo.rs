@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 const GET: Method = Method::GET;
 const POST: Method = Method::POST;
+const CONCURRENCY_LIMIT: usize = 10;
 
 /// HTTP client for sending REST API requests to DefectDojo.
 struct DefectDojoClient {
@@ -188,7 +189,7 @@ impl DefectDojoClient {
     /// * `ext` - new file extension for DefectDojo upload (e.g., casrep.json).
     /// * `title` - file title (e.g., CASR).
     /// * `id` - DefectDojo finding id.
-    async fn upload_file(&self, path: &Path, ext: &str, title: &str, id: i64) -> Result<()> {
+    async fn upload_file(&self, path: &PathBuf, ext: &str, title: &str, id: i64) -> Result<()> {
         let url = format!("findings/{id}/files/");
         let fname = Path::new(path.file_name().unwrap()).with_extension(ext);
         let file = reqwest::multipart::Part::bytes(fs::read(path)?)
@@ -216,9 +217,9 @@ impl DefectDojoClient {
     /// * `test_id` - DefectDojo test id.
     pub async fn upload_finding(
         &self,
-        path: &Path,
-        report: &CrashReport,
-        gdb: &Option<CrashReport>,
+        path: PathBuf,
+        report: CrashReport,
+        gdb: Option<CrashReport>,
         extra_gdb_report: bool,
         product_name: String,
         test_id: i64,
@@ -300,7 +301,7 @@ impl DefectDojoClient {
         );
         finding.insert(
             "description".to_string(),
-            serde_json::Value::String(get_report_description(report, gdb, extra_gdb_report)),
+            serde_json::Value::String(get_report_description(&report, &gdb, extra_gdb_report)),
         );
         let response = self
             .request(POST, "findings/")?
@@ -316,7 +317,7 @@ impl DefectDojoClient {
         debug!("Created new finding '{}' with id={}", title, id);
 
         // Upload CASR report.
-        self.upload_file(path, "casrep.json", "CASR", id).await?;
+        self.upload_file(&path, "casrep.json", "CASR", id).await?;
         debug!(
             "Uploaded CASR report for finding '{}' with id={}",
             title, id
@@ -325,7 +326,7 @@ impl DefectDojoClient {
         // Upload additional CASR report from GDB.
         if gdb.is_some() {
             self.upload_file(
-                path.with_extension("gdb.casrep").as_path(),
+                &path.with_extension("gdb.casrep"),
                 "casrep.json",
                 "CASR GDB",
                 id,
@@ -345,7 +346,7 @@ impl DefectDojoClient {
             }
         }
         if crash_path.exists() {
-            self.upload_file(crash_path.as_path(), ".txt", "Crash seed", id)
+            self.upload_file(&crash_path, ".txt", "Crash seed", id)
                 .await?;
             debug!("Uploaded crash seed for finding '{}' with id={}", title, id);
         }
@@ -817,11 +818,18 @@ async fn main() -> Result<()> {
     let mut casr_asan_hash = HashSet::new();
     let mut casr_ubsan_hash = HashSet::new();
     let mut tasks = tokio::task::JoinSet::new();
-    for f in findings {
-        let c = Arc::clone(&client);
-        tasks.spawn(async move { c.get_finding_hash(f).await });
-    }
-    while let Some(r) = tasks.join_next().await {
+    let mut findings = findings.into_iter();
+    loop {
+        while tasks.len() < CONCURRENCY_LIMIT {
+            let Some(f) = findings.next() else {
+                break;
+            };
+            let c = Arc::clone(&client);
+            tasks.spawn(async move { c.get_finding_hash(f).await });
+        }
+        let Some(r) = tasks.join_next().await else {
+            break;
+        };
         if let Some(hash) = r?? {
             match hash {
                 ReportHash::Asan(h) => casr_asan_hash.insert(h),
@@ -866,15 +874,22 @@ async fn main() -> Result<()> {
     );
     let extra_gdb_report = new_casr_reports.iter().any(|(_, _, gdb)| gdb.is_some());
     let mut tasks = tokio::task::JoinSet::new();
-    for (path, report, gdb) in new_casr_reports {
-        let c = Arc::clone(&client);
-        let pname = product_name.clone();
-        tasks.spawn(async move {
-            c.upload_finding(&path, &report, &gdb, extra_gdb_report, pname, test_id)
-                .await
-        });
-    }
-    while let Some(r) = tasks.join_next().await {
+    let mut new_casr_reports = new_casr_reports.into_iter();
+    loop {
+        while tasks.len() < CONCURRENCY_LIMIT {
+            let Some((path, report, gdb)) = new_casr_reports.next() else {
+                break;
+            };
+            let c = Arc::clone(&client);
+            let pname = product_name.clone();
+            tasks.spawn(async move {
+                c.upload_finding(path, report, gdb, extra_gdb_report, pname, test_id)
+                    .await
+            });
+        }
+        let Some(r) = tasks.join_next().await else {
+            break;
+        };
         if let Err(e) = r? {
             error!("{}", e);
         }
