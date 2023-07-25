@@ -386,7 +386,7 @@ fn add_interval(
 ///
 /// * `shift` - shift
 ///
-/// * `intervals` - the resulting vector consisting of tuples such as (interval start, interval end, length)
+/// * `intervals` - the resulting vector consisting of tuples such as (interval start, interval end, period length)
 ///
 /// * `nae` - element that not equal to others
 ///
@@ -445,7 +445,7 @@ fn main_lorentz<T: PartialEq>(
 ///
 /// # Return value
 ///
-/// Resulting vector with repeating intervals: (start index, end index, length)
+/// Resulting vector with repeating intervals: (start index, end index, period length)
 fn get_interval_repetitions<T: PartialEq>(
     arr: &[T],
     not_an_element: &T,
