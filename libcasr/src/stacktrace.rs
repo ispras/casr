@@ -293,7 +293,7 @@ impl Filter for Stacktrace {
         indices.resize(self.len(), true);
         // We need to create an element that will not be equal to others
         let mut not_an_element = StacktraceEntry::default();
-        not_an_element.debug.file = "not_equal_to_other_names".to_string();
+        not_an_element.debug.file = "CASR_not_equal_to_other_names_CASR".to_string();
         not_an_element.debug.line = 1;
         if let Ok(intervals) = get_interval_repetitions(self, &not_an_element) {
             intervals.iter().for_each(|(start, end, seq_len)| {
@@ -405,9 +405,10 @@ fn main_lorentz<T: PartialEq>(
     let len_u = n / 2;
     let len_v = n - len_u;
     let (u, v): (Vec<&T>, Vec<&T>) = (s[..len_u].to_vec(), s[len_u..].to_vec());
-    let (mut ru, mut rv) = (u.clone(), v.clone());
-    ru.reverse();
-    rv.reverse();
+    let (ru, rv): (Vec<&T>, Vec<&T>) = (
+        u.iter().rev().copied().collect(),
+        v.iter().rev().copied().collect(),
+    );
     main_lorentz(&u, shift, intervals, nae);
     main_lorentz(&v, shift + len_u, intervals, nae);
 
@@ -446,6 +447,7 @@ fn main_lorentz<T: PartialEq>(
 /// # Return value
 ///
 /// Resulting vector with repeating intervals: (start index, end index, period length)
+/// Start and end indices are included
 fn get_interval_repetitions<T: PartialEq>(
     arr: &[T],
     not_an_element: &T,
