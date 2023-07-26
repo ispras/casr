@@ -32,6 +32,8 @@ pub mod java;
 pub mod python;
 pub mod report;
 pub mod rust;
+#[cfg(feature = "serde")]
+pub mod sarif;
 pub mod severity;
 pub mod stacktrace;
 pub mod ubsan;
