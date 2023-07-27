@@ -288,26 +288,35 @@ impl Filter for Stacktrace {
         }
 
         // Find repeating intervals in stacktrace
-        let mut indices = Vec::new();
-        indices.resize(self.len(), true);
         // We need to create an element that will not be equal to others
         let mut not_an_element = StacktraceEntry::default();
         not_an_element.debug.file = "CASR_not_equal_to_other_names_CASR".to_string();
         not_an_element.debug.line = 1;
-        if let Ok(intervals) = get_interval_repetitions(self, &not_an_element) {
-            intervals.iter().for_each(|(start, end, seq_len)| {
-                (start + seq_len..end + 1).for_each(|idx| indices[idx] = false)
-            });
-        }
-        let mut keep = indices.iter();
+        let mut intervals = get_interval_repetitions(self, &not_an_element).unwrap_or_default();
+        intervals.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
+        let mut intervals = intervals.into_iter();
+        let mut cur = (0, 0, 0);
 
         // Remove repeating intervals and trusted functions from stack trace
-        self.retain(|entry| {
-            *keep.next().unwrap()
-                && (entry.function.is_empty() || !rfunction.is_match(&entry.function))
-                && (entry.module.is_empty() || !rfile.is_match(&entry.module))
-                && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
-        });
+        *self = std::mem::take(self)
+            .into_iter()
+            .enumerate()
+            .filter(|(idx, entry)| {
+                (if *idx < cur.0 + cur.2 {
+                    true
+                } else if cur.0 + cur.2 <= *idx && *idx < cur.1 + 1 - (cur.2 == 0) as usize {
+                    false
+                } else {
+                    if let Some(interval) = intervals.next() {
+                        cur = interval;
+                    }
+                    true
+                }) && (entry.function.is_empty() || !rfunction.is_match(&entry.function))
+                    && (entry.module.is_empty() || !rfile.is_match(&entry.module))
+                    && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+            })
+            .map(|(_, entry)| entry)
+            .collect();
     }
 }
 
