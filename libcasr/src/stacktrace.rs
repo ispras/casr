@@ -7,7 +7,6 @@ use kodama::{linkage, Method};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::ops::AddAssign;
 use std::sync::RwLock;
 
 // Re-export types from gdb_command for convenient use from Casr library
@@ -321,7 +320,8 @@ impl Filter for Stacktrace {
 /// # Return value
 ///
 /// Vector of mapped indices
-fn prefix_function<T: PartialEq>(arr: &[T]) -> Vec<usize> {
+/// More about Z-function https://cp-algorithms.com/string/z-function.html
+fn z_function<T: PartialEq>(arr: &[T]) -> Vec<usize> {
     let mut z = Vec::new();
     let (n, mut r, mut l) = (arr.len(), 0, 0);
     z.resize(n, 0);
@@ -330,7 +330,7 @@ fn prefix_function<T: PartialEq>(arr: &[T]) -> Vec<usize> {
             z[i] = z[i - l].min(r - i + 1);
         }
         while i + z[i] < n && arr[z[i]] == arr[i + z[i]] {
-            z[i].add_assign(1);
+            z[i] += 1;
         }
         if i + z[i] - 1 > r {
             l = i;
@@ -345,8 +345,6 @@ fn prefix_function<T: PartialEq>(arr: &[T]) -> Vec<usize> {
 /// # Arguments
 ///
 /// * `intervals` - resulting vector
-///
-/// * `shift` - shift
 ///
 /// And other algorithm parameters.
 /// More about Main-Lorentz algorithm https://cp-algorithms.com/string/main_lorentz.html
@@ -412,10 +410,10 @@ fn main_lorentz<T: PartialEq>(
     main_lorentz(&u, shift, intervals, nae);
     main_lorentz(&v, shift + len_u, intervals, nae);
 
-    let pr1 = prefix_function(&ru);
-    let pr2 = prefix_function(&[v.clone(), vec![nae], u].concat());
-    let pr3 = prefix_function(&[ru, vec![nae], rv].concat());
-    let pr4 = prefix_function(&v);
+    let pr1 = z_function(&ru);
+    let pr2 = z_function(&[v.clone(), vec![nae], u].concat());
+    let pr3 = z_function(&[ru, vec![nae], rv].concat());
+    let pr4 = z_function(&v);
     for cntr in 0..n {
         let (l, k1, k2) = if cntr < len_u {
             (
@@ -463,7 +461,7 @@ fn get_interval_repetitions<T: PartialEq>(
 
     /// Calculate the minimal period of the given sequence.
     fn get_period<T: PartialEq>(seq: &[&T]) -> usize {
-        let pr = prefix_function(seq);
+        let pr = z_function(seq);
         let n = seq.len();
         for (i, item) in pr.iter().enumerate().take(n / 2).skip(1) {
             if *item == n - i {
@@ -472,10 +470,28 @@ fn get_interval_repetitions<T: PartialEq>(
         }
         n / 2
     }
+    let links_len = links.len();
 
     Ok(result
-        .iter()
-        .map(|(start, end, _)| (*start, *end, get_period(&links[*start..*end + 1])))
+        .into_iter()
+        .map(|(start, end, _)| {
+            let period = get_period(&links[start..end + 1]);
+            if start >= period
+                && links[start..start + period]
+                    .iter()
+                    .eq(links[start - period..start].iter())
+            {
+                (start - period, end, period)
+            } else if end < links_len - period
+                && links[start..start + period]
+                    .iter()
+                    .eq(links[end + 1..end + period + 1].iter())
+            {
+                (start, end + period, period)
+            } else {
+                (start, end, period)
+            }
+        })
         .collect())
 }
 
@@ -489,25 +505,25 @@ mod tests {
             "aaaaa",
             "aabcaabca",
             "bcabcabcacbaagfgfgfgf",
-            "aacaacaac",
+            "abcaacaacaac",
             "aacaacaacaac",
         ]
         .iter()
         .map(|x| x.chars().collect::<Vec<char>>())
         .collect::<Vec<_>>();
         let answer = get_interval_repetitions(&tests[0], &char::default()).unwrap();
-        assert!(answer.contains(&(0, 3, 1)));
+        assert!(answer.contains(&(0, 4, 1)));
 
         let answer = get_interval_repetitions(&tests[1], &char::default()).unwrap();
         assert!(answer.contains(&(0, 7, 4)));
 
         let answer = get_interval_repetitions(&tests[2], &char::default()).unwrap();
-        assert!(answer.contains(&(0, 5, 3)));
+        assert!(answer.contains(&(0, 8, 3)));
         assert!(answer.contains(&(11, 12, 1)));
         assert!(answer.contains(&(13, 20, 2)));
 
         let answer = get_interval_repetitions(&tests[3], &char::default()).unwrap();
-        assert!(answer.contains(&(0, 5, 3)));
+        assert!(answer.contains(&(3, 11, 3)));
 
         let answer = get_interval_repetitions(&tests[4], &char::default()).unwrap();
         assert!(answer.contains(&(0, 11, 3)));
