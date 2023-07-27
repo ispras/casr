@@ -293,7 +293,7 @@ impl Filter for Stacktrace {
         not_an_element.debug.file = "CASR_not_equal_to_other_names_CASR".to_string();
         not_an_element.debug.line = 1;
         let mut intervals = get_interval_repetitions(self, &not_an_element).unwrap_or_default();
-        intervals.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
+        intervals.sort_by(|x, y| x.0.cmp(&y.0));
         let mut intervals = intervals.into_iter();
         let mut cur = (0, 0, 0);
 
@@ -301,21 +301,22 @@ impl Filter for Stacktrace {
         *self = std::mem::take(self)
             .into_iter()
             .enumerate()
-            .filter(|(idx, entry)| {
-                (if *idx < cur.0 + cur.2 {
+            .filter(|(idx, _)| {
+                if *idx < cur.0 + cur.2 {
                     true
-                } else if cur.0 + cur.2 <= *idx && *idx < cur.1 + 1 - (cur.2 == 0) as usize {
+                } else if cur.2 != 0 && *idx < cur.1 + 1 {
                     false
                 } else {
                     if let Some(interval) = intervals.next() {
                         cur = interval;
                     }
                     true
-                }) && (entry.function.is_empty() || !rfunction.is_match(&entry.function))
-                    && (entry.module.is_empty() || !rfile.is_match(&entry.module))
-                    && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+                }
             })
             .map(|(_, entry)| entry)
+            .filter(|entry| (entry.function.is_empty() || !rfunction.is_match(&entry.function)))
+            .filter(|entry| (entry.module.is_empty() || !rfile.is_match(&entry.module)))
+            .filter(|entry| (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file)))
             .collect();
     }
 }
