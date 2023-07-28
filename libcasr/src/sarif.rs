@@ -179,9 +179,9 @@ impl SarifReport {
         result.insert("level".to_string(), Value::String("error".to_string()));
         let mut message = Map::new();
         let text = if !report.stdin.is_empty() {
-            format!("{} < {}", report.proc_cmdline, report.stdin)
+            format!("{}: {} < {}", report.execution_class.short_description, report.proc_cmdline, report.stdin)
         } else {
-            report.proc_cmdline.clone()
+            format!("{}: {}",  report.execution_class.short_description, report.proc_cmdline)
         };
         message.insert("text".to_string(), Value::String(text));
         result.insert("message".to_string(), Value::Object(message));
@@ -215,9 +215,15 @@ impl SarifReport {
             Value::String("%SRCROOT%".to_string()),
         );
         physical_loc.insert("artifactLocation".to_string(), Value::Object(artifact_loc));
-        region.insert("startLine".to_string(), Value::String(parts[1].clone()));
+        region.insert(
+            "startLine".to_string(),
+            Value::Number(parts[1].parse::<u32>().unwrap().into()),
+        );
         if parts.len() == 3 {
-            region.insert("startColumn".to_string(), Value::String(parts[2].clone()));
+            region.insert(
+                "startColumn".to_string(),
+                Value::Number(parts[2].parse::<u32>().unwrap().into()),
+            );
         }
         physical_loc.insert("region".to_string(), Value::Object(region));
         location.insert("physicalLocation".to_string(), Value::Object(physical_loc));
@@ -225,10 +231,14 @@ impl SarifReport {
 
         result.insert("locations".to_string(), Value::Array(locations));
 
+        let mut stacks: Vec<Value> = Vec::new();
+        let mut stack = Map::new();
         let mut frames: Vec<Value> = Vec::new();
         init_ignored_frames!("cpp", "rust", "python", "go", "java");
         let stacktrace = report.filtered_stacktrace()?;
-        for entry in stacktrace {
+        for (n, entry) in stacktrace.iter().enumerate() {
+            let mut frame = Map::new();
+            let mut msg = Map::new();
             let mut location = Map::new();
             let mut physical_loc = Map::new();
             let mut artifact_loc = Map::new();
@@ -256,20 +266,29 @@ impl SarifReport {
             physical_loc.insert("artifactLocation".to_string(), Value::Object(artifact_loc));
             region.insert(
                 "startLine".to_string(),
-                Value::String(entry.debug.line.to_string()),
+                Value::Number(entry.debug.line.into()),
             );
             if entry.debug.column != 0 {
                 region.insert(
                     "startColumn".to_string(),
-                    Value::String(entry.debug.column.to_string()),
+                    Value::Number(entry.debug.column.into()),
                 );
             }
             physical_loc.insert("region".to_string(), Value::Object(region));
             location.insert("physicalLocation".to_string(), Value::Object(physical_loc));
-            frames.push(Value::Object(location));
+            let frame_info = format!("#{} {}", n, entry.function);
+            msg.insert("text".to_string(), Value::String(frame_info));
+            location.insert("message".to_string(), Value::Object(msg));
+            frame.insert("location".to_string(), Value::Object(location));
+            frames.push(Value::Object(frame));
         }
 
-        result.insert("frames".to_string(), Value::Array(frames));
+        stack.insert("frames".to_string(), Value::Array(frames));
+        let mut msg = Map::new();
+        msg.insert("text".to_string(), Value::String("Stacktrace".to_string()));
+        stack.insert("message".to_string(), Value::Object(msg));
+        stacks.push(Value::Object(stack));
+        result.insert("stacks".to_string(), Value::Array(stacks));
         results.push(Value::Object(result));
         Ok(())
     }
@@ -339,9 +358,9 @@ mod tests {
         );
         assert_eq!(
             location["region"].as_object().unwrap()["startLine"]
-                .as_str()
+                .as_u64()
                 .unwrap(),
-            "975"
+            975
         );
         let location = sarif.json.as_object().unwrap()["runs"].as_array().unwrap()[0]
             .as_object()
@@ -349,9 +368,15 @@ mod tests {
             .as_array()
             .unwrap()[0]
             .as_object()
+            .unwrap()["stacks"]
+            .as_array()
+            .unwrap()[0]
+            .as_object()
             .unwrap()["frames"]
             .as_array()
             .unwrap()[4]
+            .as_object()
+            .unwrap()["location"]
             .as_object()
             .unwrap()["physicalLocation"]
             .as_object()
@@ -365,9 +390,9 @@ mod tests {
         );
         assert_eq!(
             location["region"].as_object().unwrap()["startLine"]
-                .as_str()
+                .as_u64()
                 .unwrap(),
-            "901"
+            901
         );
     }
 }
