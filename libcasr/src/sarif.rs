@@ -179,9 +179,15 @@ impl SarifReport {
         result.insert("level".to_string(), Value::String("error".to_string()));
         let mut message = Map::new();
         let text = if !report.stdin.is_empty() {
-            format!("{}: {} < {}", report.execution_class.short_description, report.proc_cmdline, report.stdin)
+            format!(
+                "{}: {} < {}",
+                report.execution_class.short_description, report.proc_cmdline, report.stdin
+            )
         } else {
-            format!("{}: {}",  report.execution_class.short_description, report.proc_cmdline)
+            format!(
+                "{}: {}",
+                report.execution_class.short_description, report.proc_cmdline
+            )
         };
         message.insert("text".to_string(), Value::String(text));
         result.insert("message".to_string(), Value::Object(message));
