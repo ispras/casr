@@ -6,7 +6,7 @@ use crate::error::{Error, Result};
 use crate::execution_class::{ExecutionClass, CLASSES};
 use crate::init_ignored_frames;
 use crate::report::CrashReport;
-use crate::stacktrace::{STACK_FRAME_FUNCTION_IGNORE_REGEXES, STACK_FRAME_FILEPATH_IGNORE_REGEXES};
+use crate::stacktrace::{STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES};
 
 use serde_json::{Map, Value};
 
@@ -47,7 +47,6 @@ impl SarifReport {
         }
     }
 
-
     /// Set name for SARIF tool:driver.
     /// NOTE: before use this method,
     /// use SarifReprot::new() to get report.
@@ -65,7 +64,7 @@ impl SarifReport {
             .unwrap()["driver"]
             .as_object_mut()
             .unwrap();
-            driver.insert("name".to_string(), Value::String(name.to_string()));
+        driver.insert("name".to_string(), Value::String(name.to_string()));
     }
 
     /// SARIF rule from ExecutionClass.
@@ -91,9 +90,7 @@ impl SarifReport {
             s
         };
 
-        let rules = self.json.as_object().unwrap()["runs"]
-            .as_array()
-            .unwrap()[0]
+        let rules = self.json.as_object().unwrap()["runs"].as_array().unwrap()[0]
             .as_object()
             .unwrap()["tool"]
             .as_object()
@@ -134,7 +131,7 @@ impl SarifReport {
         );
         rule.insert("properties".to_string(), Value::Object(properties));
 
-        return (Some(Value::Object(rule)), rule_id);
+        (Some(Value::Object(rule)), rule_id)
     }
 
     /// Add CASR CrashReport to SARIF report.
@@ -146,7 +143,11 @@ impl SarifReport {
     ///  * 'report' - CrashReport
     ///
     ///  * 'source_root' - Path to source root directory.
-    pub fn add_casr_report<T: AsRef<Path>>(&mut self, report: &CrashReport, source_root: T) -> Result<()> {
+    pub fn add_casr_report<T: AsRef<Path>>(
+        &mut self,
+        report: &CrashReport,
+        source_root: T,
+    ) -> Result<()> {
         let (rule, rule_id) = self.rule(&report.execution_class);
         if let Some(rule) = rule {
             let rules = self.json.as_object_mut().unwrap()["runs"]
@@ -161,7 +162,7 @@ impl SarifReport {
                 .as_array_mut()
                 .unwrap();
             rules.push(rule);
-            if rule_id.starts_with("G") {
+            if rule_id.starts_with('G') {
                 self.id += 1;
             }
         }
@@ -174,10 +175,7 @@ impl SarifReport {
             .as_array_mut()
             .unwrap();
         let mut result = Map::new();
-        result.insert(
-            "ruleId".to_string(),
-            Value::String(rule_id),
-        );
+        result.insert("ruleId".to_string(), Value::String(rule_id));
         result.insert("level".to_string(), Value::String("error".to_string()));
         let mut message = Map::new();
         let text = if !report.stdin.is_empty() {
@@ -193,19 +191,29 @@ impl SarifReport {
         let mut artifact_loc = Map::new();
         let mut region = Map::new();
         let parts: Vec<_> = report.crashline.split(':').map(|s| s.to_string()).collect();
-        if parts.len() != 2 && parts.len() !=3 {
-            return Err(Error::Casr(format!("Unable to parse crashline: {}", report.crashline)));
+        if parts.len() != 2 && parts.len() != 3 {
+            return Err(Error::Casr(format!(
+                "Unable to parse crashline: {}",
+                report.crashline
+            )));
         }
 
         let source_path = Path::new(&parts[0]);
-        let norm_source_path = if let Ok(norm_source_path) = source_path.strip_prefix(source_root.as_ref()) {
-            norm_source_path
-        } else {
-            source_path
-        };
+        let norm_source_path =
+            if let Ok(norm_source_path) = source_path.strip_prefix(source_root.as_ref()) {
+                norm_source_path
+            } else {
+                source_path
+            };
 
-        artifact_loc.insert("uri".to_string(), Value::String(norm_source_path.display().to_string()));
-        artifact_loc.insert("uriBaseId".to_string(), Value::String("%SRCROOT%".to_string()));
+        artifact_loc.insert(
+            "uri".to_string(),
+            Value::String(norm_source_path.display().to_string()),
+        );
+        artifact_loc.insert(
+            "uriBaseId".to_string(),
+            Value::String("%SRCROOT%".to_string()),
+        );
         physical_loc.insert("artifactLocation".to_string(), Value::Object(artifact_loc));
         region.insert("startLine".to_string(), Value::String(parts[1].clone()));
         if parts.len() == 3 {
@@ -231,17 +239,30 @@ impl SarifReport {
             }
 
             let source_path = Path::new(&entry.debug.file);
-            let norm_source_path = if let Ok(norm_source_path) = source_path.strip_prefix(source_root.as_ref()) {
-                norm_source_path
-            } else {
-                source_path
-            };
-            artifact_loc.insert("uri".to_string(), Value::String(norm_source_path.display().to_string()));
-            artifact_loc.insert("uriBaseId".to_string(), Value::String("%SRCROOT%".to_string()));
+            let norm_source_path =
+                if let Ok(norm_source_path) = source_path.strip_prefix(source_root.as_ref()) {
+                    norm_source_path
+                } else {
+                    source_path
+                };
+            artifact_loc.insert(
+                "uri".to_string(),
+                Value::String(norm_source_path.display().to_string()),
+            );
+            artifact_loc.insert(
+                "uriBaseId".to_string(),
+                Value::String("%SRCROOT%".to_string()),
+            );
             physical_loc.insert("artifactLocation".to_string(), Value::Object(artifact_loc));
-            region.insert("startLine".to_string(), Value::String(entry.debug.line.to_string()));
+            region.insert(
+                "startLine".to_string(),
+                Value::String(entry.debug.line.to_string()),
+            );
             if entry.debug.column != 0 {
-                region.insert("startColumn".to_string(), Value::String(entry.debug.column.to_string()));
+                region.insert(
+                    "startColumn".to_string(),
+                    Value::String(entry.debug.column.to_string()),
+                );
             }
             physical_loc.insert("region".to_string(), Value::Object(region));
             location.insert("physicalLocation".to_string(), Value::Object(physical_loc));
@@ -282,9 +303,7 @@ mod tests {
 
         let report: CrashReport = serde_json::from_str(data).unwrap();
         assert!(sarif.add_casr_report(&report, "/xlnt").is_ok());
-        let rule = sarif.json.as_object().unwrap()["runs"]
-            .as_array()
-            .unwrap()[0]
+        let rule = sarif.json.as_object().unwrap()["runs"].as_array().unwrap()[0]
             .as_object()
             .unwrap()["tool"]
             .as_object()
@@ -298,9 +317,7 @@ mod tests {
         assert_eq!(rule["name"].as_str().unwrap(), "SourceAv");
         assert_eq!(rule["id"].as_str().unwrap(), "F11");
 
-        let location = sarif.json.as_object().unwrap()["runs"]
-            .as_array()
-            .unwrap()[0]
+        let location = sarif.json.as_object().unwrap()["runs"].as_array().unwrap()[0]
             .as_object()
             .unwrap()["results"]
             .as_array()
@@ -314,15 +331,19 @@ mod tests {
             .as_object()
             .unwrap();
 
-        let artifact_loc = location["artifactLocation"]
-            .as_object()
-            .unwrap();
+        let artifact_loc = location["artifactLocation"].as_object().unwrap();
 
-        assert_eq!(artifact_loc["uri"].as_str().unwrap(), "source/detail/cryptography/compound_document.cpp");
-        assert_eq!(location["region"].as_object().unwrap()["startLine"].as_str().unwrap(), "975");
-        let location = sarif.json.as_object().unwrap()["runs"]
-            .as_array()
-            .unwrap()[0]
+        assert_eq!(
+            artifact_loc["uri"].as_str().unwrap(),
+            "source/detail/cryptography/compound_document.cpp"
+        );
+        assert_eq!(
+            location["region"].as_object().unwrap()["startLine"]
+                .as_str()
+                .unwrap(),
+            "975"
+        );
+        let location = sarif.json.as_object().unwrap()["runs"].as_array().unwrap()[0]
             .as_object()
             .unwrap()["results"]
             .as_array()
@@ -336,11 +357,17 @@ mod tests {
             .as_object()
             .unwrap();
 
-        let artifact_loc = location["artifactLocation"]
-            .as_object()
-            .unwrap();
+        let artifact_loc = location["artifactLocation"].as_object().unwrap();
 
-        assert_eq!(artifact_loc["uri"].as_str().unwrap(), "source/workbook/workbook.cpp");
-        assert_eq!(location["region"].as_object().unwrap()["startLine"].as_str().unwrap(), "901");
+        assert_eq!(
+            artifact_loc["uri"].as_str().unwrap(),
+            "source/workbook/workbook.cpp"
+        );
+        assert_eq!(
+            location["region"].as_object().unwrap()["startLine"]
+                .as_str()
+                .unwrap(),
+            "901"
+        );
     }
 }
