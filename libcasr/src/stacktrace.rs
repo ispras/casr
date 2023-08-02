@@ -289,22 +289,20 @@ impl Filter for Stacktrace {
 
         // Find repeating intervals in stacktrace
         // We need to create an element that will not be equal to others
-        let mut not_an_element = StacktraceEntry::default();
-        not_an_element.debug.file = "CASR_not_equal_to_other_names_CASR".to_string();
-        not_an_element.debug.line = 1;
-        let mut intervals = get_interval_repetitions(self, &not_an_element).unwrap_or_default();
+        let mut intervals = get_interval_repetitions(self);
         intervals.sort_by(|x, y| x.0.cmp(&y.0));
+        let ilen = intervals.len();
+        let mut cur = (0, ilen);
         let mut intervals = intervals.into_iter();
-        let mut cur = (0, 0, 0);
 
         // Remove repeating intervals and trusted functions from stack trace
         *self = std::mem::take(self)
             .into_iter()
             .enumerate()
             .filter(|(idx, _)| {
-                if *idx < cur.0 + cur.2 {
+                if *idx < cur.0 {
                     true
-                } else if cur.2 != 0 && *idx < cur.1 + 1 {
+                } else if cur.1 != ilen && *idx < cur.1 + 1 {
                     false
                 } else {
                     if let Some(interval) = intervals.next() {
@@ -321,188 +319,55 @@ impl Filter for Stacktrace {
     }
 }
 
-/// Map indices i of arr to the length of the longest border of arr[1 .. i]
-///
-/// # Arguments
-///
-/// * `arr` - given sequence
-///
-/// # Return value
-///
-/// Vector of mapped indices
-/// More about Z-function https://cp-algorithms.com/string/z-function.html
-fn z_function<T: PartialEq>(arr: &[T]) -> Vec<usize> {
-    let mut z = Vec::new();
-    let (n, mut r, mut l) = (arr.len(), 0, 0);
-    z.resize(n, 0);
-    for i in 1..n {
-        if i <= r {
-            z[i] = z[i - l].min(r - i + 1);
-        }
-        while i + z[i] < n && arr[z[i]] == arr[i + z[i]] {
-            z[i] += 1;
-        }
-        if i + z[i] - 1 > r {
-            l = i;
-            r = i + z[i] - 1;
-        }
-    }
-    z
-}
-
-/// Add interval to the resulting vector
-///
-/// # Arguments
-///
-/// * `intervals` - resulting vector
-///
-/// And other algorithm parameters.
-/// More about Main-Lorentz algorithm https://cp-algorithms.com/string/main_lorentz.html
-fn add_interval(
-    intervals: &mut Vec<(usize, usize, usize)>,
-    shift: usize,
-    left: bool,
-    cntr: usize,
-    l: usize,
-    k1: usize,
-    _k2: usize,
-) {
-    let l1 = k1.min(l);
-    let l2 = l - l1;
-    let pos = if left {
-        cntr - l1
-    } else {
-        cntr + 1 - 2 * l1 - l2
-    };
-    let (left, right) = (shift + pos, shift + pos + 2 * l - 1);
-    let interval_len = right - left + 1;
-    if intervals
-        .iter()
-        .filter(|x| !(x.1 < left || right < x.0))
-        .all(|x| x.2 < interval_len)
-    {
-        intervals.retain(|x| x.1 < left || right < x.0);
-        intervals.push((left, right, right - left + 1));
-    }
-}
-
-/// Perform Main-Lorentz algorithm
-///
-/// # Arguments
-///
-/// * `s` - given sequence
-///
-/// * `shift` - shift
-///
-/// * `intervals` - the resulting vector consisting of tuples such as (interval start, interval end, period length)
-///
-/// * `nae` - element that not equal to others
-///
-/// More about Main-Lorentz algorithm https://cp-algorithms.com/string/main_lorentz.html
-fn main_lorentz<T: PartialEq>(
-    s: &[&T],
-    shift: usize,
-    intervals: &mut Vec<(usize, usize, usize)>,
-    nae: &T,
-) {
-    let n = s.len();
-    if n < 2 {
-        return;
-    }
-
-    let len_u = n / 2;
-    let len_v = n - len_u;
-    let (u, v): (Vec<&T>, Vec<&T>) = (s[..len_u].to_vec(), s[len_u..].to_vec());
-    let (ru, rv): (Vec<&T>, Vec<&T>) = (
-        u.iter().rev().copied().collect(),
-        v.iter().rev().copied().collect(),
-    );
-    main_lorentz(&u, shift, intervals, nae);
-    main_lorentz(&v, shift + len_u, intervals, nae);
-
-    let pr1 = z_function(&ru);
-    let pr2 = z_function(&[v.clone(), vec![nae], u].concat());
-    let pr3 = z_function(&[ru, vec![nae], rv].concat());
-    let pr4 = z_function(&v);
-    for cntr in 0..n {
-        let (l, k1, k2) = if cntr < len_u {
-            (
-                len_u - cntr,
-                pr1.get(len_u - cntr).unwrap_or(&0),
-                pr2.get(len_v + 1 + cntr).unwrap_or(&0),
-            )
-        } else {
-            (
-                cntr - len_u + 1,
-                pr3.get(2 * len_u + len_v - cntr).unwrap_or(&0),
-                pr4.get(cntr - len_u + 1).unwrap_or(&0),
-            )
-        };
-        if k1 + k2 >= l {
-            add_interval(intervals, shift, cntr < len_u, cntr, l, *k1, *k2);
-        }
-    }
-}
-
-/// Return resulting vector with repeating intervals
+/// Find repeating intervals in sequence
 ///
 /// # Argumnets
 ///
 /// * `arr` - given sequence
 ///
-/// * `not_an_element` - element that not equal to others
-///
 /// # Return value
 ///
-/// Resulting vector with repeating intervals: (start index, end index, period length)
+/// Resulting vector with repeating intervals: (start index, end index)
 /// Start and end indices are included
-fn get_interval_repetitions<T: PartialEq>(
-    arr: &[T],
-    not_an_element: &T,
-) -> Result<Vec<(usize, usize, usize)>> {
-    if let Some(idx) = arr.iter().position(|x| x == not_an_element) {
-        return Err(Error::Casr(format!(
-            "not_an_element is equal to element of given sequence at index {idx}"
-        )));
-    }
-    let links = arr.iter().collect::<Vec<&T>>();
-    let mut result = Vec::new();
-    main_lorentz(&links, 0, &mut result, not_an_element);
-
-    /// Calculate the minimal period of the given sequence.
-    fn get_period<T: PartialEq>(seq: &[&T]) -> usize {
-        let pr = z_function(seq);
-        let n = seq.len();
-        for (i, item) in pr.iter().enumerate().take(n / 2).skip(1) {
-            if *item == n - i {
-                return i;
+fn get_interval_repetitions<T: PartialEq>(arr: &[T]) -> Vec<(usize, usize)> {
+    let len = arr.len();
+    let mut indices = Vec::new();
+    indices.resize(len, true);
+    for i in 1..len / 2 + 1 {
+        let mut start = len;
+        let (iter1, iter2) = (arr[..len - i].iter(), arr[i..].iter());
+        iter1.zip(iter2).enumerate().for_each(|(idx, (el1, el2))| {
+            if el1 == el2 {
+                if start == len {
+                    start = idx;
+                }
+            } else if start != len {
+                if idx - start >= i {
+                    (start..idx - (idx - start) % i).for_each(|index| indices[index] = false);
+                }
+                start = len;
             }
+        });
+        if len - start >= 2 * i {
+            (start..len - (len - start) % i - i).for_each(|index| indices[index] = false);
         }
-        n / 2
     }
-    let links_len = links.len();
-
-    Ok(result
-        .into_iter()
-        .map(|(start, end, _)| {
-            let period = get_period(&links[start..end + 1]);
-            if start >= period
-                && links[start..start + period]
-                    .iter()
-                    .eq(links[start - period..start].iter())
-            {
-                (start - period, end, period)
-            } else if end < links_len - period
-                && links[start..start + period]
-                    .iter()
-                    .eq(links[end + 1..end + period + 1].iter())
-            {
-                (start, end + period, period)
-            } else {
-                (start, end, period)
+    let mut intervals = Vec::new();
+    let mut start = len;
+    indices.iter().enumerate().for_each(|(idx, el)| {
+        if !*el {
+            if start == len {
+                start = idx;
             }
-        })
-        .collect())
+        } else if start != len {
+            intervals.push((start, idx - 1));
+            start = len;
+        }
+    });
+    if start != len {
+        intervals.push((start, len - 1));
+    }
+    intervals
 }
 
 #[cfg(test)]
@@ -512,6 +377,7 @@ mod tests {
     #[test]
     fn test_main_lorentz() {
         let tests = [
+            "aa",
             "aaaaa",
             "aabcaabca",
             "bcabcabcacbaagfgfgfgf",
@@ -521,21 +387,25 @@ mod tests {
         .iter()
         .map(|x| x.chars().collect::<Vec<char>>())
         .collect::<Vec<_>>();
-        let answer = get_interval_repetitions(&tests[0], &char::default()).unwrap();
-        assert!(answer.contains(&(0, 4, 1)));
+        let answer = get_interval_repetitions(&tests[0]);
+        assert!(answer.contains(&(0, 0)));
 
-        let answer = get_interval_repetitions(&tests[1], &char::default()).unwrap();
-        assert!(answer.contains(&(0, 7, 4)));
+        let answer = get_interval_repetitions(&tests[1]);
+        assert!(answer.contains(&(0, 3)));
 
-        let answer = get_interval_repetitions(&tests[2], &char::default()).unwrap();
-        assert!(answer.contains(&(0, 8, 3)));
-        assert!(answer.contains(&(11, 12, 1)));
-        assert!(answer.contains(&(13, 20, 2)));
+        let answer = get_interval_repetitions(&tests[2]);
+        assert!(answer.contains(&(0, 4)));
 
-        let answer = get_interval_repetitions(&tests[3], &char::default()).unwrap();
-        assert!(answer.contains(&(3, 11, 3)));
+        let answer = get_interval_repetitions(&tests[3]);
+        assert!(answer.contains(&(0, 5)));
+        assert!(answer.contains(&(11, 11)));
+        assert!(answer.contains(&(13, 18)));
 
-        let answer = get_interval_repetitions(&tests[4], &char::default()).unwrap();
-        assert!(answer.contains(&(0, 11, 3)));
+        let answer = get_interval_repetitions(&tests[4]);
+        assert!(answer.contains(&(2, 7)));
+        assert!(answer.contains(&(9, 9)));
+
+        let answer = get_interval_repetitions(&tests[5]);
+        assert!(answer.contains(&(0, 9)));
     }
 }
