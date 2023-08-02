@@ -2292,6 +2292,37 @@ fn test_casr_cluster_s() {
             res
         );
     }
+
+    let paths = [
+        abs_path("tests/casr_tests/casrep/similarity_test/5.casrep"),
+        abs_path("tests/casr_tests/casrep/similarity_test/6.casrep"),
+    ];
+    let mut output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+        .args(["-s", &paths[0], &paths[1]])
+        .output()
+        .expect("failed to start casr-cluster");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let res: f64 = output
+        .stdout
+        .drain(0..7)
+        .map(|x| x as char)
+        .collect::<String>()
+        .parse::<f64>()
+        .unwrap();
+    if res < 0.99 {
+        panic!(
+            "Too small similarity, mistake. Stdout:{:?}\nDigit: {}\n",
+            output.stdout.as_slice(),
+            res
+        );
+    }
 }
 
 #[test]
@@ -3776,7 +3807,7 @@ fn test_casr_libfuzzer_atheris() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 3, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 2, "Invalid number of clusters");
 
     let mut storage: HashMap<String, u32> = HashMap::new();
     for entry in fs::read_dir(&paths[1]).unwrap() {
@@ -4369,7 +4400,7 @@ fn test_casr_cluster_c_python() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 3, "Clusters count mismatch.");
+    assert_eq!(clusters_cnt, 2, "Clusters count mismatch.");
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }

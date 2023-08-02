@@ -288,10 +288,118 @@ impl Filter for Stacktrace {
         }
 
         // Remove trusted functions from stack trace
-        self.retain(|entry| {
-            (entry.function.is_empty() || !rfunction.is_match(&entry.function))
-                && (entry.module.is_empty() || !rfile.is_match(&entry.module))
-                && (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
+        *self = std::mem::take(self)
+            .into_iter()
+            .filter(|entry| (entry.function.is_empty() || !rfunction.is_match(&entry.function)))
+            .filter(|entry| (entry.module.is_empty() || !rfile.is_match(&entry.module)))
+            .filter(|entry| (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file)))
+            .collect();
+        // Find repeating intervals in stacktrace
+        let mut vec = get_interval_repetitions(self);
+        while vec.iter().any(|el| !el) {
+            let mut keep = vec.iter();
+            *self = std::mem::take(self)
+                .into_iter()
+                .filter(|_| *keep.next().unwrap())
+                .collect();
+            vec = get_interval_repetitions(self);
+        }
+    }
+}
+
+/// Find repeating intervals in sequence
+///
+/// # Argumnets
+///
+/// * `arr` - given sequence
+///
+/// # Return value
+///
+/// An vector of the same length as `arr`.
+/// Vec\[i\] is false, if original element i is a duplicate in some loop.
+fn get_interval_repetitions<T: PartialEq>(arr: &[T]) -> Vec<bool> {
+    let len = arr.len();
+    let mut indices = Vec::new();
+    indices.resize(len, true);
+    for i in 1..len / 2 + 1 {
+        let mut start = len;
+        let (iter1, iter2) = (arr[..len - i].iter(), arr[i..].iter());
+        iter1.zip(iter2).enumerate().for_each(|(idx, (el1, el2))| {
+            if el1 == el2 {
+                if start == len {
+                    start = idx;
+                }
+            } else if start != len {
+                if idx - start >= i {
+                    (start..idx - (idx - start) % i).for_each(|index| indices[index] = false);
+                }
+                start = len;
+            }
         });
+        if len - start >= 2 * i {
+            (start..len - (len - start) % i - i).for_each(|index| indices[index] = false);
+        }
+    }
+    indices
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::stacktrace::*;
+
+    #[test]
+    fn test_main_lorentz() {
+        let tests = [
+            "aa",
+            "aaaaa",
+            "aabcaabca",
+            "bcabcabcacbaagfgfgfgf",
+            "abcaacaacaac",
+            "aacaacaacaac",
+        ]
+        .iter()
+        .map(|x| x.chars().collect::<Vec<char>>())
+        .collect::<Vec<_>>();
+
+        fn convert_answer(indices: &[bool]) -> Vec<(usize, usize)> {
+            let mut intervals = Vec::new();
+            let len = indices.len();
+            let mut start = len;
+            indices.iter().enumerate().for_each(|(idx, el)| {
+                if !*el {
+                    if start == len {
+                        start = idx;
+                    }
+                } else if start != len {
+                    intervals.push((start, idx - 1));
+                    start = len;
+                }
+            });
+            if start != len {
+                intervals.push((start, len - 1));
+            }
+            intervals
+        }
+
+        let answer = convert_answer(&get_interval_repetitions(&tests[0]));
+        assert!(answer.contains(&(0, 0)));
+
+        let answer = convert_answer(&get_interval_repetitions(&tests[1]));
+        assert!(answer.contains(&(0, 3)));
+
+        let answer = convert_answer(&get_interval_repetitions(&tests[2]));
+        assert!(answer.contains(&(0, 4)));
+
+        let answer = convert_answer(&get_interval_repetitions(&tests[3]));
+        assert!(answer.contains(&(0, 5)));
+        assert!(answer.contains(&(11, 11)));
+        assert!(answer.contains(&(13, 18)));
+
+        let answer = convert_answer(&get_interval_repetitions(&tests[4]));
+        assert!(answer.contains(&(2, 7)));
+        assert!(answer.contains(&(9, 9)));
+
+        let answer = convert_answer(&get_interval_repetitions(&tests[5]));
+        assert!(answer.contains(&(0, 9)));
     }
 }
