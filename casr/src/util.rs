@@ -30,7 +30,7 @@ use which::which;
 /// * `argv` - executable file options
 pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<()> {
     let tool = matches.get_one::<PathBuf>("sub-tool").unwrap();
-    if let Err(_) = which(tool) {
+    if which(tool).is_err() {
         if !tool.exists() {
             bail!("Sub tool {tool:?} doesn't exist");
         }
