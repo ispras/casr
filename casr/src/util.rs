@@ -17,17 +17,18 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::RwLock;
 
-/// Call casr-san with the provided options
+/// Call sub tool with the provided options
 ///
 /// # Arguments
 ///
 /// * `matches` - casr options
 ///
-/// * `tool` - tool, that called casr-san
+/// * `tool` - tool, that called sub tool
 ///
 /// * `argv` - executable file options
-pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], tool: &str) -> Result<()> {
-    let mut cmd = Command::new("casr-san");
+pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], tool: &str) -> Result<()> {
+    let sub_tool = matches.get_one::<PathBuf>("sub-tool").unwrap();
+    let mut cmd = Command::new(sub_tool);
     if let Some(report_path) = matches.get_one::<PathBuf>("output") {
         cmd.args(["--output", report_path.to_str().unwrap()]);
     } else {
@@ -50,7 +51,7 @@ pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], tool: &str) -> Result<
     if output.status.success() {
         Ok(())
     } else {
-        bail!("casr-san error when calling from {tool}");
+        bail!("{sub_tool:?} error when calling from {tool}");
     }
 }
 
