@@ -275,7 +275,7 @@ impl DefectDojoClient {
         }
 
         let security_re = Regex::new(
-            "null_deref|out_of_bounds|int_overflow|div_by_zero|invalid_hep|neg_size|num_trunc",
+            "null_deref|out_of_bounds|int_overflow|div_by_zero|neg_size|num_trunc",
         )
         .unwrap();
         if security_re.is_match(&reproduce) {
