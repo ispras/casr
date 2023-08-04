@@ -273,6 +273,18 @@ impl DefectDojoClient {
         if !report.stdin.is_empty() {
             reproduce += &format!(" < {}", report.stdin);
         }
+
+        let security_re = Regex::new(
+            "null_deref|out_of_bounds|int_overflow|div_by_zero|invalid_hep|neg_size|num_trunc",
+        )
+        .unwrap();
+        if security_re.is_match(&reproduce) {
+            findings.insert(
+                "tags".to_string(),
+                serde_json::Value::Array(["sydr-security"]),
+            );
+        }
+
         finding.insert(
             "steps_to_reproduce".to_string(),
             serde_json::Value::String(reproduce),
