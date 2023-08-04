@@ -8,6 +8,7 @@ use anyhow::{bail, Result};
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Arg, ArgAction};
 use log::{debug, error, info, warn};
+use regex::Regex;
 use reqwest::header::{HeaderMap, AUTHORIZATION};
 use reqwest::{Client, Method, RequestBuilder, Response, Url};
 use walkdir::WalkDir;
@@ -280,7 +281,9 @@ impl DefectDojoClient {
         if security_re.is_match(&reproduce) {
             finding.insert(
                 "tags".to_string(),
-                serde_json::Value::Array(["sydr-security"]),
+                serde_json::Value::Array(vec![serde_json::Value::String(
+                    "sydr-security".to_string(),
+                )]),
             );
         }
 
