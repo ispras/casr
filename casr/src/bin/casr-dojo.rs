@@ -278,7 +278,7 @@ impl DefectDojoClient {
             Regex::new("null_deref|out_of_bounds|int_overflow|div_by_zero|neg_size|num_trunc")
                 .unwrap();
         if security_re.is_match(&reproduce) {
-            findings.insert(
+            finding.insert(
                 "tags".to_string(),
                 serde_json::Value::Array(["sydr-security"]),
             );
