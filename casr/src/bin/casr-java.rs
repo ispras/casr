@@ -57,6 +57,17 @@ fn main() -> Result<()> {
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
+            Arg::new("sub-tool")
+                .long("sub-tool")
+                .default_value("casr-san")
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
+                .value_name("PATH")
+                .help(
+                    "Path to sub tool for crash analysis that will be called when main tool fails to detect a crash",
+                ),
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .num_args(1..)
@@ -135,8 +146,8 @@ fn main() -> Result<()> {
             report.execution_class = exception;
         }
     } else {
-        // Call casr-san
-        return util::call_casr_san(&matches, &argv, "casr-java");
+        // Call sub tool
+        return util::call_sub_tool(&matches, &argv, "casr-java");
     }
 
     if let Ok(crash_line) = JavaStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {

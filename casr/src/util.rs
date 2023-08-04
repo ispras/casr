@@ -13,21 +13,35 @@ use simplelog::*;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::RwLock;
+use which::which;
 
-/// Call casr-san with the provided options
+/// Call sub tool with the provided options
 ///
 /// # Arguments
 ///
 /// * `matches` - casr options
 ///
-/// * `tool` - tool, that called casr-san
+/// * `name` - main tool name, that called sub tool
 ///
 /// * `argv` - executable file options
-pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], tool: &str) -> Result<()> {
-    let mut cmd = Command::new("casr-san");
+pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<()> {
+    let tool = matches.get_one::<PathBuf>("sub-tool").unwrap();
+    if which(tool).is_err() {
+        if !tool.exists() {
+            bail!("Sub tool {tool:?} doesn't exist");
+        }
+        if !tool.is_file() {
+            bail!("Sub tool {tool:?} isn't a file");
+        }
+        if tool.metadata()?.permissions().mode() & 0o111 == 0 {
+            bail!("Sub tool {tool:?} isn't executable");
+        }
+    }
+    let mut cmd = Command::new(tool);
     if let Some(report_path) = matches.get_one::<PathBuf>("output") {
         cmd.args(["--output", report_path.to_str().unwrap()]);
     } else {
@@ -50,7 +64,7 @@ pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], tool: &str) -> Result<
     if output.status.success() {
         Ok(())
     } else {
-        bail!("casr-san error when calling from {tool}");
+        bail!("{tool:?} error when calling from {name}");
     }
 }
 
