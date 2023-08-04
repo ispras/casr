@@ -63,7 +63,7 @@ fn main() -> Result<()> {
                 .value_parser(clap::value_parser!(PathBuf))
                 .value_name("BIN")
                 .help(
-                    "Path to sub tool bin for crash analyze that will be called in case main tool fails",
+                    "Path to sub tool for crash analysis that will be called when main tool fails to detect a crash",
                 ),
         )
         .arg(

@@ -13,9 +13,11 @@ use simplelog::*;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::RwLock;
+use which::which;
 
 /// Call sub tool with the provided options
 ///
@@ -23,12 +25,23 @@ use std::sync::RwLock;
 ///
 /// * `matches` - casr options
 ///
-/// * `tool` - tool, that called sub tool
+/// * `name` - main tool name, that called sub tool
 ///
 /// * `argv` - executable file options
-pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], tool: &str) -> Result<()> {
-    let sub_tool = matches.get_one::<PathBuf>("sub-tool").unwrap();
-    let mut cmd = Command::new(sub_tool);
+pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<()> {
+    let tool = matches.get_one::<PathBuf>("sub-tool").unwrap();
+    if let Err(_) = which(tool) {
+        if !tool.exists() {
+            bail!("Sub tool {tool:?} doesn't exist");
+        }
+        if !tool.is_file() {
+            bail!("Sub tool {tool:?} isn't exist");
+        }
+        if tool.metadata()?.permissions().mode() & 0o111 == 0 {
+            bail!("Sub tool {tool:?} isn't executable");
+        }
+    }
+    let mut cmd = Command::new(tool);
     if let Some(report_path) = matches.get_one::<PathBuf>("output") {
         cmd.args(["--output", report_path.to_str().unwrap()]);
     } else {
@@ -51,7 +64,7 @@ pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], tool: &str) -> Result<
     if output.status.success() {
         Ok(())
     } else {
-        bail!("{sub_tool:?} error when calling from {tool}");
+        bail!("{tool:?} error when calling from {name}");
     }
 }
 
