@@ -117,8 +117,8 @@ Create CASR reports (.casrep) from python reports
           --stdin <FILE>     Stdin file for program
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
-          --sub-tool <BIN>   Path to sub tool bin for crash analyze that will be called in
-                             case main tool fails [default: casr-san]
+          --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
+                             tool fails to detect a crash [default: casr-san]
       -h, --help             Print help
       -V, --version          Print version
 
@@ -142,8 +142,8 @@ Create CASR reports (.casrep) from java reports
           --stdin <FILE>     Stdin file for program
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
-          --sub-tool <BIN>   Path to sub tool bin for crash analyze that will be called in
-                             case main tool fails [default: casr-san]
+          --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
+                             tool fails to detect a crash [default: casr-san]
       -h, --help             Print help
       -V, --version          Print version
 

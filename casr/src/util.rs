@@ -35,7 +35,7 @@ pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<
             bail!("Sub tool {tool:?} doesn't exist");
         }
         if !tool.is_file() {
-            bail!("Sub tool {tool:?} isn't file");
+            bail!("Sub tool {tool:?} isn't a file");
         }
         if tool.metadata()?.permissions().mode() & 0o111 == 0 {
             bail!("Sub tool {tool:?} isn't executable");
