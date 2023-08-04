@@ -62,7 +62,7 @@ fn main() -> Result<()> {
                 .default_value("casr-san")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(PathBuf))
-                .value_name("BIN")
+                .value_name("PATH")
                 .help(
                     "Path to sub tool for crash analysis that will be called when main tool fails to detect a crash",
                 ),
