@@ -329,6 +329,8 @@ Triage crashes found by AFL++
                                    debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
+                                   disabled]
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
           --no-cluster             Do not cluster CASR reports
@@ -430,6 +432,8 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
                                    debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
+                                   disabled]
       -i, --input <INPUT_DIR>      Directory containing crashes found by libFuzzer [default:
                                    .]
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports

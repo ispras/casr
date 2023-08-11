@@ -7,10 +7,12 @@ use clap::{
 };
 use log::{debug, error, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use wait_timeout::ChildExt;
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::Duration;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
@@ -32,6 +34,15 @@ fn main() -> Result<()> {
             .action(ArgAction::Set)
             .help("Number of parallel jobs for generating CASR reports [default: half of cpu cores]")
             .value_parser(clap::value_parser!(u32).range(1..)))
+        .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .action(ArgAction::Set)
+                .value_name("SECONDS")
+                .help("Timeout (in seconds) for target execution [default: disabled]")
+                .value_parser(clap::value_parser!(u64).range(1..))
+        )
         .arg(
             Arg::new("input")
                 .short('i')
@@ -83,8 +94,10 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
+    // Get input dir
     let input_dir = matches.get_one::<PathBuf>("input").unwrap().as_path();
 
+    // Get output dir
     let output_dir = matches.get_one::<PathBuf>("output").unwrap();
     if !output_dir.exists() {
         fs::create_dir_all(output_dir).with_context(|| {
@@ -134,6 +147,14 @@ fn main() -> Result<()> {
         .filter(|(_, fname)| fname.starts_with("crash-") || fname.starts_with("leak-"))
         .collect();
 
+    // Get timeout
+    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
+        *timeout
+    } else {
+        0
+    };
+
+    // Get number of threads
     let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
         *jobs as usize
     } else {
@@ -170,9 +191,28 @@ fn main() -> Result<()> {
             casr_cmd.args(argv.clone());
             casr_cmd.arg(crash);
             debug!("{:?}", casr_cmd);
-            let casr_output = casr_cmd
-                .output()
-                .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
+
+            // Get output
+            let casr_output =
+            // If timeout is specified, spawn and check timeout
+            // Else get output
+            if timeout != 0 {
+                let mut child = casr_cmd
+                    .spawn()
+                    .with_context(|| "Failed to start command: {casr_cmd:?}")?;
+                if child
+                    .wait_timeout(Duration::from_secs(timeout))
+                    .unwrap()
+                    .is_none()
+                {
+                    child.kill()?;
+                    warn!("Timeout: {:?}", casr_cmd);
+                }
+                child.wait_with_output()?
+            } else {
+                casr_cmd.output().with_context(|| format!("Couldn't launch {casr_cmd:?}"))?
+            };
+
             if !casr_output.status.success() {
                 let err = String::from_utf8_lossy(&casr_output.stderr);
                 if err.contains("Program terminated (no crash)") {

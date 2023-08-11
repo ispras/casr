@@ -7,12 +7,14 @@ use clap::{
 };
 use log::{debug, error, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use wait_timeout::ChildExt;
 use walkdir::WalkDir;
 
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Default)]
 /// Information about crash to reproduce it.
@@ -32,8 +34,14 @@ impl<'a> AflCrashInfo {
     ///
     /// # Arguments
     ///
-    /// `output_dir` - save report to specified directory or use the same directory as crash
-    pub fn run_casr<T: Into<Option<&'a Path>>>(&self, output_dir: T) -> anyhow::Result<()> {
+    /// * `output_dir` - save report to specified directory or use the same directory as crash
+    ///
+    /// * `timeout` - target program timeout
+    pub fn run_casr<T: Into<Option<&'a Path>>>(
+        &self,
+        output_dir: T,
+        timeout: u64,
+    ) -> anyhow::Result<()> {
         let mut args: Vec<String> = vec!["-o".to_string()];
         let report_path = if let Some(out) = output_dir.into() {
             out.join(self.path.file_name().unwrap())
@@ -61,9 +69,28 @@ impl<'a> AflCrashInfo {
         let mut casr_cmd = Command::new(tool);
         casr_cmd.args(&args);
         debug!("{:?}", casr_cmd);
-        let casr_output = casr_cmd
-            .output()
-            .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
+
+        // Get output
+        let casr_output =
+        // If timeout is specified, spawn and check timeout
+        // Else get output
+        if timeout != 0 {
+            let mut child = casr_cmd
+                .spawn()
+                .with_context(|| "Failed to start command: {casr_cmd:?}")?;
+            if child
+                .wait_timeout(Duration::from_secs(timeout))
+                .unwrap()
+                .is_none()
+            {
+                child.kill()?;
+                warn!("Timeout: {:?}", casr_cmd);
+            }
+            child.wait_with_output()?
+        } else {
+            casr_cmd.output().with_context(|| format!("Couldn't launch {casr_cmd:?}"))?
+        };
+
         if !casr_output.status.success() {
             let err = String::from_utf8_lossy(&casr_output.stderr);
             if err.contains("Program terminated (no crash)") {
@@ -97,6 +124,15 @@ fn main() -> Result<()> {
             .action(ArgAction::Set)
             .help("Number of parallel jobs for generating CASR reports [default: half of cpu cores]")
             .value_parser(clap::value_parser!(u32).range(1..)))
+        .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .action(ArgAction::Set)
+                .value_name("SECONDS")
+                .help("Timeout (in seconds) for target execution [default: disabled]")
+                .value_parser(clap::value_parser!(u64).range(1..))
+        )
         .arg(
             Arg::new("input")
                 .short('i')
@@ -149,6 +185,7 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
+    // Get output dir
     let output_dir = matches.get_one::<PathBuf>("output").unwrap();
     if !output_dir.exists() {
         fs::create_dir_all(output_dir).with_context(|| {
@@ -228,6 +265,14 @@ fn main() -> Result<()> {
         }
     }
 
+    // Get timeout
+    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
+        *timeout
+    } else {
+        0
+    };
+
+    // Get number of threads
     let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
         *jobs as usize
     } else {
@@ -245,13 +290,13 @@ fn main() -> Result<()> {
     custom_pool.install(|| {
         crashes
             .par_iter()
-            .try_for_each(|(_, crash)| crash.run_casr(output_dir.as_path()))
+            .try_for_each(|(_, crash)| crash.run_casr(output_dir.as_path(), timeout))
     })?;
 
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
         info!("There are less than 2 CASR reports, nothing to deduplicate.");
-        return summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads);
+        return summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads, timeout);
     }
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new("casr-cluster")
@@ -282,7 +327,7 @@ fn main() -> Result<()> {
             < 2
         {
             info!("There are less than 2 CASR reports, nothing to cluster.");
-            return summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads);
+            return summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads, timeout);
         }
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new("casr-cluster")
@@ -310,7 +355,7 @@ fn main() -> Result<()> {
         }
     }
 
-    summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads)
+    summarize_results(output_dir, &crashes, &gdb_argv, num_of_threads, timeout)
 }
 
 /// Copy crashes next to reports and print summary.
@@ -318,15 +363,21 @@ fn main() -> Result<()> {
 ///
 /// # Arguments
 ///
-/// `dir` - directory with casr reports
-/// `crashes` - crashes info
-/// `gdb_args` - run casr-gdb on uninstrumented binary if specified
-/// `jobs` - number of threads for casr-gdb reports generation
+/// * `dir` - directory with casr reports
+///
+/// * `crashes` - crashes info
+///
+/// * `gdb_args` - run casr-gdb on uninstrumented binary if specified
+///
+/// * `jobs` - number of threads for casr-gdb reports generation
+///
+/// * `timeout` - target program timeout
 fn summarize_results(
     dir: &Path,
     crashes: &HashMap<String, AflCrashInfo>,
     gdb_args: &Vec<String>,
     jobs: usize,
+    timeout: u64,
 ) -> Result<()> {
     // Copy crashes next to reports
     copy_crashes(dir, crashes)?;
@@ -358,7 +409,7 @@ fn summarize_results(
                         at_index,
                         is_asan: false,
                     }
-                    .run_casr(None)
+                    .run_casr(None, timeout)
                 })
             })?;
         }
