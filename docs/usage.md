@@ -29,6 +29,7 @@ Create CASR reports (.casrep) from gdb execution
                              generated
           --stdout           Print CASR report to stdout
           --stdin <FILE>     Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
       -h, --help             Print help
@@ -52,6 +53,7 @@ Create CASR reports (.casrep) from AddressSanitizer reports
                              generated
           --stdout           Print CASR report to stdout
           --stdin <FILE>     Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
       -h, --help             Print help
@@ -115,6 +117,7 @@ Create CASR reports (.casrep) from python reports
                              generated
           --stdout           Print CASR report to stdout
           --stdin <FILE>     Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
           --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
@@ -140,6 +143,7 @@ Create CASR reports (.casrep) from java reports
                              generated
           --stdout           Print CASR report to stdout
           --stdin <FILE>     Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
           --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
