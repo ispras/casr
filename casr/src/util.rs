@@ -275,7 +275,7 @@ pub fn get_output(command: &mut Command, timeout: u64) -> Result<Output> {
             .unwrap()
             .is_none()
         {
-            child.kill()?;
+            let _ = child.kill();
             warn!("Timeout: {:?}", command);
         }
         Ok(child.wait_with_output()?)
