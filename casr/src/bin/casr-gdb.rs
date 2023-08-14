@@ -95,7 +95,7 @@ fn main() -> Result<()> {
 
     // TODO: timeout handle
     // Get timeout
-    let _timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
+    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
         *timeout
     } else {
         0
@@ -184,6 +184,7 @@ fn main() -> Result<()> {
         .siginfo()
         .mappings()
         .regs()
+        .timeout(timeout)
         // We need 2 disassembles: one for severity analysis
         // and another for the report.
         .mem("$pc", 64)
