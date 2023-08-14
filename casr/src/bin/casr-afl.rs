@@ -7,14 +7,12 @@ use clap::{
 };
 use log::{debug, error, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use wait_timeout::ChildExt;
 use walkdir::WalkDir;
 
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::Duration;
 
 #[derive(Debug, Clone, Default)]
 /// Information about crash to reproduce it.
@@ -58,6 +56,9 @@ impl<'a> AflCrashInfo {
             args.push("--stdin".to_string());
             args.push(self.path.to_str().unwrap().to_string());
         }
+        if timeout != 0 {
+            args.append(&mut vec!["-t".to_string(), timeout.to_string()]);
+        }
         args.push("--".to_string());
         args.extend_from_slice(&self.target_args);
         if let Some(at_index) = self.at_index {
@@ -71,25 +72,9 @@ impl<'a> AflCrashInfo {
         debug!("{:?}", casr_cmd);
 
         // Get output
-        let casr_output =
-        // If timeout is specified, spawn and check timeout
-        // Else get output
-        if timeout != 0 {
-            let mut child = casr_cmd
-                .spawn()
-                .with_context(|| "Failed to start command: {casr_cmd:?}")?;
-            if child
-                .wait_timeout(Duration::from_secs(timeout))
-                .unwrap()
-                .is_none()
-            {
-                child.kill()?;
-                warn!("Timeout: {:?}", casr_cmd);
-            }
-            child.wait_with_output()?
-        } else {
-            casr_cmd.output().with_context(|| format!("Couldn't launch {casr_cmd:?}"))?
-        };
+        let casr_output = casr_cmd
+            .output()
+            .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
 
         if !casr_output.status.success() {
             let err = String::from_utf8_lossy(&casr_output.stderr);

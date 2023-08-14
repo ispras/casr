@@ -7,12 +7,10 @@ use clap::{
 };
 use log::{debug, error, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use wait_timeout::ChildExt;
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::Duration;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
@@ -179,6 +177,9 @@ fn main() -> Result<()> {
     custom_pool.install(|| {
         crashes.par_iter().try_for_each(|(crash, fname)| {
             let mut casr_cmd = Command::new(tool);
+            if timeout != 0 {
+                casr_cmd.args(["-t".to_string(), timeout.to_string()]);
+            }
             casr_cmd.args([
                 "-o",
                 format!("{}.casrep", output_dir.join(fname).display()).as_str(),
@@ -193,25 +194,9 @@ fn main() -> Result<()> {
             debug!("{:?}", casr_cmd);
 
             // Get output
-            let casr_output =
-            // If timeout is specified, spawn and check timeout
-            // Else get output
-            if timeout != 0 {
-                let mut child = casr_cmd
-                    .spawn()
-                    .with_context(|| "Failed to start command: {casr_cmd:?}")?;
-                if child
-                    .wait_timeout(Duration::from_secs(timeout))
-                    .unwrap()
-                    .is_none()
-                {
-                    child.kill()?;
-                    warn!("Timeout: {:?}", casr_cmd);
-                }
-                child.wait_with_output()?
-            } else {
-                casr_cmd.output().with_context(|| format!("Couldn't launch {casr_cmd:?}"))?
-            };
+            let casr_output = casr_cmd
+                .output()
+                .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
 
             if !casr_output.status.success() {
                 let err = String::from_utf8_lossy(&casr_output.stderr);
