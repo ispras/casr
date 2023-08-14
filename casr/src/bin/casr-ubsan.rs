@@ -1,4 +1,4 @@
-use casr::util::{initialize_logging, log_progress};
+use casr::util;
 use libcasr::report::CrashReport;
 use libcasr::severity::Severity;
 use libcasr::stacktrace::{CrashLine, CrashLineExt};
@@ -13,18 +13,16 @@ use clap::{
 use log::{debug, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
-use wait_timeout::ChildExt;
 use walkdir::WalkDir;
 
 use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::fs::OpenOptions;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::RwLock;
-use std::time::Duration;
 
 /// Extract ubsan warnings for specified input file
 ///
@@ -68,31 +66,10 @@ fn extract_warnings(
     }
     debug!("Run: {:?}", cmd);
 
+    // Get output
+    let output = util::get_output(&mut cmd, timeout)?;
     // Get stderr
-    let stderr: String =
-    // If timeout is specified, spawn and check timeout
-    // Else get output
-    if timeout != 0 {
-        let mut child = cmd
-            .spawn()
-            .with_context(|| "Failed to start command: {cmd:?}")?;
-        if child
-            .wait_timeout(Duration::from_secs(timeout))
-            .unwrap()
-            .is_none()
-        {
-            child.kill()?;
-            warn!("Timeout: {:?}", cmd);
-        }
-        let mut buf = vec![];
-        let _ = child.stderr.unwrap().read_to_end(&mut buf);
-        String::from_utf8_lossy(&buf).to_string()
-    } else {
-        let output = cmd
-            .output()
-            .with_context(|| "Failed to start command: {cmd:?}")?;
-        String::from_utf8_lossy(&output.stderr).to_string()
-    };
+    let stderr = String::from_utf8_lossy(&output.stderr);
 
     // Extract ubsan warnings
     let extracted_warnings = ubsan::extract_ubsan_warnings(&stderr);
@@ -307,7 +284,7 @@ fn main() -> Result<()> {
         .get_matches();
 
     // Init log.
-    initialize_logging(&matches);
+    util::initialize_logging(&matches);
 
     // Get input dir list
     let input_dirs: Vec<_> = matches.get_many::<PathBuf>("input").unwrap().collect();
@@ -412,7 +389,7 @@ fn main() -> Result<()> {
                 })
                 .collect()
         },
-        || log_progress(&counter, total),
+        || util::log_progress(&counter, total),
     );
 
     info!(
