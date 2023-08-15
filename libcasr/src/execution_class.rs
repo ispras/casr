@@ -38,6 +38,8 @@ pub struct ExecutionClass {
 }
 
 /// Instances of `ExecutionClass` structure.
+/// Add new classes to the end of array.
+/// TODO: Think about adding some ID for array element.
 pub const CLASSES: &[(&str, &str, &str, &str); 71] = &[
     ("EXPLOITABLE", "SegFaultOnPc", "Segmentation fault on program counter", "The target tried to access data at an address that matches the program counter. This likely indicates that the program counter contents are tainted and can be controlled by an attacker."),
     ("EXPLOITABLE", "ReturnAv", "Access violation during return instruction", "The target crashed on a return instruction, which likely indicates stack corruption."),

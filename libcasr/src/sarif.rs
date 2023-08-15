@@ -49,7 +49,7 @@ impl SarifReport {
 
     /// Set name for SARIF tool:driver.
     /// NOTE: before use this method,
-    /// use SarifReprot::new() to get report.
+    /// use SarifReport::new() to get report.
     ///
     ///  # Arguments
     ///
@@ -69,7 +69,7 @@ impl SarifReport {
 
     /// SARIF rule from ExecutionClass.
     /// NOTE: before using this method,
-    /// use SarifReprot::new() to get report.
+    /// use SarifReport::new() to get report.
     ///
     ///  # Arguments
     ///
@@ -84,7 +84,7 @@ impl SarifReport {
             .iter()
             .position(|item| item.1 == class.short_description)
         {
-            format!("F{pos}")
+            format!("F{:0>2}", pos)
         } else {
             let s = format!("G{}", self.id);
             s
@@ -125,10 +125,20 @@ impl SarifReport {
             Value::Object(full_desc.clone()),
         );
         let mut properties = Map::new();
-        properties.insert(
-            "problem.severity".to_string(),
-            Value::String(class.severity.clone()),
-        );
+        let severity = if class.short_description == "SegFaultOnPc"
+            || class.short_description == "ReturnAv"
+            || class.short_description == "BranchAv"
+            || class.short_description == "CallAv"
+        {
+            "9.0".to_string()
+        } else {
+            match class.severity.as_str() {
+                "EXPLOITABLE" => "8.0".to_string(),
+                "PROBABLY_EXPLOITABLE" => "6.0".to_string(),
+                _ => "3.0".to_string(),
+            }
+        };
+        properties.insert("security-severity".to_string(), Value::String(severity));
         rule.insert("properties".to_string(), Value::Object(properties));
 
         (Some(Value::Object(rule)), rule_id)
@@ -136,7 +146,7 @@ impl SarifReport {
 
     /// Add CASR CrashReport to SARIF report.
     /// NOTE: before using this method,
-    /// use SarifReprot::new() to get report.
+    /// use SarifReport::new() to get report.
     ///
     ///  # Arguments
     ///
@@ -221,15 +231,22 @@ impl SarifReport {
             Value::String("%SRCROOT%".to_string()),
         );
         physical_loc.insert("artifactLocation".to_string(), Value::Object(artifact_loc));
-        region.insert(
-            "startLine".to_string(),
-            Value::Number(parts[1].parse::<u32>().unwrap().into()),
-        );
+        let Ok(line) = parts[1].parse::<u32>() else {
+            return Err(Error::Casr(format!(
+                "Unable to extract line number from crashline: {}",
+                report.crashline
+            )));
+        };
+        region.insert("startLine".to_string(), Value::Number(line.into()));
         if parts.len() == 3 {
-            region.insert(
-                "startColumn".to_string(),
-                Value::Number(parts[2].parse::<u32>().unwrap().into()),
-            );
+            let Ok(column) = parts[2].parse::<u32>() else {
+                return Err(Error::Casr(format!(
+                    "Unable to extract column number from crashline: {}",
+                    report.crashline
+                )));
+            };
+
+            region.insert("startColumn".to_string(), Value::Number(column.into()));
         }
         physical_loc.insert("region".to_string(), Value::Object(region));
         location.insert("physicalLocation".to_string(), Value::Object(physical_loc));

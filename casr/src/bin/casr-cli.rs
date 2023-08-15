@@ -37,7 +37,7 @@ use casr::util::report_from_file;
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-cli")
         .version(clap::crate_version!())
-        .about("App provides text-based user interface to view CASR reports and print joint statistics for all reports.")
+        .about("App provides text-based user interface to view CASR reports, prints joint statistics for all reports, and converts CASR reports to SARIF format.")
         .term_width(90)
         .arg(
             Arg::new("view")
@@ -76,9 +76,10 @@ fn main() -> Result<()> {
         .arg(
             Arg::new("source-root")
                 .long("source-root")
+                .requires("sarif")
                 .value_name("PATH")
                 .action(ArgAction::Set)
-                .help("Source root path in CASR reports."),
+                .help("Source root path in CASR reports for SARIF report generation"),
         )
         .get_matches();
 
