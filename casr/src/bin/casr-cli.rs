@@ -1034,10 +1034,10 @@ fn process_report(report: &str, extension: &str) -> Option<(String, String, Stri
 /// Sarif report
 fn sarif(report_path: &Path, root: &str) -> Result<SarifReport> {
     let mut sarif = SarifReport::new();
-    let mut reports = Vec::new();
+    let mut reports: Vec<(PathBuf, CrashReport)> = Vec::new();
     if !report_path.is_dir() {
         let casr_report = report_from_file(report_path)?;
-        reports.push(casr_report);
+        reports.push((report_path.to_path_buf(), casr_report));
     } else {
         for path in WalkDir::new(report_path)
             .sort_by_file_name()
@@ -1048,13 +1048,20 @@ fn sarif(report_path: &Path, root: &str) -> Result<SarifReport> {
             .filter(|file| file.to_str().unwrap().ends_with(".casrep"))
         {
             let casr_report = report_from_file(&path)?;
-            reports.push(casr_report);
+            reports.push((path.to_path_buf(), casr_report));
         }
     }
 
-    reports
-        .iter()
-        .try_for_each(|r| sarif.add_casr_report(r, root))?;
+    for (path, report) in reports {
+        let result = sarif.add_casr_report(&report, root);
+        if result.is_err() {
+            println!(
+                "Error while converting {} to SARIF: {}",
+                path.display(),
+                result.err().unwrap()
+            );
+        }
+    }
 
     Ok(sarif)
 }
