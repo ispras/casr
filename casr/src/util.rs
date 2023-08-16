@@ -8,7 +8,7 @@ use libcasr::stacktrace::{
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
-use log::{error, info, warn};
+use log::{info, warn};
 use simplelog::*;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -279,7 +279,7 @@ pub fn get_output(command: &mut Command, timeout: u64, error_on_timeout: bool) -
         {
             let _ = child.kill();
             if error_on_timeout {
-                error!("Timeout: {:?}", command);
+                bail!("Timeout: {:?}", command);
             } else {
                 warn!("Timeout: {:?}", command);
             }
