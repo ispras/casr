@@ -67,7 +67,7 @@ fn extract_warnings(
     debug!("Run: {:?}", cmd);
 
     // Get output
-    let output = util::get_output(&mut cmd, timeout)?;
+    let output = util::get_output(&mut cmd, timeout, false)?;
     // Get stderr
     let stderr = String::from_utf8_lossy(&output.stderr);
 

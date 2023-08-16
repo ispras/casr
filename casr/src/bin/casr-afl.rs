@@ -34,7 +34,7 @@ impl<'a> AflCrashInfo {
     ///
     /// * `output_dir` - save report to specified directory or use the same directory as crash
     ///
-    /// * `timeout` - target program timeout
+    /// * `timeout` - target program timeout (in seconds)
     pub fn run_casr<T: Into<Option<&'a Path>>>(
         &self,
         output_dir: T,

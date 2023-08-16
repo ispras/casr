@@ -139,7 +139,7 @@ fn main() -> Result<()> {
             Ok(())
         })
     };
-    let sanitizers_result = util::get_output(sanitizers_cmd, timeout)?;
+    let sanitizers_result = util::get_output(sanitizers_cmd, timeout, true)?;
     let sanitizers_stderr = String::from_utf8_lossy(&sanitizers_result.stderr);
 
     if sanitizers_stderr.contains("Cannot set personality") {
@@ -221,6 +221,7 @@ fn main() -> Result<()> {
 
                 // Get stack trace and mappings from gdb.
                 let gdb_result = GdbCommand::new(&ExecType::Local(&argv))
+                    .timeout(timeout)
                     .stdin(&stdin_file)
                     .r()
                     .bt()

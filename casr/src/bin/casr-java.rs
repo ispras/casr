@@ -114,7 +114,7 @@ fn main() -> Result<()> {
     if argv.len() > 1 {
         java_cmd.args(&argv[1..]);
     }
-    let java_result = util::get_output(&mut java_cmd, timeout)?;
+    let java_result = util::get_output(&mut java_cmd, timeout, true)?;
 
     let java_stderr = String::from_utf8_lossy(&java_result.stderr);
 

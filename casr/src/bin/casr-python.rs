@@ -113,7 +113,7 @@ fn main() -> Result<()> {
     if argv.len() > 1 {
         python_cmd.args(&argv[1..]);
     }
-    let python_result = util::get_output(&mut python_cmd, timeout)?;
+    let python_result = util::get_output(&mut python_cmd, timeout, true)?;
 
     let python_stderr = String::from_utf8_lossy(&python_result.stderr);
 

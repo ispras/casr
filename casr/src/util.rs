@@ -8,7 +8,7 @@ use libcasr::stacktrace::{
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
-use log::{info, warn};
+use log::{error, info, warn};
 use simplelog::*;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -252,18 +252,20 @@ pub fn log_progress(processed_items: &RwLock<usize>, total: usize) {
     }
 }
 
-/// Get output with specified timeout
+/// Get output of target command with specified timeout
 ///
 /// # Arguments
 ///
-/// * `command` - command line with args
+/// * `command` - target command with args
 ///
-/// * `timeout` - target program timeout
+/// * `timeout` - target command timeout (in seconds)
+///
+/// * `error_on_timeout` - throw an error if timeout happens
 ///
 /// # Return value
 ///
 /// Command output
-pub fn get_output(command: &mut Command, timeout: u64) -> Result<Output> {
+pub fn get_output(command: &mut Command, timeout: u64, error_on_timeout: bool) -> Result<Output> {
     // If timeout is specified, spawn and check timeout
     // Else get output
     if timeout != 0 {
@@ -276,7 +278,11 @@ pub fn get_output(command: &mut Command, timeout: u64) -> Result<Output> {
             .is_none()
         {
             let _ = child.kill();
-            warn!("Timeout: {:?}", command);
+            if error_on_timeout {
+                error!("Timeout: {:?}", command);
+            } else {
+                warn!("Timeout: {:?}", command);
+            }
         }
         Ok(child.wait_with_output()?)
     } else {

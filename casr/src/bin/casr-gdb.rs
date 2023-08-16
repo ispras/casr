@@ -93,7 +93,6 @@ fn main() -> Result<()> {
         bail!("Wrong arguments for starting program");
     };
 
-    // TODO: timeout handle
     // Get timeout
     let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
         *timeout
@@ -178,13 +177,13 @@ fn main() -> Result<()> {
     let exectype = ExecType::Local(argv.as_slice());
     let mut gdb_command = GdbCommand::new(&exectype);
     let gdb_command = gdb_command
+        .timeout(timeout)
         .stdin(&stdin_file)
         .r()
         .bt()
         .siginfo()
         .mappings()
         .regs()
-        .timeout(timeout)
         // We need 2 disassembles: one for severity analysis
         // and another for the report.
         .mem("$pc", 64)
