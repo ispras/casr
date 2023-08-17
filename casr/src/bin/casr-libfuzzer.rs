@@ -33,6 +33,15 @@ fn main() -> Result<()> {
             .help("Number of parallel jobs for generating CASR reports [default: half of cpu cores]")
             .value_parser(clap::value_parser!(u32).range(1..)))
         .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .action(ArgAction::Set)
+                .value_name("SECONDS")
+                .help("Timeout (in seconds) for target execution [default: disabled]")
+                .value_parser(clap::value_parser!(u64).range(1..))
+        )
+        .arg(
             Arg::new("input")
                 .short('i')
                 .long("input")
@@ -83,8 +92,10 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
+    // Get input dir
     let input_dir = matches.get_one::<PathBuf>("input").unwrap().as_path();
 
+    // Get output dir
     let output_dir = matches.get_one::<PathBuf>("output").unwrap();
     if !output_dir.exists() {
         fs::create_dir_all(output_dir).with_context(|| {
@@ -134,6 +145,14 @@ fn main() -> Result<()> {
         .filter(|(_, fname)| fname.starts_with("crash-") || fname.starts_with("leak-"))
         .collect();
 
+    // Get timeout
+    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
+        *timeout
+    } else {
+        0
+    };
+
+    // Get number of threads
     let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
         *jobs as usize
     } else {
@@ -158,6 +177,9 @@ fn main() -> Result<()> {
     custom_pool.install(|| {
         crashes.par_iter().try_for_each(|(crash, fname)| {
             let mut casr_cmd = Command::new(tool);
+            if timeout != 0 {
+                casr_cmd.args(["-t".to_string(), timeout.to_string()]);
+            }
             casr_cmd.args([
                 "-o",
                 format!("{}.casrep", output_dir.join(fname).display()).as_str(),
@@ -170,9 +192,12 @@ fn main() -> Result<()> {
             casr_cmd.args(argv.clone());
             casr_cmd.arg(crash);
             debug!("{:?}", casr_cmd);
+
+            // Get output
             let casr_output = casr_cmd
                 .output()
                 .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
+
             if !casr_output.status.success() {
                 let err = String::from_utf8_lossy(&casr_output.stderr);
                 if err.contains("Program terminated (no crash)") {

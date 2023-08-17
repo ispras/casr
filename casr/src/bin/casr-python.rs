@@ -6,7 +6,7 @@ use libcasr::python::{PythonException, PythonStacktrace};
 use libcasr::report::CrashReport;
 use libcasr::stacktrace::*;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use clap::{Arg, ArgAction, ArgGroup};
 use regex::Regex;
 use std::path::{Path, PathBuf};
@@ -46,6 +46,15 @@ fn main() -> Result<()> {
                 .value_parser(clap::value_parser!(PathBuf))
                 .value_name("FILE")
                 .help("Stdin file for program"),
+        )
+        .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .action(ArgAction::Set)
+                .value_name("SECONDS")
+                .help("Timeout (in seconds) for target execution [default: disabled]")
+                .value_parser(clap::value_parser!(u64).range(1..))
         )
         .arg(
             Arg::new("ignore")
@@ -89,6 +98,13 @@ fn main() -> Result<()> {
     // Get stdin for target program.
     let stdin_file = util::stdin_from_matches(&matches)?;
 
+    // Get timeout
+    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
+        *timeout
+    } else {
+        0
+    };
+
     // Run program.
     let mut python_cmd = Command::new(argv[0]);
     if let Some(ref file) = stdin_file {
@@ -97,9 +113,7 @@ fn main() -> Result<()> {
     if argv.len() > 1 {
         python_cmd.args(&argv[1..]);
     }
-    let python_result = python_cmd
-        .output()
-        .with_context(|| "Couldn't run target program")?;
+    let python_result = util::get_output(&mut python_cmd, timeout, true)?;
 
     let python_stderr = String::from_utf8_lossy(&python_result.stderr);
 

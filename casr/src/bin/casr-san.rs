@@ -61,6 +61,15 @@ fn main() -> Result<()> {
                 .help("Stdin file for program"),
         )
         .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .action(ArgAction::Set)
+                .value_name("SECONDS")
+                .help("Timeout (in seconds) for target execution [default: disabled]")
+                .value_parser(clap::value_parser!(u64).range(1..))
+        )
+        .arg(
             Arg::new("ignore")
                 .long("ignore")
                 .action(ArgAction::Set)
@@ -92,6 +101,13 @@ fn main() -> Result<()> {
     // Get stdin for target program.
     let stdin_file = util::stdin_from_matches(&matches)?;
 
+    // Get timeout
+    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
+        *timeout
+    } else {
+        0
+    };
+
     // Set rss limit.
     if let Ok(asan_options_str) = env::var("ASAN_OPTIONS") {
         let mut asan_options = asan_options_str.clone();
@@ -115,17 +131,15 @@ fn main() -> Result<()> {
     if argv.len() > 1 {
         sanitizers_cmd.args(&argv[1..]);
     }
-    let sanitizers_result = unsafe {
-        sanitizers_cmd
-            .pre_exec(|| {
-                if personality(linux_personality::ADDR_NO_RANDOMIZE).is_err() {
-                    panic!("Cannot set personality");
-                }
-                Ok(())
-            })
-            .output()
-            .with_context(|| "Couldn't run target program with sanitizers")?
+    let sanitizers_cmd = unsafe {
+        sanitizers_cmd.pre_exec(|| {
+            if personality(linux_personality::ADDR_NO_RANDOMIZE).is_err() {
+                panic!("Cannot set personality");
+            }
+            Ok(())
+        })
     };
+    let sanitizers_result = util::get_output(sanitizers_cmd, timeout, true)?;
     let sanitizers_stderr = String::from_utf8_lossy(&sanitizers_result.stderr);
 
     if sanitizers_stderr.contains("Cannot set personality") {
@@ -207,6 +221,7 @@ fn main() -> Result<()> {
 
                 // Get stack trace and mappings from gdb.
                 let gdb_result = GdbCommand::new(&ExecType::Local(&argv))
+                    .timeout(timeout)
                     .stdin(&stdin_file)
                     .r()
                     .bt()

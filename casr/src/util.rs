@@ -8,15 +8,18 @@ use libcasr::stacktrace::{
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
-use log::info;
+use log::{info, warn};
 use simplelog::*;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::io::{BufRead, BufReader};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::sync::RwLock;
+use std::time::Duration;
+
+use wait_timeout::ChildExt;
 use which::which;
 
 /// Call sub tool with the provided options
@@ -246,5 +249,45 @@ pub fn log_progress(processed_items: &RwLock<usize>, total: usize) {
         }
         cnt = current;
         std::thread::sleep(std::time::Duration::from_millis(1000));
+    }
+}
+
+/// Get output of target command with specified timeout
+///
+/// # Arguments
+///
+/// * `command` - target command with args
+///
+/// * `timeout` - target command timeout (in seconds)
+///
+/// * `error_on_timeout` - throw an error if timeout happens
+///
+/// # Return value
+///
+/// Command output
+pub fn get_output(command: &mut Command, timeout: u64, error_on_timeout: bool) -> Result<Output> {
+    // If timeout is specified, spawn and check timeout
+    // Else get output
+    if timeout != 0 {
+        let mut child = command
+            .spawn()
+            .with_context(|| "Failed to start command: {command:?}")?;
+        if child
+            .wait_timeout(Duration::from_secs(timeout))
+            .unwrap()
+            .is_none()
+        {
+            let _ = child.kill();
+            if error_on_timeout {
+                bail!("Timeout: {:?}", command);
+            } else {
+                warn!("Timeout: {:?}", command);
+            }
+        }
+        Ok(child.wait_with_output()?)
+    } else {
+        command
+            .output()
+            .with_context(|| format!("Couldn't launch {command:?}"))
     }
 }

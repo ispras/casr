@@ -61,6 +61,15 @@ fn main() -> Result<()> {
                 .help("Stdin file for program"),
         )
         .arg(
+            Arg::new("timeout")
+                .short('t')
+                .long("timeout")
+                .action(ArgAction::Set)
+                .value_name("SECONDS")
+                .help("Timeout (in seconds) for target execution [default: disabled]")
+                .value_parser(clap::value_parser!(u64).range(1..))
+        )
+        .arg(
             Arg::new("ignore")
                 .long("ignore")
                 .action(ArgAction::Set)
@@ -82,6 +91,13 @@ fn main() -> Result<()> {
         argvs.map(|s| s.as_str()).collect()
     } else {
         bail!("Wrong arguments for starting program");
+    };
+
+    // Get timeout
+    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
+        *timeout
+    } else {
+        0
     };
 
     init_ignored_frames!("cpp", "rust");
@@ -161,6 +177,7 @@ fn main() -> Result<()> {
     let exectype = ExecType::Local(argv.as_slice());
     let mut gdb_command = GdbCommand::new(&exectype);
     let gdb_command = gdb_command
+        .timeout(timeout)
         .stdin(&stdin_file)
         .r()
         .bt()

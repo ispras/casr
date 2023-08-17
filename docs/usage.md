@@ -29,6 +29,7 @@ Create CASR reports (.casrep) from gdb execution
                              generated
           --stdout           Print CASR report to stdout
           --stdin <FILE>     Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
       -h, --help             Print help
@@ -52,6 +53,7 @@ Create CASR reports (.casrep) from AddressSanitizer reports
                              generated
           --stdout           Print CASR report to stdout
           --stdin <FILE>     Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
       -h, --help             Print help
@@ -115,6 +117,7 @@ Create CASR reports (.casrep) from python reports
                              generated
           --stdout           Print CASR report to stdout
           --stdin <FILE>     Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
           --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
@@ -140,6 +143,7 @@ Create CASR reports (.casrep) from java reports
                              generated
           --stdout           Print CASR report to stdout
           --stdin <FILE>     Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
           --ignore <FILE>    File with regular expressions for functions and file paths that
                              should be ignored
           --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
@@ -329,6 +333,8 @@ Triage crashes found by AFL++
                                    debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
+                                   disabled]
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
           --no-cluster             Do not cluster CASR reports
@@ -430,6 +436,8 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
                                    debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
+                                   disabled]
       -i, --input <INPUT_DIR>      Directory containing crashes found by libFuzzer [default:
                                    .]
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
