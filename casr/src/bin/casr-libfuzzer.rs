@@ -180,44 +180,44 @@ fn main() -> Result<()> {
     custom_pool
         .join(
             || {
-                let Ok (_) = crashes.par_iter().try_for_each(|(crash, fname)| {
-                let mut casr_cmd = Command::new(tool);
-                if timeout != 0 {
-                    casr_cmd.args(["-t".to_string(), timeout.to_string()]);
-                }
-                casr_cmd.args([
-                    "-o",
-                    format!("{}.casrep", output_dir.join(fname).display()).as_str(),
-                    "--",
-                ]);
-                if !atheris_asan_lib.is_empty() {
-                    casr_cmd.arg("python3");
-                    casr_cmd.env("LD_PRELOAD", &atheris_asan_lib);
-                }
-                casr_cmd.args(argv.clone());
-                casr_cmd.arg(crash);
-                debug!("{:?}", casr_cmd);
-
-                // Get output
-                let casr_output = casr_cmd
-                    .output()
-                    .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
-
-                if !casr_output.status.success() {
-                    let err = String::from_utf8_lossy(&casr_output.stderr);
-                    if err.contains("Program terminated (no crash)") {
-                        warn!("{}: no crash on input {}", tool, crash.display());
-                    } else {
-                        error!("{} for input: {}", err.trim(), crash.display());
+                if let Err(e) = crashes.par_iter().try_for_each(|(crash, fname)| {
+                    let mut casr_cmd = Command::new(tool);
+                    if timeout != 0 {
+                        casr_cmd.args(["-t".to_string(), timeout.to_string()]);
                     }
-                }
-                *counter.write().unwrap() += 1;
-                Ok::<(), anyhow::Error>(())
-            }) else {
-                // Disable util::log_progress
-                *counter.write().unwrap() = total;
-                bail!("Casr run error");
-            };
+                    casr_cmd.args([
+                        "-o",
+                        format!("{}.casrep", output_dir.join(fname).display()).as_str(),
+                        "--",
+                    ]);
+                    if !atheris_asan_lib.is_empty() {
+                        casr_cmd.arg("python3");
+                        casr_cmd.env("LD_PRELOAD", &atheris_asan_lib);
+                    }
+                    casr_cmd.args(argv.clone());
+                    casr_cmd.arg(crash);
+                    debug!("{:?}", casr_cmd);
+
+                    // Get output
+                    let casr_output = casr_cmd
+                        .output()
+                        .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
+
+                    if !casr_output.status.success() {
+                        let err = String::from_utf8_lossy(&casr_output.stderr);
+                        if err.contains("Program terminated (no crash)") {
+                            warn!("{}: no crash on input {}", tool, crash.display());
+                        } else {
+                            error!("{} for input: {}", err.trim(), crash.display());
+                        }
+                    }
+                    *counter.write().unwrap() += 1;
+                    Ok::<(), anyhow::Error>(())
+                }) {
+                    // Disable util::log_progress
+                    *counter.write().unwrap() = total;
+                    bail!(e);
+                };
                 Ok(())
             },
             || util::log_progress(&counter, total),

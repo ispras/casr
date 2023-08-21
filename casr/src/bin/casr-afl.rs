@@ -279,11 +279,11 @@ fn main() -> Result<()> {
         .join(
             || {
                 crashes.par_iter().try_for_each(|(_, crash)| {
-                    let Ok(_) = crash.run_casr(output_dir.as_path(), timeout) else {
-                    // Disable util::log_progress
-                    *counter.write().unwrap() = total;
-                    bail!("Casr run error");
-                };
+                    if let Err(e) = crash.run_casr(output_dir.as_path(), timeout) {
+                        // Disable util::log_progress
+                        *counter.write().unwrap() = total;
+                        bail!(e);
+                    };
                     *counter.write().unwrap() += 1;
                     Ok::<(), anyhow::Error>(())
                 })
@@ -406,17 +406,18 @@ fn summarize_results(
                 .join(
                     || {
                         crashes.par_iter().try_for_each(|crash| {
-                            let Ok(_) = AflCrashInfo {
-                            path: crash.to_path_buf(),
-                            target_args: gdb_args.clone(),
-                            at_index,
-                            is_asan: false,
-                        }
-                        .run_casr(None, timeout) else {
-                            // Disable util::log_progress
-                            *counter.write().unwrap() = total;
-                            bail!("Casr run error");
-                        };
+                            if let Err(e) = (AflCrashInfo {
+                                path: crash.to_path_buf(),
+                                target_args: gdb_args.clone(),
+                                at_index,
+                                is_asan: false,
+                            })
+                            .run_casr(None, timeout)
+                            {
+                                // Disable util::log_progress
+                                *counter.write().unwrap() = total;
+                                bail!(e);
+                            };
                             *counter.write().unwrap() += 1;
                             Ok::<(), anyhow::Error>(())
                         })
