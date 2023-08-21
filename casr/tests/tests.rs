@@ -3576,7 +3576,7 @@ fn test_casr_ubsan() {
     let clang = Command::new("bash")
         .arg("-c")
         .arg(format!(
-            "clang++ -fsanitize=undefined -O0 -g {} -o {}",
+            "clang++ -fsanitize=undefined -O0 -g {} -o {} -Wno-everything",
             &paths[0], &paths[1]
         ))
         .status()
