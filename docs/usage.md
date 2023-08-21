@@ -299,7 +299,8 @@ all reports, and converts CASR reports to SARIF format.
       -u, --unique              Print only unique crash lines in joint statistics
           --sarif <OUTPUT>      Generate SARIF report from CASR reports
           --source-root <PATH>  Source root path in CASR reports for SARIF report generation
-          --tool <NAME>         Analysis tool providing results for report [default: CASR]
+          --tool <NAME>         Tool name that detected crashes/errors for SARIF report
+                                [default: CASR]
       -h, --help                Print help
       -V, --version             Print version
 

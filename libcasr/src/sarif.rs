@@ -323,10 +323,11 @@ fn normalize_path<P>(path: P, root: &Path) -> PathBuf
 where
     P: AsRef<Path>,
 {
-    if let Ok(norm_source_path) = path.as_ref().lexiclean().as_path().strip_prefix(root) {
+    let clean_path = path.as_ref().lexiclean();
+    if let Ok(norm_source_path) = clean_path.as_path().strip_prefix(root) {
         norm_source_path.to_path_buf()
     } else {
-        path.as_ref().lexiclean()
+        clean_path
     }
 }
 
