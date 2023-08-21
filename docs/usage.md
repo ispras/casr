@@ -12,8 +12,8 @@ to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,
 Atheris, Jazzer). `casr-dojo` allows to upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo). `casr-cli` is
-meant to provide TUI for viewing reports. Reports triage (deduplication,
-clustering) is done by `casr-cluster`.
+meant to provide TUI for viewing reports and converting them into SARIF report.
+Reports triage (deduplication, clustering) is done by `casr-cluster`.
 
 ## casr-gdb
 
@@ -285,22 +285,30 @@ Frames that match these regular expressions will be not considered during analys
 
 ## casr-cli
 
-App provides text-based user interface to view CASR reports and print joint statistics for
-all reports.
+App provides text-based user interface to view CASR reports, prints joint statistics for
+all reports, and converts CASR reports to SARIF format.
 
-    Usage: casr-cli [OPTIONS] <REPORT|DIR>
+Usage: casr-cli [OPTIONS] <REPORT|DIR>
 
-    Arguments:
-      <REPORT|DIR>  CASR report file to view or directory with reports
+Arguments:
+  <REPORT|DIR>  CASR report file to view or directory with reports
 
-    Options:
-      -v, --view <MODE>  View mode [default: tree] [possible values: tree, slider, stdout]
-      -u, --unique       Print only unique crash lines in joint statistics
-      -h, --help         Print help
-      -V, --version      Print version
+Options:
+  -v, --view <MODE>         View mode [default: tree] [possible values: tree, slider,
+                            stdout]
+  -u, --unique              Print only unique crash lines in joint statistics
+      --sarif <OUTPUT>      Generate SARIF report from CASR reports
+      --source-root <PATH>  Source root path in CASR reports for SARIF report generation
+      --tool <NAME>         Analysis tool providing results for report [default: CASR]
+  -h, --help                Print help
+  -V, --version             Print version
 
 There are three view modes: tree, slider (list), and stdout. In stdout mode
 `casr-cli` prints text-based CASR report to stdout.
+
+`casr-cli` could convert a directory with casr reports or single report into SARIF
+report. You could load resulting SARIF report into IDE and continue crash
+analysis.
 
 Example:
 
@@ -309,6 +317,16 @@ Example:
 Joint statistics about crash clusters:
 
     $ casr-cli casr_reports
+
+Convert reports to SARIF report:
+
+    $ casr-cli --sarif out.sarif --tool libfuzzer --source-root /xlnt casr/tests/casr_tests/casrep/test_clustering_san
+
+### Screnshots
+
+![casrep](/docs/image/casr_report.png)
+
+![sarif](/docs/images/casr_sarif.png)
 
 ## casr-afl
 

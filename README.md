@@ -29,7 +29,8 @@ Crash report contains many useful information: severity (like [exploitable](http
 for x86, x86\_64, arm32, aarch64, rv32g, rv64g architectures,
 OS and package versions, command line, stack trace, register values,
 disassembly, and even source code fragment where crash appeared. Reports are
-stored in JSON format. `casr-cli` is meant to provide TUI for viewing reports.
+stored in JSON format. `casr-cli` is meant to provide TUI for viewing reports
+and converting them into SARIF report.
 Reports triage (deduplication, clustering) is done by `casr-cluster`.
 Triage is based on stack trace comparison from [gdb-command](https://github.com/anfedotoff/gdb-command).
 `casr-afl` is used to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
@@ -136,6 +137,10 @@ View report:
 View joint statistics about crash clusters:
 
     $ casr-cli casr_reports
+
+Convert reports to SARIF report:
+
+    $ casr-cli --sarif out.sarif --tool libfuzzer --source-root /xlnt casr/tests/casr_tests/casrep/test_clustering_san
 
 Create report for program that reads stdin:
 
