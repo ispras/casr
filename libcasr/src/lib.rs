@@ -18,7 +18,7 @@
 //! * Java
 //!
 //! It could be built with `exploitable` feature for severity estimation crashes
-//! collected from gdb. To save crash reports as json use `serde` feature.
+//! collected from gdb. To save crash reports as json (.casrep/.sarif) use `serde` feature.
 
 pub mod asan;
 pub mod constants;
@@ -32,6 +32,8 @@ pub mod java;
 pub mod python;
 pub mod report;
 pub mod rust;
+#[cfg(feature = "serde")]
+pub mod sarif;
 pub mod severity;
 pub mod stacktrace;
 pub mod ubsan;

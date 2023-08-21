@@ -6,12 +6,12 @@ use regex::Regex;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use cursive::align::Align;
 use cursive::event::EventResult;
 use cursive::theme::BaseColor;
@@ -30,11 +30,14 @@ use cursive_tree_view::*;
 use walkdir::WalkDir;
 
 use libcasr::report::CrashReport;
+use libcasr::sarif::SarifReport;
+
+use casr::util::report_from_file;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-cli")
         .version(clap::crate_version!())
-        .about("App provides text-based user interface to view CASR reports and print joint statistics for all reports.")
+        .about("App provides text-based user interface to view CASR reports, prints joint statistics for all reports, and converts CASR reports to SARIF format.")
         .term_width(90)
         .arg(
             Arg::new("view")
@@ -61,9 +64,59 @@ fn main() -> Result<()> {
                 .short('u')
                 .help("Print only unique crash lines in joint statistics"),
         )
+        .arg(
+            Arg::new("sarif")
+                .long("sarif")
+                .requires("source-root")
+                .value_name("OUTPUT")
+                .value_parser(clap::value_parser!(PathBuf))
+                .action(ArgAction::Set)
+                .help("Generate SARIF report from CASR reports"),
+        )
+        .arg(
+            Arg::new("source-root")
+                .long("source-root")
+                .requires("sarif")
+                .value_name("PATH")
+                .action(ArgAction::Set)
+                .help("Source root path in CASR reports for SARIF report generation"),
+        )
+        .arg(
+            Arg::new("tool")
+                .long("tool")
+                .requires("sarif")
+                .value_name("NAME")
+                .default_value("CASR")
+                .action(ArgAction::Set)
+                .help("Tool name that detected crashes/errors for SARIF report"),
+        )
         .get_matches();
 
     let report_path = matches.get_one::<PathBuf>("target").unwrap();
+
+    if let Some(sarif_report) = matches.get_one::<PathBuf>("sarif") {
+        let report = sarif(
+            report_path,
+            matches.get_one::<String>("source-root").unwrap(),
+            matches.get_one::<String>("tool").unwrap(),
+        )?;
+        if let Ok(mut file) = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(sarif_report)
+        {
+            file.write_all(
+                serde_json::to_string_pretty(&report.json)
+                    .unwrap()
+                    .as_bytes(),
+            )
+            .with_context(|| format!("Couldn't write data to file `{}`", sarif_report.display()))?;
+        } else {
+            bail!("Couldn't save report to file: {}", sarif_report.display());
+        }
+        return Ok(());
+    }
 
     if report_path.is_dir() {
         print_summary(report_path, matches.get_flag("unique"));
@@ -976,4 +1029,48 @@ fn process_report(report: &str, extension: &str) -> Option<(String, String, Stri
         )
     };
     Some((summary, desc, crashline, ubsan))
+}
+
+/// Convert CASR reports to SARIF format
+///
+/// # Arguments
+///
+/// * 'report' - path to report or directory with reports
+///
+/// * 'root' - source root path in CASR reports
+///
+/// * 'tool' - name of a tool that provides CASR reports
+///
+/// # Return value
+///
+/// Sarif report
+fn sarif(report_path: &Path, root: &str, tool: &str) -> Result<SarifReport> {
+    let mut sarif = SarifReport::new();
+    sarif.set_name(tool);
+    let mut reports: Vec<(PathBuf, CrashReport)> = Vec::new();
+    if !report_path.is_dir() {
+        let casr_report = report_from_file(report_path)?;
+        reports.push((report_path.to_path_buf(), casr_report));
+    } else {
+        for path in WalkDir::new(report_path)
+            .sort_by_file_name()
+            .into_iter()
+            .filter_map(|file| file.ok())
+            .filter(|file| file.metadata().unwrap().is_file())
+            .map(|file| file.path().to_path_buf())
+            .filter(|file| file.to_str().unwrap().ends_with(".casrep"))
+        {
+            let casr_report = report_from_file(&path)?;
+            reports.push((path.to_path_buf(), casr_report));
+        }
+    }
+
+    for (path, report) in reports {
+        let result = sarif.add_casr_report(&report, root);
+        if let Err(e) = result {
+            eprintln!("Error while converting {} to SARIF: {}", path.display(), e);
+        }
+    }
+
+    Ok(sarif)
 }
