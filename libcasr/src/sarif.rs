@@ -1,4 +1,4 @@
-//! Sarif module contains `Sarif` struct that countains multiple `CrashReport`
+//! Sarif module contains `Sarif` struct that contains multiple `CrashReport`
 //! structs in SARIF format.
 
 use crate::constants::*;
@@ -10,7 +10,9 @@ use crate::stacktrace::{STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTIO
 
 use serde_json::{Map, Value};
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+use lexiclean::Lexiclean;
 
 /// CASR CrashReports in SARIF format.
 #[derive(Clone, Debug, Default)]
@@ -18,7 +20,7 @@ pub struct SarifReport {
     /// SARIF json.
     pub json: Value,
     /// current rule id for generated ExecutionClasses.
-    id: u64,
+    current_id: u64,
 }
 
 impl SarifReport {
@@ -43,7 +45,7 @@ impl SarifReport {
         map.insert("runs".to_string(), Value::Array(runs));
         Self {
             json: Value::Object(map),
-            id: 0,
+            current_id: 0,
         }
     }
 
@@ -86,7 +88,7 @@ impl SarifReport {
         {
             format!("F{:0>2}", pos)
         } else {
-            let s = format!("G{}", self.id);
+            let s = format!("G{}", self.current_id);
             s
         };
 
@@ -173,7 +175,7 @@ impl SarifReport {
                 .unwrap();
             rules.push(rule);
             if rule_id.starts_with('G') {
-                self.id += 1;
+                self.current_id += 1;
             }
         }
 
@@ -214,13 +216,7 @@ impl SarifReport {
             )));
         }
 
-        let source_path = Path::new(&parts[0]);
-        let norm_source_path =
-            if let Ok(norm_source_path) = source_path.strip_prefix(source_root.as_ref()) {
-                norm_source_path
-            } else {
-                source_path
-            };
+        let norm_source_path = normalize_path(&parts[0], source_root.as_ref());
 
         artifact_loc.insert(
             "uri".to_string(),
@@ -271,13 +267,7 @@ impl SarifReport {
                 continue;
             }
 
-            let source_path = Path::new(&entry.debug.file);
-            let norm_source_path =
-                if let Ok(norm_source_path) = source_path.strip_prefix(source_root.as_ref()) {
-                    norm_source_path
-                } else {
-                    source_path
-                };
+            let norm_source_path = normalize_path(&entry.debug.file, source_root.as_ref());
             artifact_loc.insert(
                 "uri".to_string(),
                 Value::String(norm_source_path.display().to_string()),
@@ -314,6 +304,29 @@ impl SarifReport {
         result.insert("stacks".to_string(), Value::Array(stacks));
         results.push(Value::Object(result));
         Ok(())
+    }
+}
+
+///  Remove source root path prefix
+///  form source path
+///
+///  # Arguments
+///
+///  * 'path' - Path to source file
+///
+///  * 'root' - Path to root directory with source files
+///
+///  # Return
+///
+///  If success returns normalized source path, else original source path is returned.
+fn normalize_path<P>(path: P, root: &Path) -> PathBuf
+where
+    P: AsRef<Path>,
+{
+    if let Ok(norm_source_path) = path.as_ref().lexiclean().as_path().strip_prefix(root) {
+        norm_source_path.to_path_buf()
+    } else {
+        path.as_ref().to_path_buf()
     }
 }
 

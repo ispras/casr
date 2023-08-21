@@ -81,6 +81,15 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .help("Source root path in CASR reports for SARIF report generation"),
         )
+        .arg(
+            Arg::new("tool")
+                .long("tool")
+                .requires("sarif")
+                .value_name("NAME")
+                .default_value("CASR")
+                .action(ArgAction::Set)
+                .help("Analysis tool providing results for report"),
+        )
         .get_matches();
 
     let report_path = matches.get_one::<PathBuf>("target").unwrap();
@@ -89,6 +98,7 @@ fn main() -> Result<()> {
         let report = sarif(
             report_path,
             matches.get_one::<String>("source-root").unwrap(),
+            matches.get_one::<String>("tool").unwrap(),
         )?;
         if let Ok(mut file) = OpenOptions::new()
             .create(true)
@@ -1029,11 +1039,14 @@ fn process_report(report: &str, extension: &str) -> Option<(String, String, Stri
 ///
 /// * 'root' - source root path in CASR reports
 ///
+/// * 'tool' - name of a tool that provides CASR reports
+///
 /// # Return value
 ///
 /// Sarif report
-fn sarif(report_path: &Path, root: &str) -> Result<SarifReport> {
+fn sarif(report_path: &Path, root: &str, tool: &str) -> Result<SarifReport> {
     let mut sarif = SarifReport::new();
+    sarif.set_name(tool);
     let mut reports: Vec<(PathBuf, CrashReport)> = Vec::new();
     if !report_path.is_dir() {
         let casr_report = report_from_file(report_path)?;
@@ -1054,12 +1067,8 @@ fn sarif(report_path: &Path, root: &str) -> Result<SarifReport> {
 
     for (path, report) in reports {
         let result = sarif.add_casr_report(&report, root);
-        if result.is_err() {
-            println!(
-                "Error while converting {} to SARIF: {}",
-                path.display(),
-                result.err().unwrap()
-            );
+        if let Err(e) = result {
+            eprintln!("Error while converting {} to SARIF: {}", path.display(), e);
         }
     }
 
