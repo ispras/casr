@@ -177,9 +177,10 @@ fn main() -> Result<()> {
     } else {
         "casr-san"
     };
-    custom_pool.join(
-        || {
-            let _ = crashes.par_iter().try_for_each(|(crash, fname)| {
+    custom_pool
+        .join(
+            || {
+                let Ok (_) = crashes.par_iter().try_for_each(|(crash, fname)| {
                 let mut casr_cmd = Command::new(tool);
                 if timeout != 0 {
                     casr_cmd.args(["-t".to_string(), timeout.to_string()]);
@@ -212,10 +213,16 @@ fn main() -> Result<()> {
                 }
                 *counter.write().unwrap() += 1;
                 Ok::<(), anyhow::Error>(())
-            });
-        },
-        || util::log_progress(&counter, total),
-    );
+            }) else {
+                // Disable util::log_progress
+                *counter.write().unwrap() = total;
+                bail!("Casr run error");
+            };
+                Ok(())
+            },
+            || util::log_progress(&counter, total),
+        )
+        .0?;
 
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {

@@ -275,16 +275,22 @@ fn main() -> Result<()> {
     info!("Using {} threads", num_of_threads - 1);
     let counter = RwLock::new(0_usize);
     let total = crashes.len();
-    custom_pool.join(
-        || {
-            let _ = crashes.par_iter().try_for_each(|(_, crash)| {
-                crash.run_casr(output_dir.as_path(), timeout)?;
-                *counter.write().unwrap() += 1;
-                Ok::<(), anyhow::Error>(())
-            });
-        },
-        || util::log_progress(&counter, total),
-    );
+    custom_pool
+        .join(
+            || {
+                crashes.par_iter().try_for_each(|(_, crash)| {
+                    let Ok(_) = crash.run_casr(output_dir.as_path(), timeout) else {
+                    // Disable util::log_progress
+                    *counter.write().unwrap() = total;
+                    bail!("Casr run error");
+                };
+                    *counter.write().unwrap() += 1;
+                    Ok::<(), anyhow::Error>(())
+                })
+            },
+            || util::log_progress(&counter, total),
+        )
+        .0?;
 
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
@@ -385,7 +391,7 @@ fn summarize_results(
             .filter(|e| e.extension().is_none() || e.extension().unwrap() != "casrep")
             .filter(|e| !Path::new(format!("{}.gdb.casrep", e.display()).as_str()).exists())
             .collect();
-        let num_of_threads = jobs.min(crashes.len());
+        let num_of_threads = jobs.min(crashes.len() + 1);
         if num_of_threads > 1 {
             info!("casr-gdb: adding crash reports...");
             info!("Using {} threads", num_of_threads - 1);
@@ -396,22 +402,28 @@ fn summarize_results(
                 .build()
                 .unwrap();
             let at_index = gdb_args.iter().skip(1).position(|s| s.contains("@@"));
-            custom_pool.join(
-                || {
-                    let _ = crashes.par_iter().try_for_each(|crash| {
-                        AflCrashInfo {
+            custom_pool
+                .join(
+                    || {
+                        crashes.par_iter().try_for_each(|crash| {
+                            let Ok(_) = AflCrashInfo {
                             path: crash.to_path_buf(),
                             target_args: gdb_args.clone(),
                             at_index,
                             is_asan: false,
                         }
-                        .run_casr(None, timeout)?;
-                        *counter.write().unwrap() += 1;
-                        Ok::<(), anyhow::Error>(())
-                    });
-                },
-                || util::log_progress(&counter, total),
-            );
+                        .run_casr(None, timeout) else {
+                            // Disable util::log_progress
+                            *counter.write().unwrap() = total;
+                            bail!("Casr run error");
+                        };
+                            *counter.write().unwrap() += 1;
+                            Ok::<(), anyhow::Error>(())
+                        })
+                    },
+                    || util::log_progress(&counter, total),
+                )
+                .0?;
         }
     }
 
