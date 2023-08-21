@@ -324,7 +324,7 @@ Convert reports to SARIF report:
 
 ### Screnshots
 
-![casrep](/docs/image/casr_report.png)
+![casrep](/docs/images/casr_report.png)
 
 ![sarif](/docs/images/casr_sarif.png)
 
