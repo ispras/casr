@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::RwLock;
 
 #[derive(Debug, Clone, Default)]
 /// Information about crash to reproduce it.
@@ -263,7 +264,7 @@ fn main() -> Result<()> {
     } else {
         std::cmp::max(1, num_cpus::get() / 2)
     };
-    let num_of_threads = jobs.min(crashes.len()).max(1);
+    let num_of_threads = jobs.min(crashes.len()).max(1) + 1;
     let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(num_of_threads)
         .build()
@@ -271,12 +272,25 @@ fn main() -> Result<()> {
 
     // Generate CASR reports.
     info!("Generating CASR reports...");
-    info!("Using {} threads", num_of_threads);
-    custom_pool.install(|| {
-        crashes
-            .par_iter()
-            .try_for_each(|(_, crash)| crash.run_casr(output_dir.as_path(), timeout))
-    })?;
+    info!("Using {} threads", num_of_threads - 1);
+    let counter = RwLock::new(0_usize);
+    let total = crashes.len();
+    custom_pool
+        .join(
+            || {
+                crashes.par_iter().try_for_each(|(_, crash)| {
+                    if let Err(e) = crash.run_casr(output_dir.as_path(), timeout) {
+                        // Disable util::log_progress
+                        *counter.write().unwrap() = total;
+                        bail!(e);
+                    };
+                    *counter.write().unwrap() += 1;
+                    Ok::<(), anyhow::Error>(())
+                })
+            },
+            || util::log_progress(&counter, total),
+        )
+        .0?;
 
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
@@ -377,26 +391,40 @@ fn summarize_results(
             .filter(|e| e.extension().is_none() || e.extension().unwrap() != "casrep")
             .filter(|e| !Path::new(format!("{}.gdb.casrep", e.display()).as_str()).exists())
             .collect();
-        let num_of_threads = jobs.min(crashes.len());
-        if num_of_threads > 0 {
+        let num_of_threads = jobs.min(crashes.len() + 1);
+        if num_of_threads > 1 {
             info!("casr-gdb: adding crash reports...");
-            info!("Using {} threads", num_of_threads);
+            info!("Using {} threads", num_of_threads - 1);
+            let counter = RwLock::new(0_usize);
+            let total = crashes.len();
             let custom_pool = rayon::ThreadPoolBuilder::new()
                 .num_threads(num_of_threads)
                 .build()
                 .unwrap();
             let at_index = gdb_args.iter().skip(1).position(|s| s.contains("@@"));
-            custom_pool.install(|| {
-                crashes.par_iter().try_for_each(|crash| {
-                    AflCrashInfo {
-                        path: crash.to_path_buf(),
-                        target_args: gdb_args.clone(),
-                        at_index,
-                        is_asan: false,
-                    }
-                    .run_casr(None, timeout)
-                })
-            })?;
+            custom_pool
+                .join(
+                    || {
+                        crashes.par_iter().try_for_each(|crash| {
+                            if let Err(e) = (AflCrashInfo {
+                                path: crash.to_path_buf(),
+                                target_args: gdb_args.clone(),
+                                at_index,
+                                is_asan: false,
+                            })
+                            .run_casr(None, timeout)
+                            {
+                                // Disable util::log_progress
+                                *counter.write().unwrap() = total;
+                                bail!(e);
+                            };
+                            *counter.write().unwrap() += 1;
+                            Ok::<(), anyhow::Error>(())
+                        })
+                    },
+                    || util::log_progress(&counter, total),
+                )
+                .0?;
         }
     }
 

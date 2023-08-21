@@ -11,6 +11,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::RwLock;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
@@ -158,7 +159,7 @@ fn main() -> Result<()> {
     } else {
         std::cmp::max(1, num_cpus::get() / 2)
     };
-    let num_of_threads = jobs.min(crashes.len()).max(1);
+    let num_of_threads = jobs.min(crashes.len()).max(1) + 1;
     let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(num_of_threads)
         .build()
@@ -166,7 +167,9 @@ fn main() -> Result<()> {
 
     // Generate CASR reports.
     info!("Generating CASR reports...");
-    info!("Using {} threads", num_of_threads);
+    info!("Using {} threads", num_of_threads - 1);
+    let counter = RwLock::new(0_usize);
+    let total = crashes.len();
     let tool = if !atheris_asan_lib.is_empty() {
         "casr-python"
     } else if argv[0].ends_with("jazzer") || argv[0].ends_with("java") {
@@ -174,41 +177,52 @@ fn main() -> Result<()> {
     } else {
         "casr-san"
     };
-    custom_pool.install(|| {
-        crashes.par_iter().try_for_each(|(crash, fname)| {
-            let mut casr_cmd = Command::new(tool);
-            if timeout != 0 {
-                casr_cmd.args(["-t".to_string(), timeout.to_string()]);
-            }
-            casr_cmd.args([
-                "-o",
-                format!("{}.casrep", output_dir.join(fname).display()).as_str(),
-                "--",
-            ]);
-            if !atheris_asan_lib.is_empty() {
-                casr_cmd.arg("python3");
-                casr_cmd.env("LD_PRELOAD", &atheris_asan_lib);
-            }
-            casr_cmd.args(argv.clone());
-            casr_cmd.arg(crash);
-            debug!("{:?}", casr_cmd);
+    custom_pool
+        .join(
+            || {
+                if let Err(e) = crashes.par_iter().try_for_each(|(crash, fname)| {
+                    let mut casr_cmd = Command::new(tool);
+                    if timeout != 0 {
+                        casr_cmd.args(["-t".to_string(), timeout.to_string()]);
+                    }
+                    casr_cmd.args([
+                        "-o",
+                        format!("{}.casrep", output_dir.join(fname).display()).as_str(),
+                        "--",
+                    ]);
+                    if !atheris_asan_lib.is_empty() {
+                        casr_cmd.arg("python3");
+                        casr_cmd.env("LD_PRELOAD", &atheris_asan_lib);
+                    }
+                    casr_cmd.args(argv.clone());
+                    casr_cmd.arg(crash);
+                    debug!("{:?}", casr_cmd);
 
-            // Get output
-            let casr_output = casr_cmd
-                .output()
-                .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
+                    // Get output
+                    let casr_output = casr_cmd
+                        .output()
+                        .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
 
-            if !casr_output.status.success() {
-                let err = String::from_utf8_lossy(&casr_output.stderr);
-                if err.contains("Program terminated (no crash)") {
-                    warn!("{}: no crash on input {}", tool, crash.display());
-                } else {
-                    error!("{} for input: {}", err.trim(), crash.display());
-                }
-            }
-            Ok::<(), anyhow::Error>(())
-        })
-    })?;
+                    if !casr_output.status.success() {
+                        let err = String::from_utf8_lossy(&casr_output.stderr);
+                        if err.contains("Program terminated (no crash)") {
+                            warn!("{}: no crash on input {}", tool, crash.display());
+                        } else {
+                            error!("{} for input: {}", err.trim(), crash.display());
+                        }
+                    }
+                    *counter.write().unwrap() += 1;
+                    Ok::<(), anyhow::Error>(())
+                }) {
+                    // Disable util::log_progress
+                    *counter.write().unwrap() = total;
+                    bail!(e);
+                };
+                Ok(())
+            },
+            || util::log_progress(&counter, total),
+        )
+        .0?;
 
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
