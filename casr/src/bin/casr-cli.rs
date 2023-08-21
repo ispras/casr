@@ -88,7 +88,7 @@ fn main() -> Result<()> {
                 .value_name("NAME")
                 .default_value("CASR")
                 .action(ArgAction::Set)
-                .help("Analysis tool providing results for report"),
+                .help("Tool name that detected crashes/errors for SARIF report"),
         )
         .get_matches();
 

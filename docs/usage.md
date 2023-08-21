@@ -288,25 +288,25 @@ Frames that match these regular expressions will be not considered during analys
 App provides text-based user interface to view CASR reports, prints joint statistics for
 all reports, and converts CASR reports to SARIF format.
 
-Usage: casr-cli [OPTIONS] <REPORT|DIR>
+    Usage: casr-cli [OPTIONS] <REPORT|DIR>
 
-Arguments:
-  <REPORT|DIR>  CASR report file to view or directory with reports
+    Arguments:
+      <REPORT|DIR>  CASR report file to view or directory with reports
 
-Options:
-  -v, --view <MODE>         View mode [default: tree] [possible values: tree, slider,
-                            stdout]
-  -u, --unique              Print only unique crash lines in joint statistics
-      --sarif <OUTPUT>      Generate SARIF report from CASR reports
-      --source-root <PATH>  Source root path in CASR reports for SARIF report generation
-      --tool <NAME>         Analysis tool providing results for report [default: CASR]
-  -h, --help                Print help
-  -V, --version             Print version
+    Options:
+      -v, --view <MODE>         View mode [default: tree] [possible values: tree, slider,
+                                stdout]
+      -u, --unique              Print only unique crash lines in joint statistics
+          --sarif <OUTPUT>      Generate SARIF report from CASR reports
+          --source-root <PATH>  Source root path in CASR reports for SARIF report generation
+          --tool <NAME>         Analysis tool providing results for report [default: CASR]
+      -h, --help                Print help
+      -V, --version             Print version
 
 There are three view modes: tree, slider (list), and stdout. In stdout mode
 `casr-cli` prints text-based CASR report to stdout.
 
-`casr-cli` could convert a directory with casr reports or single report into SARIF
+`casr-cli` can convert a directory with casr reports or single report into SARIF
 report. You could load resulting SARIF report into IDE and continue crash
 analysis.
 

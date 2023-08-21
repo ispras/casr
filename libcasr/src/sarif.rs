@@ -326,7 +326,7 @@ where
     if let Ok(norm_source_path) = path.as_ref().lexiclean().as_path().strip_prefix(root) {
         norm_source_path.to_path_buf()
     } else {
-        path.as_ref().to_path_buf()
+        path.as_ref().lexiclean()
     }
 }
 
