@@ -243,7 +243,7 @@ fn main() -> Result<()> {
             .flat_map(|e| e.path().read_dir())
             .flatten()
             .flatten()
-            .filter(|e| e.file_name().into_string().unwrap().starts_with("id:"))
+            .filter(|e| e.file_name().into_string().unwrap().starts_with("id"))
         {
             let mut info = crash_info.clone();
             info.path = crash.path();
