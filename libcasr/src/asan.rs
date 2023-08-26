@@ -37,8 +37,8 @@ impl ParseStacktrace for AsanStacktrace {
         let re = Regex::new(r"^ *#[0-9]+ +0x([0-9a-f]+) *").unwrap();
         let Some(caps) = re.captures(entry.as_ref()) else {
             return Err(Error::Casr(format!(
-                "Couldn't parse frame and address in stack trace entry: {entry}")
-            ));
+                "Couldn't parse frame and address in stack trace entry: {entry}"
+            )));
         };
 
         // Get address.
@@ -176,7 +176,9 @@ impl Severity for AsanContext {
             let summary = Regex::new(r"SUMMARY: *(AddressSanitizer|libFuzzer): (\S+)").unwrap();
 
             let Some(caps) = asan_report.iter().find_map(|s| summary.captures(s)) else {
-                return Err(Error::Casr("Cannot find SUMMARY in Sanitizer report".to_string()));
+                return Err(Error::Casr(
+                    "Cannot find SUMMARY in Sanitizer report".to_string(),
+                ));
             };
             // Match Sanitizer.
             match caps.get(1).unwrap().as_str() {
@@ -200,19 +202,20 @@ impl Severity for AsanContext {
                     };
 
                     let rcrash_address = Regex::new("on.*address 0x([0-9a-f]+)").unwrap();
-                    let near_null = if let Some(crash_address) =
-                        rcrash_address.captures(&asan_report[0])
-                    {
-                        let Ok(addr) = u64::from_str_radix(
-                                crash_address.get(1).unwrap().as_str(),
-                                16,
-                            ) else {
-                                return Err(Error::Casr(format!("Cannot parse address: {}", crash_address.get(1).unwrap().as_str())));
+                    let near_null =
+                        if let Some(crash_address) = rcrash_address.captures(&asan_report[0]) {
+                            let Ok(addr) =
+                                u64::from_str_radix(crash_address.get(1).unwrap().as_str(), 16)
+                            else {
+                                return Err(Error::Casr(format!(
+                                    "Cannot parse address: {}",
+                                    crash_address.get(1).unwrap().as_str()
+                                )));
+                            };
+                            is_near_null(addr)
+                        } else {
+                            false
                         };
-                        is_near_null(addr)
-                    } else {
-                        false
-                    };
                     ExecutionClass::san_find(san_type, mem_access, near_null)
                 }
             }

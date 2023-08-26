@@ -10,8 +10,7 @@ pub struct RustPanic;
 impl Exception for RustPanic {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
         let rexception = Regex::new(r"thread '.+?' panicked at (?:'(.*)'|.+?:\n(.*))").unwrap();
-        let Some(captures) = rexception
-            .captures(stderr) else {
+        let Some(captures) = rexception.captures(stderr) else {
             return None;
         };
         let message = if let Some(message) = captures.get(1) {

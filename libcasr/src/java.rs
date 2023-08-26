@@ -70,8 +70,8 @@ impl ParseStacktrace for JavaStacktrace {
 
         let Some(cap) = re.captures(entry) else {
             return Err(Error::Casr(format!(
-                "Couldn't parse stacktrace line: {entry}")
-            ));
+                "Couldn't parse stacktrace line: {entry}"
+            )));
         };
         let debug = cap.get(2).unwrap().as_str().to_string();
         let mut stentry = StacktraceEntry::default();

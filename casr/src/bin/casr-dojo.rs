@@ -307,7 +307,11 @@ impl DefectDojoClient {
             serde_json::Value::Array(vec![serde_json::Value::Number(1.into())]),
         );
         let Some(date) = report.date.split('T').next() else {
-            bail!("Failed to parse date {} for CASR report {}", report.date, path.display());
+            bail!(
+                "Failed to parse date {} for CASR report {}",
+                report.date,
+                path.display()
+            );
         };
         finding.insert(
             "date".to_string(),

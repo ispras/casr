@@ -382,7 +382,7 @@ fn main() -> Result<()> {
                     let Ok(input_warnings) = extract_warnings(input, &argv, timeout) else {
                         warn!("Failed to run program with input file {:?}", input);
                         *counter.write().unwrap() += 1;
-                        return None
+                        return None;
                     };
                     *counter.write().unwrap() += 1;
                     Some((input, input_warnings))
@@ -412,7 +412,7 @@ fn main() -> Result<()> {
     let mut to_gen: Vec<(PathBuf, UbsanWarning, CrashLine)> = vec![];
     // Dedup warnings by crashline
     // Do without paralleling to preserve the specified order
-    let re = Regex::new(r#"(.+:\d+):\d"#).unwrap();
+    let re = Regex::new(r"(.+:\d+):\d").unwrap();
     for (input, input_warnings) in warnings {
         for (warning, crashline) in input_warnings {
             // Drop column number
