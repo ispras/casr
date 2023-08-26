@@ -425,7 +425,7 @@ impl CrashReport {
             ));
         }
         let path = PathBuf::from(&self.executable_path);
-        let possible_paths = vec![
+        let possible_paths = [
             "/bin/", "/boot", "/etc/", "/initrd", "/lib", "/sbin/", "/opt", "/usr/", "/var",
         ];
         // Check if binary likely packaged.

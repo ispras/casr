@@ -72,7 +72,7 @@ impl ParseStacktrace for PythonStacktrace {
 
         for entry in entries.iter() {
             if entry.starts_with('[') {
-                let re = Regex::new(r#"\[Previous line repeated (\d+) more times\]"#).unwrap();
+                let re = Regex::new(r"\[Previous line repeated (\d+) more times\]").unwrap();
                 let Some(rep) = re.captures(entry) else {
                     return Err(Error::Casr(format!(
                         "Couldn't parse stacktrace line: {entry}"
@@ -104,7 +104,7 @@ impl Exception for PythonException {
             .split('\n')
             .map(|l| l.trim_end().to_string())
             .collect();
-        let re = Regex::new(r#"([\w]+): (.+)"#).unwrap();
+        let re = Regex::new(r"([\w]+): (.+)").unwrap();
         stderr_list
             .iter()
             .rev()

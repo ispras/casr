@@ -17,7 +17,7 @@ impl ParseStacktrace for GoStacktrace {
             .map(|l| l.to_string())
             .collect::<Vec<String>>();
 
-        let re = Regex::new(r#"goroutine [0-9]+ (?:\[running.*\]|\[syscall\]):"#).unwrap();
+        let re = Regex::new(r"goroutine [0-9]+ (?:\[running.*\]|\[syscall\]):").unwrap();
         let Some(goroutine_idx) = lines
             .iter()
             .enumerate()

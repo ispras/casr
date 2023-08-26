@@ -44,7 +44,7 @@ impl Severity for UbsanWarning {
         }
         // Get description (from first line)
         let description = message.first().unwrap();
-        let re = Regex::new(r#".+: runtime error: (.+)"#).unwrap();
+        let re = Regex::new(r".+: runtime error: (.+)").unwrap();
         let Some(cap) = re.captures(description) else {
             return Err(Error::Casr(format!(
                 "Couldn't parse error description: {description}"
@@ -53,7 +53,7 @@ impl Severity for UbsanWarning {
         let description = cap.get(1).unwrap().as_str().to_string();
         // Get short description (from last line)
         let short_description = message.last().unwrap();
-        let re = Regex::new(r#"SUMMARY: UndefinedBehaviorSanitizer: (\S+)"#).unwrap();
+        let re = Regex::new(r"SUMMARY: UndefinedBehaviorSanitizer: (\S+)").unwrap();
         let Some(cap) = re.captures(short_description) else {
             return Err(Error::Casr(format!(
                 "Couldn't parse ubsan summary: {short_description}"
@@ -104,7 +104,7 @@ impl CrashLineExt for UbsanWarning {
                 )))
             }
         } else {
-            let re = Regex::new(r#"(.+?):(\d+):(?:(\d+):)? runtime error: "#).unwrap();
+            let re = Regex::new(r"(.+?):(\d+):(?:(\d+):)? runtime error: ").unwrap();
             let Some(cap) = re.captures(crashline) else {
                 return Err(Error::Casr(format!(
                     "Couldn't parse error crashline: {crashline}"
@@ -147,9 +147,8 @@ impl CrashLineExt for UbsanWarning {
 ///
 pub fn extract_ubsan_warnings(stderr: &str) -> Vec<UbsanWarning> {
     let mut ubsan_warnings: Vec<UbsanWarning> = vec![];
-    let re =
-        Regex::new(r#"(.+: runtime error: (?:.*\n)*?SUMMARY: UndefinedBehaviorSanitizer: .*)"#)
-            .unwrap();
+    let re = Regex::new(r"(.+: runtime error: (?:.*\n)*?SUMMARY: UndefinedBehaviorSanitizer: .*)")
+        .unwrap();
     for cap in re.captures_iter(stderr) {
         let message = cap[0].to_string();
         ubsan_warnings.push(UbsanWarning { message });
