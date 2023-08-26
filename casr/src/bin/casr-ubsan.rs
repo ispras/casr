@@ -382,7 +382,7 @@ fn main() -> Result<()> {
                     let Ok(input_warnings) = extract_warnings(input, &argv, timeout) else {
                         warn!("Failed to run program with input file {:?}", input);
                         *counter.write().unwrap() += 1;
-                        return None
+                        return None;
                     };
                     *counter.write().unwrap() += 1;
                     Some((input, input_warnings))

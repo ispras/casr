@@ -21,8 +21,11 @@ impl ParseStacktrace for GoStacktrace {
         let Some(goroutine_idx) = lines
             .iter()
             .enumerate()
-            .position(|(i,line)| re.is_match(line) && i < lines.len() - 1) else {
-                return Err(Error::Casr("Couldn't find start of stacktrace in Go panic output".to_string()));
+            .position(|(i, line)| re.is_match(line) && i < lines.len() - 1)
+        else {
+            return Err(Error::Casr(
+                "Couldn't find start of stacktrace in Go panic output".to_string(),
+            ));
         };
 
         let lines = &lines[goroutine_idx + 1..];
@@ -54,8 +57,8 @@ impl ParseStacktrace for GoStacktrace {
         let mut stentry = StacktraceEntry::default();
         let Some(caps) = re.captures(entry.as_ref()) else {
             return Err(Error::Casr(format!(
-                "Couldn't parse stack trace entry: {entry}")
-            ));
+                "Couldn't parse stack trace entry: {entry}"
+            )));
         };
         stentry.function = caps.get(1).unwrap().as_str().to_string();
         if let Some(file) = caps.get(2) {
@@ -63,8 +66,8 @@ impl ParseStacktrace for GoStacktrace {
             if let Some(line) = caps.get(3) {
                 let Ok(num) = line.as_str().parse::<u64>() else {
                     return Err(Error::Casr(format!(
-                        "Couldn't parse line number in stack trace entry: {entry}")
-                    ));
+                        "Couldn't parse line number in stack trace entry: {entry}"
+                    )));
                 };
                 stentry.debug.line = num;
             }
@@ -106,8 +109,8 @@ mod tests {
         runtime stack:\n\
         runtime.throw({0x4ef122?, 0x400000?})";
         let Some(class) = GoPanic::parse_exception(panic_info) else {
-        panic!("Couldn't get Go panic");
-    };
+            panic!("Couldn't get Go panic");
+        };
 
         assert_eq!(class.description, "runtime: out of memory");
 
@@ -116,8 +119,8 @@ mod tests {
         goroutine 1 [running]:  \n\
         main.fullName(0xc00006af58, 0x0)";
         let Some(class) = GoPanic::parse_exception(panic_info) else {
-        panic!("Couldn't get Go panic");
-    };
+            panic!("Couldn't get Go panic");
+        };
 
         assert_eq!(class.description, "runtime error: last name cannot be nil");
 
@@ -125,8 +128,8 @@ mod tests {
     main.main.func1\n\
         /tmp/sandbox907722598/prog.go:17";
         let Some(class) = GoPanic::parse_exception(panic_info) else {
-        panic!("Couldn't get Go panic");
-    };
+            panic!("Couldn't get Go panic");
+        };
 
         assert_eq!(class.description, "index out of range [0] with length 0");
     }

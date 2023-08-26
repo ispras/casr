@@ -19,7 +19,8 @@ impl ParseStacktrace for PythonStacktrace {
             .collect::<Vec<String>>();
         let Some(first) = stacktrace
             .iter()
-            .position(|line| line.starts_with("Traceback ")) else {
+            .position(|line| line.starts_with("Traceback "))
+        else {
             return Err(Error::Casr(
                 "Couldn't find traceback in python report".to_string(),
             ));
@@ -50,8 +51,8 @@ impl ParseStacktrace for PythonStacktrace {
 
         let Some(cap) = re.captures(entry) else {
             return Err(Error::Casr(format!(
-                "Couldn't parse stacktrace line: {entry}")
-            ));
+                "Couldn't parse stacktrace line: {entry}"
+            )));
         };
         stentry.debug.file = cap.get(1).unwrap().as_str().to_string();
         if let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() {
@@ -74,8 +75,8 @@ impl ParseStacktrace for PythonStacktrace {
                 let re = Regex::new(r#"\[Previous line repeated (\d+) more times\]"#).unwrap();
                 let Some(rep) = re.captures(entry) else {
                     return Err(Error::Casr(format!(
-                        "Couldn't parse stacktrace line: {entry}")
-                    ));
+                        "Couldn't parse stacktrace line: {entry}"
+                    )));
                 };
                 let Ok(rep) = rep.get(1).unwrap().as_str().parse::<u64>() else {
                     return Err(Error::Casr(format!("Couldn't parse num: {entry}")));

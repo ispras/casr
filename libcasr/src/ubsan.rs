@@ -108,7 +108,7 @@ impl CrashLineExt for UbsanWarning {
             let Some(cap) = re.captures(crashline) else {
                 return Err(Error::Casr(format!(
                     "Couldn't parse error crashline: {crashline}"
-                )))
+                )));
             };
             let file = cap.get(1).unwrap().as_str().to_string();
             let line = cap.get(2).unwrap().as_str().parse::<u64>();
