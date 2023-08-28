@@ -173,7 +173,8 @@ impl Severity for AsanContext {
         if asan_report[0].contains("LeakSanitizer") {
             ExecutionClass::find("memory-leaks")
         } else {
-            let summary = Regex::new(r"SUMMARY: *(AddressSanitizer|libFuzzer): (\S+)").unwrap();
+            let summary =
+                Regex::new(r"SUMMARY: *(AddressSanitizer|libFuzzer): ([A-Za-z_\-\(\)]+)").unwrap();
 
             let Some(caps) = asan_report.iter().find_map(|s| summary.captures(s)) else {
                 return Err(Error::Casr(
