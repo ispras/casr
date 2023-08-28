@@ -53,7 +53,7 @@ impl Severity for UbsanWarning {
         let description = cap.get(1).unwrap().as_str().to_string();
         // Get short description (from last line)
         let short_description = message.last().unwrap();
-        let re = Regex::new(r"SUMMARY: UndefinedBehaviorSanitizer: ([0-9A-Za-z_\-\(\)]+)").unwrap();
+        let re = Regex::new(r"SUMMARY: UndefinedBehaviorSanitizer: ([A-Za-z_\-\(\)]+)").unwrap();
         let Some(cap) = re.captures(short_description) else {
             return Err(Error::Casr(format!(
                 "Couldn't parse ubsan summary: {short_description}"
