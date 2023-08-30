@@ -3647,7 +3647,7 @@ fn test_casr_libfuzzer() {
         .parent()
         .unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
-    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2]])
+    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2], "@@"])
         .env(
             "PATH",
             format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
@@ -3660,23 +3660,21 @@ fn test_casr_libfuzzer() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let out = String::from_utf8_lossy(&output.stdout);
     let err = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!out.is_empty());
     assert!(!err.is_empty());
 
-    assert!(err.contains("casr-san: no crash on input"));
-    assert!(err.contains("Error: Out of memory for input"));
-    assert!(out.contains("EXPLOITABLE"));
-    assert!(out.contains("NOT_EXPLOITABLE"));
-    assert!(out.contains("PROBABLY_EXPLOITABLE"));
-    assert!(out.contains("heap-buffer-overflow(read)"));
-    assert!(out.contains("heap-buffer-overflow(write)"));
-    assert!(out.contains("DestAvNearNull"));
-    assert!(out.contains("xml::serialization"));
-    assert!(out.contains("AbortSignal"));
-    assert!(out.contains("compound_document.hpp:83"));
+    assert!(err.contains("casr-san: No crash on input"));
+    assert!(err.contains("1 out of memory seeds are saved to"));
+    assert!(err.contains("EXPLOITABLE"));
+    assert!(err.contains("NOT_EXPLOITABLE"));
+    assert!(err.contains("PROBABLY_EXPLOITABLE"));
+    assert!(err.contains("heap-buffer-overflow(read)"));
+    assert!(err.contains("heap-buffer-overflow(write)"));
+    assert!(err.contains("DestAvNearNull"));
+    assert!(err.contains("xml::serialization"));
+    assert!(err.contains("AbortSignal"));
+    assert!(err.contains("compound_document.hpp:83"));
 
     let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
     let unique_cnt = re
@@ -3759,7 +3757,7 @@ fn test_casr_libfuzzer_atheris() {
         .parent()
         .unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
-    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2]])
+    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2], "@@"])
         .env(
             "PATH",
             format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
@@ -3772,18 +3770,16 @@ fn test_casr_libfuzzer_atheris() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let out = String::from_utf8_lossy(&output.stdout);
     let err = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!out.is_empty());
     assert!(!err.is_empty());
 
-    assert!(out.contains("NOT_EXPLOITABLE"));
-    assert!(!out.contains("PROBABLY_EXPLOITABLE"));
-    assert!(out.contains("KeyError"));
-    assert!(out.contains("TypeError"));
-    assert!(out.contains("resolver.py"));
-    assert!(out.contains("constructor.py"));
+    assert!(err.contains("NOT_EXPLOITABLE"));
+    assert!(!err.contains("PROBABLY_EXPLOITABLE"));
+    assert!(err.contains("KeyError"));
+    assert!(err.contains("TypeError"));
+    assert!(err.contains("resolver.py"));
+    assert!(err.contains("constructor.py"));
 
     let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
     let unique_cnt = re

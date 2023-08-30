@@ -2,8 +2,10 @@ use clap::{Arg, ArgAction};
 use colored::Colorize;
 use cursive::event::EventTrigger;
 use cursive::View;
+use log::info;
 use regex::Regex;
 use serde_json::Value;
+use simplelog::*;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::fs::{File, OpenOptions};
@@ -758,6 +760,17 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
     // Line and column regex
     let line_column = Regex::new(r"\d+:\d+$").unwrap();
 
+    // Initialize log
+    let _ = TermLogger::init(
+        LevelFilter::Info,
+        ConfigBuilder::new()
+            .set_time_offset_to_local()
+            .unwrap()
+            .build(),
+        TerminalMode::Stderr,
+        ColorChoice::Auto,
+    );
+
     // Return true when crash should be omitted in summary because it has
     // non-unique crash line
     let mut skip_crash = |line: &str| {
@@ -906,23 +919,23 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             continue;
         }
 
-        println!("==> <{}>", filename.magenta());
+        info!("==> <{}>", filename.magenta());
         for info in cluster_hash.values() {
             if ubsan {
                 // /path/to/report.casrep: Description: crashline (path:line:column)
-                println!("{}: {}", info.0.last().unwrap(), info.0[0]);
+                info!("{}: {}", info.0.last().unwrap(), info.0[0]);
                 continue;
             }
             // Crash: /path/to/input or /path/to/report.casrep
-            println!("{}: {}", "Crash".green(), info.0.last().unwrap());
+            info!("{}: {}", "Crash".green(), info.0.last().unwrap());
             // casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
-            println!("  {}", info.0[0]);
+            info!("  {}", info.0[0]);
             if info.0.len() == 3 {
                 // gdb.casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
-                println!("  {}", info.0[1]);
+                info!("  {}", info.0[1]);
             }
             // Number of crashes with the same hash
-            println!("  Similar crashes: {}", info.1);
+            info!("  Similar crashes: {}", info.1);
         }
         let mut classes = String::new();
         cluster_classes.iter().for_each(|(class, number)| {
@@ -933,7 +946,7 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             );
         });
         if !ubsan {
-            println!("Cluster summary ->{classes}");
+            info!("Cluster summary ->{classes}");
         }
     }
     let mut classes = String::new();
@@ -941,14 +954,9 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
         .iter()
         .for_each(|(class, number)| classes.push_str(format!(" {class}: {number}").as_str()));
     if classes.is_empty() {
-        println!("{} -> {}", "SUMMARY".magenta(), "No crashes found".red());
+        info!("{} -> {}", "SUMMARY".magenta(), "No crashes found".red());
     } else {
-        println!("{} ->{}", "SUMMARY".magenta(), classes);
-    }
-
-    if !corrupted_reports.is_empty() {
-        println!("{} reports were found:", "Corrupted".red());
-        corrupted_reports.iter().for_each(|x| println!("{x}"));
+        info!("{} ->{}", "SUMMARY".magenta(), classes);
     }
 }
 
