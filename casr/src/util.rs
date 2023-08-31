@@ -270,6 +270,8 @@ pub fn get_output(command: &mut Command, timeout: u64, error_on_timeout: bool) -
     // Else get output
     if timeout != 0 {
         let mut child = command
+            .stderr(Stdio::piped())
+            .stdout(Stdio::piped())
             .spawn()
             .with_context(|| "Failed to start command: {command:?}")?;
         if child
