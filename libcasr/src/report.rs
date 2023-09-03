@@ -140,7 +140,7 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub registers: Registers,
-    /// Dissassembly for crashed state (16 instructions).
+    /// Disassembly for crashed state (16 instructions).
     #[cfg_attr(
         feature = "serde",
         serde(rename(serialize = "Disassembly", deserialize = "Disassembly"))
@@ -430,7 +430,7 @@ impl CrashReport {
         ];
         // Check if binary likely packaged.
         if possible_paths.iter().any(|e| path.starts_with(e)) {
-            //TODO: Suport not only Debian-based packet managers
+            // TODO: Support not only Debian-based packet managers
             let mut dpkg_cmd = Command::new("sh");
             dpkg_cmd
                 .arg("-c")

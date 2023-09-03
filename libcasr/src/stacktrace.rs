@@ -133,9 +133,9 @@ impl CrashLineExt for Stacktrace {
 ///
 /// # Arguments
 ///
-/// * `first` - first stacktrace
+/// * `first` - first stack trace
 ///
-/// * `second` - second stacktrace
+/// * `second` - second stack trace
 ///
 /// # Return value
 ///
@@ -160,7 +160,7 @@ pub fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
                 0.0
             };
 
-            // Choosing maximum of three neigbors
+            // Choosing maximum of three neighbors
             simatrix[i][j] =
                 simatrix[i][j - 1].max(simatrix[i - 1][j].max(simatrix[i - 1][j - 1] + cost));
         }
@@ -175,7 +175,7 @@ pub fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
 ///
 /// # Arguments
 ///
-/// * `stacktraces` - slice of `Stacktrace` structs
+/// * `stacktraces` - slice of `Stacktrace` structures
 ///
 /// # Return value
 ///
@@ -193,12 +193,12 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
 ///
 /// # Arguments
 ///
-/// * `stacktraces` - slice of `Stacktrace` structs
+/// * `stacktraces` - slice of `Stacktrace` structures
 ///
 /// # Return value
 ///
 /// An vector of the same length as `stacktraces`.
-/// Vec\[i\] is the flat cluster number to which original stacktrace i belongs.
+/// Vec\[i\] is the flat cluster number to which original stack trace i belongs.
 pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     // Writing distance matrix
     // Only the values in the upper triangle are explicitly represented,
@@ -309,7 +309,7 @@ impl Filter for Stacktrace {
 
 /// Find repeating intervals in sequence
 ///
-/// # Argumnets
+/// # Arguments
 ///
 /// * `arr` - given sequence
 ///
