@@ -36,7 +36,7 @@ use std::sync::RwLock;
 ///
 /// # Returns value
 ///
-/// Vector of extracted ubsan warnings with crashlines
+/// Vector of extracted ubsan warnings with crash lines
 fn extract_warnings(
     input: &PathBuf,
     argv: &[&str],
@@ -100,11 +100,11 @@ fn extract_warnings(
 ///
 /// * `warning` - target warning
 ///
-/// * `crashline` - warning crashile
+/// * `crashline` - warning crash line
 ///
 /// * `argv` - target program argument vector
 ///
-/// * `report` - report template containing identic values
+/// * `report` - report template containing identical values
 ///
 /// # Returns value
 ///

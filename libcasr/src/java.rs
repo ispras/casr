@@ -12,7 +12,7 @@ pub struct JavaStacktrace;
 
 impl ParseStacktrace for JavaStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
-        /// Stucture represents the Java stack trace exception block.
+        /// Structure represents the Java stack trace exception block.
         struct JavaExceptionBlock<'a> {
             /// Vector of stack trace entries.
             body: Vec<&'a str>,

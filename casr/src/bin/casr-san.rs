@@ -210,7 +210,7 @@ fn main() -> Result<()> {
                         report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
                     }
                     SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
-                        eprintln!("Segmentation fault occured, but there is not enough information availibale to determine \
+                        eprintln!("Segmentation fault occurred, but there is not enough information available to determine \
                         exploitability. Try using casr-gdb instead.");
                         report.execution_class = ExecutionClass::find("AccessViolation").unwrap();
                     }

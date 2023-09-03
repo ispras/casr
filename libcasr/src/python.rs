@@ -26,7 +26,7 @@ impl ParseStacktrace for PythonStacktrace {
             ));
         };
 
-        // Stack trace is splitted by empty line.
+        // Stack trace is split by empty line.
         let Some(last) = stacktrace.iter().skip(first).rposition(|s| !s.is_empty()) else {
             return Err(Error::Casr(
                 "Couldn't find traceback end in python report".to_string(),

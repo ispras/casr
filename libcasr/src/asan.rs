@@ -21,7 +21,7 @@ impl ParseStacktrace for AsanStacktrace {
             ));
         };
 
-        // Stack trace is splitted by empty line.
+        // Stack trace is split by empty line.
         let Some(last) = lines.iter().skip(first).position(|val| val.is_empty()) else {
             return Err(Error::Casr(
                 "Couldn't find stack trace end in sanitizer's report".to_string(),
