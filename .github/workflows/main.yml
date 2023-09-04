@@ -32,6 +32,10 @@ jobs:
         export PATH=/root/.cargo/bin:$PATH
         cargo install cargo-fuzz
         cargo test --release --verbose
+    - name: Fuzz
+      run: |
+        cd libcasr
+        timeout 600 cargo +nightly fuzz parse_stacktrace
 
   ubuntu-aarch64:
 
