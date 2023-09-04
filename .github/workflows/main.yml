@@ -35,7 +35,7 @@ jobs:
     - name: Fuzz
       run: |
         cd libcasr
-        timeout 600 cargo +nightly fuzz parse_stacktrace
+        cargo +nightly fuzz run parse_stacktrace -- -max_total_time=600
 
   ubuntu-aarch64:
 
