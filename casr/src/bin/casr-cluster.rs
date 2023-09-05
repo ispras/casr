@@ -244,7 +244,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
     before += paths.len();
 
     if after == 0 {
-        bail!("All {before} CASR reports are corrupted.");
+        bail!("All {before} CASR reports are corrupted");
     }
 
     Ok((before, after))
