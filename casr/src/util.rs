@@ -447,7 +447,7 @@ impl<'a> CrashInfo {
     }
 }
 
-/// Perfofm analysis
+/// Perform analysis
 ///
 /// # Arguments
 ///
