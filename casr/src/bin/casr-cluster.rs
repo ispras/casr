@@ -145,7 +145,7 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
 fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(usize, usize)> {
     let dir = fs::read_dir(indir).with_context(|| {
         format!(
-            "Error occurred while opening directory with Casr reports. File: {}",
+            "Error occurred while opening directory with CASR reports. File: {}",
             indir.display()
         )
     })?;
@@ -243,6 +243,10 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
 
     before += paths.len();
 
+    if after == 0 {
+        bail!("All {before} CASR reports are corrupted.");
+    }
+
     Ok((before, after))
 }
 
@@ -260,7 +264,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
 fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
     let dir = fs::read_dir(output).with_context(|| {
         format!(
-            "Error occurred while opening directory with Casr reports. Directory: {}",
+            "Error occurred while opening directory with CASR reports. Directory: {}",
             output.display()
         )
     })?;
@@ -278,7 +282,7 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 
     let dir = fs::read_dir(input).with_context(|| {
         format!(
-            "Error occurred while opening directory with Casr reports. Directory: {}",
+            "Error occurred while opening directory with CASR reports. Directory: {}",
             input.display()
         )
     })?;
