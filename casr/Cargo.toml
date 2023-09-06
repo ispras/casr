@@ -23,6 +23,7 @@ gdb-command = "0.7"
 nix = "0.26"
 rayon = "1.7"
 num_cpus = "1.15"
+is_executable = "1.0"
 linux-personality = "1.0"
 colored = "2.0"
 serde = { version = "1.0", features = ["derive"] }

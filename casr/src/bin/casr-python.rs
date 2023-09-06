@@ -69,10 +69,9 @@ fn main() -> Result<()> {
                 .long("sub-tool")
                 .default_value("casr-san")
                 .action(ArgAction::Set)
-                .value_parser(clap::value_parser!(PathBuf))
-                .value_name("PATH")
+                .value_name("SUB_TOOL")
                 .help(
-                    "Path to sub tool for crash analysis that will be called when main tool fails to detect a crash",
+                    "Sub tool name for crash analysis that will be called when main tool fails to detect a crash",
                 ),
         )
         .arg(

@@ -14,16 +14,15 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::io::{BufRead, BufReader};
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::RwLock;
 use std::time::Duration;
 
+use is_executable::IsExecutable;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use wait_timeout::ChildExt;
 use walkdir::WalkDir;
-use which::which;
 
 /// Call sub tool with the provided options
 ///
@@ -35,19 +34,8 @@ use which::which;
 ///
 /// * `argv` - executable file options
 pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<()> {
-    let tool = matches.get_one::<PathBuf>("sub-tool").unwrap();
-    if which(tool).is_err() {
-        if !tool.exists() {
-            bail!("Sub tool {tool:?} doesn't exist");
-        }
-        if !tool.is_file() {
-            bail!("Sub tool {tool:?} isn't a file");
-        }
-        if tool.metadata()?.permissions().mode() & 0o111 == 0 {
-            bail!("Sub tool {tool:?} isn't executable");
-        }
-    }
-    let mut cmd = Command::new(tool);
+    let tool = get_path(matches.get_one::<String>("sub-tool").unwrap())?;
+    let mut cmd = Command::new(&tool);
     if let Some(report_path) = matches.get_one::<PathBuf>("output") {
         cmd.args(["--output", report_path.to_str().unwrap()]);
     } else {
@@ -348,7 +336,7 @@ impl<'a> CrashInfo {
     ///
     /// # Arguments
     ///
-    /// * `tool` - tool that generates reports
+    /// * `tool` - path to tool that generates reports
     ///
     /// * `output_dir` - save report to specified directory or use the same directory as crash
     ///
@@ -357,7 +345,7 @@ impl<'a> CrashInfo {
     /// *  `envs` - environment variables for target
     pub fn run_casr<T: Into<Option<&'a Path>>>(
         &self,
-        tool: &str,
+        tool: &PathBuf,
         output_dir: T,
         timeout: u64,
         envs: &HashMap<String, String>,
@@ -380,7 +368,8 @@ impl<'a> CrashInfo {
             let input = args[at_index + 3].replace("@@", self.path.to_str().unwrap());
             args[at_index + 3] = input;
         }
-        if tool.eq("casr-python") {
+        let tool_name = tool.file_name().unwrap().to_str().unwrap();
+        if tool_name.ends_with("casr-python") {
             args.insert(3, "python3".to_string());
         }
         if self.at_index.is_none() {
@@ -392,7 +381,6 @@ impl<'a> CrashInfo {
             args.insert(0, "-t".to_string());
         }
 
-        let tool = if self.is_asan { tool } else { "casr-gdb" };
         let mut casr_cmd = Command::new(tool);
         casr_cmd.args(&args);
         casr_cmd.envs(envs);
@@ -437,7 +425,7 @@ impl<'a> CrashInfo {
                     error!("Error occurred while copying the file: {:?}", self.path);
                 }
             } else if err.contains("Program terminated (no crash)") {
-                warn!("{}: No crash on input {}", tool, self.path.display());
+                warn!("{}: No crash on input {}", tool_name, self.path.display());
             } else {
                 error!("{} for input: {}", err.trim(), self.path.display());
             }
@@ -464,6 +452,10 @@ pub fn generate_reports(
     tool: &str,
     gdb_argv: &Vec<String>,
 ) -> Result<()> {
+    // Get tool paths
+    let casr_tool = get_path(tool)?;
+    let casr_gdb = get_path("casr-gdb")?;
+    let casr_cluster = get_path("casr-cluster")?;
     // Get timeout
     let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
         *timeout
@@ -517,6 +509,7 @@ pub fn generate_reports(
         .join(
             || {
                 crashes.par_iter().try_for_each(|(_, crash)| {
+                    let tool = if crash.is_asan { &casr_tool } else { &casr_gdb };
                     if let Err(e) = crash.run_casr(tool, output_dir.as_path(), timeout, &envs) {
                         // Disable util::log_progress
                         *counter.write().unwrap() = total;
@@ -536,11 +529,11 @@ pub fn generate_reports(
         return summarize_results(output_dir, crashes, gdb_argv, num_of_threads, timeout);
     }
     info!("Deduplicating CASR reports...");
-    let casr_cluster_d = Command::new("casr-cluster")
+    let casr_cluster_d = Command::new(&casr_cluster)
         .arg("-d")
         .arg(output_dir.clone().into_os_string())
         .output()
-        .with_context(|| "Couldn't launch casr-cluster".to_string())?;
+        .with_context(|| format!("Couldn't launch {casr_cluster:?}"))?;
 
     if casr_cluster_d.status.success() {
         info!(
@@ -567,11 +560,11 @@ pub fn generate_reports(
             return summarize_results(output_dir, crashes, gdb_argv, num_of_threads, timeout);
         }
         info!("Clustering CASR reports...");
-        let casr_cluster_c = Command::new("casr-cluster")
+        let casr_cluster_c = Command::new(&casr_cluster)
             .arg("-c")
             .arg(output_dir.clone().into_os_string())
             .output()
-            .with_context(|| "Couldn't launch casr-cluster".to_string())?;
+            .with_context(|| format!("Couldn't launch {casr_cluster:?}"))?;
 
         if casr_cluster_c.status.success() {
             info!(
@@ -620,6 +613,7 @@ fn summarize_results(
     copy_crashes(dir, crashes)?;
 
     if !gdb_args.is_empty() {
+        let casr_gdb = get_path("casr-gdb")?;
         // Run casr-gdb on uninstrumented binary.
         let crashes: Vec<_> = WalkDir::new(dir)
             .into_iter()
@@ -655,7 +649,7 @@ fn summarize_results(
                                 is_asan: false,
                             })
                             .run_casr(
-                                "casr-gdb",
+                                &casr_gdb,
                                 None,
                                 timeout,
                                 &HashMap::new(),
@@ -674,8 +668,9 @@ fn summarize_results(
         }
     }
 
+    let casr_cli = get_path("casr-cli")?;
     // Print summary
-    let status = Command::new("casr-cli")
+    let status = Command::new(casr_cli)
         .arg(dir)
         .stderr(std::process::Stdio::inherit())
         .stdout(std::process::Stdio::inherit())
@@ -787,4 +782,34 @@ pub fn symbols_list(path: &Path) -> Result<HashSet<&str>> {
     }
 
     Ok(found_symbols)
+}
+
+/// Function searches for path to the tool
+///
+/// # Arguments
+///
+/// * 'tool' - tool name
+///
+/// # Return value
+///
+/// Path to the tool
+fn get_path(tool: &str) -> Result<PathBuf> {
+    let mut path_to_tool = std::env::current_exe()?;
+    let current_tool = path_to_tool
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    path_to_tool.pop();
+    path_to_tool.push(tool);
+    if path_to_tool.is_executable() {
+        Ok(path_to_tool)
+    } else if let Ok(path_to_tool) = which::which(tool) {
+        Ok(path_to_tool)
+    } else {
+        bail!(
+            "{path_to_tool:?}: No {tool} next to {current_tool}. And there is no {tool} in PATH."
+        );
+    }
 }
