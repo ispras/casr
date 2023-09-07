@@ -638,6 +638,7 @@ async fn main() -> Result<()> {
             .flatten()
             .map(|e| e.into_path())
             .filter(|e| e.is_file())
+            .filter(|e| e.parent().unwrap().file_name().unwrap() != "clerr")
             .filter(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
             .filter(|e| {
                 !e.to_str().unwrap().ends_with(".gdb.casrep")
