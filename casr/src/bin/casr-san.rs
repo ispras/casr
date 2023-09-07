@@ -143,7 +143,7 @@ fn main() -> Result<()> {
     let sanitizers_stderr = String::from_utf8_lossy(&sanitizers_result.stderr);
 
     if sanitizers_stderr.contains("Cannot set personality") {
-        bail!("Cannot set personality (if you are running docker, use --privileged)");
+        bail!("Cannot set personality (if you are running docker, allow personality syscall in you seccomp profile)");
     }
 
     // Detect OOMs.
