@@ -293,6 +293,10 @@ fn summarize_results(
         // Run casr-gdb on uninstrumented binary.
         let crashes: Vec<_> = WalkDir::new(dir)
             .into_iter()
+            .filter_entry(|e| {
+                let name = e.file_name().to_str().unwrap();
+                !name.eq("oom") && !name.eq("timeout")
+            })
             .flatten()
             .map(|e| e.into_path())
             .filter(|e| e.is_file())
