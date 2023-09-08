@@ -1,4 +1,5 @@
-use casr::util::{self, generate_reports, CrashInfo};
+use casr::analysis::{generate_reports, CrashInfo};
+use casr::util;
 
 use anyhow::{bail, Result};
 use clap::{
@@ -35,8 +36,9 @@ fn main() -> Result<()> {
                 .short('t')
                 .long("timeout")
                 .action(ArgAction::Set)
+                .default_value("0")
                 .value_name("SECONDS")
-                .help("Timeout (in seconds) for target execution [default: disabled]")
+                .help("Timeout (in seconds) for target execution [default: 0 (disabled)]")
                 .value_parser(clap::value_parser!(u64).range(0..))
         )
         .arg(
@@ -84,10 +86,8 @@ fn main() -> Result<()> {
             .help("Force casr-san run without sanitizers symbols check"))
         .arg(
             Arg::new("casr-gdb-args")
-                .long("gdb")
+                .long("casr-gdb-args")
                 .action(ArgAction::Set)
-                .num_args(1..)
-                .value_terminator(";")
                 .help("Specify casr-gdb target arguments to add casr reports for uninstrumented binary"),
         )
         .arg(
@@ -151,11 +151,13 @@ fn main() -> Result<()> {
         }
     };
 
-    let gdb_argv = matches
-        .get_many::<String>("casr-gdb-args")
-        .unwrap_or_default()
-        .cloned()
-        .collect();
+    let gdb_argv = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
+        argv.split(' ')
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+    } else {
+        Vec::new()
+    };
 
     // Generate reports
     generate_reports(&matches, &crashes, tool, &gdb_argv)

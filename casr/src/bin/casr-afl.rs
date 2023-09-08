@@ -1,4 +1,5 @@
-use casr::util::{self, generate_reports, CrashInfo};
+use casr::analysis::{generate_reports, CrashInfo};
+use casr::util;
 
 use anyhow::Result;
 use clap::{
@@ -36,9 +37,10 @@ fn main() -> Result<()> {
                 .short('t')
                 .long("timeout")
                 .action(ArgAction::Set)
+                .default_value("0")
                 .value_name("SECONDS")
-                .help("Timeout (in seconds) for target execution [default: disabled]")
-                .value_parser(clap::value_parser!(u64).range(1..))
+                .help("Timeout (in seconds) for target execution [default: 0 (disabled)]")
+                .value_parser(clap::value_parser!(u64).range(0..))
         )
         .arg(
             Arg::new("input")

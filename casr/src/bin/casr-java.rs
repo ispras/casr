@@ -66,16 +66,6 @@ fn main() -> Result<()> {
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
-            Arg::new("sub-tool")
-                .long("sub-tool")
-                .default_value("casr-san")
-                .action(ArgAction::Set)
-                .value_name("SUB_TOOL")
-                .help(
-                    "Sub tool name for crash analysis that will be called when main tool fails to detect a crash",
-                ),
-        )
-        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .num_args(1..)
