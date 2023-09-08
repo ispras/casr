@@ -67,7 +67,7 @@ Run casr-san:
 
     $ casr-san -o asan.casrep -- ./test_asan_df
 
-If you using casr-san in docker container modify you seccomp profile to allow
+If you are using casr-san in docker container modify your seccomp profile to allow
 personality syscall (details can be found [here](https://docs.docker.com/engine/security/seccomp/)).
 
 ## casr-ubsan
