@@ -38,7 +38,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .default_value("0")
                 .value_name("SECONDS")
-                .help("Timeout (in seconds) for target execution [default: 0 (disabled)]")
+                .help("Timeout (in seconds) for target execution, disabled by default")
                 .value_parser(clap::value_parser!(u64).range(0..))
         )
         .arg(

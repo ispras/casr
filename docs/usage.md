@@ -116,17 +116,15 @@ Create CASR reports (.casrep) from python reports
       [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
-                             generated
-          --stdout           Print CASR report to stdout
-          --stdin <FILE>     Stdin file for program
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                               is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
       -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
-          --ignore <FILE>    File with regular expressions for functions and file paths that
-                             should be ignored
-          --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
-                             tool fails to detect a crash [default: casr-san]
-      -h, --help             Print help
-      -V, --version          Print version
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                               should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
 
 Example:
 
@@ -142,17 +140,15 @@ Create CASR reports (.casrep) from java reports
       [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
-                             generated
-          --stdout           Print CASR report to stdout
-          --stdin <FILE>     Stdin file for program
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                               is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
       -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
-          --ignore <FILE>    File with regular expressions for functions and file paths that
-                             should be ignored
-          --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
-                             tool fails to detect a crash [default: casr-san]
-      -h, --help             Print help
-      -V, --version          Print version
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                               should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
 
 Run casr-java:
 
@@ -355,8 +351,8 @@ Triage crashes found by AFL++
                                    debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
-      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
-                                   disabled]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, disabled by
+                                   default [default: 0]
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
           --no-cluster             Do not cluster CASR reports
@@ -454,18 +450,26 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
       [ARGS]...  Add "-- ./fuzz_target <arguments>"
 
     Options:
-      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
-                                   debug]
-      -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
-                                   [default: half of cpu cores]
-      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
-                                   disabled]
-      -i, --input <INPUT_DIR>      Directory containing crashes found by libFuzzer [default:
-                                   .]
-      -o, --output <OUTPUT_DIR>    Output directory with triaged reports
-          --no-cluster             Do not cluster CASR reports
-      -h, --help                   Print help
-      -V, --version                Print version
+      -l, --log-level <log-level>
+              Logging level [default: info] [possible values: info, debug]
+      -j, --jobs <jobs>
+              Number of parallel jobs for generating CASR reports [default: half of cpu cores]
+      -t, --timeout <SECONDS>
+              Timeout (in seconds) for target execution, disabled by default [default: 0]
+      -i, --input <INPUT_DIR>
+              Directory containing crashes found by libFuzzer [default: .]
+      -o, --output <OUTPUT_DIR>
+              Output directory with triaged reports
+          --no-cluster
+              Do not cluster CASR reports
+          --san-force
+              Force casr-san run without sanitizers symbols check
+          --casr-gdb-args <casr-gdb-args>
+              Specify casr-gdb target arguments to add casr reports for uninstrumented binary
+      -h, --help
+              Print help
+      -V, --version
+              Print version
 
 `casr-libfuzzer` provides integration with
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers
