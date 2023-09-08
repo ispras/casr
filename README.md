@@ -1,6 +1,7 @@
 [![CI](https://github.com/ispras/casr/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/main.yml)
 [![Crates.io](https://img.shields.io/crates/v/casr)](https://crates.io/crates/casr)
 [![Documentation](https://docs.rs/libcasr/badge.svg)](https://docs.rs/libcasr)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/ispras/casr/blob/master/LICENSE)
 
 # CASR: Crash Analysis and Severity Report
 
