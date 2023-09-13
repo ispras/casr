@@ -1,7 +1,9 @@
+//! Post-fuzzing analysis module
 use crate::util::{get_atheris_lib, get_path, initialize_dirs, log_progress};
 
 use std::collections::HashMap;
 use std::fs;
+use std::os::fd::AsFd;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::RwLock;
@@ -21,7 +23,7 @@ pub struct CrashInfo {
     /// Input file argument index starting from argv\[1\], None for stdin.
     pub at_index: Option<usize>,
     /// ASAN.
-    pub is_asan: bool,
+    pub casr_tool: PathBuf,
 }
 
 impl<'a> CrashInfo {
@@ -38,21 +40,22 @@ impl<'a> CrashInfo {
     /// *  `envs` - environment variables for target
     pub fn run_casr<T: Into<Option<&'a Path>>>(
         &self,
-        tool: &PathBuf,
         output_dir: T,
         timeout: u64,
         envs: &HashMap<String, String>,
     ) -> Result<()> {
+        let tool = &self.casr_tool;
+        let tool_name = tool.file_name().unwrap().to_str().unwrap();
         let mut args: Vec<String> = vec!["-o".to_string()];
         let (report_path, output_dir) = if let Some(out) = output_dir.into() {
             (out.join(self.path.file_name().unwrap()), out)
         } else {
             (self.path.clone(), self.path.parent().unwrap())
         };
-        if self.is_asan {
-            args.push(format!("{}.casrep", report_path.display()));
-        } else {
+        if tool_name.eq("casr-gdb") {
             args.push(format!("{}.gdb.casrep", report_path.display()));
+        } else {
+            args.push(format!("{}.casrep", report_path.display()));
         }
 
         args.push("--".to_string());
@@ -61,8 +64,8 @@ impl<'a> CrashInfo {
             let input = args[at_index + 3].replace("@@", self.path.to_str().unwrap());
             args[at_index + 3] = input;
         }
-        let tool_name = tool.file_name().unwrap().to_str().unwrap();
         if tool_name.ends_with("casr-python") {
+            // Put python3 after --
             args.insert(3, "python3".to_string());
         }
         if self.at_index.is_none() {
@@ -128,40 +131,59 @@ impl<'a> CrashInfo {
     }
 }
 
-/// Perform analysis
+/// Perform crash analysis pipeline: Create, deduplicate and cluster CASR reports.
 ///
 /// # Arguments
 ///
-/// `matches` - tool arguments
+/// * `matches` - tool arguments
 ///
-/// `crashes` - set of crashes, specified as a CrashInfo structure
-///
-/// `tool` - tool that generates reports
-///
-/// `gdb_argv` - arguments for casr-gdb
-pub fn generate_reports(
+/// * `crashes` - map of crashes, specified as a HashMap, where
+///               key is crash input file name and value is CrashInfo structure
+pub fn handle_crashes(
     matches: &clap::ArgMatches,
     crashes: &HashMap<String, CrashInfo>,
-    tool: &str,
-    gdb_argv: &Vec<String>,
 ) -> Result<()> {
-    // Get tool paths
-    let casr_tool = get_path(tool)?;
-    let casr_gdb = get_path("casr-gdb")?;
+    // Get casr-cluster path
     let casr_cluster = get_path("casr-cluster")?;
+
+    let mut envs = HashMap::new();
+    if crashes.is_empty() {
+        bail!("No crashes found");
+    } else {
+        let (_, crash_info) = crashes.iter().next().unwrap();
+        if crash_info
+            .target_args
+            .iter()
+            .any(|x| x.contains("-detect_leaks=0"))
+        {
+            envs.insert(
+                "ASAN_OPTIONS".to_string(),
+                format!(
+                    "{},detect_leaks=0",
+                    std::env::var("ASAN_OPTIONS").unwrap_or(String::new())
+                ),
+            );
+        }
+    }
+    let envs = if crashes
+        .iter()
+        .next()
+        .unwrap()
+        .1
+        .casr_tool
+        .ends_with("casr-python")
+    {
+        HashMap::from([("LD_PRELOAD".to_string(), get_atheris_lib()?)])
+    } else {
+        HashMap::new()
+    };
+
+    let output_dir = initialize_dirs(matches)?;
     // Get timeout
     let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
         *timeout
     } else {
         0
-    };
-
-    let output_dir = initialize_dirs(matches)?;
-
-    let envs = if tool.eq("casr-python") {
-        HashMap::from([("LD_PRELOAD".to_string(), get_atheris_lib()?)])
-    } else {
-        HashMap::new()
     };
 
     // Get number of threads
@@ -185,8 +207,7 @@ pub fn generate_reports(
         .join(
             || {
                 crashes.par_iter().try_for_each(|(_, crash)| {
-                    let tool = if crash.is_asan { &casr_tool } else { &casr_gdb };
-                    if let Err(e) = crash.run_casr(tool, output_dir.as_path(), timeout, &envs) {
+                    if let Err(e) = crash.run_casr(output_dir.as_path(), timeout, &envs) {
                         // Disable util::log_progress
                         *counter.write().unwrap() = total;
                         bail!(e);
@@ -202,7 +223,7 @@ pub fn generate_reports(
     // Deduplicate reports.
     if output_dir.read_dir()?.count() < 2 {
         info!("There are less than 2 CASR reports, nothing to deduplicate.");
-        return summarize_results(output_dir, crashes, gdb_argv, num_of_threads, timeout);
+        return summarize_results(matches, crashes);
     }
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new(&casr_cluster)
@@ -233,7 +254,7 @@ pub fn generate_reports(
             < 2
         {
             info!("There are less than 2 CASR reports, nothing to cluster.");
-            return summarize_results(output_dir, crashes, gdb_argv, num_of_threads, timeout);
+            return summarize_results(matches, crashes);
         }
         info!("Clustering CASR reports...");
         let casr_cluster_c = Command::new(&casr_cluster)
@@ -261,32 +282,47 @@ pub fn generate_reports(
         }
     }
 
-    summarize_results(output_dir, crashes, gdb_argv, num_of_threads, timeout)
+    summarize_results(matches, crashes)
 }
 
 /// Copy crashes next to reports and print summary.
 /// Run casr-gdb on uninstrumented binary if specified in ARGS.
+/// Print analysis statistic.
 ///
 /// # Arguments
 ///
-/// * `dir` - directory with casr reports
+/// * `matches` - tool arguments
 ///
-/// * `crashes` - crashes info
-///
-/// * `gdb_args` - run casr-gdb on uninstrumented binary if specified
-///
-/// * `jobs` - number of threads for casr-gdb reports generation
-///
-/// * `timeout` - target program timeout
+/// * `crashes` - set of crashes, specified as a CrashInfo structure
 fn summarize_results(
-    dir: &Path,
+    matches: &clap::ArgMatches,
     crashes: &HashMap<String, CrashInfo>,
-    gdb_args: &Vec<String>,
-    jobs: usize,
-    timeout: u64,
 ) -> Result<()> {
+    // Get output dir
+    let dir = matches.get_one::<PathBuf>("output").unwrap();
     // Copy crashes next to reports
     copy_crashes(dir, crashes)?;
+
+    // Get casr-gdb args
+    let gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
+        argv.split(' ')
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+    } else {
+        Vec::new()
+    };
+    // Get timeout
+    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
+        *timeout
+    } else {
+        0
+    };
+    // Get number of threads
+    let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
+        *jobs as usize
+    } else {
+        std::cmp::max(1, num_cpus::get() / 2)
+    };
 
     if !gdb_args.is_empty() {
         let casr_gdb = get_path("casr-gdb")?;
@@ -326,14 +362,10 @@ fn summarize_results(
                                 path: crash.to_path_buf(),
                                 target_args: gdb_args.clone(),
                                 at_index,
-                                is_asan: false,
+                                casr_tool: casr_gdb.clone(),
                             })
-                            .run_casr(
-                                &casr_gdb,
-                                None,
-                                timeout,
-                                &HashMap::new(),
-                            ) {
+                            .run_casr(None, timeout, &HashMap::new())
+                            {
                                 // Disable util::log_progress
                                 *counter.write().unwrap() = total;
                                 bail!(e);
@@ -353,7 +385,7 @@ fn summarize_results(
     let status = Command::new(casr_cli)
         .arg(dir)
         .stderr(std::process::Stdio::inherit())
-        .stdout(std::process::Stdio::inherit())
+        .stdout(std::io::stderr().as_fd().try_clone_to_owned()?)
         .status()
         .with_context(|| "Couldn't launch casr-cli".to_string())?;
 

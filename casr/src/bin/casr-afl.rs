@@ -1,4 +1,4 @@
-use casr::analysis::{generate_reports, CrashInfo};
+use casr::analysis::{handle_crashes, CrashInfo};
 use casr::util;
 
 use anyhow::Result;
@@ -82,24 +82,18 @@ fn main() -> Result<()> {
                 .help("Do not cluster CASR reports")
         )
         .arg(
-            Arg::new("ARGS")
+            Arg::new("casr-gdb-args")
+                .long("casr-gdb-args")
                 .action(ArgAction::Set)
-                .required(false)
-                .num_args(1..)
-                .last(true)
-                .help("Add \"-- ./gdb_fuzz_target <arguments>\" to generate additional crash reports with casr-gdb (e.g., test whether program crashes without sanitizers)"),
+                .help("Specify casr-gdb target arguments to generate casr reports for uninstrumented binary"),
         )
         .get_matches();
 
     // Init log.
     util::initialize_logging(&matches);
 
-    // Get optional gdb fuzz target args.
-    let gdb_argv: Vec<String> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
-        argvs.cloned().collect()
-    } else {
-        Vec::new()
-    };
+    let casr_san = util::get_path("casr-san")?;
+    let casr_gdb = util::get_path("casr-gdb")?;
 
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
@@ -110,7 +104,10 @@ fn main() -> Result<()> {
         }
 
         // Get crashes from one node.
-        let mut crash_info = CrashInfo::default();
+        let mut crash_info = casr::analysis::CrashInfo {
+            casr_tool: casr_gdb.clone(),
+            ..Default::default()
+        };
         let cmdline_path = path.join("cmdline");
         if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
             crash_info.target_args = cmdline.split_whitespace().map(|s| s.to_string()).collect();
@@ -123,7 +120,11 @@ fn main() -> Result<()> {
 
             if let Some(target) = crash_info.target_args.first() {
                 match util::symbols_list(Path::new(target)) {
-                    Ok(list) => crash_info.is_asan = list.contains("__asan"),
+                    Ok(list) => {
+                        if list.contains("__asan") {
+                            crash_info.casr_tool = casr_san.clone()
+                        }
+                    }
                     Err(e) => {
                         error!("{e}");
                         continue;
@@ -155,5 +156,5 @@ fn main() -> Result<()> {
     }
 
     // Generate reports
-    generate_reports(&matches, &crashes, "casr-san", &gdb_argv)
+    handle_crashes(&matches, &crashes)
 }

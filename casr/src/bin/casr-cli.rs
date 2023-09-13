@@ -906,23 +906,23 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             continue;
         }
 
-        eprintln!("==> <{}>", filename.magenta());
+        println!("==> <{}>", filename.magenta());
         for info in cluster_hash.values() {
             if ubsan {
                 // /path/to/report.casrep: Description: crashline (path:line:column)
-                eprintln!("{}: {}", info.0.last().unwrap(), info.0[0]);
+                println!("{}: {}", info.0.last().unwrap(), info.0[0]);
                 continue;
             }
             // Crash: /path/to/input or /path/to/report.casrep
-            eprintln!("{}: {}", "Crash".green(), info.0.last().unwrap());
+            println!("{}: {}", "Crash".green(), info.0.last().unwrap());
             // casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
-            eprintln!("  {}", info.0[0]);
+            println!("  {}", info.0[0]);
             if info.0.len() == 3 {
                 // gdb.casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
-                eprintln!("  {}", info.0[1]);
+                println!("  {}", info.0[1]);
             }
             // Number of crashes with the same hash
-            eprintln!("  Similar crashes: {}", info.1);
+            println!("  Similar crashes: {}", info.1);
         }
         let mut classes = String::new();
         cluster_classes.iter().for_each(|(class, number)| {
@@ -933,7 +933,7 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             );
         });
         if !ubsan {
-            eprintln!("Cluster summary ->{classes}");
+            println!("Cluster summary ->{classes}");
         }
     }
     let mut classes = String::new();
@@ -941,9 +941,9 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
         .iter()
         .for_each(|(class, number)| classes.push_str(format!(" {class}: {number}").as_str()));
     if classes.is_empty() {
-        eprintln!("{} -> {}", "SUMMARY".magenta(), "No crashes found".red());
+        println!("{} -> {}", "SUMMARY".magenta(), "No crashes found".red());
     } else {
-        eprintln!("{} ->{}", "SUMMARY".magenta(), classes);
+        println!("{} ->{}", "SUMMARY".magenta(), classes);
     }
 }
 

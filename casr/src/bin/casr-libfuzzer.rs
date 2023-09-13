@@ -1,4 +1,4 @@
-use casr::analysis::{generate_reports, CrashInfo};
+use casr::analysis::{handle_crashes, CrashInfo};
 use casr::util;
 
 use anyhow::{bail, Result};
@@ -106,35 +106,18 @@ fn main() -> Result<()> {
     let input_dir = matches.get_one::<PathBuf>("input").unwrap().as_path();
 
     // Get fuzz target args.
-    let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
+    let mut argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
         argvs.map(|v| v.as_str()).collect()
     } else {
         bail!("Invalid fuzz target arguments");
     };
-    let at_index = argv
-        .iter()
-        .skip(1)
-        .position(|s| s.contains("@@"))
-        .map(|x| x + 1);
+    let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
+        idx + 1
+    } else {
+        argv.push("@@");
+        argv.len() - 1
+    };
 
-    // Get all crashes.
-    let crashes: HashMap<String, CrashInfo> = fs::read_dir(input_dir)?
-        .flatten()
-        .map(|p| p.path())
-        .filter(|p| p.is_file())
-        .map(|p| {
-            (
-                p.file_name().unwrap().to_str().unwrap().to_string(),
-                CrashInfo {
-                    path: p,
-                    target_args: argv.iter().map(|x| x.to_string()).collect(),
-                    at_index,
-                    is_asan: true,
-                },
-            )
-        })
-        .filter(|(fname, _)| fname.starts_with("crash-") || fname.starts_with("leak-"))
-        .collect();
     let tool = if argv[0].ends_with(".py") {
         "casr-python"
     } else if argv[0].ends_with("jazzer") || argv[0].ends_with("java") {
@@ -150,15 +133,27 @@ fn main() -> Result<()> {
             "casr-gdb"
         }
     };
+    let tool = util::get_path(tool)?;
 
-    let gdb_argv = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
-        argv.split(' ')
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-    } else {
-        Vec::new()
-    };
+    // Get all crashes.
+    let crashes: HashMap<String, CrashInfo> = fs::read_dir(input_dir)?
+        .flatten()
+        .map(|p| p.path())
+        .filter(|p| p.is_file())
+        .map(|p| {
+            (
+                p.file_name().unwrap().to_str().unwrap().to_string(),
+                CrashInfo {
+                    path: p,
+                    target_args: argv.iter().map(|x| x.to_string()).collect(),
+                    at_index: Some(at_index),
+                    casr_tool: tool.clone(),
+                },
+            )
+        })
+        .filter(|(fname, _)| fname.starts_with("crash-") || fname.starts_with("leak-"))
+        .collect();
 
     // Generate reports
-    generate_reports(&matches, &crashes, tool, &gdb_argv)
+    handle_crashes(&matches, &crashes)
 }

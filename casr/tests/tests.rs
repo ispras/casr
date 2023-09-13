@@ -3459,9 +3459,8 @@ fn test_casr_afl() {
             &paths[0],
             "-o",
             &paths[1],
-            "--",
-            "/tmp/load_sydr",
-            "@@",
+            "--casr-gdb-args",
+            "/tmp/load_sydr @@",
         ])
         .env(
             "PATH",
@@ -3647,7 +3646,7 @@ fn test_casr_libfuzzer() {
         .parent()
         .unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
-    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2], "@@"])
+    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2]])
         .env(
             "PATH",
             format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
@@ -3757,7 +3756,7 @@ fn test_casr_libfuzzer_atheris() {
         .parent()
         .unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
-    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2], "@@"])
+    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2]])
         .env(
             "PATH",
             format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
