@@ -307,7 +307,7 @@ pub fn get_atheris_lib() -> Result<String> {
 ///
 /// `matches` - tool argumnets
 ///
-/// Return value
+/// # Return value
 ///
 /// Path to output directory
 pub fn initialize_dirs(matches: &clap::ArgMatches) -> Result<&PathBuf> {
@@ -339,6 +339,10 @@ pub fn initialize_dirs(matches: &clap::ArgMatches) -> Result<&PathBuf> {
 /// # Arguments
 ///
 /// * `path` - path to binary to check.
+///
+/// # Return value
+///
+/// Set of important symbols
 pub fn symbols_list(path: &Path) -> Result<HashSet<&str>> {
     let mut found_symbols = HashSet::new();
     if let Ok(buffer) = fs::read(path) {

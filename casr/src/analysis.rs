@@ -57,24 +57,23 @@ impl<'a> CrashInfo {
         } else {
             args.push(format!("{}.casrep", report_path.display()));
         }
-
-        args.push("--".to_string());
-        args.extend_from_slice(&self.target_args);
-        if let Some(at_index) = self.at_index {
-            let input = args[at_index + 3].replace("@@", self.path.to_str().unwrap());
-            args[at_index + 3] = input;
-        }
-        if tool_name.ends_with("casr-python") {
-            // Put python3 after --
-            args.insert(3, "python3".to_string());
-        }
         if self.at_index.is_none() {
-            args.insert(0, self.path.to_str().unwrap().to_string());
-            args.insert(0, "--stdin".to_string());
+            args.push("--stdin".to_string());
+            args.push(self.path.to_str().unwrap().to_string());
         }
         if timeout != 0 {
-            args.insert(0, timeout.to_string());
-            args.insert(0, "-t".to_string());
+            args.push("-t".to_string());
+            args.push(timeout.to_string());
+        }
+        args.push("--".to_string());
+        if tool_name.ends_with("casr-python") {
+            args.push("python3".to_string());
+        }
+        let offset = args.len();
+        args.extend_from_slice(&self.target_args);
+        if let Some(at_index) = self.at_index {
+            let input = args[at_index + offset].replace("@@", self.path.to_str().unwrap());
+            args[at_index + offset] = input;
         }
 
         let mut casr_cmd = Command::new(tool);
