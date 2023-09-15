@@ -1,0 +1,9 @@
+     #0  0x00000000005e3099 in xlnt::detail::compound_document::read_directory (this=0x7fffffffcee0) at /xlnt/source/detail/cryptography/compound_document.cpp:975
+     #1  0x00000000005e2956 in xlnt::detail::compound_document::compound_document (this=0x7fffffffcee0, in=...) at /xlnt/source/detail/cryptography/compound_document.cpp:517
+     #2  0x000000000048a45c in (anonymous namespace)::decrypt_xlsx (bytes=std::vector of length 18655, capacity 32768 = {...}, password=u\"VelvetSweatshop\") at /xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp:320
+     #3  0x000000000048a2d9 in xlnt::detail::decrypt_xlsx (data=std::vector of length 18655, capacity 32768 = {...}, password=) at /xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp:339
+     #4  0x000000000048a7f6 in xlnt::detail::xlsx_consumer::read (this=0x7fffffffd8f0, source=..., password=) at /xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp:345
+     #5  0x000000000040ddd6 in xlnt::workbook::load (this=0x7fffffffdbc8, stream=...) at /xlnt/source/workbook/workbook.cpp:901
+     #6  0x00000000004142af in xlnt::workbook::load (this=0x7fffffffdbc8, data=std::vector of length 18655, capacity 18655 = {...}) at /xlnt/source/workbook/workbook.cpp:919
+     #7  0x00000000004073bd in LLVMFuzzerTestOneInput (data=<optimized out>, data@entry=0x6ec0a0 \"\\320\\317\\021\\340\\241\\261\", <incomplete sequence \\341>, size=<optimized out>, size@entry=18655) at /home/avgor46/test_threads_casr/xlnt/load_sydr.cc:13
+     #8  0x00000000004074cb in main (argc=<optimized out>, argv=<optimized out>) at /home/avgor46/test_threads_casr/xlnt/load_sydr.cc:39
