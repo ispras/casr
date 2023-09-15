@@ -164,7 +164,7 @@ pub fn handle_crashes(
             );
         }
     }
-    let envs = if crashes
+    if crashes
         .iter()
         .next()
         .unwrap()
@@ -172,10 +172,8 @@ pub fn handle_crashes(
         .casr_tool
         .ends_with("casr-python")
     {
-        HashMap::from([("LD_PRELOAD".to_string(), get_atheris_lib()?)])
-    } else {
-        HashMap::new()
-    };
+        envs.insert("LD_PRELOAD".to_string(), get_atheris_lib()?);
+    }
 
     let output_dir = initialize_dirs(matches)?;
     // Get timeout
