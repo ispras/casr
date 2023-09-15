@@ -175,9 +175,6 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub package_description: String,
-    /// Timestamp.
-    #[cfg_attr(feature = "serde", serde(skip_deserializing))]
-    pub timestamp: i64,
     /// Asan report.
     #[cfg_attr(
         feature = "serde",
@@ -235,7 +232,6 @@ impl CrashReport {
         let mut report: CrashReport = Default::default();
         let local: DateTime<Local> = Local::now();
         report.date = local.to_rfc3339_opts(SecondsFormat::Micros, false);
-        report.timestamp = local.timestamp_nanos();
         report
     }
 
