@@ -195,6 +195,10 @@ pub fn handle_crashes(
         .build()
         .unwrap();
 
+    info!("Analyzing {} files...", crashes.len());
+    if timeout != 0 {
+        info!("Timeout for target execution is {timeout} seconds");
+    }
     // Generate CASR reports.
     info!("Generating CASR reports...");
     info!("Using {} threads", num_of_threads - 1);
