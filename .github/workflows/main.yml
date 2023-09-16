@@ -41,6 +41,11 @@ jobs:
     - uses: actions/checkout@v2
     - name: Fuzzing
       run: |
+        curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
+        ./rustup.sh -y && rm rustup.sh
+        rustup install nightly
+        export PATH=/root/.cargo/bin:$PATH
+        cargo install cargo-fuzz
         cd libcasr/fuzz
         mkdir corpus
         cargo +nightly fuzz run parse_stacktrace corpus init_corpus -- -max_total_time=600
