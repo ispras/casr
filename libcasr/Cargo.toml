@@ -9,7 +9,7 @@ repository = "https://github.com/ispras/casr.git"
 documentation = "https://docs.rs/libcasr"
 edition = "2021"
 license = "Apache-2.0"
-exclude = ["/tests"]
+exclude = ["/fuzz"]
 
 [dependencies]
 regex = "1"

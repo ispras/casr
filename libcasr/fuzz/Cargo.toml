@@ -1,0 +1,28 @@
+[package]
+name = "libcasr-fuzz"
+version = "0.1.0"
+authors = ["Andrey Fedotov fedotoff@ispras.ru"]
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.libcasr]
+path = ".."
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "parse_stacktrace"
+path = "fuzz_targets/parse_stacktrace.rs"
+test = false
+doc = false

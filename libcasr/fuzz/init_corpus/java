@@ -1,0 +1,9 @@
+== Java Exception: java.lang.IndexOutOfBoundsException: start 328, end 292, length 441
+	at java.base/java.lang.AbstractStringBuilder.checkRange(AbstractStringBuilder.java:1802)
+	at java.base/java.lang.AbstractStringBuilder.append(AbstractStringBuilder.java:680)
+	at java.base/java.lang.StringBuilder.append(StringBuilder.java:218)
+	at com.google.json.JsonSanitizer.elide(JsonSanitizer.java:717)
+	at com.google.json.JsonSanitizer.normalizeNumber(JsonSanitizer.java:864)
+	at com.google.json.JsonSanitizer.sanitize(JsonSanitizer.java:440)
+	at com.google.json.JsonSanitizer.sanitize(JsonSanitizer.java:122)
+	at DenylistFuzzer.fuzzerTestOneInput(DenylistFuzzer.java:27)
