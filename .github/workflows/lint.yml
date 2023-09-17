@@ -1,0 +1,21 @@
+name: lint
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  ubuntu-latest:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Code Style
+      run: cargo fmt -- --check
+    - name: Clippy
+      run: RUSTFLAGS="-Dwarnings" cargo clippy --all-features --all --tests
