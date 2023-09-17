@@ -237,6 +237,8 @@ Savidov G., Fedotov A. Casr-Cluster: Crash Clustering for Linux Applications. 20
 }
 ```
 
+Andrey Fedotov, Alexey Vishnyakov. CASR: Your Life Vest in a Sea of Crashes. OFFZONE 2023. \[[slides](https://offzone.moscow/upload/iblock/6cc/pujglwwoc8teeol03jwsuirfplm8e4dc.pdf)\] \[[russian&nbsp;video](https://youtu.be/EgEeICZQD9M?si=hiFEwPmDqnh0cEq6)\]
+
 ## License
 
 Licensed under [Apache-2.0](LICENSE).
