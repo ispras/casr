@@ -212,13 +212,13 @@ by `casr-libfuzzer`.
 
 ## Contributing
 
-Feel free to open issues or PRs! We appreciate your support!
+Feel free to open [issues](https://github.com/ispras/casr/issues) or [PRs](https://github.com/ispras/casr/pulls) (especially pay attention to [help wanted](https://github.com/ispras/casr/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) issues)! We appreciate your support!
 
 Please follow the next recommendations for your pull requests:
 
 - compile with *stable* rust
 - use `cargo fmt`
-- check the output of `cargo clippy --all`
+- check the output of `cargo clippy --all-features --all --tests`
 - run tests `cargo test`
 
 ## Cite Us
