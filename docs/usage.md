@@ -70,6 +70,10 @@ Run casr-san:
 If you are using casr-san in docker container modify your seccomp profile to allow
 personality syscall (details can be found [here](https://docs.docker.com/engine/security/seccomp/)).
 
+If you are using casr-san to get CASR report for Rust binary. You can choose between
+ASAN stacktrace or Rust backtrace to analyze. If environment variable
+`RUST_BACKTRACE=(1|full)` is specified, then Rust backtrace is considered.
+
 ## casr-ubsan
 
 Triage errors found by UndefinedBehaviorSanitizer and create CASR reports (.casrep)
@@ -444,6 +448,9 @@ binary with `casr-gdb`:
 Thus, `casr-afl` will generate GDB crash report for each unique ASAN crash. So,
 you can estimate crash severity for program built without sanitizers.
 
+You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-afl`. This
+variable may be used by [casr-san](#casr-san).
+
 ## casr-libfuzzer
 
 Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
@@ -482,6 +489,9 @@ Atheris example:
     $ unzip casr/tests/casr_tests/python/ruamel.zip
     $ cp casr/tests/casr_tests/python/yaml_fuzzer.py .
     $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- ./yaml_fuzzer.py
+
+You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-libfuzzer`. This
+variable may be used by [casr-san](#casr-san).
 
 ## casr-dojo
 
