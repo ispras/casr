@@ -79,6 +79,12 @@ impl ParseStacktrace for RustStacktrace {
             }
         }
 
+        if stacktrace.is_empty() {
+            return Err(Error::Casr(
+                "Couldn't find stacktrace entries in Rust panic output".to_string(),
+            ));
+        }
+
         Ok(stacktrace)
     }
 

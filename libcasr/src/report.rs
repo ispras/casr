@@ -210,6 +210,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub java_report: Vec<String>,
+    /// Rust report.
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "RustReport", deserialize = "RustReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub rust_report: Vec<String>,
     /// Crash line from stack trace: source:line or binary+offset.
     #[cfg_attr(
         feature = "serde",
