@@ -436,6 +436,16 @@ fn build_tree_report(
         tree.collapse_item(row);
     }
 
+    if !report.rust_report.is_empty() {
+        row = tree
+            .insert_container_item("RustReport".to_string(), Placement::After, row)
+            .unwrap();
+        report.rust_report.iter().for_each(|e| {
+            tree.insert_item(e.clone(), Placement::LastChild, row);
+        });
+        tree.collapse_item(row);
+    }
+
     if !report.source.is_empty() {
         row = tree
             .insert_container_item("Source".to_string(), Placement::After, row)
@@ -610,6 +620,10 @@ fn build_slider_report(
 
     if !report.go_report.is_empty() {
         select.add_item("GoReport", report.go_report.join("\n"));
+    }
+
+    if !report.rust_report.is_empty() {
+        select.add_item("RustReport", report.rust_report.join("\n"));
     }
 
     if !report.source.is_empty() {
