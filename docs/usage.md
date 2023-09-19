@@ -351,8 +351,8 @@ Triage crashes found by AFL++
                                    debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
-      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, disabled by
-                                   default [default: 0]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, 0 value means
+                                   that timeout is disabled [default: 0]
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
           --no-cluster             Do not cluster CASR reports
@@ -455,17 +455,17 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
       -j, --jobs <jobs>
               Number of parallel jobs for generating CASR reports [default: half of cpu cores]
       -t, --timeout <SECONDS>
-              Timeout (in seconds) for target execution, disabled by default [default: 0]
+              Timeout (in seconds) for target execution, 0 means that timeout is disabled
+              [default: 0]
       -i, --input <INPUT_DIR>
               Directory containing crashes found by libFuzzer [default: .]
       -o, --output <OUTPUT_DIR>
               Output directory with triaged reports
           --no-cluster
               Do not cluster CASR reports
-          --san-force
-              Force casr-san run without sanitizers symbols check
           --casr-gdb-args <casr-gdb-args>
-              Specify casr-gdb target arguments to add casr reports for uninstrumented binary
+              Specify casr-gdb target arguments to add casr reports for non-instrumented
+              binary
       -h, --help
               Print help
       -V, --version

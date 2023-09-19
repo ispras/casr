@@ -22,7 +22,7 @@ pub struct CrashInfo {
     pub target_args: Vec<String>,
     /// Input file argument index starting from argv\[1\], None for stdin.
     pub at_index: Option<usize>,
-    /// ASAN.
+    /// Casr tool that should be run on this crash.
     pub casr_tool: PathBuf,
 }
 
@@ -66,7 +66,7 @@ impl<'a> CrashInfo {
             args.push(timeout.to_string());
         }
         args.push("--".to_string());
-        if tool_name.ends_with("casr-python") {
+        if tool_name.eq("casr-python") {
             args.push("python3".to_string());
         }
         let offset = args.len();
@@ -138,7 +138,7 @@ impl<'a> CrashInfo {
 ///
 /// * `crashes` - map of crashes, specified as a HashMap, where
 ///               key is crash input file name and value is CrashInfo structure
-pub fn handle_crashes(
+pub fn fuzzing_crash_triage_pipeline(
     matches: &clap::ArgMatches,
     crashes: &HashMap<String, CrashInfo>,
 ) -> Result<()> {
@@ -148,30 +148,22 @@ pub fn handle_crashes(
     let mut envs = HashMap::new();
     if crashes.is_empty() {
         bail!("No crashes found");
-    } else {
-        let (_, crash_info) = crashes.iter().next().unwrap();
-        if crash_info
-            .target_args
-            .iter()
-            .any(|x| x.contains("-detect_leaks=0"))
-        {
-            envs.insert(
-                "ASAN_OPTIONS".to_string(),
-                format!(
-                    "{},detect_leaks=0",
-                    std::env::var("ASAN_OPTIONS").unwrap_or(String::new())
-                ),
-            );
-        }
     }
-    if crashes
+    let (_, crash_info) = crashes.iter().next().unwrap();
+    if crash_info
+        .target_args
         .iter()
-        .next()
-        .unwrap()
-        .1
-        .casr_tool
-        .ends_with("casr-python")
+        .any(|x| x.contains("-detect_leaks=0"))
     {
+        envs.insert(
+            "ASAN_OPTIONS".to_string(),
+            format!(
+                "{},detect_leaks=0",
+                std::env::var("ASAN_OPTIONS").unwrap_or(String::new())
+            ),
+        );
+    }
+    if crash_info.casr_tool.ends_with("casr-python") {
         envs.insert("LD_PRELOAD".to_string(), get_atheris_lib()?);
     }
 
@@ -305,10 +297,19 @@ fn summarize_results(
     copy_crashes(dir, crashes)?;
 
     // Get casr-gdb args
-    let gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
-        argv.split(' ')
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
+    // it seems that try_get_one does not work correctly in release build
+    let gdb_args = if let Ok(casr_gdb_args) = matches.try_get_one::<String>("casr-gdb-args") {
+        // casr-libfuzzer case
+        if let Some(argv) = casr_gdb_args {
+            argv.split(' ')
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+        } else {
+            Vec::new()
+        }
+    } else if let Ok(Some(argv)) = matches.try_get_many::<String>("ARGS") {
+        // casr-afl case
+        argv.cloned().collect()
     } else {
         Vec::new()
     };
@@ -332,7 +333,7 @@ fn summarize_results(
             .into_iter()
             .filter_entry(|e| {
                 let name = e.file_name().to_str().unwrap();
-                !name.eq("oom") && !name.eq("timeout")
+                !name.eq("clerr") && !name.eq("oom") && !name.eq("timeout")
             })
             .flatten()
             .map(|e| e.into_path())
@@ -425,7 +426,7 @@ fn summarize_results(
             err_dir
                 .filter_map(|x| x.ok())
                 .filter_map(|x| x.file_name().into_string().ok())
-                .filter(|x| x.ends_with("casrep") && !x.ends_with("gdb.casrep"))
+                .filter(|x| x.ends_with("casrep"))
                 .count(),
             &dir.join("clerr")
         );

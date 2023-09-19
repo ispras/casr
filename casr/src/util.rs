@@ -22,7 +22,7 @@ use std::time::Duration;
 use is_executable::IsExecutable;
 use wait_timeout::ChildExt;
 
-/// Call sub tool with the provided options
+/// Call casr-san with the provided options
 ///
 /// # Arguments
 ///
@@ -31,7 +31,7 @@ use wait_timeout::ChildExt;
 /// * `name` - main tool name, that called sub tool
 ///
 /// * `argv` - executable file options
-pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<()> {
+pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<()> {
     let tool = get_path("casr-san")?;
     let mut cmd = Command::new(&tool);
     if let Some(report_path) = matches.get_one::<PathBuf>("output") {
@@ -305,7 +305,7 @@ pub fn get_atheris_lib() -> Result<String> {
 ///
 /// # Arguments
 ///
-/// `matches` - tool argumnets
+/// * `matches` - tool arguments
 ///
 /// # Return value
 ///

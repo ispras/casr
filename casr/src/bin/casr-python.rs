@@ -153,7 +153,7 @@ fn main() -> Result<()> {
             }
         } else {
             // Call sub tool
-            return util::call_sub_tool(&matches, &argv, "casr-python");
+            return util::call_casr_san(&matches, &argv, "casr-python");
         }
     } else if let Some(report_start) = python_stderr_list
         .iter()
@@ -175,7 +175,7 @@ fn main() -> Result<()> {
         }
     } else {
         // Call sub tool
-        return util::call_sub_tool(&matches, &argv, "casr-python");
+        return util::call_casr_san(&matches, &argv, "casr-python");
     }
 
     if let Ok(crash_line) = PythonStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {

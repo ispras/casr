@@ -150,7 +150,7 @@ fn main() -> Result<()> {
         }
     } else {
         // Call sub tool
-        return util::call_sub_tool(&matches, &argv, "casr-java");
+        return util::call_casr_san(&matches, &argv, "casr-java");
     }
 
     if let Ok(crash_line) = JavaStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {

@@ -1,4 +1,4 @@
-use casr::analysis::{handle_crashes, CrashInfo};
+use casr::analysis::{fuzzing_crash_triage_pipeline, CrashInfo};
 use casr::util;
 
 use anyhow::Result;
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .default_value("0")
                 .value_name("SECONDS")
-                .help("Timeout (in seconds) for target execution, disabled by default")
+                .help("Timeout (in seconds) for target execution, 0 value means that timeout is disabled")
                 .value_parser(clap::value_parser!(u64).range(0..))
         )
         .arg(
@@ -82,10 +82,12 @@ fn main() -> Result<()> {
                 .help("Do not cluster CASR reports")
         )
         .arg(
-            Arg::new("casr-gdb-args")
-                .long("casr-gdb-args")
+            Arg::new("ARGS")
                 .action(ArgAction::Set)
-                .help("Specify casr-gdb target arguments to generate casr reports for uninstrumented binary"),
+                .required(false)
+                .num_args(1..)
+                .last(true)
+                .help("Add \"-- ./gdb_fuzz_target <arguments>\" to generate additional crash reports with casr-gdb (e.g., test whether program crashes without sanitizers)"),
         )
         .get_matches();
 
@@ -156,5 +158,5 @@ fn main() -> Result<()> {
     }
 
     // Generate reports
-    handle_crashes(&matches, &crashes)
+    fuzzing_crash_triage_pipeline(&matches, &crashes)
 }

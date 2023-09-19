@@ -1,4 +1,4 @@
-use casr::analysis::{handle_crashes, CrashInfo};
+use casr::analysis::{fuzzing_crash_triage_pipeline, CrashInfo};
 use casr::util;
 
 use anyhow::{bail, Result};
@@ -38,7 +38,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .default_value("0")
                 .value_name("SECONDS")
-                .help("Timeout (in seconds) for target execution, disabled by default")
+                .help("Timeout (in seconds) for target execution, 0 means that timeout is disabled")
                 .value_parser(clap::value_parser!(u64).range(0..))
         )
         .arg(
@@ -80,15 +80,11 @@ fn main() -> Result<()> {
                 .long("no-cluster")
                 .help("Do not cluster CASR reports")
         )
-        .arg(Arg::new("san-force")
-            .long("san-force")
-            .action(ArgAction::SetTrue)
-            .help("Force casr-san run without sanitizers symbols check"))
         .arg(
             Arg::new("casr-gdb-args")
                 .long("casr-gdb-args")
                 .action(ArgAction::Set)
-                .help("Specify casr-gdb target arguments to add casr reports for uninstrumented binary"),
+                .help("Specify casr-gdb target arguments to add casr reports for non-instrumented binary"),
         )
         .arg(
             Arg::new("ARGS")
@@ -124,10 +120,7 @@ fn main() -> Result<()> {
         "casr-java"
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
-        if sym_list.contains("__asan")
-            || sym_list.contains("runtime.go")
-            || matches.get_flag("san-force")
-        {
+        if sym_list.contains("__asan") || sym_list.contains("runtime.go") {
             "casr-san"
         } else {
             "casr-gdb"
@@ -140,9 +133,11 @@ fn main() -> Result<()> {
         .flatten()
         .map(|p| p.path())
         .filter(|p| p.is_file())
-        .map(|p| {
+        .map(|p| (p.file_name().unwrap().to_str().unwrap().to_string(), p))
+        .filter(|(fname, _)| fname.starts_with("crash-") || fname.starts_with("leak-"))
+        .map(|(fname, p)| {
             (
-                p.file_name().unwrap().to_str().unwrap().to_string(),
+                fname,
                 CrashInfo {
                     path: p,
                     target_args: argv.iter().map(|x| x.to_string()).collect(),
@@ -151,9 +146,8 @@ fn main() -> Result<()> {
                 },
             )
         })
-        .filter(|(fname, _)| fname.starts_with("crash-") || fname.starts_with("leak-"))
         .collect();
 
     // Generate reports
-    handle_crashes(&matches, &crashes)
+    fuzzing_crash_triage_pipeline(&matches, &crashes)
 }
