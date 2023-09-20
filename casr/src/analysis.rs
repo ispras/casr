@@ -346,45 +346,43 @@ fn summarize_results(
             .filter(|e| e.extension().is_none() || e.extension().unwrap() != "casrep")
             .filter(|e| !Path::new(format!("{}.gdb.casrep", e.display()).as_str()).exists())
             .collect();
-        let num_of_threads = jobs.min(crashes.len() + 1);
-        if num_of_threads > 1 {
-            info!("casr-gdb: adding crash reports...");
-            info!("Using {} threads", num_of_threads - 1);
-            let counter = RwLock::new(0_usize);
-            let total = crashes.len();
-            let custom_pool = rayon::ThreadPoolBuilder::new()
-                .num_threads(num_of_threads)
-                .build()
-                .unwrap();
-            let at_index = gdb_args
-                .iter()
-                .skip(1)
-                .position(|s| s.contains("@@"))
-                .map(|x| x + 1);
-            custom_pool
-                .join(
-                    || {
-                        crashes.par_iter().try_for_each(|crash| {
-                            if let Err(e) = (CrashInfo {
-                                path: crash.to_path_buf(),
-                                target_args: gdb_args.clone(),
-                                at_index,
-                                casr_tool: casr_gdb.clone(),
-                            })
-                            .run_casr(None, timeout, &HashMap::new())
-                            {
-                                // Disable util::log_progress
-                                *counter.write().unwrap() = total;
-                                bail!(e);
-                            };
-                            *counter.write().unwrap() += 1;
-                            Ok::<(), anyhow::Error>(())
+        let num_of_threads = jobs.min(crashes.len()).max(1) + 1;
+        info!("casr-gdb: adding crash reports...");
+        info!("Using {} threads", num_of_threads - 1);
+        let counter = RwLock::new(0_usize);
+        let total = crashes.len();
+        let custom_pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(num_of_threads)
+            .build()
+            .unwrap();
+        let at_index = gdb_args
+            .iter()
+            .skip(1)
+            .position(|s| s.contains("@@"))
+            .map(|x| x + 1);
+        custom_pool
+            .join(
+                || {
+                    crashes.par_iter().try_for_each(|crash| {
+                        if let Err(e) = (CrashInfo {
+                            path: crash.to_path_buf(),
+                            target_args: gdb_args.clone(),
+                            at_index,
+                            casr_tool: casr_gdb.clone(),
                         })
-                    },
-                    || log_progress(&counter, total),
-                )
-                .0?;
-        }
+                        .run_casr(None, timeout, &HashMap::new())
+                        {
+                            // Disable util::log_progress
+                            *counter.write().unwrap() = total;
+                            bail!(e);
+                        };
+                        *counter.write().unwrap() += 1;
+                        Ok::<(), anyhow::Error>(())
+                    })
+                },
+                || log_progress(&counter, total),
+            )
+            .0?;
     }
 
     let casr_cli = get_path("casr-cli")?;
