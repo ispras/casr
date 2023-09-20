@@ -297,17 +297,22 @@ fn summarize_results(
     copy_crashes(dir, crashes)?;
 
     // Get casr-gdb args
-    // it seems that try_get_one does not work correctly in release build
-    let gdb_args = if let Ok(casr_gdb_args) = matches.try_get_one::<String>("casr-gdb-args") {
+    let tool = std::env::current_exe()?
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    let gdb_args = if tool.eq("casr-libfuzzer") {
         // casr-libfuzzer case
-        if let Some(argv) = casr_gdb_args {
+        if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
             argv.split(' ')
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>()
         } else {
             Vec::new()
         }
-    } else if let Ok(Some(argv)) = matches.try_get_many::<String>("ARGS") {
+    } else if let Some(argv) = matches.get_many::<String>("ARGS") {
         // casr-afl case
         argv.cloned().collect()
     } else {
