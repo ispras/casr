@@ -68,13 +68,11 @@ impl ParseStacktrace for RustStacktrace {
 
         if let Some(caps) = re.captures(entry.as_ref()) {
             let num = caps.get(1).unwrap().as_str();
-            let addr = u64::from_str_radix(num, 16);
-
-            if addr.is_err() {
+            let Ok(addr) = u64::from_str_radix(num, 16) else {
                 return Err(Error::Casr(format!("Couldn't parse address: {num}")));
-            }
+            };
 
-            stentry.address = addr.unwrap();
+            stentry.address = addr;
             stentry.function = caps.get(2).unwrap().as_str().to_string();
 
             if let Some(file_cap) = caps.get(3) {
@@ -82,30 +80,26 @@ impl ParseStacktrace for RustStacktrace {
             }
 
             if let Some(num) = caps.get(4) {
-                let line = num.as_str().parse::<u64>();
-                if line.is_err() {
+                let Ok(line) = num.as_str().parse::<u64>() else {
                     return Err(Error::Casr(format!(
                         "Couldn't parse line: {}",
                         num.as_str()
                     )));
-                }
-                stentry.debug.line = line.unwrap();
+                };
+                stentry.debug.line = line;
             }
 
             if let Some(num) = caps.get(5) {
-                let col = num.as_str().parse::<u64>();
-                if col.is_err() {
+                let Ok(col) = num.as_str().parse::<u64>() else {
                     return Err(Error::Casr(format!(
                         "Couldn't parse column: {}",
                         num.as_str()
                     )));
-                }
-                stentry.debug.column = col.unwrap();
+                };
+                stentry.debug.column = col;
             }
-
             return Ok(stentry);
         }
-
         Err(Error::Casr(format!("Couldn't parse entry {}", entry)))
     }
 }
