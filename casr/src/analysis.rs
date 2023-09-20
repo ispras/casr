@@ -155,12 +155,14 @@ pub fn fuzzing_crash_triage_pipeline(
         .iter()
         .any(|x| x.contains("-detect_leaks=0"))
     {
+        let asan_options = std::env::var("ASAN_OPTIONS").unwrap_or(String::new());
         envs.insert(
             "ASAN_OPTIONS".to_string(),
-            format!(
-                "{},detect_leaks=0",
-                std::env::var("ASAN_OPTIONS").unwrap_or(String::new())
-            ),
+            if asan_options.is_empty() {
+                "detect_leaks=0".to_string()
+            } else {
+                format!("{asan_options},detect_leaks=0",)
+            },
         );
     }
     if crash_info.casr_tool.ends_with("casr-python") {
@@ -306,9 +308,7 @@ fn summarize_results(
     let gdb_args = if tool.eq("casr-libfuzzer") {
         // casr-libfuzzer case
         if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
-            argv.split(' ')
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>()
+            shell_words::split(argv)?
         } else {
             Vec::new()
         }
