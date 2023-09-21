@@ -70,7 +70,7 @@ Run casr-san:
 If you are using casr-san in docker container modify your seccomp profile to allow
 personality syscall (details can be found [here](https://docs.docker.com/engine/security/seccomp/)).
 
-If you are using casr-san to get CASR report for Rust binary. You can choose between
+If you are using casr-san to get CASR report for Rust fuzz target, you can choose between
 ASAN stacktrace or Rust backtrace to analyze. If environment variable
 `RUST_BACKTRACE=(1|full)` is specified, then Rust backtrace is considered.
 
