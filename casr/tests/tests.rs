@@ -3540,6 +3540,8 @@ fn test_casr_ubsan() {
     let work_dir = abs_path("tests/casr_tests/ubsan");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_ubsan");
 
+    let _ = fs::remove_dir_all(&test_dir);
+
     let output = Command::new("cp")
         .args(["-r", &work_dir, &test_dir])
         .output()
@@ -3625,8 +3627,6 @@ fn test_casr_ubsan() {
         .unwrap();
 
     assert_eq!(unique_cnt, 2, "Invalid number of deduplicated reports");
-
-    let _ = fs::remove_dir_all(&test_dir);
 }
 
 #[test]
