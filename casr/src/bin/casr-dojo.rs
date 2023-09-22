@@ -542,6 +542,11 @@ fn get_report_description(
         d += &report.go_report.join("\n");
         d += "\n```\n\n";
     }
+    if !report.rust_report.is_empty() {
+        d += "# Rust report\n\n```\n";
+        d += &report.rust_report.join("\n");
+        d += "\n```\n\n";
+    }
     d += "# Stack trace\n\n```\n";
     d += &report.stacktrace.join("\n");
     d += "\n```\n\n# Environment variables\n\n```\n";

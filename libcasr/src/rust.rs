@@ -35,7 +35,7 @@ pub struct RustStacktrace;
 
 impl ParseStacktrace for RustStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
-        let re = Regex::new(r"( *\d+: *?0x[0-9a-f]+ - .*\n(?: *at .*\n)?)").unwrap();
+        let re = Regex::new(r"( *\d+: *0x[0-9a-f]+ - .*\n(?: *at .*\n)?)").unwrap();
         let mut stacktrace: Vec<_> = re
             .find_iter(stream)
             .map(|s| s.as_str().trim().replace('\n', " "))
@@ -48,14 +48,10 @@ impl ParseStacktrace for RustStacktrace {
         }
 
         // Filter out multiple spaces
+        let re = Regex::new(r" +").unwrap();
         stacktrace = stacktrace
             .iter()
-            .map(|e| {
-                e.split(' ')
-                    .filter(|s| !s.is_empty())
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            })
+            .map(|e| re.replace_all(e, " ").to_string())
             .collect();
 
         Ok(stacktrace)
@@ -66,41 +62,42 @@ impl ParseStacktrace for RustStacktrace {
             .unwrap();
         let mut stentry = StacktraceEntry::default();
 
-        if let Some(caps) = re.captures(entry.as_ref()) {
-            let num = caps.get(1).unwrap().as_str();
-            let Ok(addr) = u64::from_str_radix(num, 16) else {
-                return Err(Error::Casr(format!("Couldn't parse address: {num}")));
-            };
+        let Some(caps) = re.captures(entry.as_ref()) else {
+            return Err(Error::Casr(format!("Couldn't parse entry {}", entry)));
+        };
 
-            stentry.address = addr;
-            stentry.function = caps.get(2).unwrap().as_str().to_string();
+        let num = caps.get(1).unwrap().as_str();
+        let Ok(addr) = u64::from_str_radix(num, 16) else {
+            return Err(Error::Casr(format!("Couldn't parse address: {num}")));
+        };
 
-            if let Some(file_cap) = caps.get(3) {
-                stentry.debug.file = file_cap.as_str().to_string();
-            }
+        stentry.address = addr;
+        stentry.function = caps.get(2).unwrap().as_str().to_string();
 
-            if let Some(num) = caps.get(4) {
-                let Ok(line) = num.as_str().parse::<u64>() else {
-                    return Err(Error::Casr(format!(
-                        "Couldn't parse line: {}",
-                        num.as_str()
-                    )));
-                };
-                stentry.debug.line = line;
-            }
-
-            if let Some(num) = caps.get(5) {
-                let Ok(col) = num.as_str().parse::<u64>() else {
-                    return Err(Error::Casr(format!(
-                        "Couldn't parse column: {}",
-                        num.as_str()
-                    )));
-                };
-                stentry.debug.column = col;
-            }
-            return Ok(stentry);
+        if let Some(file_cap) = caps.get(3) {
+            stentry.debug.file = file_cap.as_str().to_string();
         }
-        Err(Error::Casr(format!("Couldn't parse entry {}", entry)))
+
+        if let Some(num) = caps.get(4) {
+            let Ok(line) = num.as_str().parse::<u64>() else {
+                return Err(Error::Casr(format!(
+                    "Couldn't parse line: {}",
+                    num.as_str()
+                )));
+            };
+            stentry.debug.line = line;
+        }
+
+        if let Some(num) = caps.get(5) {
+            let Ok(col) = num.as_str().parse::<u64>() else {
+                return Err(Error::Casr(format!(
+                    "Couldn't parse column: {}",
+                    num.as_str()
+                )));
+            };
+            stentry.debug.column = col;
+        }
+        Ok(stentry)
     }
 }
 
