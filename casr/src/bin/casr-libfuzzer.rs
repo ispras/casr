@@ -1,4 +1,4 @@
-use casr::analysis::{fuzzing_crash_triage_pipeline, CrashInfo};
+use casr::triage::{fuzzing_crash_triage_pipeline, CrashInfo};
 use casr::util;
 
 use anyhow::{bail, Result};

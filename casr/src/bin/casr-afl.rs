@@ -1,4 +1,4 @@
-use casr::analysis::{fuzzing_crash_triage_pipeline, CrashInfo};
+use casr::triage::{fuzzing_crash_triage_pipeline, CrashInfo};
 use casr::util;
 
 use anyhow::Result;
@@ -106,7 +106,7 @@ fn main() -> Result<()> {
         }
 
         // Get crashes from one node.
-        let mut crash_info = casr::analysis::CrashInfo {
+        let mut crash_info = casr::triage::CrashInfo {
             casr_tool: casr_gdb.clone(),
             ..Default::default()
         };

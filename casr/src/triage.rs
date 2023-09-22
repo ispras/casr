@@ -1,4 +1,5 @@
-//! Post-fuzzing analysis module
+//! Post-fuzzing crash analysis module: create, deduplicate, cluster CASR reports
+//! and print overall summary.
 use crate::util::{get_atheris_lib, get_path, initialize_dirs, log_progress};
 
 use std::collections::HashMap;
@@ -30,8 +31,6 @@ impl<'a> CrashInfo {
     /// Generate Casr report for crash.
     ///
     /// # Arguments
-    ///
-    /// * `tool` - path to tool that generates reports
     ///
     /// * `output_dir` - save report to specified directory or use the same directory as crash
     ///
@@ -134,7 +133,7 @@ impl<'a> CrashInfo {
 ///
 /// # Arguments
 ///
-/// * `matches` - tool arguments
+/// * `matches` - casr-afl/casr-libfuzzer arguments
 ///
 /// * `crashes` - map of crashes, specified as a HashMap, where
 ///               key is crash input file name and value is CrashInfo structure
@@ -149,7 +148,7 @@ pub fn fuzzing_crash_triage_pipeline(
     if crashes.is_empty() {
         bail!("No crashes found");
     }
-    let (_, crash_info) = crashes.iter().next().unwrap();
+    let crash_info = crashes.values().next().unwrap();
     if crash_info
         .target_args
         .iter()
