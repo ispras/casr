@@ -58,8 +58,10 @@ impl ParseStacktrace for RustStacktrace {
     }
 
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
-        let re = Regex::new(r#" *[0-9]+: +0x([0-9a-f]+) - (.+?)(?: *at (.+):([0-9]+):([0-9]+)|$)"#)
-            .unwrap();
+        let re = Regex::new(
+            r#" *[0-9]+: +0x([0-9a-f]+) - (.+?)(?: *at (.+?):([0-9]+)(?::([0-9]+))?|$)"#,
+        )
+        .unwrap();
         let mut stentry = StacktraceEntry::default();
 
         let Some(caps) = re.captures(entry.as_ref()) else {
