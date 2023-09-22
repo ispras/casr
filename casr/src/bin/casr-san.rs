@@ -8,7 +8,7 @@ use libcasr::gdb::*;
 use libcasr::go::*;
 use libcasr::init_ignored_frames;
 use libcasr::report::CrashReport;
-use libcasr::rust::RustPanic;
+use libcasr::rust::{RustPanic, RustStacktrace};
 use libcasr::severity::Severity;
 use libcasr::stacktrace::*;
 
@@ -165,9 +165,9 @@ fn main() -> Result<()> {
         report.stdin = file_path.display().to_string();
     }
 
-    // If it is possible to extract Go stacktrace, it is Go.
     let stacktrace: Stacktrace;
     if let Ok(raw_stacktrace) = GoStacktrace::extract_stacktrace(&sanitizers_stderr) {
+        // If it is possible to extract Go stacktrace, it is Go.
         report.stacktrace = raw_stacktrace;
         stacktrace = GoStacktrace::parse_stacktrace(&report.stacktrace)?;
         report.go_report = sanitizers_stderr
@@ -177,6 +177,14 @@ fn main() -> Result<()> {
         if let Some(exception) = GoPanic::parse_exception(&sanitizers_stderr) {
             report.execution_class = exception;
         }
+    } else if let Ok(raw_stacktrace) = RustStacktrace::extract_stacktrace(&sanitizers_stderr) {
+        // If it is possible to extract Rust stacktrace, it is Rust.
+        report.stacktrace = raw_stacktrace;
+        stacktrace = RustStacktrace::parse_stacktrace(&report.stacktrace)?;
+        report.rust_report = sanitizers_stderr
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect();
     } else {
         // Get ASAN report.
         let san_stderr_list: Vec<String> = sanitizers_stderr

@@ -7,6 +7,7 @@ use crate::gdb::GdbStacktrace;
 use crate::go::GoStacktrace;
 use crate::java::JavaStacktrace;
 use crate::python::PythonStacktrace;
+use crate::rust::RustStacktrace;
 use crate::stacktrace::*;
 use chrono::prelude::*;
 use gdb_command::mappings::{MappedFiles, MappedFilesExt};
@@ -210,6 +211,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub java_report: Vec<String>,
+    /// Rust report.
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "RustReport", deserialize = "RustReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub rust_report: Vec<String>,
     /// Crash line from stack trace: source:line or binary+offset.
     #[cfg_attr(
         feature = "serde",
@@ -536,6 +544,8 @@ impl CrashReport {
             JavaStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.go_report.is_empty() {
             GoStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.rust_report.is_empty() {
+            RustStacktrace::parse_stacktrace(&self.stacktrace)?
         } else {
             GdbStacktrace::parse_stacktrace(&self.stacktrace)?
         };
@@ -705,6 +715,14 @@ impl fmt::Display for CrashReport {
         if !self.go_report.is_empty() {
             report += "\n===GoReport===\n";
             for e in self.go_report.iter() {
+                report += &format!("{e}\n");
+            }
+        }
+
+        // RustReport
+        if !self.rust_report.is_empty() {
+            report += "\n===RustReport===\n";
+            for e in self.rust_report.iter() {
                 report += &format!("{e}\n");
             }
         }

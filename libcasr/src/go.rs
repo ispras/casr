@@ -2,9 +2,9 @@
 use crate::exception::Exception;
 use crate::stacktrace::ParseStacktrace;
 
-use crate::error::*;
+use crate::error::{Error, Result};
 use crate::execution_class::ExecutionClass;
-use crate::stacktrace::*;
+use crate::stacktrace::StacktraceEntry;
 use regex::Regex;
 
 /// Structure provides an interface for processing stacktrace from Go panics.

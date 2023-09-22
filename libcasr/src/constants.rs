@@ -51,6 +51,7 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST: &[&str] = &[
     r"^core::panicking",
     r"^core::result",
     r"^panic_abort::",
+    r"^__rust_try",
 ];
 
 /// Regular expressions for Go functions to be ignored.
@@ -238,6 +239,7 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST: &[&str] = &[
     r".*/rust(|c)/",
     // AFL
     r".*/afl-.*/.*\.rs",
+    r".*/libfuzzer-sys-.*/.*\.rs",
 ];
 
 /// Regular expressions for paths to Go files that should be ignored.
