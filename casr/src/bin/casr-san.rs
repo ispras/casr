@@ -65,9 +65,10 @@ fn main() -> Result<()> {
                 .short('t')
                 .long("timeout")
                 .action(ArgAction::Set)
+                .default_value("0")
                 .value_name("SECONDS")
-                .help("Timeout (in seconds) for target execution [default: disabled]")
-                .value_parser(clap::value_parser!(u64).range(1..))
+                .help("Timeout (in seconds) for target execution, 0 value means that timeout is disabled")
+                .value_parser(clap::value_parser!(u64).range(0..))
         )
         .arg(
             Arg::new("ignore")

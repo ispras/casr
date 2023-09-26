@@ -84,7 +84,7 @@ fn main() -> Result<()> {
             Arg::new("casr-gdb-args")
                 .long("casr-gdb-args")
                 .action(ArgAction::Set)
-                .help("Specify casr-gdb target arguments to add casr reports for non-instrumented binary"),
+                .help("Add \"--casr-gdb-args \'./gdb_fuzz_target <arguments>\'\" to generate additional crash reports with casr-gdb (e.g., test whether program crashes without sanitizers)"),
         )
         .arg(
             Arg::new("ARGS")
@@ -148,6 +148,12 @@ fn main() -> Result<()> {
         })
         .collect();
 
+    let gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
+        shell_words::split(argv)?
+    } else {
+        Vec::new()
+    };
+
     // Generate reports
-    fuzzing_crash_triage_pipeline(&matches, &crashes)
+    fuzzing_crash_triage_pipeline(&matches, &crashes, &gdb_args)
 }

@@ -157,6 +157,12 @@ fn main() -> Result<()> {
         }
     }
 
+    let gdb_args = if let Some(argv) = matches.get_many::<String>("ARGS") {
+        argv.cloned().collect()
+    } else {
+        Vec::new()
+    };
+
     // Generate reports
-    fuzzing_crash_triage_pipeline(&matches, &crashes)
+    fuzzing_crash_triage_pipeline(&matches, &crashes, &gdb_args)
 }
