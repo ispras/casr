@@ -95,11 +95,7 @@ fn main() -> Result<()> {
     };
 
     // Get timeout
-    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
-        *timeout
-    } else {
-        0
-    };
+    let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
     init_ignored_frames!("cpp", "rust");
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {

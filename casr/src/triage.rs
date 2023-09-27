@@ -1,8 +1,8 @@
 //! Post-fuzzing crash analysis module: create, deduplicate, cluster CASR reports
 //! and print overall summary.
-use crate::util::{get_atheris_lib, get_path, initialize_dirs, log_progress};
+use crate::util::{get_path, initialize_dirs, log_progress};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::os::fd::AsFd;
 use std::path::{Path, PathBuf};
@@ -21,6 +21,8 @@ pub struct CrashInfo {
     pub path: PathBuf,
     /// Target command line args.
     pub target_args: Vec<String>,
+    /// Target environment variables.
+    pub envs: HashMap<String, String>,
     /// Input file argument index starting from argv\[1\], None for stdin.
     pub at_index: Option<usize>,
     /// Casr tool that should be run on this crash.
@@ -70,13 +72,10 @@ impl<'a> CrashInfo {
 
         let mut casr_cmd = Command::new(tool);
         casr_cmd.args(&args);
+        casr_cmd.envs(&self.envs);
 
         // Add envs
-        if self
-            .target_args
-            .iter()
-            .any(|x| x.contains("-detect_leaks=0"))
-        {
+        if self.target_args.iter().any(|x| x.eq("-detect_leaks=0")) {
             let asan_options = std::env::var("ASAN_OPTIONS").unwrap_or(String::new());
             casr_cmd.env(
                 "ASAN_OPTIONS",
@@ -86,9 +85,6 @@ impl<'a> CrashInfo {
                     format!("{asan_options},detect_leaks=0",)
                 },
             );
-        }
-        if self.casr_tool.ends_with("casr-python") {
-            casr_cmd.env("LD_PRELOAD", get_atheris_lib()?);
         }
 
         debug!("{:?}", casr_cmd);
@@ -164,12 +160,9 @@ pub fn fuzzing_crash_triage_pipeline(
     }
 
     let output_dir = initialize_dirs(matches)?;
+
     // Get timeout
-    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
-        *timeout
-    } else {
-        0
-    };
+    let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
     // Get number of threads
     let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
@@ -296,11 +289,8 @@ fn summarize_results(
     copy_crashes(dir, crashes)?;
 
     // Get timeout
-    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
-        *timeout
-    } else {
-        0
-    };
+    let timeout = *matches.get_one::<u64>("timeout").unwrap();
+
     // Get number of threads
     let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
         *jobs as usize
@@ -345,6 +335,7 @@ fn summarize_results(
                             if let Err(e) = (CrashInfo {
                                 path: crash.to_path_buf(),
                                 target_args: gdb_args.clone(),
+                                envs: HashMap::new(),
                                 at_index,
                                 casr_tool: casr_gdb.clone(),
                             })
@@ -403,12 +394,13 @@ fn summarize_results(
 
     // Check bad reports.
     if let Ok(err_dir) = fs::read_dir(dir.join("clerr")) {
+        let mut unique = HashSet::new();
         warn!(
             "{} corrupted reports are saved to {:?}",
             err_dir
                 .filter_map(|x| x.ok())
-                .filter_map(|x| x.file_name().into_string().ok())
-                .filter(|x| x.ends_with("casrep"))
+                .map(|x| x.path().with_extension("").with_extension(""))
+                .filter(|x| unique.insert(x.clone()))
                 .count(),
             &dir.join("clerr")
         );

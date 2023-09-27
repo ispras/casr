@@ -114,7 +114,10 @@ fn main() -> Result<()> {
         argv.len() - 1
     };
 
+    let mut envs = HashMap::new();
+
     let tool = if argv[0].ends_with(".py") {
+        envs.insert("LD_PRELOAD".to_string(), util::get_atheris_lib()?);
         "casr-python"
     } else if argv[0].ends_with("jazzer") || argv[0].ends_with("java") {
         "casr-java"
@@ -141,6 +144,7 @@ fn main() -> Result<()> {
                 CrashInfo {
                     path: p,
                     target_args: argv.iter().map(|x| x.to_string()).collect(),
+                    envs: envs.clone(),
                     at_index: Some(at_index),
                     casr_tool: tool.clone(),
                 },

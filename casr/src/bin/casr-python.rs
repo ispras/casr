@@ -89,11 +89,7 @@ fn main() -> Result<()> {
     let stdin_file = util::stdin_from_matches(&matches)?;
 
     // Get timeout
-    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
-        *timeout
-    } else {
-        0
-    };
+    let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
     // Run program.
     let mut python_cmd = Command::new(argv[0]);
