@@ -3,6 +3,7 @@ version = "2.8.1"
 authors = ["Andrey Fedotov  <fedotoff@ispras.ru>", "Alexey Vishnyakov <pmvishnya@gmail.com>", "Georgy Savidov <avgor46@ispras.ru>", "Ilya Yegorov <Yegorov_Ilya@ispras.ru>"]
 
 [workspace]
+resolver = "2"
 members = ["casr", "libcasr"]
 
 [profile.release]
