@@ -1,0 +1,55 @@
+name: coverage
+
+on:
+  push:
+    branches: [ master, coverage ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  ubuntu-latest:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Dependences
+      run: |
+        sudo apt update && sudo apt install -y gdb pip curl python3.10-dev llvm \
+            openjdk-17-jdk
+        pip3 install atheris
+        curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
+        ./rustup.sh -y && rm rustup.sh
+        rustup install nightly
+        export PATH=/root/.cargo/bin:$PATH
+        cargo install cargo-fuzz grcov
+    - name: Build and Run Tests
+      env:
+        CARGO_INCREMENTAL: 0
+        RUSTFLAGS: '-Cinstrument-coverage -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort'
+        RUSTDOCFLAGS: '-Cpanic=abort'
+        LLVM_PROFILE_FILE: 'casr-%p-%m.profraw'
+      run: |
+        rustup component add llvm-tools-preview
+        cargo +nightly build --all-features --verbose
+        cargo +nightly test --verbose
+    - name: Collect Coverage
+      run: |
+        mkdir target/coverage
+        grcov \
+            . \
+            --binary-path target/debug \
+            -s . \
+            -o lcov.info \
+            --ignore-not-existing \
+            --keep-only  '*casr/src*' \
+            --excl-line  '///' \
+            --excl-start '^(#\[cfg\(test\)\]|#\[test\])' \
+            --excl-stop  '^}$' \
+            -t lcov
+    - name: Upload Coverage Reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
