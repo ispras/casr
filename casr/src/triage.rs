@@ -399,8 +399,8 @@ fn summarize_results(
             err_dir
                 .filter_map(|x| x.ok())
                 .map(|x| x.path().display().to_string())
-                .filter(|x| x.ends_with("casrep"))
-                .filter(|x| !x.ends_with("gdb.casrep")
+                .filter(|x| x.ends_with(".casrep"))
+                .filter(|x| !x.ends_with(".gdb.casrep")
                     || !PathBuf::from(x.strip_suffix("gdb.casrep").unwrap().to_string() + "casrep")
                         .exists())
                 .count(),
