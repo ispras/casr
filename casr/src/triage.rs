@@ -2,7 +2,7 @@
 //! and print overall summary.
 use crate::util::{get_path, initialize_dirs, log_progress};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::os::fd::AsFd;
 use std::path::{Path, PathBuf};
@@ -394,13 +394,15 @@ fn summarize_results(
 
     // Check bad reports.
     if let Ok(err_dir) = fs::read_dir(dir.join("clerr")) {
-        let mut unique = HashSet::new();
         warn!(
             "{} corrupted reports are saved to {:?}",
             err_dir
                 .filter_map(|x| x.ok())
-                .map(|x| x.path().with_extension("").with_extension(""))
-                .filter(|x| unique.insert(x.clone()))
+                .map(|x| x.path().display().to_string())
+                .filter(|x| x.ends_with("casrep"))
+                .filter(|x| !x.ends_with("gdb.casrep")
+                    || !PathBuf::from(x.strip_suffix("gdb.casrep").unwrap().to_string() + "casrep")
+                        .exists())
                 .count(),
             &dir.join("clerr")
         );
