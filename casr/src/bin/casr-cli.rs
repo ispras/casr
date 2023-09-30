@@ -959,11 +959,6 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
     } else {
         println!("{} ->{}", "SUMMARY".magenta(), classes);
     }
-
-    if !corrupted_reports.is_empty() {
-        println!("{} reports were found:", "Corrupted".red());
-        corrupted_reports.iter().for_each(|x| println!("{x}"));
-    }
 }
 
 /// Function processes report and returns summary

@@ -52,9 +52,10 @@ fn main() -> Result<()> {
                 .short('t')
                 .long("timeout")
                 .action(ArgAction::Set)
+                .default_value("0")
                 .value_name("SECONDS")
-                .help("Timeout (in seconds) for target execution [default: disabled]")
-                .value_parser(clap::value_parser!(u64).range(1..))
+                .help("Timeout (in seconds) for target execution, 0 value means that timeout is disabled")
+                .value_parser(clap::value_parser!(u64).range(0..))
         )
         .arg(
             Arg::new("ignore")
@@ -63,17 +64,6 @@ fn main() -> Result<()> {
                 .value_parser(clap::value_parser!(PathBuf))
                 .value_name("FILE")
                 .help("File with regular expressions for functions and file paths that should be ignored"),
-        )
-        .arg(
-            Arg::new("sub-tool")
-                .long("sub-tool")
-                .default_value("casr-san")
-                .action(ArgAction::Set)
-                .value_parser(clap::value_parser!(PathBuf))
-                .value_name("PATH")
-                .help(
-                    "Path to sub tool for crash analysis that will be called when main tool fails to detect a crash",
-                ),
         )
         .arg(
             Arg::new("ARGS")
@@ -99,11 +89,7 @@ fn main() -> Result<()> {
     let stdin_file = util::stdin_from_matches(&matches)?;
 
     // Get timeout
-    let timeout = if let Some(timeout) = matches.get_one::<u64>("timeout") {
-        *timeout
-    } else {
-        0
-    };
+    let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
     // Run program.
     let mut python_cmd = Command::new(argv[0]);
@@ -163,8 +149,8 @@ fn main() -> Result<()> {
                 }
             }
         } else {
-            // Call sub tool
-            return util::call_sub_tool(&matches, &argv, "casr-python");
+            // Call casr-san
+            return util::call_casr_san(&matches, &argv, "casr-python");
         }
     } else if let Some(report_start) = python_stderr_list
         .iter()
@@ -185,8 +171,8 @@ fn main() -> Result<()> {
             report.execution_class = exception;
         }
     } else {
-        // Call sub tool
-        return util::call_sub_tool(&matches, &argv, "casr-python");
+        // Call casr-san
+        return util::call_casr_san(&matches, &argv, "casr-python");
     }
 
     if let Ok(crash_line) = PythonStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {

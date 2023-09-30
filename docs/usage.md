@@ -25,15 +25,16 @@ Create CASR reports (.casrep) from gdb execution
       [ARGS]...  Add "-- ./binary <arguments>" to run executable
 
     Options:
-      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
-                             generated
-          --stdout           Print CASR report to stdout
-          --stdin <FILE>     Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
-          --ignore <FILE>    File with regular expressions for functions and file paths that
-                             should be ignored
-      -h, --help             Print help
-      -V, --version          Print version
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                               is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                               timeout is disabled [default: 0]
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                               should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
 
 Example:
 
@@ -49,15 +50,16 @@ Create CASR reports (.casrep) from AddressSanitizer reports
       [ARGS]...  Add "-- ./binary <arguments>" to run executable
 
     Options:
-      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
-                             generated
-          --stdout           Print CASR report to stdout
-          --stdin <FILE>     Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
-          --ignore <FILE>    File with regular expressions for functions and file paths that
-                             should be ignored
-      -h, --help             Print help
-      -V, --version          Print version
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                               is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                               timeout is disabled [default: 0]
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                               should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
 
 Compile binary with ASAN:
 
@@ -88,8 +90,8 @@ Triage errors found by UndefinedBehaviorSanitizer and create CASR reports (.casr
                                    debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
-      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
-                                   disabled]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, 0 value means
+                                   that timeout is disabled [default: 0]
       -i, --input <INPUT_DIRS>...  Target input directory list
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
       -h, --help                   Print help
@@ -120,17 +122,16 @@ Create CASR reports (.casrep) from python reports
       [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
-                             generated
-          --stdout           Print CASR report to stdout
-          --stdin <FILE>     Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
-          --ignore <FILE>    File with regular expressions for functions and file paths that
-                             should be ignored
-          --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
-                             tool fails to detect a crash [default: casr-san]
-      -h, --help             Print help
-      -V, --version          Print version
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                               is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                               timeout is disabled [default: 0]
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                               should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
 
 Example:
 
@@ -146,17 +147,16 @@ Create CASR reports (.casrep) from java reports
       [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>  Path to save report. Path can be a directory, then report name is
-                             generated
-          --stdout           Print CASR report to stdout
-          --stdin <FILE>     Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution [default: disabled]
-          --ignore <FILE>    File with regular expressions for functions and file paths that
-                             should be ignored
-          --sub-tool <PATH>  Path to sub tool for crash analysis that will be called when main
-                             tool fails to detect a crash [default: casr-san]
-      -h, --help             Print help
-      -V, --version          Print version
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                               is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                               timeout is disabled [default: 0]
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                               should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
 
 Run casr-java:
 
@@ -359,8 +359,8 @@ Triage crashes found by AFL++
                                    debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
-      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
-                                   disabled]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, 0 value means
+                                   that timeout is disabled [default: 0]
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
           --no-cluster             Do not cluster CASR reports
@@ -461,18 +461,27 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
       [ARGS]...  Add "-- ./fuzz_target <arguments>"
 
     Options:
-      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
-                                   debug]
-      -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
-                                   [default: half of cpu cores]
-      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution [default:
-                                   disabled]
-      -i, --input <INPUT_DIR>      Directory containing crashes found by libFuzzer [default:
-                                   .]
-      -o, --output <OUTPUT_DIR>    Output directory with triaged reports
-          --no-cluster             Do not cluster CASR reports
-      -h, --help                   Print help
-      -V, --version                Print version
+      -l, --log-level <log-level>
+              Logging level [default: info] [possible values: info, debug]
+      -j, --jobs <jobs>
+              Number of parallel jobs for generating CASR reports [default: half of cpu cores]
+      -t, --timeout <SECONDS>
+              Timeout (in seconds) for target execution, 0 means that timeout is disabled
+              [default: 0]
+      -i, --input <INPUT_DIR>
+              Directory containing crashes found by libFuzzer [default: .]
+      -o, --output <OUTPUT_DIR>
+              Output directory with triaged reports
+          --no-cluster
+              Do not cluster CASR reports
+          --casr-gdb-args <casr-gdb-args>
+              Add "--casr-gdb-args './gdb_fuzz_target <arguments>'" to generate additional
+              crash reports with casr-gdb (e.g., test whether program crashes without
+              sanitizers)
+      -h, --help
+              Print help
+      -V, --version
+              Print version
 
 `casr-libfuzzer` provides integration with
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers
@@ -483,6 +492,11 @@ It is pretty much like `casr-afl`.
 libFuzzer example:
 
     $ casr-libfuzzer -i casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt -o casr/tests/tmp_tests_casr/casr_libfuzzer_out -- casr/tests/casr_tests/bin/load_fuzzer
+
+You may also run `casr-libfuzzer` with additional report generation for non-instrumented
+binary with `casr-gdb`:
+
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt -o casr/tests/tmp_tests_casr/casr_libfuzzer_out --casr-gdb-args 'casr/tests/casr_tests/bin/load_sydr @@' -- casr/tests/casr_tests/bin/load_fuzzer
 
 Atheris example:
 

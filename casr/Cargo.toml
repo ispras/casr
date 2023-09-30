@@ -11,6 +11,7 @@ license = "Apache-2.0"
 exclude = ["/tests"]
 
 [dependencies]
+shell-words = "1.1"
 anyhow = "1.0"
 clap = { version = "4.2", features = ["wrap_help", "cargo"] }
 chrono =  "0.4"
@@ -23,6 +24,7 @@ gdb-command = "0.7"
 nix = "0.26"
 rayon = "1.7"
 num_cpus = "1.15"
+is_executable = "1.0"
 linux-personality = "1.0"
 colored = "2.0"
 serde = { version = "1.0", features = ["derive"] }

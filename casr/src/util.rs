@@ -10,19 +10,19 @@ use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
 use log::{info, warn};
 use simplelog::*;
-use std::fs::OpenOptions;
+use std::collections::HashSet;
+use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::io::{BufRead, BufReader};
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::RwLock;
 use std::time::Duration;
 
+use is_executable::IsExecutable;
 use wait_timeout::ChildExt;
-use which::which;
 
-/// Call sub tool with the provided options
+/// Call casr-san with the provided options
 ///
 /// # Arguments
 ///
@@ -31,20 +31,9 @@ use which::which;
 /// * `name` - main tool name, that called sub tool
 ///
 /// * `argv` - executable file options
-pub fn call_sub_tool(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<()> {
-    let tool = matches.get_one::<PathBuf>("sub-tool").unwrap();
-    if which(tool).is_err() {
-        if !tool.exists() {
-            bail!("Sub tool {tool:?} doesn't exist");
-        }
-        if !tool.is_file() {
-            bail!("Sub tool {tool:?} isn't a file");
-        }
-        if tool.metadata()?.permissions().mode() & 0o111 == 0 {
-            bail!("Sub tool {tool:?} isn't executable");
-        }
-    }
-    let mut cmd = Command::new(tool);
+pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<()> {
+    let tool = get_path("casr-san")?;
+    let mut cmd = Command::new(&tool);
     if let Some(report_path) = matches.get_one::<PathBuf>("output") {
         cmd.args(["--output", report_path.to_str().unwrap()]);
     } else {
@@ -291,5 +280,127 @@ pub fn get_output(command: &mut Command, timeout: u64, error_on_timeout: bool) -
         command
             .output()
             .with_context(|| format!("Couldn't launch {command:?}"))
+    }
+}
+
+/// Get Atheris asan_with_fuzzer library path.
+pub fn get_atheris_lib() -> Result<String> {
+    let mut cmd = Command::new("python3");
+    cmd.arg("-c")
+        .arg("import atheris; print(atheris.path(), end='')")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let output = cmd
+        .output()
+        .with_context(|| format!("Couldn't launch {cmd:?}"))?;
+    let out = String::from_utf8_lossy(&output.stdout);
+    let err = String::from_utf8_lossy(&output.stderr);
+    if !err.is_empty() {
+        bail!("Failed to get Atheris path: {}", err);
+    }
+    Ok(format!("{out}/asan_with_fuzzer.so"))
+}
+
+/// Create output, timeout and oom directories
+///
+/// # Arguments
+///
+/// * `matches` - tool arguments
+///
+/// # Return value
+///
+/// Path to output directory
+pub fn initialize_dirs(matches: &clap::ArgMatches) -> Result<&PathBuf> {
+    // Get output dir
+    let output_dir = matches.get_one::<PathBuf>("output").unwrap();
+    if !output_dir.exists() {
+        fs::create_dir_all(output_dir).with_context(|| {
+            format!("Couldn't create output directory {}", output_dir.display())
+        })?;
+    } else if output_dir.read_dir()?.next().is_some() {
+        bail!("Output directory is not empty.");
+    }
+    // Get oom dir
+    let oom_dir = output_dir.join("oom");
+    if fs::create_dir_all(&oom_dir).is_err() {
+        bail!("Failed to create dir {}", &oom_dir.to_str().unwrap());
+    }
+    // Get timeout dir
+    let timeout_dir = output_dir.join("timeout");
+    if fs::create_dir_all(&timeout_dir).is_err() {
+        bail!("Failed to create dir {}", &timeout_dir.to_str().unwrap());
+    }
+
+    Ok(output_dir)
+}
+
+/// Method checks whether binary file contains predefined symbols.
+///
+/// # Arguments
+///
+/// * `path` - path to binary to check.
+///
+/// # Return value
+///
+/// Set of important symbols
+pub fn symbols_list(path: &Path) -> Result<HashSet<&str>> {
+    let mut found_symbols = HashSet::new();
+    if let Ok(buffer) = fs::read(path) {
+        if let Ok(elf) = goblin::elf::Elf::parse(&buffer) {
+            let symbols = [
+                "__asan",
+                "__ubsan",
+                "__tsan",
+                "__msan",
+                "__llvm_profile",
+                "runtime.go",
+            ];
+            for sym in elf.syms.iter() {
+                if let Some(name) = elf.strtab.get_at(sym.st_name) {
+                    for symbol in symbols.iter() {
+                        if name.contains(symbol) {
+                            found_symbols.insert(*symbol);
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            bail!("Fuzz target: {} must be an ELF executable.", path.display());
+        }
+    } else {
+        bail!("Couldn't read fuzz target binary: {}.", path.display());
+    }
+
+    Ok(found_symbols)
+}
+
+/// Function searches for path to the tool
+///
+/// # Arguments
+///
+/// * 'tool' - tool name
+///
+/// # Return value
+///
+/// Path to the tool
+pub fn get_path(tool: &str) -> Result<PathBuf> {
+    let mut path_to_tool = std::env::current_exe()?;
+    let current_tool = path_to_tool
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    path_to_tool.pop();
+    path_to_tool.push(tool);
+    if path_to_tool.is_executable() {
+        Ok(path_to_tool)
+    } else if let Ok(path_to_tool) = which::which(tool) {
+        Ok(path_to_tool)
+    } else {
+        bail!(
+            "{path_to_tool:?}: No {tool} next to {current_tool}. And there is no {tool} in PATH."
+        );
     }
 }
