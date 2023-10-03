@@ -79,7 +79,7 @@ fn main() -> Result<()> {
             Arg::new("ignore-cmdline")
                 .action(ArgAction::SetTrue)
                 .long("ignore-cmdline")
-                .help("Force use <ARGS> to run target instead of searching for cmdlines in afl fuzzing directory")
+                .help("Force <ARGS> usage to run target instead of searching for cmdline files in AFL fuzzing directory")
         )
         .arg(
             Arg::new("no-cluster")
