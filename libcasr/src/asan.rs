@@ -85,6 +85,11 @@ impl ParseStacktrace for AsanStacktrace {
         // in function[(args)] [const] path
         // TODO: source file path may contain )
         if has_function {
+            if location.len() < 3 {
+                return Err(Error::Casr(format!(
+                    "Couldn't parse stack trace entry: {entry}"
+                )));
+            }
             location = location[3..].trim();
             // in typeinfo name for xlnt::detail::compound_document_istreambuf
             // TODO: there may be no function and source path may start with for and space.
