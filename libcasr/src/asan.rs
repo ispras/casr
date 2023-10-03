@@ -59,12 +59,12 @@ impl ParseStacktrace for AsanStacktrace {
         // (module+0xdeadbeef)
         // TODO: (module)
         // We have to distinguish from (anonymous namespace) and function arguments.
-        // TODO: module path may contain (.
-        // We forbid ( in module path to distinguish from function arguments.
-        // However, we allow ( when there is no function.
+        // TODO: module path may contain ( and ).
+        // We forbid ( and ) in module path to distinguish from function arguments.
+        // However, we allow ( and ) when there is no function.
         // Regex::captures returns leftmost-first match, so, it won't match (BuildId: ).
         let re = if has_function {
-            Regex::new(r"\(([^(]+)\+0x([0-9a-f]+)\)").unwrap()
+            Regex::new(r"\(([^()]+)\+0x([0-9a-f]+)\)").unwrap()
         } else {
             Regex::new(r"\((.+)\+0x([0-9a-f]+)\)").unwrap()
         };
@@ -85,6 +85,11 @@ impl ParseStacktrace for AsanStacktrace {
         // in function[(args)] [const] path
         // TODO: source file path may contain )
         if has_function {
+            if location.len() < 3 {
+                return Err(Error::Casr(format!(
+                    "Couldn't parse stack trace entry: {entry}"
+                )));
+            }
             location = location[3..].trim();
             // in typeinfo name for xlnt::detail::compound_document_istreambuf
             // TODO: there may be no function and source path may start with for and space.
@@ -250,6 +255,7 @@ mod tests {
             "#11 0xe086ff in xml::serializer::handle_error(genxStatus) const /xlnt/third-party/libstudxml/libstudxml/serializer.cxx:116:7",
             "    #7 0xa180bf in typeinfo name for xlnt::detail::compound_document_istreambuf (/load_afl+0xa180bf)",
             "    #9 0xb98663 in xlnt::detail::number_serialiser::deserialise(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, long*) const (/casr_tests/bin/load_fuzzer+0xb98663)",
+            "#4 0x998b40 in (anonymous namespace)::decrypt_xl<unsigned char> > const&) /xlnt/er+0x426cbd)", // invalid
         ];
 
         let trace = raw_stacktrace
@@ -411,5 +417,13 @@ mod tests {
             "/casr_tests/bin/load_fuzzer".to_string()
         );
         assert_eq!(stacktrace[19].offset, 0xb98663);
+
+        assert_eq!(stacktrace[20].address, 0x998b40);
+        assert_eq!(
+            stacktrace[20].function,
+            // invalid result in invalid frame
+            "(anonymous namespace)::decrypt_xl<unsigned char> > const&) /xlnt/er+0x426cbd)"
+                .to_string()
+        );
     }
 }
