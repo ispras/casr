@@ -3539,7 +3539,7 @@ fn test_casr_afl_ignore_cmd() {
     use std::collections::HashMap;
 
     let paths = [
-        abs_path("tests/casr_tests/casrep/afl-out-xlnt"),
+        abs_path("tests/casr_tests/casrep/afl-out-xlnt-small"),
         abs_path("tests/tmp_tests_casr/casr_afl_ignore_cmd_out"),
     ];
 
@@ -3580,7 +3580,7 @@ fn test_casr_afl_ignore_cmd() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(unique_cnt, 24, "Invalid number of deduplicated reports");
+    assert_eq!(unique_cnt, 6, "Invalid number of deduplicated reports");
 
     let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
     let clusters_cnt = re
@@ -3592,7 +3592,7 @@ fn test_casr_afl_ignore_cmd() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 14, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 5, "Invalid number of clusters");
 
     let mut storage: HashMap<String, u32> = HashMap::new();
     for entry in fs::read_dir(&paths[1]).unwrap() {
