@@ -1,7 +1,7 @@
 use casr::triage::{fuzzing_crash_triage_pipeline, CrashInfo};
 use casr::util;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{
     error::{ContextKind, ContextValue, ErrorKind},
     Arg, ArgAction,
@@ -76,6 +76,12 @@ fn main() -> Result<()> {
                 .help("Output directory with triaged reports")
         )
         .arg(
+            Arg::new("ignore-cmdline")
+                .action(ArgAction::SetTrue)
+                .long("ignore-cmdline")
+                .help("Force use <ARGS> to run target instead of searching for cmdlines in afl fuzzing directory")
+        )
+        .arg(
             Arg::new("no-cluster")
                 .action(ArgAction::SetTrue)
                 .long("no-cluster")
@@ -97,6 +103,16 @@ fn main() -> Result<()> {
     let casr_san = util::get_path("casr-san")?;
     let casr_gdb = util::get_path("casr-gdb")?;
 
+    let mut gdb_args = if let Some(argv) = matches.get_many::<String>("ARGS") {
+        argv.cloned().collect()
+    } else {
+        Vec::new()
+    };
+
+    if gdb_args.is_empty() && matches.get_flag("ignore-cmdline") {
+        bail!("ARGS is empty, but \"ignore-cmdline\" option is provided.");
+    }
+
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
     for node_dir in fs::read_dir(matches.get_one::<PathBuf>("input").unwrap())? {
@@ -110,37 +126,40 @@ fn main() -> Result<()> {
             casr_tool: casr_gdb.clone(),
             ..Default::default()
         };
-        let cmdline_path = path.join("cmdline");
-        if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
-            crash_info.target_args = cmdline.split_whitespace().map(|s| s.to_string()).collect();
-            crash_info.at_index = crash_info
-                .target_args
-                .iter()
-                .skip(1)
-                .position(|s| s.contains("@@"))
-                .map(|x| x + 1);
-
-            if let Some(target) = crash_info.target_args.first() {
-                match util::symbols_list(Path::new(target)) {
-                    Ok(list) => {
-                        if list.contains("__asan") {
-                            crash_info.casr_tool = casr_san.clone()
-                        }
-                    }
-                    Err(e) => {
-                        error!("{e}");
-                        continue;
-                    }
-                }
+        crash_info.target_args = if matches.get_flag("ignore-cmdline") {
+            gdb_args.clone()
+        } else {
+            let cmdline_path = path.join("cmdline");
+            if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
+                cmdline.split_whitespace().map(|s| s.to_string()).collect()
             } else {
-                error!("{} is empty.", cmdline);
+                error!("Couldn't read {}.", cmdline_path.display());
                 continue;
             }
+        };
+        crash_info.at_index = crash_info
+            .target_args
+            .iter()
+            .skip(1)
+            .position(|s| s.contains("@@"))
+            .map(|x| x + 1);
+
+        if let Some(target) = crash_info.target_args.first() {
+            match util::symbols_list(Path::new(target)) {
+                Ok(list) => {
+                    if list.contains("__asan") {
+                        crash_info.casr_tool = casr_san.clone()
+                    }
+                }
+                Err(e) => {
+                    error!("{e}");
+                    continue;
+                }
+            }
         } else {
-            error!("Couldn't read {}.", cmdline_path.display());
+            error!("Cmdline is empty. Path: {:?}", path.join("cmdline"));
             continue;
         }
-
         // Push crash paths.
         for crash in path
             .read_dir()?
@@ -157,11 +176,9 @@ fn main() -> Result<()> {
         }
     }
 
-    let gdb_args = if let Some(argv) = matches.get_many::<String>("ARGS") {
-        argv.cloned().collect()
-    } else {
-        Vec::new()
-    };
+    if matches.get_flag("ignore-cmdline") {
+        gdb_args = Vec::new();
+    }
 
     // Generate reports
     fuzzing_crash_triage_pipeline(&matches, &crashes, &gdb_args)
