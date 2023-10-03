@@ -3535,6 +3535,90 @@ fn test_casr_afl() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
+fn test_casr_afl_ignore_cmd() {
+    use std::collections::HashMap;
+
+    let paths = [
+        abs_path("tests/casr_tests/casrep/afl-out-xlnt-small"),
+        abs_path("tests/tmp_tests_casr/casr_afl_ignore_cmd_out"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    let load_afl = abs_path("tests/casr_tests/bin/load_afl");
+
+    let output = Command::new(*EXE_CASR_AFL.read().unwrap())
+        .args([
+            "--ignore-cmdline",
+            "-i",
+            &paths[0],
+            "-o",
+            &paths[1],
+            "--",
+            &load_afl,
+        ])
+        .output()
+        .expect("failed to start casr-afl");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let res = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 6, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 5, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x == 2));
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
 fn test_casr_ubsan() {
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/ubsan");

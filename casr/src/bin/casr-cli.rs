@@ -877,6 +877,7 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
                 if let Some((report_sum, casr_gdb_desc, casr_gdb_line, _)) =
                     process_report(&report, "gdb.casrep")
                 {
+                    ubsan = false;
                     if san_line.is_empty() && skip_crash(&casr_gdb_line) {
                         continue;
                     }

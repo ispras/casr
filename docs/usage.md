@@ -363,6 +363,8 @@ Triage crashes found by AFL++
                                    that timeout is disabled [default: 0]
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
+          --ignore-cmdline         Force <ARGS> usage to run target instead of searching for
+                                   cmdline files in AFL fuzzing directory
           --no-cluster             Do not cluster CASR reports
       -h, --help                   Print help
       -V, --version                Print version
