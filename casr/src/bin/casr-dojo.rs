@@ -1,8 +1,5 @@
 use casr::util;
-use libcasr::constants::*;
-use libcasr::init_ignored_frames;
-use libcasr::report::CrashReport;
-use libcasr::stacktrace::*;
+use libcasr::{init_ignored_frames, report::CrashReport, stacktrace::*};
 
 use anyhow::{bail, Result};
 use clap::error::{ContextKind, ContextValue, ErrorKind};

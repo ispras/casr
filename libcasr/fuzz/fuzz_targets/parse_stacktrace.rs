@@ -4,22 +4,12 @@ use libfuzzer_sys::fuzz_target;
 
 use libcasr::{
     asan::AsanStacktrace,
-    constants::{
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO,
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA, STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON,
-        STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST, STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP,
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO, STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA,
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
-    },
     gdb::GdbStacktrace,
     go::GoStacktrace,
     init_ignored_frames,
     java::JavaStacktrace,
     python::PythonStacktrace,
-    stacktrace::{
-        CrashLineExt, ParseStacktrace, STACK_FRAME_FILEPATH_IGNORE_REGEXES,
-        STACK_FRAME_FUNCTION_IGNORE_REGEXES,
-    },
+    stacktrace::{CrashLineExt, Filter, ParseStacktrace, Stacktrace},
 };
 
 fuzz_target!(|data: &[u8]| {
