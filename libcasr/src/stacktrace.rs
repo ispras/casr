@@ -2,6 +2,13 @@
 extern crate kodama;
 extern crate lazy_static;
 
+use crate::constants::{
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA, STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST, STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP,
+    STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO, STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA,
+    STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
+};
 use crate::error::*;
 use kodama::{linkage, Method};
 use regex::Regex;
@@ -31,18 +38,7 @@ lazy_static::lazy_static! {
 macro_rules! init_ignored_frames {
     ( $( $x:expr ),* ) => {
         {
-            let (funcs, files): (Vec<_>, Vec<_>) = [$($x,)*].iter().map(|&x|
-                match x {
-                    "python" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON),
-                    "rust" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST, STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST),
-                    "cpp" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP),
-                    "go" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO, STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO),
-                    "java" => (STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA, STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA),
-                    &_ => (["^[^.]$"].as_slice(), ["^[^.]$"].as_slice()),
-                }
-            ).unzip();
-           *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = funcs.concat().iter().map(|x| x.to_string()).collect::<Vec<String>>();
-           *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = files.concat().iter().map(|x| x.to_string()).collect::<Vec<String>>();
+            <Stacktrace as Filter>::init_frame_filter(&[$($x,)*]);
         }
     };
 }
@@ -257,6 +253,50 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
 pub trait Filter {
     /// Filter frames from the stack trace that are not related to analyzed code containing crash.
     fn filter(&mut self);
+
+    /// Initialize global variables for stacktrace filtering
+    ///
+    /// # Arguments
+    ///
+    /// * `languages` - list of program languages for filtering
+    fn init_frame_filter(languages: &[&str]) {
+        let (funcs, files): (Vec<_>, Vec<_>) = languages
+            .iter()
+            .map(|&x| match x {
+                "python" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON,
+                ),
+                "rust" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
+                ),
+                "cpp" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP,
+                ),
+                "go" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO,
+                ),
+                "java" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA,
+                ),
+                &_ => (["^[^.]$"].as_slice(), ["^[^.]$"].as_slice()),
+            })
+            .unzip();
+        *STACK_FRAME_FUNCTION_IGNORE_REGEXES.write().unwrap() = funcs
+            .concat()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+        *STACK_FRAME_FILEPATH_IGNORE_REGEXES.write().unwrap() = files
+            .concat()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+    }
 }
 
 impl Filter for Stacktrace {

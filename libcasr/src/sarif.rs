@@ -1,12 +1,13 @@
 //! Sarif module contains `Sarif` struct that contains multiple `CrashReport`
 //! structs in SARIF format.
 
-use crate::constants::*;
-use crate::error::{Error, Result};
-use crate::execution_class::{ExecutionClass, CLASSES};
-use crate::init_ignored_frames;
-use crate::report::CrashReport;
-use crate::stacktrace::{STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES};
+use crate::{
+    error::{Error, Result},
+    execution_class::{ExecutionClass, CLASSES},
+    init_ignored_frames,
+    report::CrashReport,
+    stacktrace::{Filter, Stacktrace},
+};
 
 use serde_json::{Map, Value};
 
