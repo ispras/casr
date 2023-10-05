@@ -302,22 +302,28 @@ pub trait Filter {
 impl Filter for Stacktrace {
     fn filter(&mut self) {
         // Compile function regexp.
-        let rstring = STACK_FRAME_FUNCTION_IGNORE_REGEXES
-            .read()
-            .unwrap()
-            .iter()
-            .map(|s| format!("({s})|"))
-            .collect::<String>();
-        let rfunction = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+        let function_regexes = STACK_FRAME_FUNCTION_IGNORE_REGEXES.read().unwrap();
+        let rfunction = if !function_regexes.is_empty() {
+            let rstring = function_regexes
+                .iter()
+                .map(|s| format!("({s})|"))
+                .collect::<String>();
+            Regex::new(&rstring[0..rstring.len() - 1]).unwrap()
+        } else {
+            Regex::new(r"^[^.]$").unwrap()
+        };
 
         // Compile file regexp.
-        let rstring = STACK_FRAME_FILEPATH_IGNORE_REGEXES
-            .read()
-            .unwrap()
-            .iter()
-            .map(|s| format!("({s})|"))
-            .collect::<String>();
-        let rfile = Regex::new(&rstring[0..rstring.len() - 1]).unwrap();
+        let file_regexes = STACK_FRAME_FILEPATH_IGNORE_REGEXES.read().unwrap();
+        let rfile = if !file_regexes.is_empty() {
+            let rstring = file_regexes
+                .iter()
+                .map(|s| format!("({s})|"))
+                .collect::<String>();
+            Regex::new(&rstring[0..rstring.len() - 1]).unwrap()
+        } else {
+            Regex::new(r"^[^.]$").unwrap()
+        };
 
         // For libfuzzer: delete functions below LLVMFuzzerTestOneInput
         if let Some(pos) = &self
