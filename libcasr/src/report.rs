@@ -784,172 +784,139 @@ mod tests {
     #[test]
     fn test_report_display() {
         // TODO: Fill all empty fields
-        let report = CrashReport {
-            proc_fd: vec![],
-            network_connections: vec![],
-            registers: Registers::new(),
-            package: "".to_string(),
-            package_version: "".to_string(),
-            package_architecture: "".to_string(),
-            package_description: "".to_string(),
-            crashline: "/gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28".to_string(),
-            date: "2023-09-29T15:31:39.818262+03:00".to_string(),
-            uname: "Linux astra-stand 5.15.0-84-generic #93-Ubuntu SMP Tue Sep 5 17:16:10 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux".to_string(),
-            os: "Ubuntu".to_string(),
-            os_release: "22.04".to_string(),
-            architecture: "amd64".to_string(),
-            executable_path: "/home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer".to_string(),
-            proc_environ: vec!["CARGO=/home/hkctkuy/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/cargo".to_string()],
-            proc_cmdline: "/home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer /home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt/crash-49c4e6270849ab5c9c13f64b98f817efa840d8a3".to_string(),
-            stdin: "/home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/afl-out-xlnt-small/afl_main-worker/crashes/id:000007,sig:00,sync:afl_s01-worker,src:000371".to_string(),
-            proc_status: vec!["process 2945397".to_string()],
-            proc_maps: vec![
-                "      0x555555554000     0x555555556000     0x2000        0x0 /usr/local/bin/tiff2pdf".to_string(),
-            ],
-            stacktrace: vec![
+        let mut report = CrashReport::new();
+        report.crashline =
+            "/gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28"
+                .to_string();
+        report.date = "2023-09-29T15:31:39.818262+03:00".to_string();
+        report.uname = "Linux astra-stand 5.15.0-84-generic #93-Ubuntu SMP Tue Sep 5 17:16:10 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux".to_string();
+        report.os = "Ubuntu".to_string();
+        report.os_release = "22.04".to_string();
+        report.architecture = "amd64".to_string();
+        report.executable_path =
+            "/home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer".to_string();
+        report.proc_environ = vec![
+            "CARGO=/home/hkctkuy/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/cargo"
+                .to_string(),
+        ];
+        report.proc_cmdline = "/home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer /home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt/crash-49c4e6270849ab5c9c13f64b98f817efa840d8a3".to_string();
+        report.stdin = "/home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/afl-out-xlnt-small/afl_main-worker/crashes/id:000007,sig:00,sync:afl_s01-worker,src:000371".to_string();
+        report.proc_status = vec!["process 2945397".to_string()];
+        report.proc_maps = vec![
+            "      0x555555554000     0x555555556000     0x2000        0x0 /usr/local/bin/tiff2pdf"
+                .to_string(),
+        ];
+        report.stacktrace = vec![
                 "    #0 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_data() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28".to_string(),
                 "    #1 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_is_local() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:222:26".to_string(),
-                "    #2 0x455d32 in main /llvm-project-llvmorg-14.0.0/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10".to_string(),
-                "    #3 0x7ffff7c8bd8f in __libc_start_call_main csu/../sysdeps/nptl/libc_start_call_main.h:58:16".to_string(),
-                "    #4 0x7ffff7c8be3f in __libc_start_main csu/../csu/libc-start.c:392:3".to_string(),
-                "    #5 0x421ad8 in _start (/home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer+0x421ad8)".to_string(),
-            ],
-            disassembly: vec!["==> 0x5e425d: mov eax, dword ptr [rax]".to_string()],
-            asan_report: vec![
+            ];
+        report.disassembly = vec!["==> 0x5e425d: mov eax, dword ptr [rax]".to_string()];
+        report.asan_report = vec![
                 "==363912==ERROR: AddressSanitizer: SEGV on unknown address 0xffffffffffffffe0 (pc 0x0000004ca0e0 bp 0x7fffffff9980 sp 0x7fffffff9928 T0)".to_string(),
                 "==363912==The signal is caused by a READ memory access.".to_string(),
-                "    #0 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_data() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28".to_string(),
-                "    #1 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_is_local() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:222:26".to_string(),
-                "    #2 0x455d32 in main /llvm-project-llvmorg-14.0.0/compiler-rt/lib/fuzzer/FuzzerMain.cpp:20:10".to_string(),
-                "    #3 0x7ffff7c8bd8f in __libc_start_call_main csu/../sysdeps/nptl/libc_start_call_main.h:58:16".to_string(),
-                "    #4 0x7ffff7c8be3f in __libc_start_main csu/../csu/libc-start.c:392:3".to_string(),
-                "    #5 0x421ad8 in _start (/home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer+0x421ad8)".to_string(),
-                "".to_string(),
-                "AddressSanitizer can not provide additional info.".to_string(),
-                "SUMMARY: AddressSanitizer: SEGV /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_data() const".to_string(),
-                "==363912==ABORTING".to_string(),
-            ],
-            ubsan_report: vec![
+            ];
+        report.ubsan_report = vec![
                 "/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29: runtime error: signed integer overflow: 65535 * 32769 cannot be represented in type 'int'".to_string(),
-                "    #0 0x55a13df62356 in main /home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29".to_string(),
-                "    #1 0x7fcb17fd1d8f in __libc_start_call_main csu/../sysdeps/nptl/libc_start_call_main.h:58:16".to_string(),
-                "    #2 0x7fcb17fd1e3f in __libc_start_main csu/../csu/libc-start.c:392:3".to_string(),
-                "    #3 0x55a13df38394 in _start (/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan+0x5394) (BuildId: 0aa8e083e8d61ffb756f6009a87413247b0d8ba9)".to_string(),
-                "".to_string(),
                 "SUMMARY: UndefinedBehaviorSanitizer: signed-integer-overflow /home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29 in".to_string(),
-            ],
-            python_report: vec![
-                " === Uncaught Python exception: ===".to_string(),
-                "TypeError: unhashable type: 'list'".to_string(),
-                "Traceback (most recent call last):".to_string(),
-                "  File \"/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/yaml_fuzzer.py\".to_string(), line 38, in TestOneInput".to_string(),
-                "    try:".to_string(),
-                "  File \"/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/ruamel/yaml/main.py\".to_string(), line 461, in load_all".to_string(),
-                "    yield constructor.get_data()".to_string(),
-                "  File \"/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/ruamel/yaml/constructor.py\".to_string(), line 111, in get_data".to_string(),
-                "    # type: () -> Any".to_string(),
-                "  File \"/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/ruamel/yaml/constructor.py\".to_string(), line 129, in construct_document".to_string(),
-                "    self.state_generators = []".to_string(),
-                "  File \"/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/ruamel/yaml/constructor.py\".to_string(), line 674, in construct_yaml_map".to_string(),
-                "    value = self.construct_mapping(node)".to_string(),
-                "  File \"/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/ruamel/yaml/constructor.py\".to_string(), line 440, in construct_mapping".to_string(),
-                "    \"\"\"deep is True when creating an object/mapping recursively,".to_string(),
-                "  File \"/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/ruamel/yaml/constructor.py\".to_string(), line 258, in construct_mapping".to_string(),
-                "    key_node.start_mark,".to_string(),
-                "  File \"/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/ruamel/yaml/constructor.py\".to_string(), line 270, in check_mapping_key".to_string(),
-                "    def check_mapping_key(self, node, key_node, mapping, key, value):".to_string(),
-                "TypeError: unhashable type: 'list'".to_string(),
-            ],
-            java_report: vec![
-                "== Java Exception: java.lang.IndexOutOfBoundsException: start 59, end 22, length 60".to_string(),
-                "\tat java.base/java.lang.AbstractStringBuilder.checkRange(AbstractStringBuilder.java:1802)".to_string(),
-                "\tat java.base/java.lang.AbstractStringBuilder.append(AbstractStringBuilder.java:680)".to_string(),
-                "\tat java.base/java.lang.StringBuilder.append(StringBuilder.java:218)".to_string(),
-                "\tat com.google.json.JsonSanitizer.elide(JsonSanitizer.java:717)".to_string(),
-                "\tat com.google.json.JsonSanitizer.normalizeNumber(JsonSanitizer.java:864)".to_string(),
-                "\tat com.google.json.JsonSanitizer.sanitize(JsonSanitizer.java:440)".to_string(),
-                "\tat com.google.json.JsonSanitizer.sanitize(JsonSanitizer.java:122)".to_string(),
-                "\tat DenylistFuzzer.fuzzerTestOneInput(DenylistFuzzer.java:27)".to_string(),
-                "\tat com.code_intelligence.jazzer.driver.FuzzTargetRunner.runOne(FuzzTargetRunner.java:198)".to_string(),
-                "\tat com.code_intelligence.jazzer.runtime.FuzzTargetRunnerNatives.startLibFuzzer(Native Method)".to_string(),
-                "\tat com.code_intelligence.jazzer.driver.FuzzTargetRunner.startLibFuzzer(FuzzTargetRunner.java:504)".to_string(),
-                "\tat com.code_intelligence.jazzer.driver.FuzzTargetRunner.startLibFuzzer(FuzzTargetRunner.java:381)".to_string(),
-                "\tat com.code_intelligence.jazzer.driver.Driver.start(Driver.java:147)".to_string(),
-                "\tat com.code_intelligence.jazzer.Jazzer.start(Jazzer.java:113)".to_string(),
-                "\tat com.code_intelligence.jazzer.Jazzer.main(Jazzer.java:73)".to_string(),
-            ],
-            go_report: vec![
-                "Flag: verbosity 2".to_string(),
-                "Flag: dict /webp.dict".to_string(),
-                "Flag: rss_limit_mb 8192".to_string(),
-                "Flag: close_fd_mask 1".to_string(),
-                "Dictionary: 44 entries".to_string(),
-                "INFO: Running with entropic power schedule (0xFF, 100).".to_string(),
-                "INFO: Seed: 2143190736".to_string(),
-                "INFO: 65536 Extra Counters".to_string(),
-                "/image/fuzz_webp: Running 1 inputs 1 time(s) each.".to_string(),
-                "Running: /builds/dse/gitlab-jobs/oss-sydr-fuzz/projects/image-go/webp-out/crashes/crash-00ff2f41cc18f52217438b15b2d2d5037d217741".to_string(),
-                "fatal error: runtime: out of memory".to_string(),
-                "".to_string(),
-                "runtime stack:".to_string(),
-                "runtime.throw({0x565860?, 0x200000?})".to_string(),
-                "\truntime/panic.go:1047 +0x5f fp=0x7fffffffbcc0 sp=0x7fffffffbc90 pc=0x49731f".to_string(),
-                "runtime.sysMapOS(0xc000400000, 0x8bc97800000?)".to_string(),
-                "\truntime/mem_linux.go:187 +0x11b fp=0x7fffffffbd08 sp=0x7fffffffbcc0 pc=0x47a7fb".to_string(),
-                "runtime.sysMap(0xff9e40?, 0x7ffff7a14000?, 0x48dac0?)".to_string(),
-                "\truntime/mem.go:142 +0x35 fp=0x7fffffffbd38 sp=0x7fffffffbd08 pc=0x47a1d5".to_string(),
-                "runtime.(*mheap).grow(0xff9e40, 0x45e4bbda?)".to_string(),
-                "\truntime/mheap.go:1459 +0x23d fp=0x7fffffffbda8 sp=0x7fffffffbd38 pc=0x48ab7d".to_string(),
-                "runtime.(*mheap).allocSpan(0xff9e40, 0x45e4bbda, 0x0, 0x1)".to_string(),
-                "\truntime/mheap.go:1191 +0x1be fp=0x7fffffffbe40 sp=0x7fffffffbda8 pc=0x48a2be".to_string(),
-                "runtime.(*mheap).alloc.func1()".to_string(),
-                "\truntime/mheap.go:910 +0x65 fp=0x7fffffffbe88 sp=0x7fffffffbe40 pc=0x489d45".to_string(),
-                "runtime.systemstack()".to_string(),
-                "\truntime/asm_amd64.s:492 +0x46 fp=0x7fffffffbe90 sp=0x7fffffffbe88 pc=0x4c09a6".to_string(),
-                "".to_string(),
-                "==32824== ERROR: libFuzzer: deadly signal".to_string(),
-                "    #0 0x465074 in __sanitizer_print_stack_trace /llvm-project-llvmorg-14.0.6/compiler-rt/lib/ubsan/ubsan_diag_standalone.cpp:31:3".to_string(),
-                "    #1 0x43bd27 in fuzzer::PrintStackTrace() /llvm-project-llvmorg-14.0.6/compiler-rt/lib/fuzzer/FuzzerUtil.cpp:210:5".to_string(),
-                "    #2 0x421f13 in fuzzer::Fuzzer::CrashCallback() /llvm-project-llvmorg-14.0.6/compiler-rt/lib/fuzzer/FuzzerLoop.cpp:233:3".to_string(),
-                "    #3 0x7ffff7dc641f  (/lib/x86_64-linux-gnu/libpthread.so.0+0x1441f) (BuildId: 7b4536f41cdaa5888408e82d0836e33dcf436466)".to_string(),
-                "    #4 0x4c4540 in runtime.raise.abi0 runtime/sys_linux_amd64.s:158".to_string(),
-                "".to_string(),
-                "NOTE: libFuzzer has rudimentary signal handlers.".to_string(),
-                "      Combine libFuzzer with AddressSanitizer or similar for better crash reports.".to_string(),
-                "SUMMARY: libFuzzer: deadly signal".to_string(),
-                "".to_string(),
-            ],
-            rust_report: vec![
-                "Running: ./artifacts/fuzz_target_1/crash-da39a3ee5e6b4b0d3255bfef95601890afd80709".to_string(),
-"thread '<unnamed>' panicked at fuzz_targets/fuzz_target_1.rs:6:9:".to_string(),
-"index out of bounds: the len is 0 but the index is 10".to_string(),
-"stack backtrace:".to_string(),
-" 0:     0x557e259f793c - std::backtrace_rs::backtrace::libunwind::trace::h7d5a50c97105e9c9".to_string(),
-"                             at /rustc/59a8294849358a878a72358aa6d5fe5b9d312867/library/std/src/../../backtrace/src/backtrace/libunwind.rs:93:5".to_string(),
-" 1:     0x557e259f793c - std::backtrace_rs::backtrace::trace_unsynchronized::hf283bd0ba71b8b19".to_string(),
-"                             at /rustc/59a8294849358a878a72358aa6d5fe5b9d312867/library/std/src/../../backtrace/src/backtrace/mod.rs:66:5".to_string(),
-"                             at /home/toka/.cargo/registry/src/index.crates.io-6f17d22bba15001f/libfuzzer-sys-0.4.7/libfuzzer/FuzzerMain.cpp:20:30".to_string(),
-"2:     0x7ffbc33c6d90 - __libc_start_call_main".to_string(),
-"                            at ./csu/../sysdeps/nptl/libc_start_call_main.h:58:16".to_string(),
-"3:     0x7ffbc33c6e40 - __libc_start_main_impl".to_string(),
-"                            at ./csu/../csu/libc-start.c:392:3".to_string(),
-"4:     0x557e25886205 - _start".to_string(),
-"5:                0x0 - <unknown>".to_string(),
-            ],
-            source: vec![
-                "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),".to_string(),
-            ],
-            execution_class: ExecutionClass {
+            ];
+        report.python_report = vec![
+            " === Uncaught Python exception: ===".to_string(),
+            "TypeError: unhashable type: 'list'".to_string(),
+        ];
+        report.java_report = vec![
+            "== Java Exception: java.lang.IndexOutOfBoundsException: start 59, end 22, length 60"
+                .to_string(),
+            "\tat com.code_intelligence.jazzer.Jazzer.main(Jazzer.java:73)".to_string(),
+        ];
+        report.go_report = vec![
+            "fatal error: runtime: out of memory".to_string(),
+            "".to_string(),
+            "runtime.throw({0x565860?, 0x200000?})".to_string(),
+        ];
+        report.rust_report = vec![
+            "Running: ./artifacts/fuzz_target_1/crash-da39a3ee5e6b4b0d3255bfef95601890afd80709"
+                .to_string(),
+            "thread '<unnamed>' panicked at fuzz_targets/fuzz_target_1.rs:6:9:".to_string(),
+            "index out of bounds: the len is 0 but the index is 10".to_string(),
+            "stack backtrace:".to_string(),
+        ];
+        report.source = vec![
+            "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),"
+                .to_string(),
+        ];
+        report.execution_class = ExecutionClass {
                 severity: "NOT_EXPLOITABLE".to_string(),
                 short_description: "SourceAv".to_string(),
                 description: "Access violation on source operand".to_string(),
                 explanation: "The target crashed on an access violation at an address matching the source operand of the current instruction. This likely indicates a read access violation.".to_string(),
-            },
-            pid: 16476,
-        };
+            };
+        report.pid = 16476;
+
         assert_eq!(
-            159,
-            format!("{report}").split('\n').collect::<Vec<&str>>().len()
+            format!("{report}"),
+            vec![
+            "CrashLine: /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28".to_string(),
+            "".to_string(),
+            "Date: 2023-09-29T15:31:39.818262+03:00".to_string(),
+            "Uname: Linux astra-stand 5.15.0-84-generic #93-Ubuntu SMP Tue Sep 5 17:16:10 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux".to_string(),
+            "OS: Ubuntu".to_string(),
+            "OSRelease: 22.04".to_string(),
+            "Architecture: amd64".to_string(),
+            "ExecutablePath: /home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer".to_string(),
+            "".to_string(),
+            "===ProcEnviron===".to_string(),
+            "CARGO=/home/hkctkuy/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/cargo".to_string(),
+            "".to_string(),
+            "ProcCmdline: /home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer /home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt/crash-49c4e6270849ab5c9c13f64b98f817efa840d8a3".to_string(),
+            "".to_string(),
+            "Stdin: /home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/afl-out-xlnt-small/afl_main-worker/crashes/id:000007,sig:00,sync:afl_s01-worker,src:000371".to_string(),
+            "".to_string(),
+            "===ProcStatus===".to_string(),
+            "process 2945397".to_string(),
+            "".to_string(),
+            "===ProcFiles===".to_string(),
+            "      0x555555554000     0x555555556000     0x2000        0x0 /usr/local/bin/tiff2pdf".to_string(),
+            "".to_string(),
+            "===CrashSeverity===".to_string(),
+            "Severity: NOT_EXPLOITABLE".to_string(),
+            "Short description: SourceAv".to_string(),
+            "Description: Access violation on source operand".to_string(),
+            "Explanation: The target crashed on an access violation at an address matching the source operand of the current instruction. This likely indicates a read access violation.".to_string(),
+            "".to_string(),
+            "===Stacktrace===".to_string(),
+            "    #0 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_data() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28".to_string(),
+            "    #1 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_is_local() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:222:26".to_string(),
+            "".to_string(),
+            "===AsanReport===".to_string(),
+            "==363912==ERROR: AddressSanitizer: SEGV on unknown address 0xffffffffffffffe0 (pc 0x0000004ca0e0 bp 0x7fffffff9980 sp 0x7fffffff9928 T0)".to_string(),
+            "==363912==The signal is caused by a READ memory access.".to_string(),
+            "".to_string(),
+            "===UbsanReport===".to_string(),
+            "/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29: runtime error: signed integer overflow: 65535 * 32769 cannot be represented in type 'int'".to_string(),
+            "SUMMARY: UndefinedBehaviorSanitizer: signed-integer-overflow /home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29 in".to_string(),
+            "".to_string(),
+            "===PythonReport===".to_string(),
+            " === Uncaught Python exception: ===".to_string(),
+            "TypeError: unhashable type: 'list'".to_string(),
+            "".to_string(),
+            "===JavaReport===".to_string(),
+            "== Java Exception: java.lang.IndexOutOfBoundsException: start 59, end 22, length 60".to_string(),
+            "\tat com.code_intelligence.jazzer.Jazzer.main(Jazzer.java:73)".to_string(),
+            "".to_string(),
+            "===GoReport===".to_string(),
+            "fatal error: runtime: out of memory".to_string(),
+            "".to_string(),
+            "runtime.throw({0x565860?, 0x200000?})".to_string(),
+            "".to_string(),
+            "===RustReport===".to_string(),
+            "Running: ./artifacts/fuzz_target_1/crash-da39a3ee5e6b4b0d3255bfef95601890afd80709".to_string(),
+            "thread '<unnamed>' panicked at fuzz_targets/fuzz_target_1.rs:6:9:".to_string(),
+            "index out of bounds: the len is 0 but the index is 10".to_string(),
+            "stack backtrace:".to_string(),
+            "".to_string(),
+            "===Source===".to_string(),
+            "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),".to_string(),
+            ].join("\n"),
         );
     }
 
