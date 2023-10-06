@@ -1,10 +1,7 @@
 use casr::util;
-use libcasr::constants::*;
-use libcasr::exception::Exception;
-use libcasr::init_ignored_frames;
-use libcasr::java::*;
-use libcasr::report::CrashReport;
-use libcasr::stacktrace::*;
+use libcasr::{
+    exception::Exception, init_ignored_frames, java::*, report::CrashReport, stacktrace::*,
+};
 
 use anyhow::{bail, Result};
 use clap::{Arg, ArgAction, ArgGroup};

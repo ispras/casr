@@ -1,7 +1,5 @@
 use casr::util;
-use libcasr::constants::*;
-use libcasr::init_ignored_frames;
-use libcasr::stacktrace::*;
+use libcasr::{init_ignored_frames, stacktrace::*};
 
 use anyhow::{bail, Context, Result};
 use clap::{Arg, ArgAction};
