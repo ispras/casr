@@ -31,6 +31,12 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA: &[&str] = &[
     r"^javax\.",
 ];
 
+/// Regular expressions for JS functions to be ignored.
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS: &[&str] = &[
+    // TODO
+    r"^<anonymous>$",
+];
+
 /// Regular expressions for python functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[
     // TODO
@@ -226,6 +232,16 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA: &[&str] = &[
     // TODO
     r"^[^.]$",
+];
+
+/// Regular expressions for paths to JS files that should be ignored.
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS: &[&str] = &[
+    // TODO
+    r"^<anonymous>$",
+    r"^native$",
+    // JS internal modules
+    r"^(|node:)internal/?",
+    r"^(|node:)events/?",
 ];
 
 /// Regular expressions for paths to python files that should be ignored.
