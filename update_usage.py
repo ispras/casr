@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 
 import re, sys, os
 import subprocess
@@ -18,7 +18,6 @@ for p in os.listdir(target_dir):
     if p.startswith("casr-") \
             and os.path.isfile(target := os.path.join(target_dir, p)) \
             and os.access(target, os.X_OK):
-
         command = Popen([target, "-h"], stdout=PIPE, stderr=PIPE)
         out, _ = command.communicate()
         output = str(out, 'utf-8', errors='ignore')
