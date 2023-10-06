@@ -5,10 +5,11 @@ use cursive::View;
 use regex::Regex;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashSet};
+use std::fmt::Write;
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
-use std::io::{BufReader, Write};
+use std::io::{BufReader, Write as BufWrite};
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
@@ -588,8 +589,10 @@ fn build_slider_report(
     let mut state = report
         .registers
         .iter()
-        .map(|(k, v)| format!("{k}:    0x{v:x}\n"))
-        .collect::<String>();
+        .fold(String::new(), |mut output, (k, v)| {
+            let _ = writeln!(output, "{k}:    0x{v:x}");
+            output
+        });
 
     if !report.disassembly.is_empty() {
         state.push_str(&format!("\n{}", &report.disassembly.join("\n")));

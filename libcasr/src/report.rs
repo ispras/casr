@@ -778,8 +778,10 @@ pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<u32>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::*;
-    use crate::init_ignored_frames;
+    use crate::{
+        init_ignored_frames,
+        stacktrace::{Filter, Stacktrace},
+    };
 
     #[test]
     fn test_report_display() {

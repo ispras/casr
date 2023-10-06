@@ -13,7 +13,7 @@ use crate::error::*;
 use kodama::{linkage, Method};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
-use std::fmt;
+use std::fmt::{self, Write};
 use std::sync::RwLock;
 
 // Re-export types from gdb_command for convenient use from Casr library
@@ -306,8 +306,10 @@ impl Filter for Stacktrace {
         let rfunction = if !function_regexes.is_empty() {
             let rstring = function_regexes
                 .iter()
-                .map(|s| format!("({s})|"))
-                .collect::<String>();
+                .fold(String::new(), |mut output, s| {
+                    let _ = write!(output, "({s})|");
+                    output
+                });
             Regex::new(&rstring[0..rstring.len() - 1]).unwrap()
         } else {
             Regex::new(r"^[^.]$").unwrap()
@@ -316,10 +318,10 @@ impl Filter for Stacktrace {
         // Compile file regexp.
         let file_regexes = STACK_FRAME_FILEPATH_IGNORE_REGEXES.read().unwrap();
         let rfile = if !file_regexes.is_empty() {
-            let rstring = file_regexes
-                .iter()
-                .map(|s| format!("({s})|"))
-                .collect::<String>();
+            let rstring = file_regexes.iter().fold(String::new(), |mut output, s| {
+                let _ = write!(output, "({s})|");
+                output
+            });
             Regex::new(&rstring[0..rstring.len() - 1]).unwrap()
         } else {
             Regex::new(r"^[^.]$").unwrap()

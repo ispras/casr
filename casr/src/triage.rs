@@ -76,7 +76,7 @@ impl<'a> CrashInfo {
 
         // Add envs
         if self.target_args.iter().any(|x| x.eq("-detect_leaks=0")) {
-            let asan_options = std::env::var("ASAN_OPTIONS").unwrap_or(String::new());
+            let asan_options = std::env::var("ASAN_OPTIONS").unwrap_or_default();
             casr_cmd.env(
                 "ASAN_OPTIONS",
                 if asan_options.is_empty() {
