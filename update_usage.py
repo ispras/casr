@@ -15,8 +15,10 @@ build_dir = os.path.dirname(os.path.realpath(__file__))
 target_dir = os.path.join(build_dir, "target", "debug")
 
 for p in os.listdir(target_dir):
-    if p.startswith("casr-") and os.path.isfile(target := os.path.join(target_dir, p)) \
+    if p.startswith("casr-") \
+            and os.path.isfile(target := os.path.join(target_dir, p)) \
             and os.access(target, os.X_OK):
+
         command = Popen([target, "-h"], stdout=PIPE, stderr=PIPE)
         out, _ = command.communicate()
         output = str(out, 'utf-8', errors='ignore')
