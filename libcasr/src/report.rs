@@ -774,3 +774,197 @@ pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<u32>> {
 
     cluster_stacktraces(&traces)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constants::*;
+    use crate::init_ignored_frames;
+
+    #[test]
+    fn test_report_display() {
+        // TODO: Fill all empty fields
+        let mut report = CrashReport::new();
+        report.crashline =
+            "/gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28"
+                .to_string();
+        report.date = "2023-09-29T15:31:39.818262+03:00".to_string();
+        report.uname = "Linux astra-stand 5.15.0-84-generic #93-Ubuntu SMP Tue Sep 5 17:16:10 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux".to_string();
+        report.os = "Ubuntu".to_string();
+        report.os_release = "22.04".to_string();
+        report.architecture = "amd64".to_string();
+        report.executable_path =
+            "/home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer".to_string();
+        report.proc_environ = vec![
+            "CARGO=/home/hkctkuy/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/cargo"
+                .to_string(),
+        ];
+        report.proc_cmdline = "/home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer /home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt/crash-49c4e6270849ab5c9c13f64b98f817efa840d8a3".to_string();
+        report.stdin = "/home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/afl-out-xlnt-small/afl_main-worker/crashes/id:000007,sig:00,sync:afl_s01-worker,src:000371".to_string();
+        report.proc_status = vec!["process 2945397".to_string()];
+        report.proc_maps = vec![
+            "      0x555555554000     0x555555556000     0x2000        0x0 /usr/local/bin/tiff2pdf"
+                .to_string(),
+        ];
+        report.stacktrace = vec![
+                "    #0 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_data() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28".to_string(),
+                "    #1 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_is_local() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:222:26".to_string(),
+            ];
+        report.disassembly = vec!["==> 0x5e425d: mov eax, dword ptr [rax]".to_string()];
+        report.asan_report = vec![
+                "==363912==ERROR: AddressSanitizer: SEGV on unknown address 0xffffffffffffffe0 (pc 0x0000004ca0e0 bp 0x7fffffff9980 sp 0x7fffffff9928 T0)".to_string(),
+                "==363912==The signal is caused by a READ memory access.".to_string(),
+            ];
+        report.ubsan_report = vec![
+                "/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29: runtime error: signed integer overflow: 65535 * 32769 cannot be represented in type 'int'".to_string(),
+                "SUMMARY: UndefinedBehaviorSanitizer: signed-integer-overflow /home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29 in".to_string(),
+            ];
+        report.python_report = vec![
+            " === Uncaught Python exception: ===".to_string(),
+            "TypeError: unhashable type: 'list'".to_string(),
+        ];
+        report.java_report = vec![
+            "== Java Exception: java.lang.IndexOutOfBoundsException: start 59, end 22, length 60"
+                .to_string(),
+            "\tat com.code_intelligence.jazzer.Jazzer.main(Jazzer.java:73)".to_string(),
+        ];
+        report.go_report = vec![
+            "fatal error: runtime: out of memory".to_string(),
+            "".to_string(),
+            "runtime.throw({0x565860?, 0x200000?})".to_string(),
+        ];
+        report.rust_report = vec![
+            "Running: ./artifacts/fuzz_target_1/crash-da39a3ee5e6b4b0d3255bfef95601890afd80709"
+                .to_string(),
+            "thread '<unnamed>' panicked at fuzz_targets/fuzz_target_1.rs:6:9:".to_string(),
+            "index out of bounds: the len is 0 but the index is 10".to_string(),
+            "stack backtrace:".to_string(),
+        ];
+        report.source = vec![
+            "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),"
+                .to_string(),
+        ];
+        report.execution_class = ExecutionClass {
+                severity: "NOT_EXPLOITABLE".to_string(),
+                short_description: "SourceAv".to_string(),
+                description: "Access violation on source operand".to_string(),
+                explanation: "The target crashed on an access violation at an address matching the source operand of the current instruction. This likely indicates a read access violation.".to_string(),
+            };
+        report.pid = 16476;
+
+        assert_eq!(
+            format!("{report}"),
+            vec![
+            "CrashLine: /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28".to_string(),
+            "".to_string(),
+            "Date: 2023-09-29T15:31:39.818262+03:00".to_string(),
+            "Uname: Linux astra-stand 5.15.0-84-generic #93-Ubuntu SMP Tue Sep 5 17:16:10 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux".to_string(),
+            "OS: Ubuntu".to_string(),
+            "OSRelease: 22.04".to_string(),
+            "Architecture: amd64".to_string(),
+            "ExecutablePath: /home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer".to_string(),
+            "".to_string(),
+            "===ProcEnviron===".to_string(),
+            "CARGO=/home/hkctkuy/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/cargo".to_string(),
+            "".to_string(),
+            "ProcCmdline: /home/hkctkuy/github/casr/casr/tests/casr_tests/bin/load_fuzzer /home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt/crash-49c4e6270849ab5c9c13f64b98f817efa840d8a3".to_string(),
+            "".to_string(),
+            "Stdin: /home/hkctkuy/github/casr/casr/tests/casr_tests/casrep/afl-out-xlnt-small/afl_main-worker/crashes/id:000007,sig:00,sync:afl_s01-worker,src:000371".to_string(),
+            "".to_string(),
+            "===ProcStatus===".to_string(),
+            "process 2945397".to_string(),
+            "".to_string(),
+            "===ProcFiles===".to_string(),
+            "      0x555555554000     0x555555556000     0x2000        0x0 /usr/local/bin/tiff2pdf".to_string(),
+            "".to_string(),
+            "===CrashSeverity===".to_string(),
+            "Severity: NOT_EXPLOITABLE".to_string(),
+            "Short description: SourceAv".to_string(),
+            "Description: Access violation on source operand".to_string(),
+            "Explanation: The target crashed on an access violation at an address matching the source operand of the current instruction. This likely indicates a read access violation.".to_string(),
+            "".to_string(),
+            "===Stacktrace===".to_string(),
+            "    #0 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_data() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:187:28".to_string(),
+            "    #1 0x4ca0e0 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_is_local() const /gcc-build/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/basic_string.h:222:26".to_string(),
+            "".to_string(),
+            "===AsanReport===".to_string(),
+            "==363912==ERROR: AddressSanitizer: SEGV on unknown address 0xffffffffffffffe0 (pc 0x0000004ca0e0 bp 0x7fffffff9980 sp 0x7fffffff9928 T0)".to_string(),
+            "==363912==The signal is caused by a READ memory access.".to_string(),
+            "".to_string(),
+            "===UbsanReport===".to_string(),
+            "/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29: runtime error: signed integer overflow: 65535 * 32769 cannot be represented in type 'int'".to_string(),
+            "SUMMARY: UndefinedBehaviorSanitizer: signed-integer-overflow /home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29 in".to_string(),
+            "".to_string(),
+            "===PythonReport===".to_string(),
+            " === Uncaught Python exception: ===".to_string(),
+            "TypeError: unhashable type: 'list'".to_string(),
+            "".to_string(),
+            "===JavaReport===".to_string(),
+            "== Java Exception: java.lang.IndexOutOfBoundsException: start 59, end 22, length 60".to_string(),
+            "\tat com.code_intelligence.jazzer.Jazzer.main(Jazzer.java:73)".to_string(),
+            "".to_string(),
+            "===GoReport===".to_string(),
+            "fatal error: runtime: out of memory".to_string(),
+            "".to_string(),
+            "runtime.throw({0x565860?, 0x200000?})".to_string(),
+            "".to_string(),
+            "===RustReport===".to_string(),
+            "Running: ./artifacts/fuzz_target_1/crash-da39a3ee5e6b4b0d3255bfef95601890afd80709".to_string(),
+            "thread '<unnamed>' panicked at fuzz_targets/fuzz_target_1.rs:6:9:".to_string(),
+            "index out of bounds: the len is 0 but the index is 10".to_string(),
+            "stack backtrace:".to_string(),
+            "".to_string(),
+            "===Source===".to_string(),
+            "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),".to_string(),
+            ].join("\n"),
+        );
+    }
+
+    #[test]
+    fn test_report_dedup() {
+        let mut report = CrashReport::new();
+        // Fill asan_report for correct parsing
+        report.asan_report = vec!["".to_string()];
+        report.stacktrace = vec![
+            "#0 0x7ffff7b08c59  /build/glibc-SzIz7B/glibc-2.31/string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:345".to_string(),
+            "#1 0x4db921 in __asan_memcpy /llvm-project/compiler-rt/lib/asan/asan_interceptors_memintrinsics.cpp:22:3".to_string(),
+            "#2 0x10c0819 in xlnt::detail::compound_document::read_directory() /xlnt/source/detail/cryptography/compound_document.cpp:975:34".to_string(),
+            "#3 0x10bd55b in xlnt::detail::compound_document::compound_document(std::istream&) /xlnt/source/detail/cryptography/compound_document.cpp:517:5".to_string(),
+            "#4 0x998b40 in (anonymous namespace)::decrypt_xlsx(std::vector<unsigned char, std::allocator<unsigned char> > const&, std::__cxx11::basic_string<char16_t, std::char_traits<char16_t>, std::allocator<char16_t> > const&) /xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp:320:37".to_string(),
+        ];
+
+        // Init ignored frames for correct filtering
+        init_ignored_frames!("cpp");
+
+        let res = dedup_reports(&[report.clone(), report.clone()]);
+        let Ok(res) = res else {
+            panic!("{}", res.err().unwrap());
+        };
+        assert!(res[0]);
+        assert!(!res[1]);
+    }
+
+    #[test]
+    fn test_report_cluster() {
+        let mut report = CrashReport::new();
+        // Fill asan_report for correct parsing
+        report.asan_report = vec!["".to_string()];
+        report.stacktrace = vec![
+            "#0 0x7ffff7b08c59  /build/glibc-SzIz7B/glibc-2.31/string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:345".to_string(),
+            "#1 0x4db921 in __asan_memcpy /llvm-project/compiler-rt/lib/asan/asan_interceptors_memintrinsics.cpp:22:3".to_string(),
+            "#2 0x10c0819 in xlnt::detail::compound_document::read_directory() /xlnt/source/detail/cryptography/compound_document.cpp:975:34".to_string(),
+            "#3 0x10bd55b in xlnt::detail::compound_document::compound_document(std::istream&) /xlnt/source/detail/cryptography/compound_document.cpp:517:5".to_string(),
+            "#4 0x998b40 in (anonymous namespace)::decrypt_xlsx(std::vector<unsigned char, std::allocator<unsigned char> > const&, std::__cxx11::basic_string<char16_t, std::char_traits<char16_t>, std::allocator<char16_t> > const&) /xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp:320:37".to_string(),
+        ];
+
+        // Init ignored frames for correct filtering
+        init_ignored_frames!("cpp");
+
+        let res = cluster_reports(&[report.clone(), report.clone()]);
+        let Ok(res) = res else {
+            panic!("{}", res.err().unwrap());
+        };
+        assert_eq!(res[0], 1);
+        assert_eq!(res[1], 1);
+    }
+}
