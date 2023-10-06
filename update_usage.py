@@ -9,7 +9,8 @@ with open('docs/usage.md') as f:
 
 command = subprocess.run(["cargo", "build"])
 if command.returncode != 0:
-    print('Cargo build exited with code ' + command.returncode)
+    print('Cargo build exited with code ' + str(command.returncode))
+    exit(command.returncode)
 
 build_dir = os.path.dirname(os.path.realpath(__file__))
 target_dir = os.path.join(build_dir, "target", "debug")
