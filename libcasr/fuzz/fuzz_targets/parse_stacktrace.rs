@@ -17,7 +17,7 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
     let s = String::from_utf8_lossy(&data[1..]);
-    init_ignored_frames!("cpp", "rust", "python", "go", "java");
+    init_ignored_frames!("cpp", "rust", "python", "go", "java", "js");
     match data[0] % 5 {
         0 => {
             // Asan
@@ -47,6 +47,14 @@ fuzz_target!(|data: &[u8]| {
             // Java
             if let Ok(raw) = JavaStacktrace::extract_stacktrace(&s) {
                 if let Ok(st) = JavaStacktrace::parse_stacktrace(&raw) {
+                    let _ = st.crash_line();
+                }
+            }
+        }
+        4 => {
+            // JS
+            if let Ok(raw) = JSStacktrace::extract_stacktrace(&s) {
+                if let Ok(st) = JSStacktrace::parse_stacktrace(&raw) {
                     let _ = st.crash_line();
                 }
             }

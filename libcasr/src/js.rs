@@ -10,14 +10,13 @@ pub struct JSStacktrace;
 impl ParseStacktrace for JSStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         // Get stack trace from JS report.
-        let re =
-            Regex::new(r"(?m)^(?:.*Error)(?:.|\n)*?((?:\n(?:\s|\t)+at .*(?:\(.*\))?)+)").unwrap();
+        let re = Regex::new(r"(?m)^(?:.*Error)(?:.|\n)*?((?:\n(?:\s|\t)*at .*)+)").unwrap();
         let Some(cap) = re.captures(stream) else {
             return Err(Error::Casr(
                 "Couldn't find traceback in JS report".to_string(),
             ));
         };
-        let stacktrace = cap
+        let mut stacktrace = cap
             .get(1)
             .unwrap()
             .as_str()
@@ -25,6 +24,13 @@ impl ParseStacktrace for JSStacktrace {
             .filter(|l| !l.is_empty())
             .map(|l| l.trim().to_string())
             .collect::<Vec<String>>();
+
+        // Filter out multiple spaces
+        let re = Regex::new(r" +").unwrap();
+        stacktrace = stacktrace
+            .iter()
+            .map(|e| re.replace_all(e, " ").to_string())
+            .collect();
 
         Ok(stacktrace)
     }
@@ -40,6 +46,7 @@ impl ParseStacktrace for JSStacktrace {
                 .unwrap();
 
         fn parse_location(entry: &str, stentry: &mut StacktraceEntry, loc: &str) -> Result<()> {
+            // filename[:line[:column]]
             if loc.is_empty() {
                 return Err(Error::Casr(format!(
                     "Couldn't parse location. Entry: {entry}"
@@ -49,17 +56,22 @@ impl ParseStacktrace for JSStacktrace {
             let mut debug: Vec<String> = loc.split(':').map(|s| s.to_string()).collect();
             if debug.len() == 1 {
                 // Location contains filename only
+                if debug[0].contains("://") {
+                    debug[0] = debug[0].rsplit("://").next().unwrap().to_string();
+                }
                 stentry.debug.file = debug[0].to_string();
                 return Ok(());
             }
             if debug.len() > 3 {
                 // Filename contains ':' so all the elements except
                 // the last 2 belong to filename
-                let tail = debug[debug.len() - 2..].to_vec();
-                debug = [debug[..debug.len() - 2].join(":")].to_vec();
-                debug.append(&mut tail.to_vec());
+                debug = loc.rsplitn(3, ':').map(|s| s.to_string()).collect();
+                debug.reverse();
             }
 
+            if debug[0].contains("://") {
+                debug[0] = debug[0].rsplit("://").next().unwrap().to_string();
+            }
             stentry.debug.file = debug[0].to_string();
             stentry.debug.line = if let Ok(line) = debug[1].parse::<u64>() {
                 line
@@ -83,8 +95,10 @@ impl ParseStacktrace for JSStacktrace {
         }
 
         fn parse_eval(entry: &str, stentry: &mut StacktraceEntry) -> Result<()> {
+            // at eval (eval at func [[as method]] (location), location2) |
+            // at eval (eval at location, location2)
             let re = Regex::new(
-                r"^(?:\s|\t)*at(?:\s|\t)+eval(?:\s|\t)+\((?:eval(?:\s|\t)+at(?:\s|\t)+(.*?)(?:\s|\t)+(?:(\[as.*?\])(?:\s|\t)+)?)(?:\((.*)\))(?:,(?:\s|\t)+(.*))\)$",
+                r"^(?:\s|\t)*at eval \(eval at (?:(.+?) (?:(\[as.*?\]) )?\((.*?)\)|(.+?)), (.*?)\)$",
             )
             .unwrap();
             let Some(cap) = re.captures(entry) else {
@@ -93,31 +107,38 @@ impl ParseStacktrace for JSStacktrace {
                 )));
             };
 
-            let debug = cap.get(1).unwrap().as_str().to_string();
-            if debug == "<anonymous>" {
-                // Eval is located in anonymous function
+            if let Some(function_name) = cap.get(1) {
+                // at eval (eval at func [[as method]] (location), location2)
+                let debug = function_name.as_str().to_string();
+                stentry.function = if debug == "<anonymous>" {
+                    // Eval is located in anonymous function
+                    "eval".to_string()
+                } else {
+                    // Can append function name that eval is located in
+                    "eval at ".to_string() + debug.as_str()
+                };
+                if let Some(method_name) = cap.get(2) {
+                    // at eval (eval at func [as method] (location), location2)
+                    stentry.function += (" ".to_string() + method_name.as_str()).as_str();
+                }
+
+                let debug = cap.get(3).unwrap().as_str().to_string();
+                if debug.contains('(') || debug.contains(')') {
+                    // location contains nested evals
+                    // Fill <anonymous> to filter this entry from stacktrace
+                    // after parsing
+                    stentry.function = "<anonymous>".to_string();
+                    return Ok(());
+                }
+                parse_location(entry, stentry, &debug)?;
+            } else if let Some(location) = cap.get(4) {
+                // at eval (eval at location, location2)
                 stentry.function = "eval".to_string();
-            } else {
-                // Can append function name where eval is located
-                stentry.function = "eval at ".to_string() + debug.as_str();
-            }
-            if let Some(method_name) = cap.get(2) {
-                // at eval (eval at func [as method] (file:line[:column]))
-                stentry.function += (" ".to_string() + method_name.as_str()).as_str();
+                parse_location(entry, stentry, location.as_str())?;
             }
 
-            let debug = cap.get(3).unwrap().as_str().to_string();
-            if debug.contains('(') || debug.contains(')') {
-                // Entry contains nested evals
-                // Fill <anonymous> to filter this entry from stacktrace
-                // after parsing
-                stentry.function = "<anonymous>".to_string();
-                return Ok(());
-            }
-            parse_location(entry, stentry, &debug)?;
-
-            // Recalculate location adding offset inside eval function
-            let debug = cap.get(4).unwrap().as_str().to_string();
+            // Recalculate location adding offset inside location2 in eval function
+            let debug = cap.get(5).unwrap().as_str().to_string();
             let mut eval_stentry = StacktraceEntry::default();
             parse_location(entry, &mut eval_stentry, &debug)?;
             if eval_stentry.debug.line >= 3 {
@@ -132,22 +153,23 @@ impl ParseStacktrace for JSStacktrace {
 
         if let Some(cap) = re_full.captures(entry) {
             if entry.starts_with("at eval") && entry.contains("eval at") {
-                // at eval (eval at func (file:line[:column]), <anonymous>:line[:column])
+                // at eval (eval at func [[as method]] (location), location2) |
+                // at eval (eval at location, location2)
                 // Parse eval
                 parse_eval(entry, &mut stentry)?;
             } else {
-                // at func (file:line[:column])
+                // at func [[as method]] (location)
                 // Parse function with location
                 stentry.function = cap.get(1).unwrap().as_str().to_string();
                 if let Some(method_name) = cap.get(2) {
-                    // at func [as method] (file:line[:column])
+                    // at func [as method] (location)
                     stentry.function += (" ".to_string() + method_name.as_str()).as_str();
                 }
                 let debug = cap.get(3).unwrap().as_str().to_string();
                 parse_location(entry, &mut stentry, &debug)?;
             }
         } else if let Some(cap) = re_without_pars.captures(entry) {
-            // at file:line[:column]
+            // at location
             // Parse location only
             let debug = cap.get(1).unwrap().as_str().to_string();
             parse_location(entry, &mut stentry, &debug)?;
@@ -173,20 +195,7 @@ impl ParseStacktrace for JSStacktrace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        constants::{
-            STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO,
-            STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA, STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS,
-            STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON, STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
-            STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP, STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO,
-            STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA, STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS,
-            STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
-        },
-        init_ignored_frames,
-        stacktrace::{
-            Filter, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
-        },
-    };
+    use crate::{init_ignored_frames, stacktrace::Filter};
 
     #[test]
     fn test_js_stacktrace() {
@@ -296,14 +305,14 @@ Uncaught ReferenceError: var is not defined
         assert_eq!(stacktrace[5].function, "".to_string());
         assert_eq!(
             stacktrace[6].debug.file,
-            "file:///home/user/node/offset.js".to_string()
+            "/home/user/node/offset.js".to_string()
         );
         assert_eq!(stacktrace[6].debug.line, 3);
         assert_eq!(stacktrace[6].debug.column, 37);
         assert_eq!(stacktrace[6].function, "".to_string());
         assert_eq!(
             stacktrace[7].debug.file,
-            "file:///home/user/node/offset.js".to_string()
+            "/home/user/node/offset.js".to_string()
         );
         assert_eq!(stacktrace[7].debug.line, 3);
         assert_eq!(stacktrace[7].debug.column, 7);
