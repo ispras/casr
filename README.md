@@ -1,12 +1,12 @@
 [![Crates.io](https://img.shields.io/crates/v/casr)](https://crates.io/crates/casr)
 [![Documentation](https://docs.rs/libcasr/badge.svg)](https://docs.rs/libcasr)
+[![codecov](https://codecov.io/github/ispras/casr/graph/badge.svg?token=D9VY1WRWA7)](https://codecov.io/github/ispras/casr)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/ispras/casr/blob/master/LICENSE)
 
 [![amd64](https://github.com/ispras/casr/actions/workflows/amd64.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/amd64.yml)
 [![aarch64](https://github.com/ispras/casr/actions/workflows/aarch64.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/aarch64.yml)
 [![riscv64](https://github.com/ispras/casr/actions/workflows/riscv64.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/riscv64.yml)
 [![fuzzing](https://github.com/ispras/casr/actions/workflows/fuzzing.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/fuzzing.yml)
-[![codecov](https://codecov.io/github/ispras/casr/graph/badge.svg?token=D9VY1WRWA7)](https://codecov.io/github/ispras/casr)
 
 # CASR: Crash Analysis and Severity Report
 
