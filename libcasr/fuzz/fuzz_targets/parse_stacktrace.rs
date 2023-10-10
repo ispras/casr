@@ -9,6 +9,7 @@ use libcasr::{
     init_ignored_frames,
     java::JavaStacktrace,
     python::PythonStacktrace,
+    js::JSStacktrace,
     stacktrace::{CrashLineExt, Filter, ParseStacktrace, Stacktrace},
 };
 
