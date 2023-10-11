@@ -1,8 +1,34 @@
 //! JS module implements `ParseStacktrace` and `Exception` traits for JS reports.
 use crate::error::{Error, Result};
+use crate::exception::Exception;
+use crate::execution_class::ExecutionClass;
 use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
 
 use regex::Regex;
+
+/// Structure provides an interface for parsing JS exception message.
+pub struct JSException;
+
+impl Exception for JSException {
+    fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
+        let rexception = Regex::new(r"^(.*Error):(?:\s+(.*))?$").unwrap();
+        let Some(captures) = rexception.captures(stderr) else {
+            return None;
+        };
+        let error_type = if let Some(error_type) = captures.get(1) {
+            error_type.as_str()
+        } else {
+            captures.get(2).unwrap().as_str()
+        };
+        let message = captures.get(2).unwrap().as_str();
+        Some(ExecutionClass::new((
+            "NOT_EXPLOITABLE",
+            error_type,
+            message,
+            "",
+        )))
+    }
+}
 
 /// Structure provides an interface for processing the stack trace.
 pub struct JSStacktrace;
@@ -328,5 +354,16 @@ Uncaught ReferenceError: var is not defined
         assert_eq!(stacktrace[9].debug.line, 8);
         assert_eq!(stacktrace[9].debug.column, 41);
         assert_eq!(stacktrace[9].function, "eval".to_string());
+    }
+
+    #[test]
+    fn test_js_exception() {
+        let exception_info = r"Uncaught ReferenceError: var is not defined";
+        let Some(class) = JSException::parse_exception(exception_info) else {
+            panic!("Couldn't get JS exception");
+        };
+
+        assert_eq!(class.short_description, "Uncaught ReferenceError");
+        assert_eq!(class.description, "var is not defined");
     }
 }
