@@ -76,6 +76,13 @@ fn main() -> Result<()> {
                 .help("Output directory with triaged reports")
         )
         .arg(
+            Arg::new("force-remove")
+                .short('f')
+                .long("force-remove")
+                .action(ArgAction::SetTrue)
+                .help("Remove output project directory if it exists")
+        )
+        .arg(
             Arg::new("ignore-cmdline")
                 .action(ArgAction::SetTrue)
                 .long("ignore-cmdline")

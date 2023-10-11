@@ -94,6 +94,7 @@ Triage errors found by UndefinedBehaviorSanitizer and create CASR reports (.casr
                                    that timeout is disabled [default: 0]
       -i, --input <INPUT_DIRS>...  Target input directory list
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
+      -f, --force-remove           Remove output project directory if it exists
       -h, --help                   Print help
       -V, --version                Print version
 
@@ -363,6 +364,7 @@ Triage crashes found by AFL++
                                    that timeout is disabled [default: 0]
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
+      -f, --force-remove           Remove output project directory if it exists
           --ignore-cmdline         Force <ARGS> usage to run target instead of searching for
                                    cmdline files in AFL fuzzing directory
           --no-cluster             Do not cluster CASR reports
@@ -474,6 +476,8 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
               Directory containing crashes found by libFuzzer [default: .]
       -o, --output <OUTPUT_DIR>
               Output directory with triaged reports
+      -f, --force-remove
+              Remove output project directory if it exists
           --no-cluster
               Do not cluster CASR reports
           --casr-gdb-args <casr-gdb-args>
