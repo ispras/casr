@@ -11,6 +11,7 @@ pub struct JSException;
 
 impl Exception for JSException {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
+        // TODO: discuss the format of the 1st string
         let rexception = Regex::new(r"^(.*Error):(?:\s+(.*))?$").unwrap();
         let Some(captures) = rexception.captures(stderr) else {
             return None;
@@ -36,6 +37,7 @@ pub struct JSStacktrace;
 impl ParseStacktrace for JSStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         // Get stack trace from JS report.
+        // TODO: discuss the format of the 1st string
         let re = Regex::new(r"(?m)^(?:.*Error)(?:.|\n)*?((?:\n(?:\s|\t)*at .*)+)").unwrap();
         let Some(cap) = re.captures(stream) else {
             return Err(Error::Casr(
@@ -71,6 +73,15 @@ impl ParseStacktrace for JSStacktrace {
             Regex::new(r"^(?:\s|\t)*at(?:\s|\t)+(.+?)(?:(?:(?:\s|\t)+(\[as.*?\]))?(?:\s|\t)*)$")
                 .unwrap();
 
+        /// Parse substring of `entry` related to location in some file
+        ///
+        /// # Arguments
+        ///
+        /// * `entry` - initial string for stacktrace entry
+        ///
+        /// * `stentry` - `StacktraceEntry` to save parsed location into
+        ///
+        /// * `loc` - substring to extract location information from
         fn parse_location(entry: &str, stentry: &mut StacktraceEntry, loc: &str) -> Result<()> {
             // filename[:line[:column]]
             if loc.is_empty() {
@@ -85,6 +96,8 @@ impl ParseStacktrace for JSStacktrace {
                 if debug[0].contains("://") {
                     debug[0] = debug[0].rsplit("://").next().unwrap().to_string();
                 }
+                // TODO: refer to docs: https://v8.dev/docs/stack-trace-api
+                // or filter entries with empty filenames?
                 stentry.debug.file = debug[0].to_string();
                 return Ok(());
             }
@@ -120,6 +133,13 @@ impl ParseStacktrace for JSStacktrace {
             Ok(())
         }
 
+        /// Parse substring of `entry` related to location in some file
+        ///
+        /// # Arguments
+        ///
+        /// * `entry` - initial string for stacktrace entry
+        ///
+        /// * `stentry` - `StacktraceEntry` to save parsed location into
         fn parse_eval(entry: &str, stentry: &mut StacktraceEntry) -> Result<()> {
             // at eval (eval at func [[as method]] (location), location2) |
             // at eval (eval at location, location2)
@@ -225,6 +245,7 @@ mod tests {
 
     #[test]
     fn test_js_stacktrace() {
+        // TODO: test for entry with empty filename
         let stream = r#"Uncaught ReferenceError: var is not defined
     at new Uint8Array (<anonymous>)
     at Object.decode (/fuzz/node_modules/jpeg-js/lib/decoder.js:1110:13)
