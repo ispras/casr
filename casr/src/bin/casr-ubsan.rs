@@ -275,6 +275,13 @@ fn main() -> Result<()> {
                 .help("Output directory with triaged reports")
         )
         .arg(
+            Arg::new("force-remove")
+                .short('f')
+                .long("force-remove")
+                .action(ArgAction::SetTrue)
+                .help("Remove output project directory if it exists")
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .required(false)
@@ -298,7 +305,14 @@ fn main() -> Result<()> {
     } else if !output_dir.is_dir() {
         bail!("Output directory must be a directory");
     } else if output_dir.read_dir()?.next().is_some() {
-        bail!("Output directory is not empty.");
+        if matches.get_flag("force-remove") {
+            fs::remove_dir_all(output_dir)?;
+            fs::create_dir_all(output_dir).with_context(|| {
+                format!("Couldn't create output directory {}", output_dir.display())
+            })?;
+        } else {
+            bail!("Output directory is not empty.");
+        }
     }
     // Get program args.
     let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {

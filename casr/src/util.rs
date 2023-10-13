@@ -318,7 +318,14 @@ pub fn initialize_dirs(matches: &clap::ArgMatches) -> Result<&PathBuf> {
             format!("Couldn't create output directory {}", output_dir.display())
         })?;
     } else if output_dir.read_dir()?.next().is_some() {
-        bail!("Output directory is not empty.");
+        if matches.get_flag("force-remove") {
+            fs::remove_dir_all(output_dir)?;
+            fs::create_dir_all(output_dir).with_context(|| {
+                format!("Couldn't create output directory {}", output_dir.display())
+            })?;
+        } else {
+            bail!("Output directory is not empty.");
+        }
     }
     // Get oom dir
     let oom_dir = output_dir.join("oom");
