@@ -6,7 +6,7 @@ use crate::execution_class::*;
 use crate::gdb::GdbStacktrace;
 use crate::go::GoStacktrace;
 use crate::java::JavaStacktrace;
-use crate::js::JSStacktrace;
+use crate::js::JsStacktrace;
 use crate::python::PythonStacktrace;
 use crate::rust::RustStacktrace;
 use crate::stacktrace::*;
@@ -222,7 +222,7 @@ pub struct CrashReport {
     /// JS report.
     #[cfg_attr(
         feature = "serde",
-        serde(rename(serialize = "JSReport", deserialize = "JSReport"))
+        serde(rename(serialize = "JsReport", deserialize = "JsReport"))
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub js_report: Vec<String>,
@@ -555,7 +555,7 @@ impl CrashReport {
         } else if !self.rust_report.is_empty() {
             RustStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.js_report.is_empty() {
-            JSStacktrace::parse_stacktrace(&self.stacktrace)?
+            JsStacktrace::parse_stacktrace(&self.stacktrace)?
         } else {
             GdbStacktrace::parse_stacktrace(&self.stacktrace)?
         };
@@ -737,9 +737,9 @@ impl fmt::Display for CrashReport {
             }
         }
 
-        // JSReport
+        // JsReport
         if !self.js_report.is_empty() {
-            report += "\n===JSReport===\n";
+            report += "\n===JsReport===\n";
             for e in self.js_report.iter() {
                 report += &format!("{e}\n");
             }
@@ -938,7 +938,7 @@ mod tests {
             "index out of bounds: the len is 0 but the index is 10".to_string(),
             "stack backtrace:".to_string(),
             "".to_string(),
-            "===JSReport===".to_string(),
+            "===JsReport===".to_string(),
             "Uncaught ReferenceError: var is not defined".to_string(),
             "    at Worker.fuzz [as fn] (/home/user/test_js_stacktrace/main.js:1:2017)".to_string(),
             "".to_string(),

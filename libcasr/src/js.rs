@@ -7,9 +7,9 @@ use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
 use regex::Regex;
 
 /// Structure provides an interface for parsing JS exception message.
-pub struct JSException;
+pub struct JsException;
 
-impl Exception for JSException {
+impl Exception for JsException {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
         // TODO: discuss the format of the 1st string
         let rexception = Regex::new(r"^(.*Error):(?:\s+(.*))?$").unwrap();
@@ -32,13 +32,13 @@ impl Exception for JSException {
 }
 
 /// Structure provides an interface for processing the stack trace.
-pub struct JSStacktrace;
+pub struct JsStacktrace;
 
-impl ParseStacktrace for JSStacktrace {
+impl ParseStacktrace for JsStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         // Get stack trace from JS report.
         // TODO: discuss the format of the 1st string
-        let re = Regex::new(r"(?m)^(?:.*Error)(?:.|\n)*?((?:\n(?:\s|\t)*at .*)+)").unwrap();
+        let re = Regex::new(r"(?m)^(?:.*Error)(?:.|\n)*?((?:\n\s*at .*)+)").unwrap();
         let Some(cap) = re.captures(stream) else {
             return Err(Error::Casr(
                 "Couldn't find traceback in JS report".to_string(),
@@ -66,11 +66,11 @@ impl ParseStacktrace for JSStacktrace {
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
         let mut stentry = StacktraceEntry::default();
         let re_full = Regex::new(
-            r"^(?:\s|\t)*at(?:\s|\t)+(.+?)(?:(?:\s|\t)+(\[as.*?\])?(?:\s|\t)*)\((.*)\)$",
+            r"^\s*at\s+(.+?)(?:\s+(\[as.*?\])?\s*)\((.*)\)$",
         )
         .unwrap();
         let re_without_pars =
-            Regex::new(r"^(?:\s|\t)*at(?:\s|\t)+(.+?)(?:(?:(?:\s|\t)+(\[as.*?\]))?(?:\s|\t)*)$")
+            Regex::new(r"^\s*at\s+(.+?)(?:(?:\s+(\[as.*?\]))?\s*)$")
                 .unwrap();
 
         /// Parse substring of `entry` related to location in some file
@@ -144,7 +144,7 @@ impl ParseStacktrace for JSStacktrace {
             // at eval (eval at func [[as method]] (location), location2) |
             // at eval (eval at location, location2)
             let re = Regex::new(
-                r"^(?:\s|\t)*at eval \(eval at (?:(.+?) (?:(\[as.*?\]) )?\((.*?)\)|(.+?)), (.*?)\)$",
+                r"^\s*at eval \(eval at (?:(.+?) (?:(\[as.*?\]) )?\((.*?)\)|(.+?)), (.*?)\)$",
             )
             .unwrap();
             let Some(cap) = re.captures(entry) else {
@@ -301,10 +301,10 @@ Uncaught ReferenceError: var is not defined
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<String>>();
-        let bt = JSStacktrace::extract_stacktrace(stream).unwrap();
+        let bt = JsStacktrace::extract_stacktrace(stream).unwrap();
         assert_eq!(bt, trace);
 
-        let sttr = JSStacktrace::parse_stacktrace(&bt);
+        let sttr = JsStacktrace::parse_stacktrace(&bt);
         if sttr.is_err() {
             panic!("{}", sttr.err().unwrap());
         }
@@ -380,7 +380,7 @@ Uncaught ReferenceError: var is not defined
     #[test]
     fn test_js_exception() {
         let exception_info = r"Uncaught ReferenceError: var is not defined";
-        let Some(class) = JSException::parse_exception(exception_info) else {
+        let Some(class) = JsException::parse_exception(exception_info) else {
             panic!("Couldn't get JS exception");
         };
 
