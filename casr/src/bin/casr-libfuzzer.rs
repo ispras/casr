@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
         .version(clap::crate_version!())
-        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)")
+        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz)")
         .term_width(90)
         .arg(
             Arg::new("log-level")
@@ -128,6 +128,11 @@ fn main() -> Result<()> {
         "casr-python"
     } else if argv[0].ends_with("jazzer") || argv[0].ends_with("java") {
         "casr-java"
+    } else if argv[0].ends_with("node")
+        || argv.len() > 1 && argv[0].ends_with("npx") && argv[1].ends_with("jazzer")
+        || argv[0].ends_with("jsfuzz")
+    {
+        "casr-js"
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
         if sym_list.contains("__asan") || sym_list.contains("runtime.go") {

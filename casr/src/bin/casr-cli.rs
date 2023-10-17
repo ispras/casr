@@ -447,6 +447,16 @@ fn build_tree_report(
         tree.collapse_item(row);
     }
 
+    if !report.js_report.is_empty() {
+        row = tree
+            .insert_container_item("JsReport".to_string(), Placement::After, row)
+            .unwrap();
+        report.js_report.iter().for_each(|e| {
+            tree.insert_item(e.clone(), Placement::LastChild, row);
+        });
+        tree.collapse_item(row);
+    }
+
     if !report.source.is_empty() {
         row = tree
             .insert_container_item("Source".to_string(), Placement::After, row)
@@ -627,6 +637,10 @@ fn build_slider_report(
 
     if !report.rust_report.is_empty() {
         select.add_item("RustReport", report.rust_report.join("\n"));
+    }
+
+    if !report.js_report.is_empty() {
+        select.add_item("JsReport", report.js_report.join("\n"));
     }
 
     if !report.source.is_empty() {

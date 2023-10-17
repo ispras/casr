@@ -429,8 +429,7 @@ fn main() -> Result<()> {
                 .value_parser(clap::value_parser!(u32).range(1..))
         )
         .get_matches();
-
-    init_ignored_frames!("cpp", "rust", "python", "go", "java");
+    init_ignored_frames!("cpp", "rust", "python", "go", "java", "js");
 
     // Get number of threads
     let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
