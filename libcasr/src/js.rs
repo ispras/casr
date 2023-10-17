@@ -11,17 +11,16 @@ pub struct JsException;
 
 impl Exception for JsException {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
-        // TODO: discuss the format of the 1st string
-        let rexception = Regex::new(r"^(.*Error):(?:\s+(.*))?$").unwrap();
+        let rexception = Regex::new(r"^.*?(\S*Error):(?:\s+(.*))?$").unwrap();
         let Some(captures) = rexception.captures(stderr) else {
             return None;
         };
-        let error_type = if let Some(error_type) = captures.get(1) {
-            error_type.as_str()
+        let error_type = captures.get(1).unwrap().as_str();
+        let message = if let Some(message) = captures.get(2) {
+            message.as_str()
         } else {
-            captures.get(2).unwrap().as_str()
+            ""
         };
-        let message = captures.get(2).unwrap().as_str();
         Some(ExecutionClass::new((
             "NOT_EXPLOITABLE",
             error_type,
@@ -37,8 +36,7 @@ pub struct JsStacktrace;
 impl ParseStacktrace for JsStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         // Get stack trace from JS report.
-        // TODO: discuss the format of the 1st string
-        let re = Regex::new(r"(?m)^(?:.*Error)(?:.|\n)*?((?:\n\s*at .*)+)").unwrap();
+        let re = Regex::new(r"(?m)^(?:.*Error:)(?:.|\n)*?((?:\n\s*at \S+.*)+)").unwrap();
         let Some(cap) = re.captures(stream) else {
             return Err(Error::Casr(
                 "Couldn't find traceback in JS report".to_string(),
@@ -65,13 +63,8 @@ impl ParseStacktrace for JsStacktrace {
 
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
         let mut stentry = StacktraceEntry::default();
-        let re_full = Regex::new(
-            r"^\s*at\s+(.+?)(?:\s+(\[as.*?\])?\s*)\((.*)\)$",
-        )
-        .unwrap();
-        let re_without_pars =
-            Regex::new(r"^\s*at\s+(.+?)(?:(?:\s+(\[as.*?\]))?\s*)$")
-                .unwrap();
+        let re_full = Regex::new(r"^\s*at\s+(.+?)(?:\s+(\[as.*?\])?\s*)\((.*)\)$").unwrap();
+        let re_without_pars = Regex::new(r"^\s*at\s+(.+?)(?:(?:\s+(\[as.*?\]))?\s*)$").unwrap();
 
         /// Parse substring of `entry` related to location in some file
         ///
@@ -91,27 +84,27 @@ impl ParseStacktrace for JsStacktrace {
             }
 
             let mut debug: Vec<String> = loc.split(':').map(|s| s.to_string()).collect();
-            if debug.len() == 1 {
-                // Location contains filename only
-                if debug[0].contains("://") {
-                    debug[0] = debug[0].rsplit("://").next().unwrap().to_string();
-                }
-                // TODO: refer to docs: https://v8.dev/docs/stack-trace-api
-                // or filter entries with empty filenames?
-                stentry.debug.file = debug[0].to_string();
-                return Ok(());
-            }
             if debug.len() > 3 {
                 // Filename contains ':' so all the elements except
                 // the last 2 belong to filename
                 debug = loc.rsplitn(3, ':').map(|s| s.to_string()).collect();
                 debug.reverse();
             }
-
             if debug[0].contains("://") {
                 debug[0] = debug[0].rsplit("://").next().unwrap().to_string();
             }
-            stentry.debug.file = debug[0].to_string();
+            // TODO: refer to docs: https://v8.dev/docs/stack-trace-api or filter entries with empty filenames?
+            if !debug[0].starts_with('/') {
+                // Filter non-absolute paths as they are related to internal JS modules
+                stentry.debug.file = "native".to_string();
+            } else {
+                stentry.debug.file = debug[0].to_string();
+            }
+            if debug.len() == 1 {
+                // Location contains filename only
+                return Ok(());
+            }
+
             stentry.debug.line = if let Ok(line) = debug[1].parse::<u64>() {
                 line
             } else {
@@ -346,35 +339,31 @@ Uncaught ReferenceError: var is not defined
         assert_eq!(stacktrace[4].debug.line, 55);
         assert_eq!(stacktrace[4].debug.column, 30);
         assert_eq!(stacktrace[4].function, "process.<anonymous>".to_string());
-        assert_eq!(stacktrace[5].debug.file, "bootstrap_node.js".to_string());
-        assert_eq!(stacktrace[5].debug.line, 609);
-        assert_eq!(stacktrace[5].debug.column, 3);
+        assert_eq!(
+            stacktrace[5].debug.file,
+            "/home/user/node/offset.js".to_string()
+        );
+        assert_eq!(stacktrace[5].debug.line, 3);
+        assert_eq!(stacktrace[5].debug.column, 37);
         assert_eq!(stacktrace[5].function, "".to_string());
         assert_eq!(
             stacktrace[6].debug.file,
             "/home/user/node/offset.js".to_string()
         );
         assert_eq!(stacktrace[6].debug.line, 3);
-        assert_eq!(stacktrace[6].debug.column, 37);
-        assert_eq!(stacktrace[6].function, "".to_string());
+        assert_eq!(stacktrace[6].debug.column, 7);
+        assert_eq!(stacktrace[6].function, "eval".to_string());
+        assert_eq!(stacktrace[7].debug.file, "/fuzz/FuzzTarget.js".to_string());
+        assert_eq!(stacktrace[7].debug.line, 12);
+        assert_eq!(stacktrace[7].debug.column, 13);
+        assert_eq!(stacktrace[7].function, "eval at g".to_string());
         assert_eq!(
-            stacktrace[7].debug.file,
-            "/home/user/node/offset.js".to_string()
-        );
-        assert_eq!(stacktrace[7].debug.line, 3);
-        assert_eq!(stacktrace[7].debug.column, 7);
-        assert_eq!(stacktrace[7].function, "eval".to_string());
-        assert_eq!(stacktrace[8].debug.file, "/fuzz/FuzzTarget.js".to_string());
-        assert_eq!(stacktrace[8].debug.line, 12);
-        assert_eq!(stacktrace[8].debug.column, 13);
-        assert_eq!(stacktrace[8].function, "eval at g".to_string());
-        assert_eq!(
-            stacktrace[9].debug.file,
+            stacktrace[8].debug.file,
             "/.svelte-kit/runtime/components/layout.svelte".to_string()
         );
-        assert_eq!(stacktrace[9].debug.line, 8);
-        assert_eq!(stacktrace[9].debug.column, 41);
-        assert_eq!(stacktrace[9].function, "eval".to_string());
+        assert_eq!(stacktrace[8].debug.line, 8);
+        assert_eq!(stacktrace[8].debug.column, 41);
+        assert_eq!(stacktrace[8].function, "eval".to_string());
     }
 
     #[test]
@@ -384,7 +373,7 @@ Uncaught ReferenceError: var is not defined
             panic!("Couldn't get JS exception");
         };
 
-        assert_eq!(class.short_description, "Uncaught ReferenceError");
+        assert_eq!(class.short_description, "ReferenceError");
         assert_eq!(class.description, "var is not defined");
     }
 }
