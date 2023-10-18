@@ -11,7 +11,7 @@ pub struct JsException;
 
 impl Exception for JsException {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
-        let rexception = Regex::new(r"^.*?(\S*Error):(?:\s+(.*))?$").unwrap();
+        let rexception = Regex::new(r"(?m)^.*?(\S*Error):(?:\s+(.*))?$").unwrap();
         let Some(captures) = rexception.captures(stderr) else {
             return None;
         };
@@ -36,7 +36,8 @@ pub struct JsStacktrace;
 impl ParseStacktrace for JsStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         // Get stack trace from JS report.
-        let re = Regex::new(r"(?m)^(?:.*Error:)(?:.|\n)*?((?:\n\s*at \S+.*)+)").unwrap();
+        let re = Regex::new(r"(?m)^(?:(?:.*Error:)(?:.|\n)*?|Thrown at:\n*?)((?:\n\s*at \S+.*)+)")
+            .unwrap();
         let Some(cap) = re.captures(stream) else {
             return Err(Error::Casr(
                 "Couldn't find traceback in JS report".to_string(),
@@ -93,8 +94,9 @@ impl ParseStacktrace for JsStacktrace {
             if debug[0].contains("://") {
                 debug[0] = debug[0].rsplit("://").next().unwrap().to_string();
             }
-            // TODO: refer to docs: https://v8.dev/docs/stack-trace-api or filter entries with empty filenames?
-            if !debug[0].starts_with('/') {
+            if debug[0].is_empty() || !debug[0].starts_with('/') {
+                // Filter empty filenames as related entries cannot provide enough info
+                // (e.g. "at func (:3:10)" cannot be attached to any source file)
                 // Filter non-absolute paths as they are related to internal JS modules
                 stentry.debug.file = "native".to_string();
             } else {
@@ -234,11 +236,10 @@ impl ParseStacktrace for JsStacktrace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{init_ignored_frames, stacktrace::Filter};
+    use crate::{init_ignored_frames, stacktrace::CrashLineExt, stacktrace::Filter};
 
     #[test]
     fn test_js_stacktrace() {
-        // TODO: test for entry with empty filename
         let stream = r#"Uncaught ReferenceError: var is not defined
     at new Uint8Array (<anonymous>)
     at Object.decode (/fuzz/node_modules/jpeg-js/lib/decoder.js:1110:13)
@@ -255,6 +256,7 @@ mod tests {
     at eval (eval at <anonymous> (file:///home/user/node/offset.js:3:3), <anonymous>:3:7)
     at eval (eval at g (/fuzz/FuzzTarget.js:7:7), <anonymous>:8:13)
     at eval (/.svelte-kit/runtime/components/layout.svelte:8:41)
+    at handler (:3:10)
 
 Uncaught ReferenceError: var is not defined
     at Object.decode (/fuzz/node_modules/jpeg-js/lib/decoder.js:1110:13)
@@ -270,7 +272,8 @@ Uncaught ReferenceError: var is not defined
     at eval (eval at <anonymous> (eval at g (/fuzz/FuzzTarget.js:7:7)), <anonymous>:4:23)
     at eval (eval at <anonymous> (file:///home/user/node/offset.js:3:3), <anonymous>:3:7)
     at eval (eval at g (/fuzz/FuzzTarget.js:7:7), <anonymous>:8:13)
-    at eval (/.svelte-kit/runtime/components/layout.svelte:8:41)"#;
+    at eval (/.svelte-kit/runtime/components/layout.svelte:8:41)
+    at handler (:3:10)"#;
 
         let raw_stacktrace = &[
             "at new Uint8Array (<anonymous>)",
@@ -288,7 +291,14 @@ Uncaught ReferenceError: var is not defined
             "at eval (eval at <anonymous> (file:///home/user/node/offset.js:3:3), <anonymous>:3:7)",
             "at eval (eval at g (/fuzz/FuzzTarget.js:7:7), <anonymous>:8:13)",
             "at eval (/.svelte-kit/runtime/components/layout.svelte:8:41)",
+            "at handler (:3:10)",
         ];
+
+        let Some(exception) = JsException::parse_exception(stream) else {
+            panic!("Couldn't get JS exception");
+        };
+        assert_eq!(exception.short_description, "ReferenceError");
+        assert_eq!(exception.description, "var is not defined");
 
         let trace = raw_stacktrace
             .iter()
@@ -306,6 +316,18 @@ Uncaught ReferenceError: var is not defined
         init_ignored_frames!("js");
         stacktrace.filter();
 
+        // Check crashline
+        let crash_line = stacktrace.crash_line();
+        if let Ok(crash_line) = crash_line {
+            assert_eq!(
+                crash_line.to_string(),
+                "/fuzz/node_modules/jpeg-js/lib/decoder.js:1110:13"
+            );
+        } else {
+            panic!("{}", crash_line.err().unwrap());
+        }
+
+        assert_eq!(stacktrace.len(), 9);
         assert_eq!(
             stacktrace[0].debug.file,
             "/fuzz/node_modules/jpeg-js/lib/decoder.js".to_string()
@@ -364,16 +386,5 @@ Uncaught ReferenceError: var is not defined
         assert_eq!(stacktrace[8].debug.line, 8);
         assert_eq!(stacktrace[8].debug.column, 41);
         assert_eq!(stacktrace[8].function, "eval".to_string());
-    }
-
-    #[test]
-    fn test_js_exception() {
-        let exception_info = r"Uncaught ReferenceError: var is not defined";
-        let Some(class) = JsException::parse_exception(exception_info) else {
-            panic!("Couldn't get JS exception");
-        };
-
-        assert_eq!(class.short_description, "ReferenceError");
-        assert_eq!(class.description, "var is not defined");
     }
 }
