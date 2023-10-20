@@ -2,7 +2,7 @@
 use crate::error::{Error, Result};
 use crate::exception::Exception;
 use crate::execution_class::ExecutionClass;
-use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
+use crate::stacktrace::{DebugInfo, ParseStacktrace, Stacktrace, StacktraceEntry};
 
 use regex::Regex;
 
@@ -43,21 +43,17 @@ impl ParseStacktrace for JsStacktrace {
                 "Couldn't find traceback in JS report".to_string(),
             ));
         };
-        let mut stacktrace = cap
+        // Filter out empty lines, leading and trailind spaces, multiple spaces
+        let re = Regex::new(r" +").unwrap();
+        let stacktrace = cap
             .get(1)
             .unwrap()
             .as_str()
             .split('\n')
             .filter(|l| !l.is_empty())
             .map(|l| l.trim().to_string())
+            .map(|e| re.replace_all(&e, " ").to_string())
             .collect::<Vec<String>>();
-
-        // Filter out multiple spaces
-        let re = Regex::new(r" +").unwrap();
-        stacktrace = stacktrace
-            .iter()
-            .map(|e| re.replace_all(e, " ").to_string())
-            .collect();
 
         Ok(stacktrace)
     }
@@ -71,17 +67,16 @@ impl ParseStacktrace for JsStacktrace {
         ///
         /// # Arguments
         ///
-        /// * `entry` - initial string for stacktrace entry
-        ///
-        /// * `stentry` - `StacktraceEntry` to save parsed location into
-        ///
         /// * `loc` - substring to extract location information from
-        fn parse_location(entry: &str, stentry: &mut StacktraceEntry, loc: &str) -> Result<()> {
+        ///
+        /// # Return value
+        ///
+        /// Location information (if present): filename, line number, column number
+        fn parse_location(loc: &str) -> Result<DebugInfo> {
             // filename[:line[:column]]
+            let mut debug_info = DebugInfo::default();
             if loc.is_empty() {
-                return Err(Error::Casr(format!(
-                    "Couldn't parse location. Entry: {entry}"
-                )));
+                return Err(Error::Casr(format!("Couldn't parse location: {loc}")));
             }
 
             let mut debug: Vec<String> = loc.split(':').map(|s| s.to_string()).collect();
@@ -98,34 +93,34 @@ impl ParseStacktrace for JsStacktrace {
                 // Filter empty filenames as related entries cannot provide enough info
                 // (e.g. "at func (:3:10)" cannot be attached to any source file)
                 // Filter non-absolute paths as they are related to internal JS modules
-                stentry.debug.file = "native".to_string();
+                debug_info.file = "<anonymous>".to_string();
             } else {
-                stentry.debug.file = debug[0].to_string();
+                debug_info.file = debug[0].to_string();
             }
             if debug.len() == 1 {
                 // Location contains filename only
-                return Ok(());
+                return Ok(debug_info);
             }
 
-            stentry.debug.line = if let Ok(line) = debug[1].parse::<u64>() {
+            debug_info.line = if let Ok(line) = debug[1].parse::<u64>() {
                 line
             } else {
                 return Err(Error::Casr(format!(
-                    "Couldn't parse line number {}. Entry: {entry}",
+                    "Couldn't parse line number {}: {loc}",
                     debug[1]
                 )));
             };
             if debug.len() == 3 {
-                stentry.debug.column = if let Ok(column) = debug[2].parse::<u64>() {
+                debug_info.column = if let Ok(column) = debug[2].parse::<u64>() {
                     column
                 } else {
                     return Err(Error::Casr(format!(
-                        "Couldn't parse column number {}. Entry: {entry}",
+                        "Couldn't parse column number {}: {loc}",
                         debug[2]
                     )));
                 }
             }
-            Ok(())
+            Ok(debug_info)
         }
 
         /// Parse substring of `entry` related to location in some file
@@ -134,10 +129,13 @@ impl ParseStacktrace for JsStacktrace {
         ///
         /// * `entry` - initial string for stacktrace entry
         ///
-        /// * `stentry` - `StacktraceEntry` to save parsed location into
-        fn parse_eval(entry: &str, stentry: &mut StacktraceEntry) -> Result<()> {
+        /// # Return value
+        ///
+        /// Parsed info about stacktrace entry
+        fn parse_eval(entry: &str) -> Result<StacktraceEntry> {
             // at eval (eval at func [[as method]] (location), location2) |
             // at eval (eval at location, location2)
+            let mut stentry = StacktraceEntry::default();
             let re = Regex::new(
                 r"^\s*at eval \(eval at (?:(.+?) (?:(\[as.*?\]) )?\((.*?)\)|(.+?)), (.*?)\)$",
             )
@@ -169,27 +167,26 @@ impl ParseStacktrace for JsStacktrace {
                     // Fill <anonymous> to filter this entry from stacktrace
                     // after parsing
                     stentry.function = "<anonymous>".to_string();
-                    return Ok(());
+                    return Ok(stentry);
                 }
-                parse_location(entry, stentry, &debug)?;
+                stentry.debug = parse_location(&debug)?;
             } else if let Some(location) = cap.get(4) {
                 // at eval (eval at location, location2)
                 stentry.function = "eval".to_string();
-                parse_location(entry, stentry, location.as_str())?;
+                stentry.debug = parse_location(location.as_str())?;
             }
 
             // Recalculate location adding offset inside location2 in eval function
             let debug = cap.get(5).unwrap().as_str().to_string();
-            let mut eval_stentry = StacktraceEntry::default();
-            parse_location(entry, &mut eval_stentry, &debug)?;
-            if eval_stentry.debug.line >= 3 {
+            let eval_debug = parse_location(&debug)?;
+            if eval_debug.line >= 3 {
                 // Line number inside eval function starts with 3
-                stentry.debug.line += eval_stentry.debug.line - 3;
-                if eval_stentry.debug.column != 0 {
-                    stentry.debug.column = eval_stentry.debug.column;
+                stentry.debug.line += eval_debug.line - 3;
+                if eval_debug.column != 0 {
+                    stentry.debug.column = eval_debug.column;
                 }
             }
-            Ok(())
+            Ok(stentry)
         }
 
         if let Some(cap) = re_full.captures(entry) {
@@ -197,7 +194,7 @@ impl ParseStacktrace for JsStacktrace {
                 // at eval (eval at func [[as method]] (location), location2) |
                 // at eval (eval at location, location2)
                 // Parse eval
-                parse_eval(entry, &mut stentry)?;
+                stentry = parse_eval(entry)?;
             } else {
                 // at func [[as method]] (location)
                 // Parse function with location
@@ -207,13 +204,13 @@ impl ParseStacktrace for JsStacktrace {
                     stentry.function += (" ".to_string() + method_name.as_str()).as_str();
                 }
                 let debug = cap.get(3).unwrap().as_str().to_string();
-                parse_location(entry, &mut stentry, &debug)?;
+                stentry.debug = parse_location(&debug)?;
             }
         } else if let Some(cap) = re_without_pars.captures(entry) {
             // at location
             // Parse location only
             let debug = cap.get(1).unwrap().as_str().to_string();
-            parse_location(entry, &mut stentry, &debug)?;
+            stentry.debug = parse_location(&debug)?;
         } else {
             return Err(Error::Casr(format!(
                 "Couldn't parse stacktrace line: {entry}"

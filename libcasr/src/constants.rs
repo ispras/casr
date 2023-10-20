@@ -237,7 +237,9 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA: &[&str] = &[
 /// Regular expressions for paths to JS files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS: &[&str] = &[
     // TODO
+    // Anonymous functions
     r"^<anonymous>$",
+    // Native locations (within V8’s libraries)
     r"^native$",
     // JS internal modules
     r"^(|node:)internal/?",
