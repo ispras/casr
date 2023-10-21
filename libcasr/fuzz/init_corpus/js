@@ -1,0 +1,13 @@
+Error: 1
+    at eval (eval at <anonymous> (eval at g (/fuzz/FuzzTarget_jazzer.js:7:7)), <anonymous>:4:23)
+    at eval (eval at g (/fuzz/FuzzTarget_jazzer.js:7:7), <anonymous>:8:13)
+    at g (/fuzz/FuzzTarget_jazzer.js:14:13)
+    at fuzz (/fuzz/FuzzTarget_jazzer.js:29:9)
+    at module.exports.fuzz (/fuzz/FuzzTarget_jazzer.js:51:5)
+    at result (/fuzz/node_modules/@jazzer.js/core/core.ts:335:15)
+Error: 2
+    at eval (eval at g (/fuzz/FuzzTarget_jazzer.js:7:7), <anonymous>:9:54)
+    at g (/fuzz/FuzzTarget_jazzer.js:14:13)
+    at fuzz (/fuzz/FuzzTarget_jazzer.js:29:9)
+    at module.exports.fuzz (/fuzz/FuzzTarget_jazzer.js:51:5)
+    at result (/fuzz/node_modules/@jazzer.js/core/core.ts:335:15)

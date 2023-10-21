@@ -20,7 +20,7 @@ impl ParseStacktrace for JavaStacktrace {
             conv_counter: usize,
         }
         // Get java stack trace.
-        let re = Regex::new(r"(?m)^(?:Caused by:|Exception in thread|== Java Exception:)(?:.|\n)*?((?:\n(?:\s|\t)+at .*\(.*\))+)(?:\n(?:\s|\t)+\.\.\. (\d+) more)?").unwrap();
+        let re = Regex::new(r"(?m)^(?:Caused by:|Exception in thread|== Java Exception:)(?:.|\n)*?((?:\n\s+at .*\(.*\))+)(?:\n\s+\.\.\. (\d+) more)?").unwrap();
         let mut blocks = Vec::new();
         for cap in re.captures_iter(stream) {
             let body: Vec<&'_ str> = cap
@@ -66,7 +66,7 @@ impl ParseStacktrace for JavaStacktrace {
     }
 
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
-        let re = Regex::new(r"(?:\s|\t)*at (.*)\((.*)\)").unwrap();
+        let re = Regex::new(r"\s*at (.*)\((.*)\)").unwrap();
 
         let Some(cap) = re.captures(entry) else {
             return Err(Error::Casr(format!(

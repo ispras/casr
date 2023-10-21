@@ -16,6 +16,7 @@
 //! * Go
 //! * Python
 //! * Java
+//! * JavaScript
 //!
 //! It could be built with `exploitable` feature for severity estimation crashes
 //! collected from gdb. To save crash reports as json (.casrep/.sarif) use `serde` feature.
@@ -29,6 +30,7 @@ pub mod execution_class;
 pub mod gdb;
 pub mod go;
 pub mod java;
+pub mod js;
 pub mod python;
 pub mod report;
 pub mod rust;

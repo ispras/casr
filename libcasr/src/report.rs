@@ -6,6 +6,7 @@ use crate::execution_class::*;
 use crate::gdb::GdbStacktrace;
 use crate::go::GoStacktrace;
 use crate::java::JavaStacktrace;
+use crate::js::JsStacktrace;
 use crate::python::PythonStacktrace;
 use crate::rust::RustStacktrace;
 use crate::stacktrace::*;
@@ -218,6 +219,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub rust_report: Vec<String>,
+    /// JS report.
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "JsReport", deserialize = "JsReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub js_report: Vec<String>,
     /// Crash line from stack trace: source:line or binary+offset.
     #[cfg_attr(
         feature = "serde",
@@ -546,6 +554,8 @@ impl CrashReport {
             GoStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.rust_report.is_empty() {
             RustStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.js_report.is_empty() {
+            JsStacktrace::parse_stacktrace(&self.stacktrace)?
         } else {
             GdbStacktrace::parse_stacktrace(&self.stacktrace)?
         };
@@ -727,6 +737,14 @@ impl fmt::Display for CrashReport {
             }
         }
 
+        // JsReport
+        if !self.js_report.is_empty() {
+            report += "\n===JsReport===\n";
+            for e in self.js_report.iter() {
+                report += &format!("{e}\n");
+            }
+        }
+
         // Source
         if !self.source.is_empty() {
             report += "\n===Source===\n";
@@ -842,6 +860,10 @@ mod tests {
             "index out of bounds: the len is 0 but the index is 10".to_string(),
             "stack backtrace:".to_string(),
         ];
+        report.js_report = vec![
+            "Uncaught ReferenceError: var is not defined".to_string(),
+            "    at Worker.fuzz [as fn] (/home/user/test_js_stacktrace/main.js:1:2017)".to_string(),
+        ];
         report.source = vec![
             "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),"
                 .to_string(),
@@ -915,6 +937,10 @@ mod tests {
             "thread '<unnamed>' panicked at fuzz_targets/fuzz_target_1.rs:6:9:".to_string(),
             "index out of bounds: the len is 0 but the index is 10".to_string(),
             "stack backtrace:".to_string(),
+            "".to_string(),
+            "===JsReport===".to_string(),
+            "Uncaught ReferenceError: var is not defined".to_string(),
+            "    at Worker.fuzz [as fn] (/home/user/test_js_stacktrace/main.js:1:2017)".to_string(),
             "".to_string(),
             "===Source===".to_string(),
             "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),".to_string(),
