@@ -784,7 +784,7 @@ pub fn dedup_reports(casreps: &[CrashReport]) -> Result<Vec<bool>> {
 ///
 /// An vector of the same length as `[CrashReport]`
 /// Vec\[i\] is the flat cluster number to which original `CrashReport` i belongs.
-pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<u32>> {
+pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<usize>> {
     let traces: Vec<Stacktrace> = casreps
         .iter()
         .map(|report| report.filtered_stacktrace())
