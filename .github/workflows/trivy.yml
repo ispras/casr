@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Get Cargo.lock
         # According to this https://aquasecurity.github.io/trivy/v0.44/docs/scanner/vulnerability/language/rust/
