@@ -266,13 +266,11 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
 /// An vector of the same length as `crashlines`.
 /// Vec\[i\] is the flat cluster number to which original casrep i belongs,
 /// if Vec\[i\] is 0, casrep crashline is duplicate of some other
-pub fn dedup_crashlines(
-    crashlines: &[String],
-    clusters: Vec<usize>,
-    cluster_num: usize,
-) -> Result<Vec<usize>> {
+pub fn dedup_crashlines(crashlines: &[String], clusters: Vec<usize>) -> Result<Vec<usize>> {
     // Init cluster vec with crashline dedup
     let mut dedup_clusters = vec![0; crashlines.len()];
+    // Count number of clusters
+    let cluster_num: usize = *clusters.iter().max().unwrap();
     // Init dedup crashline list for each cluster
     let mut unique_crashlines: Vec<HashSet<String>> = vec![HashSet::new(); cluster_num];
 

@@ -27,19 +27,6 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
     }
 }
 
-/// Extract crashline from casr report
-///
-/// # Arguments
-///
-/// * `path` - path to the casrep
-///
-/// # Return value
-///
-/// Crashlie as a String
-fn crashline(path: &Path) -> Result<String> {
-    Ok(util::report_from_file(path)?.crashline)
-}
-
 /// Perform the clustering of casreps
 ///
 /// # Arguments
@@ -93,14 +80,14 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize, dedup: bool
     let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
     custom_pool.install(|| {
         (0..len).into_par_iter().for_each(|i| {
-            if let Ok(trace) = stacktrace(casreps[i].as_path()) {
-                traces.write().unwrap().push(trace);
-                filtered_casreps.write().unwrap().push(casreps[i].clone());
+            if let Ok(report) = util::report_from_file(casreps[i].as_path()) {
+                if let Ok(trace) = report.filtered_stacktrace() {
+                    traces.write().unwrap().push(trace);
+                    filtered_casreps.write().unwrap().push(casreps[i].clone());
+                }
                 // TODO: Try to avoid of checking same cond
                 if dedup {
-                    if let Ok(crashline) = crashline(casreps[i].as_path()) {
-                        crashlines.write().unwrap().push(crashline);
-                    }
+                    crashlines.write().unwrap().push(report.crashline);
                 }
             } else {
                 badreports.write().unwrap().push(casreps[i].clone());
@@ -141,7 +128,7 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize, dedup: bool
 
     // Get clusters with crashline deduplication
     if dedup {
-        clusters = dedup_crashlines(&crashlines, clusters, cluster_cnt)?;
+        clusters = dedup_crashlines(&crashlines, clusters)?;
     }
 
     for i in 0..clusters.len() {
