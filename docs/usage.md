@@ -148,23 +148,22 @@ Create CASR reports (.casrep) from java reports
       [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                               is generated
-          --stdout             Print CASR report to stdout
-          --stdin <FILE>       Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                               timeout is disabled [default: 0]
-          --ignore <FILE>      File with regular expressions for functions and file paths that
-                               should be ignored
-      -h, --help               Print help
-      -V, --version            Print version
+      -o, --output <REPORT>       Path to save report. Path can be a directory, then report
+                                  name is generated
+          --stdout                Print CASR report to stdout
+          --stdin <FILE>          Stdin file for program
+          --source-dirs <DIR>...  Paths to directories with Java source files (list separated
+                                  by ':' for env) [env: CASR_SOURCE_DIRS=]
+      -t, --timeout <SECONDS>     Timeout (in seconds) for target execution, 0 value means
+                                  that timeout is disabled [default: 0]
+          --ignore <FILE>         File with regular expressions for functions and file paths
+                                  that should be ignored
+      -h, --help                  Print help
+      -V, --version               Print version
 
 Run casr-java:
 
     $ casr-java -o java.casrep -- java casr/tests/casr_tests/java/Test1.java
-
-You can specify paths to directories with Java source files via environment variable
-`CASR_SOURCE_DIRS`  (list separated by ':').
 
 ## casr-core
 

@@ -54,7 +54,7 @@ fn main() -> Result<()> {
                 .value_delimiter(':')
                 .value_parser(clap::value_parser!(PathBuf))
                 .value_name("DIR")
-                .help("Paths to directories with Java source files"),
+                .help("Paths to directories with Java source files (list separated by ':' for env)"),
         )
         .arg(
             Arg::new("timeout")
