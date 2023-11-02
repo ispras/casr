@@ -85,7 +85,6 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize, dedup: bool
                     traces.write().unwrap().push(trace);
                     filtered_casreps.write().unwrap().push(casreps[i].clone());
                 }
-                // TODO: Try to avoid of checking same cond
                 if dedup {
                     crashlines.write().unwrap().push(report.crashline);
                 }
@@ -410,7 +409,6 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    // Init log
     init_ignored_frames!("cpp", "rust", "python", "go", "java");
 
     // Get number of threads

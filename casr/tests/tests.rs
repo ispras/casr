@@ -2416,6 +2416,7 @@ fn test_casr_cluster_c() {
     // Check crashline deduplication:
     // 2.casrep and 20.caserp without crashlines => no dedup
     // 3.casrep and 30.caserp with crashlines => dedup
+    // Thus, cluster with 2.casrep has 2 casreps and others have 1 casrep
     for i in 1..clusters_cnt + 1 {
         let cluster_path = paths[1].to_owned() + "/cl" + &i.to_string();
         let size = std::fs::read_dir(cluster_path.clone()).unwrap().count();
