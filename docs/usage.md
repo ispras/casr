@@ -241,10 +241,6 @@ Tool for clustering CASR reports
       -V, --version
               Print version
 
-If you set `CASR_CLUSTER_UNIQUE_CRASHLINE` environment variable as "1"
-casr-cluster will deduplicate reports by crashline for each cluster and won't if
-you set any other value or do not set anything.
-
 Report deduplication and clustering is based on stack trace comparison from
 [gdb-command](https://github.com/anfedotoff/gdb-command). The idea is to run
 deduplication first to remove equal reports, then run clustering on remaining
@@ -302,6 +298,9 @@ For the **--ignore <FILE>** option, file format should be as follows:
 
 Headers may be in different order, one of them may be missing.
 Frames that match these regular expressions will be not considered during analysis.
+
+When `CASR_CLUSTER_UNIQUE_CRASHLINE` environment variable is set to 1, each
+cluster will contain reports with unique crash lines.
 
 ## casr-cli
 

@@ -84,9 +84,11 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize, dedup: bool
                 if let Ok(trace) = report.filtered_stacktrace() {
                     traces.write().unwrap().push(trace);
                     filtered_casreps.write().unwrap().push(casreps[i].clone());
-                }
-                if dedup {
-                    crashlines.write().unwrap().push(report.crashline);
+                    if dedup {
+                        crashlines.write().unwrap().push(report.crashline);
+                    }
+                } else {
+                    badreports.write().unwrap().push(casreps[i].clone());
                 }
             } else {
                 badreports.write().unwrap().push(casreps[i].clone());
@@ -127,7 +129,7 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize, dedup: bool
 
     // Get clusters with crashline deduplication
     if dedup {
-        clusters = dedup_crashlines(&crashlines, clusters)?;
+        dedup_crashlines(&crashlines, &mut clusters);
     }
 
     for i in 0..clusters.len() {
