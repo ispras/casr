@@ -46,6 +46,17 @@ fn main() -> Result<()> {
                 .help("Stdin file for program"),
         )
         .arg(
+            Arg::new("source-dirs")
+                .long("source-dirs")
+                .env("CASR_SOURCE_DIRS")
+                .action(ArgAction::Set)
+                .num_args(1..)
+                .value_delimiter(':')
+                .value_parser(clap::value_parser!(PathBuf))
+                .value_name("DIR")
+                .help("Paths to directories with Java source files (list separated by ':' for env)"),
+        )
+        .arg(
             Arg::new("timeout")
                 .short('t')
                 .long("timeout")
@@ -151,12 +162,8 @@ fn main() -> Result<()> {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(mut debug) = crash_line {
             // Modify DebugInfo to find sources
-            let source_dirs: Vec<PathBuf> = if let Ok(sources) = std::env::var("CASR_SOURCE_DIRS") {
-                sources
-                    .split(':')
-                    .map(PathBuf::from)
-                    .filter(|x| x.is_dir())
-                    .collect()
+            let source_dirs = if let Some(sources) = matches.get_many::<PathBuf>("source-dirs") {
+                sources.collect()
             } else {
                 Vec::new()
             };
