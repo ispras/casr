@@ -224,8 +224,9 @@ Tool for clustering CASR reports
               Cluster CASR reports. If two directories are set, clusters will be placed in the
               second directory. If one directory is provided, clusters will be placed there,
               but reports in this directory will not be deleted.
-          --cluster-unique-crashline
-              Deduplicate each cluster by crashline [env: CASR_CLUSTER_UNIQUE_CRASHLINE=]
+          --unique-crashline
+              Leave reports with unique crash lines in each cluster [env:
+              CASR_CLUSTER_UNIQUE_CRASHLINE=]
       -d, --deduplicate <INPUT_DIR> <OUTPUT_DIR>
               Deduplicate CASR reports. If two directories are set, deduplicated reports are
               copied to the second directory. If one directory is provided, duplicated reports

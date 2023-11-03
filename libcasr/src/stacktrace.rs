@@ -251,7 +251,7 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
 }
 
 /// Perform crashline deduplication for each cluster:
-/// Reset Vec\[i\] to 0 if asrep crashline is duplicate of some other.
+/// Reset Vec\[i\] to 0 if report crashline is duplicate of some other.
 ///
 /// # Arguments
 ///
@@ -273,7 +273,7 @@ pub fn dedup_crashlines(crashlines: &[String], clusters: &mut [usize]) -> usize 
     // Init dedup crashline list for each cluster
     let mut unique_crashlines: Vec<HashSet<String>> = vec![HashSet::new(); cluster_num];
 
-    // Init unique crashline counter, e.i. left casrep
+    // Init unique crashline counter, e.i. left casreps
     let mut unique_cnt = 0;
     // Dedup reports by crashline
     for (i, crashline) in crashlines.iter().enumerate() {

@@ -377,12 +377,12 @@ fn main() -> Result<()> {
                 ),
         )
         .arg(
-            Arg::new("cluster-unique-crashline")
-                .long("cluster-unique-crashline")
+            Arg::new("unique-crashline")
+                .long("unique-crashline")
                 .env("CASR_CLUSTER_UNIQUE_CRASHLINE")
                 .action(ArgAction::SetTrue)
                 .value_parser(FalseyValueParser::new())
-                .help("Deduplicate each cluster by crashline")
+                .help("Leave reports with unique crash lines in each cluster")
         )
         .arg(
             Arg::new("deduplication")
@@ -445,7 +445,7 @@ fn main() -> Result<()> {
     }
 
     // Get env var
-    let dedup_crashlines = matches.get_flag("cluster-unique-crashline");
+    let dedup_crashlines = matches.get_flag("unique-crashline");
 
     if matches.contains_id("similarity") {
         let casreps: Vec<&PathBuf> = matches.get_many::<PathBuf>("similarity").unwrap().collect();
@@ -463,7 +463,7 @@ fn main() -> Result<()> {
             dedup_crashlines,
         )?;
         println!("Number of clusters: {result}");
-        // print crashline dedup summary
+        // Print crashline dedup summary
         if before != after {
             println!("Number of reports before crashline deduplication: {before}");
             println!("Number of reports after crashline deduplication: {after}");
