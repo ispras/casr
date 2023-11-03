@@ -259,25 +259,33 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
 ///
 /// * 'clusters' - A vector of the same length as `crashlines`.
 /// Vec\[i\] is the flat cluster number to which original casrep i belongs.
-pub fn dedup_crashlines(crashlines: &[String], clusters: &mut [usize]) {
+///
+/// # Return value
+///
+/// Number of left casreps
+pub fn dedup_crashlines(crashlines: &[String], clusters: &mut [usize]) -> usize {
     // Count number of clusters
     let cluster_num: usize = if !clusters.is_empty() {
         *clusters.iter().max().unwrap()
     } else {
-        return;
+        return 0;
     };
     // Init dedup crashline list for each cluster
     let mut unique_crashlines: Vec<HashSet<String>> = vec![HashSet::new(); cluster_num];
 
+    // Init unique crashline counter, e.i. left casrep
+    let mut unique_cnt = 0;
     // Dedup reports by crashline
     for (i, crashline) in crashlines.iter().enumerate() {
         // Leave report in the cluster if crashline is absent
         if crashline.is_empty() || unique_crashlines[clusters[i] - 1].insert(crashline.to_string())
         {
-            continue;
+            unique_cnt += 1;
+        } else {
+            clusters[i] = 0;
         }
-        clusters[i] = 0;
     }
+    unique_cnt
 }
 
 /// Stack trace filtering trait.

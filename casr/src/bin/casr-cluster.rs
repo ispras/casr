@@ -41,8 +41,15 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
 ///
 /// # Return value
 ///
-/// Number of clusters
-fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize, dedup: bool) -> Result<usize> {
+/// * Number of clusters
+/// * Number of valid casrep before crashiline deduplication
+/// * Number of valid casrep after crashiline deduplication
+fn make_clusters(
+    inpath: &Path,
+    outpath: Option<&Path>,
+    jobs: usize,
+    dedup: bool,
+) -> Result<(usize, usize, usize)> {
     // if outpath is "None" we consider that outpath and inpath are the same
     let outpath = outpath.unwrap_or(inpath);
     let dir = fs::read_dir(inpath).with_context(|| format!("File: {}", inpath.display()))?;
@@ -127,9 +134,13 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize, dedup: bool
         fs::create_dir_all(format!("{}/cl{}", &outpath.display(), i))?;
     }
 
+    // Init before and after dedup counters
+    let before_cnt = casreps.len();
+    let mut after_cnt = before_cnt;
+
     // Get clusters with crashline deduplication
     if dedup {
-        dedup_crashlines(&crashlines, &mut clusters);
+        after_cnt = dedup_crashlines(&crashlines, &mut clusters);
     }
 
     for i in 0..clusters.len() {
@@ -147,7 +158,7 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize, dedup: bool
             ),
         )?;
     }
-    Ok(cluster_cnt)
+    Ok((cluster_cnt, before_cnt, after_cnt))
 }
 
 /// Remove duplicate casreps
@@ -445,13 +456,18 @@ fn main() -> Result<()> {
     } else if matches.contains_id("clustering") {
         let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("clustering").unwrap().collect();
 
-        let result = make_clusters(
+        let (result, before, after) = make_clusters(
             paths[0],
             paths.get(1).map(|x| x.as_path()),
             jobs,
             dedup_crashlines,
         )?;
         println!("Number of clusters: {result}");
+        // print crashline dedup summary
+        if before != after {
+            println!("Number of reports before crashline deduplication: {before}");
+            println!("Number of reports after crashline deduplication: {after}");
+        }
     } else if matches.contains_id("deduplication") {
         let paths: Vec<&PathBuf> = matches
             .get_many::<PathBuf>("deduplication")
