@@ -16,7 +16,7 @@ It is based on ideas from [exploitable](https://github.com/jfoote/exploitable) a
 
 CASR is maintained by:
 
-* [Andrey Fedotov](https://github.com/anfedotoff) \<fedotoff@ispras.ru\>
+* [Andrey Fedotov](https://github.com/anfedotoff) \<splashgitar@gmail.com\>
 * [Alexey Vishnyakov](https://github.com/SweetVishnya) \<pmvishnya@gmail.com\>
 * [Georgy Savidov](https://github.com/Avgor46) \<avgor46@ispras.ru\>
 * [Ilya Yegorov](https://github.com/hkctkuy) \<Yegorov_Ilya@ispras.ru\>
