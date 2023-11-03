@@ -224,6 +224,8 @@ Tool for clustering CASR reports
               Cluster CASR reports. If two directories are set, clusters will be placed in the
               second directory. If one directory is provided, clusters will be placed there,
               but reports in this directory will not be deleted.
+          --cluster-unique-crashline
+              Deduplicate each cluster by crashline [env: CASR_CLUSTER_UNIQUE_CRASHLINE=]
       -d, --deduplicate <INPUT_DIR> <OUTPUT_DIR>
               Deduplicate CASR reports. If two directories are set, deduplicated reports are
               copied to the second directory. If one directory is provided, duplicated reports
@@ -299,8 +301,9 @@ For the **--ignore <FILE>** option, file format should be as follows:
 Headers may be in different order, one of them may be missing.
 Frames that match these regular expressions will be not considered during analysis.
 
-When `CASR_CLUSTER_UNIQUE_CRASHLINE` environment variable is set to 1, each
-cluster will contain reports with unique crash lines.
+For `CASR_CLUSTER_UNIQUE_CRASHLINE` a `false` literal is `n`, `no`, `f`,
+`false`, `off` or `0`. An absent environment variable will also be considered as
+`false`. Anything else will considered as true.
 
 ## casr-cli
 

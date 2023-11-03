@@ -2,7 +2,7 @@ use casr::util;
 use libcasr::{init_ignored_frames, stacktrace::*};
 
 use anyhow::{bail, Context, Result};
-use clap::{Arg, ArgAction};
+use clap::{builder::FalseyValueParser, Arg, ArgAction};
 use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 
@@ -366,6 +366,14 @@ fn main() -> Result<()> {
                 ),
         )
         .arg(
+            Arg::new("cluster-unique-crashline")
+                .long("cluster-unique-crashline")
+                .env("CASR_CLUSTER_UNIQUE_CRASHLINE")
+                .action(ArgAction::SetTrue)
+                .value_parser(FalseyValueParser::new())
+                .help("Deduplicate each cluster by crashline")
+        )
+        .arg(
             Arg::new("deduplication")
                 .short('d')
                 .long("deduplicate")
@@ -426,11 +434,7 @@ fn main() -> Result<()> {
     }
 
     // Get env var
-    let dedup_crashlines = if let Ok(dedup) = std::env::var("CASR_CLUSTER_UNIQUE_CRASHLINE") {
-        dedup == "1"
-    } else {
-        false
-    };
+    let dedup_crashlines = matches.get_flag("cluster-unique-crashline");
 
     if matches.contains_id("similarity") {
         let casreps: Vec<&PathBuf> = matches.get_many::<PathBuf>("similarity").unwrap().collect();

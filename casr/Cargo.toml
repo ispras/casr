@@ -13,7 +13,7 @@ exclude = ["/tests"]
 [dependencies]
 shell-words = "1.1"
 anyhow = "1.0"
-clap = { version = "4.2", features = ["wrap_help", "cargo"] }
+clap = { version = "4.2", features = ["wrap_help", "cargo", "env"] }
 chrono =  "0.4"
 goblin = "0.6"
 log = "0.4"
