@@ -8,3 +8,5 @@ Please follow the next recommendations for your pull requests:
 - use `cargo fmt`
 - check the output of `cargo clippy --all-features --all --tests`
 - run tests `cargo test`
+- if you have updated usage of any casr tool, you could simply run
+  `update_usage.py` to change the `docs/usage.md` file properly
