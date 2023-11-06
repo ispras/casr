@@ -2386,6 +2386,7 @@ fn test_casr_cluster_c() {
 
     let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(["-c", &paths[0], &paths[1]])
+        .env("CASR_CLUSTER_UNIQUE_CRASHLINE", "1")
         .output()
         .expect("failed to start casr-cluster");
 
@@ -2411,6 +2412,47 @@ fn test_casr_cluster_c() {
         .unwrap();
 
     assert_eq!(clusters_cnt, 9, "Clusters count mismatch.");
+
+    // Check crashline deduplication
+    let re =
+        Regex::new(r"Number of reports before crashline deduplication: (?P<before>\d+)").unwrap();
+    let before_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("before")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(before_cnt, 11, "Before count mismatch.");
+
+    let re =
+        Regex::new(r"Number of reports after crashline deduplication: (?P<after>\d+)").unwrap();
+    let after_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("after")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(after_cnt, 10, "After count mismatch.");
+
+    // 2.casrep and 20.caserp without crashlines => no dedup
+    // 3.casrep and 30.caserp with crashlines => dedup
+    // Thus, cluster with 2.casrep has 2 casreps and others have 1 casrep
+    for i in 1..clusters_cnt + 1 {
+        let cluster_path = paths[1].to_owned() + "/cl" + &i.to_string();
+        let size = std::fs::read_dir(cluster_path.clone()).unwrap().count();
+        let num = if Path::new(&(cluster_path + "/2.casrep")).exists() {
+            2
+        } else {
+            1
+        };
+        assert_eq!(size, num);
+    }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }

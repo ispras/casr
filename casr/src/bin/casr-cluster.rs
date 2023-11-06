@@ -2,7 +2,7 @@ use casr::util;
 use libcasr::{init_ignored_frames, stacktrace::*};
 
 use anyhow::{bail, Context, Result};
-use clap::{Arg, ArgAction};
+use clap::{builder::FalseyValueParser, Arg, ArgAction};
 use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator};
 
@@ -11,7 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
-/// Extract stack trace from casr (casr-san/casr-gdb) report
+/// Extract stack trace from casr report
 ///
 /// # Arguments
 ///
@@ -37,10 +37,19 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
 ///
 /// * `jobs` - number of jobs for clustering process
 ///
+/// * `dedup` - deduplicate casrep by crashline for each cluster, if true
+///
 /// # Return value
 ///
-/// Number of clusters
-fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u32> {
+/// * Number of clusters
+/// * Number of valid casrep before crashiline deduplication
+/// * Number of valid casrep after crashiline deduplication
+fn make_clusters(
+    inpath: &Path,
+    outpath: Option<&Path>,
+    jobs: usize,
+    dedup: bool,
+) -> Result<(usize, usize, usize)> {
     // if outpath is "None" we consider that outpath and inpath are the same
     let outpath = outpath.unwrap_or(inpath);
     let dir = fs::read_dir(inpath).with_context(|| format!("File: {}", inpath.display()))?;
@@ -70,21 +79,31 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
 
     // Stacktraces from casreps
     let traces: RwLock<Vec<Stacktrace>> = RwLock::new(Vec::new());
+    // Crashlines from casreps
+    let crashlines: RwLock<Vec<String>> = RwLock::new(Vec::new());
     // Casreps with stacktraces, that we can parse
     let filtered_casreps: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
     // Casreps with stacktraces, that we cannot parse
     let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
     custom_pool.install(|| {
         (0..len).into_par_iter().for_each(|i| {
-            if let Ok(trace) = stacktrace(casreps[i].as_path()) {
-                traces.write().unwrap().push(trace);
-                filtered_casreps.write().unwrap().push(casreps[i].clone());
+            if let Ok(report) = util::report_from_file(casreps[i].as_path()) {
+                if let Ok(trace) = report.filtered_stacktrace() {
+                    traces.write().unwrap().push(trace);
+                    filtered_casreps.write().unwrap().push(casreps[i].clone());
+                    if dedup {
+                        crashlines.write().unwrap().push(report.crashline);
+                    }
+                } else {
+                    badreports.write().unwrap().push(casreps[i].clone());
+                }
             } else {
                 badreports.write().unwrap().push(casreps[i].clone());
             }
         })
     });
     let stacktraces = traces.read().unwrap();
+    let crashlines = crashlines.read().unwrap();
     let casreps = filtered_casreps.read().unwrap();
     let badreports = badreports.get_mut().unwrap();
 
@@ -106,14 +125,29 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
         bail!("{} valid reports, nothing to cluster...", stacktraces.len());
     }
 
-    let clusters = cluster_stacktraces(&stacktraces)?;
+    // Get clusters
+    let mut clusters = cluster_stacktraces(&stacktraces)?;
 
     // Cluster formation
-    let cluster_cnt = *clusters.iter().max().unwrap();
+    let cluster_cnt: usize = *clusters.iter().max().unwrap();
     for i in 1..=cluster_cnt {
         fs::create_dir_all(format!("{}/cl{}", &outpath.display(), i))?;
     }
+
+    // Init before and after dedup counters
+    let before_cnt = casreps.len();
+    let mut after_cnt = before_cnt;
+
+    // Get clusters with crashline deduplication
+    if dedup {
+        after_cnt = dedup_crashlines(&crashlines, &mut clusters);
+    }
+
     for i in 0..clusters.len() {
+        // Skip casreps with duplicate crashlines
+        if clusters[i] == 0 {
+            continue;
+        }
         fs::copy(
             &casreps[i],
             format!(
@@ -124,7 +158,7 @@ fn make_clusters(inpath: &Path, outpath: Option<&Path>, jobs: usize) -> Result<u
             ),
         )?;
     }
-    Ok(cluster_cnt)
+    Ok((cluster_cnt, before_cnt, after_cnt))
 }
 
 /// Remove duplicate casreps
@@ -343,6 +377,14 @@ fn main() -> Result<()> {
                 ),
         )
         .arg(
+            Arg::new("unique-crashline")
+                .long("unique-crashline")
+                .env("CASR_CLUSTER_UNIQUE_CRASHLINE")
+                .action(ArgAction::SetTrue)
+                .value_parser(FalseyValueParser::new())
+                .help("Leave reports with unique crash lines in each cluster")
+        )
+        .arg(
             Arg::new("deduplication")
                 .short('d')
                 .long("deduplicate")
@@ -387,17 +429,24 @@ fn main() -> Result<()> {
                 .value_parser(clap::value_parser!(u32).range(1..))
         )
         .get_matches();
+
     init_ignored_frames!("cpp", "rust", "python", "go", "java");
 
+    // Get number of threads
     let jobs = if let Some(jobs) = matches.get_one::<u32>("jobs") {
         *jobs as usize
     } else {
         std::cmp::max(1, num_cpus::get() / 2)
     };
 
+    // Get ignore path
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;
     }
+
+    // Get env var
+    let dedup_crashlines = matches.get_flag("unique-crashline");
+
     if matches.contains_id("similarity") {
         let casreps: Vec<&PathBuf> = matches.get_many::<PathBuf>("similarity").unwrap().collect();
         println!(
@@ -407,8 +456,18 @@ fn main() -> Result<()> {
     } else if matches.contains_id("clustering") {
         let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("clustering").unwrap().collect();
 
-        let result = make_clusters(paths[0], paths.get(1).map(|x| x.as_path()), jobs)?;
+        let (result, before, after) = make_clusters(
+            paths[0],
+            paths.get(1).map(|x| x.as_path()),
+            jobs,
+            dedup_crashlines,
+        )?;
         println!("Number of clusters: {result}");
+        // Print crashline dedup summary
+        if before != after {
+            println!("Number of reports before crashline deduplication: {before}");
+            println!("Number of reports after crashline deduplication: {after}");
+        }
     } else if matches.contains_id("deduplication") {
         let paths: Vec<&PathBuf> = matches
             .get_many::<PathBuf>("deduplication")

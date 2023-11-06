@@ -176,7 +176,7 @@ pub fn similarity(first: &Stacktrace, second: &Stacktrace) -> f64 {
 ///
 /// # Return value
 ///
-/// An vector of the same length as `stacktraces`.
+/// A vector of the same length as `stacktraces`.
 /// Vec\[i\] is false, if original stacktrace i is a duplicate of any element of `stacktraces`.
 pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
     let mut traces = HashSet::new();
@@ -194,9 +194,9 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
 ///
 /// # Return value
 ///
-/// An vector of the same length as `stacktraces`.
+/// A vector of the same length as `stacktraces`.
 /// Vec\[i\] is the flat cluster number to which original stack trace i belongs.
-pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
+pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
     // Writing distance matrix
     // Only the values in the upper triangle are explicitly represented,
     // not including the diagonal
@@ -243,11 +243,49 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<u32>> {
     let mut flat_clusters = vec![0; len];
     for (i, (_, nums)) in clusters.into_iter().enumerate() {
         for num in nums {
-            flat_clusters[num] = i as u32 + 1; // Number clusters from 1, not 0
+            flat_clusters[num] = i + 1; // Number clusters from 1, not 0
         }
     }
 
     Ok(flat_clusters)
+}
+
+/// Perform crashline deduplication for each cluster:
+/// Reset Vec\[i\] to 0 if report crashline is duplicate of some other.
+///
+/// # Arguments
+///
+/// * `crashlines` - slice of crashlines as String
+///
+/// * 'clusters' - A vector of the same length as `crashlines`.
+/// Vec\[i\] is the flat cluster number to which original casrep i belongs.
+///
+/// # Return value
+///
+/// Number of left casreps
+pub fn dedup_crashlines(crashlines: &[String], clusters: &mut [usize]) -> usize {
+    // Count number of clusters
+    let cluster_num: usize = if !clusters.is_empty() {
+        *clusters.iter().max().unwrap()
+    } else {
+        return 0;
+    };
+    // Init dedup crashline list for each cluster
+    let mut unique_crashlines: Vec<HashSet<String>> = vec![HashSet::new(); cluster_num];
+
+    // Init unique crashline counter, e.i. left casreps
+    let mut unique_cnt = 0;
+    // Dedup reports by crashline
+    for (i, crashline) in crashlines.iter().enumerate() {
+        // Leave report in the cluster if crashline is absent
+        if crashline.is_empty() || unique_crashlines[clusters[i] - 1].insert(crashline.to_string())
+        {
+            unique_cnt += 1;
+        } else {
+            clusters[i] = 0;
+        }
+    }
+    unique_cnt
 }
 
 /// Stack trace filtering trait.
