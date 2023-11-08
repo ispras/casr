@@ -77,11 +77,10 @@ fn make_clusters(
         (0..len).into_par_iter().for_each(|i| {
             if let Ok(report) = util::report_from_file(casreps[i].as_path()) {
                 if let Ok(trace) = report.filtered_stacktrace() {
-                    let crashline = report.crashline;
                     casrep_info
                         .write()
                         .unwrap()
-                        .push((casreps[i].clone(), (trace, crashline)));
+                        .push((casreps[i].clone(), (trace, report.crashline)));
                 } else {
                     badreports.write().unwrap().push(casreps[i].clone());
                 }
