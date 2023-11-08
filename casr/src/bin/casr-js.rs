@@ -104,16 +104,22 @@ fn main() -> Result<()> {
     let mut report = CrashReport::new();
     // Set executable path.
     report.executable_path = argv[0].to_string();
+    let mut path_to_tool = PathBuf::new();
+    path_to_tool.push(argv[0]);
     if argv.len() > 1 {
         if let Some(fname) = Path::new(argv[0]).file_name() {
+            let Ok(full_path_to_tool) = which::which(fname) else {
+                bail!("Could not get the full path of {}", argv[0]);
+            };
+            path_to_tool = full_path_to_tool;
             let fname = fname.to_string_lossy();
-            if (fname.starts_with("node") || fname.starts_with("jsfuzz"))
+            if (fname.ends_with("node") || fname.ends_with("jsfuzz"))
                 && !fname.ends_with(".js")
                 && argv[1].ends_with(".js")
             {
                 report.executable_path = argv[1].to_string();
             } else if argv.len() > 2
-                && fname.starts_with("npx")
+                && fname.ends_with("npx")
                 && !fname.ends_with(".js")
                 && argv[1] == "jazzer"
                 && argv[2].ends_with(".js")
@@ -138,8 +144,10 @@ fn main() -> Result<()> {
             report.execution_class = exception;
         }
     } else {
-        // Call casr-san
-        return util::call_casr_san(&matches, &argv, "casr-js");
+        // Call casr-san with absolute path to interpreter/fuzzer
+        let mut modified_argv = argv.clone();
+        modified_argv[0] = path_to_tool.to_str().unwrap_or(argv[0]);
+        return util::call_casr_san(&matches, &modified_argv, "casr-js");
     }
 
     if let Ok(crash_line) = JsStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
