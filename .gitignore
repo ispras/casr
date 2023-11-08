@@ -6,3 +6,4 @@ Cargo.lock
 *.swp
 node_modules
 */node_modules/*
+.vscode

@@ -20,6 +20,7 @@ lazy_static::lazy_static! {
     static ref EXE_CASR_UBSAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-ubsan"));
     static ref EXE_CASR_PYTHON: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-python"));
     static ref EXE_CASR_JAVA: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-java"));
+    static ref EXE_CASR_JS: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-js"));
     static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
     static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
 }
@@ -4561,4 +4562,563 @@ fn test_casr_cluster_d_python() {
     }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_js() {
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js");
+    let test_path = abs_path("tests/casr_tests/js/test_casr_js.js");
+    let Ok(node_path) = which::which("node") else {
+        panic!("No node is found.");
+    };
+
+    let output = Command::new(*EXE_CASR_JS.read().unwrap())
+        .args(["--stdout", "--", &node_path.to_str().unwrap(), &test_path])
+        .output()
+        .expect("failed to start casr-js");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(10, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "Error");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_casr_js.js:3:15"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_js_jsfuzz() {
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_jsfuzz");
+    let paths = [
+        "tests/casr_tests/js/test_casr_js_jsfuzz.js".to_string(),
+        "tests/tmp_tests_casr/test_casr_js_jsfuzz/corpus".to_string(),
+    ];
+    let Ok(jsfuzz_path) = which::which("jsfuzz") else {
+        panic!("No jsfuzz is found.");
+    };
+
+    // Create out dir
+    let output = Command::new("mkdir")
+        .args(["-p", &paths[1]])
+        .output()
+        .expect("failed to create dir");
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let _ = fs::copy(
+        abs_path("tests/casr_tests/js/crash"),
+        "tests/tmp_tests_casr/test_casr_js_jsfuzz/corpus/crash",
+    );
+
+    let output = Command::new(*EXE_CASR_JS.read().unwrap())
+        .args([
+            "--stdout",
+            "--",
+            &jsfuzz_path.to_str().unwrap(),
+            &paths[0],
+            &paths[1],
+        ])
+        .output()
+        .expect("failed to start casr-js");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(10, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "Error");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_casr_js_jsfuzz.js:2:15"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_js_jazzer() {
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_jazzer");
+    let paths = [
+        abs_path("tests/casr_tests/js/test_casr_js_jazzer.js"),
+        abs_path("tests/tmp_tests_casr/test_casr_js_jazzer/corpus"),
+    ];
+    let Ok(npx_path) = which::which("npx") else {
+        panic!("No npx is found.");
+    };
+
+    // Create out dir
+    let output = Command::new("mkdir")
+        .args(["-p", &paths[1]])
+        .output()
+        .expect("failed to create dir");
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let _ = fs::copy(
+        abs_path("tests/casr_tests/js/crash"),
+        "tests/tmp_tests_casr/test_casr_js_jazzer/corpus/crash",
+    );
+
+    let output = Command::new(*EXE_CASR_JS.read().unwrap())
+        .args([
+            "--stdout",
+            "--",
+            &npx_path.to_str().unwrap(),
+            "jazzer",
+            &paths[0],
+            &paths[1],
+        ])
+        .output()
+        .expect("failed to start casr-js");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(5, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "Error");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_casr_js_jazzer.js:3:15"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_js_native() {
+    // JS C extension test
+    // Copy files to tmp dir
+    let work_dir = abs_path("tests/casr_tests/js");
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native");
+
+    let output = Command::new("cp")
+        .args(["-r", &work_dir, &test_dir])
+        .output()
+        .expect("failed to copy dir");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let paths = [
+        abs_path("tests/tmp_tests_casr/test_casr_js_native"),
+        abs_path("tests/tmp_tests_casr/test_casr_js_native/test_casr_js_native.js"),
+    ];
+
+    let Ok(npm_path) = which::which("npm") else {
+        panic!("No npm is found.");
+    };
+
+    let mut npm = Command::new("bash")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .arg("-c")
+        .arg(format!("{} init -w {}", npm_path.display(), &paths[0]))
+        .spawn()
+        .expect("failed to run npm init");
+
+    let mut stdin = npm.stdin.take().expect("failed to open stdin");
+    std::thread::spawn(move || {
+        stdin
+            .write_all("\n\n\n\n\n\n\n\n".as_bytes())
+            .expect("failed to write to stdin");
+    });
+
+    npm.wait().expect("failed to run npm init");
+
+    let npm = Command::new("bash")
+        .arg("-c")
+        .arg(format!("{} i node-addon-api bindings", npm_path.display()))
+        .status()
+        .expect("failed to add node-addon-api bindings");
+
+    assert!(npm.success());
+
+    let npm = Command::new("bash")
+        .env("CC", "clang")
+        .env("CXX", "clang++")
+        .arg("-c")
+        .arg(format!("{} install {}", npm_path.display(), &paths[0]))
+        .status()
+        .expect("failed to run npm install");
+
+    assert!(npm.success());
+
+    // Get path of asan lib
+    let output = Command::new("bash")
+        .arg("-c")
+        .arg("clang++ -print-file-name=libclang_rt.asan-x86_64.so")
+        .output()
+        .expect("failed to execute clang++");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let clang_rt = String::from_utf8_lossy(&output.stdout);
+    assert!(Path::new(&clang_rt.trim().to_string()).exists());
+
+    let Ok(node_path) = which::which("node") else {
+        panic!("No node is found.");
+    };
+
+    let output = Command::new(*EXE_CASR_JS.read().unwrap())
+        .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
+        .env("LD_PRELOAD", clang_rt.trim())
+        .env(
+            "LD_LIBRARY_PATH",
+            Path::new(&clang_rt.trim().to_string())
+                .parent()
+                .unwrap_or(Path::new("")),
+        )
+        .args(["--stdout", "--", node_path.to_str().unwrap(), &paths[1]])
+        .output()
+        .expect("failed to start casr-js");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() == 9);
+        assert_eq!(severity_type, "EXPLOITABLE");
+        assert_eq!(severity_desc, "stack-buffer-overflow(write)");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("native.cpp:9:13"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_js_native_jsfuzz() {
+    // JS jsfuzz C extension test
+    // Copy files to tmp dir
+    let work_dir = abs_path("tests/casr_tests/js");
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jsfuzz");
+
+    let output = Command::new("cp")
+        .args(["-r", &work_dir, &test_dir])
+        .output()
+        .expect("failed to copy dir");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let paths = [
+        abs_path("tests/tmp_tests_casr/test_casr_js_native_jsfuzz"),
+        "tests/tmp_tests_casr/test_casr_js_native_jsfuzz/test_casr_js_native_jsfuzz.js".to_string(),
+    ];
+
+    let Ok(npm_path) = which::which("npm") else {
+        panic!("No npm is found.");
+    };
+
+    let mut npm = Command::new("bash")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .arg("-c")
+        .arg(format!("{} init -w {}", npm_path.display(), &paths[0]))
+        .spawn()
+        .expect("failed to run npm init");
+
+    let mut stdin = npm.stdin.take().expect("failed to open stdin");
+    std::thread::spawn(move || {
+        stdin
+            .write_all("\n\n\n\n\n\n\n\n".as_bytes())
+            .expect("failed to write to stdin");
+    });
+
+    npm.wait().expect("failed to run npm init");
+
+    let npm = Command::new("bash")
+        .arg("-c")
+        .arg(format!("{} i node-addon-api bindings", npm_path.display()))
+        .status()
+        .expect("failed to add node-addon-api bindings");
+
+    assert!(npm.success());
+
+    let npm = Command::new("bash")
+        .env("CC", "clang")
+        .env("CXX", "clang++")
+        .arg("-c")
+        .arg(format!("{} install {}", npm_path.display(), &paths[0]))
+        .status()
+        .expect("failed to run npm install");
+
+    assert!(npm.success());
+
+    // Get path of asan lib
+    let output = Command::new("bash")
+        .arg("-c")
+        .arg("clang++ -print-file-name=libclang_rt.asan-x86_64.so")
+        .output()
+        .expect("failed to execute clang++");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let clang_rt = String::from_utf8_lossy(&output.stdout);
+    assert!(Path::new(&clang_rt.trim().to_string()).exists());
+    let Ok(jsfuzz_path) = which::which("jsfuzz") else {
+        panic!("No jsfuzz is found.");
+    };
+
+    let output = Command::new(*EXE_CASR_JS.read().unwrap())
+        .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
+        .env("LD_PRELOAD", clang_rt.trim())
+        .env(
+            "LD_LIBRARY_PATH",
+            Path::new(&clang_rt.trim().to_string())
+                .parent()
+                .unwrap_or(Path::new("")),
+        )
+        .args(["--stdout", "--", jsfuzz_path.to_str().unwrap(), &paths[1]])
+        .output()
+        .expect("failed to start casr-js");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() == 9);
+        assert_eq!(severity_type, "EXPLOITABLE");
+        assert_eq!(severity_desc, "stack-buffer-overflow(write)");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("native.cpp:9:13"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_js_native_jazzer() {
+    // JS Jazzer.js C extension test
+    // Copy files to tmp dir
+    let work_dir = abs_path("tests/casr_tests/js");
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer");
+
+    let output = Command::new("cp")
+        .args(["-r", &work_dir, &test_dir])
+        .output()
+        .expect("failed to copy dir");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let paths = [
+        abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer"),
+        "tests/tmp_tests_casr/test_casr_js_native_jazzer/test_casr_js_native_jazzer.js".to_string(),
+    ];
+
+    let Ok(npm_path) = which::which("npm") else {
+        panic!("No npm is found.");
+    };
+
+    let mut npm = Command::new("bash")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .arg("-c")
+        .arg(format!("{} init -w {}", npm_path.display(), &paths[0]))
+        .spawn()
+        .expect("failed to run npm init");
+
+    let mut stdin = npm.stdin.take().expect("failed to open stdin");
+    std::thread::spawn(move || {
+        stdin
+            .write_all("\n\n\n\n\n\n\n\n".as_bytes())
+            .expect("failed to write to stdin");
+    });
+
+    npm.wait().expect("failed to run npm init");
+
+    let npm = Command::new("bash")
+        .arg("-c")
+        .arg(format!("{} i node-addon-api bindings", npm_path.display()))
+        .status()
+        .expect("failed to add node-addon-api bindings");
+
+    assert!(npm.success());
+
+    let npm = Command::new("bash")
+        .env("CC", "clang")
+        .env("CXX", "clang++")
+        .arg("-c")
+        .arg(format!("{} install {}", npm_path.display(), &paths[0]))
+        .status()
+        .expect("failed to run npm install");
+
+    assert!(npm.success());
+
+    // Get path of asan lib
+    let output = Command::new("bash")
+        .arg("-c")
+        .arg("clang++ -print-file-name=libclang_rt.asan-x86_64.so")
+        .output()
+        .expect("failed to execute clang++");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let clang_rt = String::from_utf8_lossy(&output.stdout);
+    assert!(Path::new(&clang_rt.trim().to_string()).exists());
+    let Ok(npx_path) = which::which("npx") else {
+        panic!("No npx is found.");
+    };
+
+    let output = Command::new(*EXE_CASR_JS.read().unwrap())
+        .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
+        .env("LD_PRELOAD", clang_rt.trim())
+        .env(
+            "LD_LIBRARY_PATH",
+            Path::new(&clang_rt.trim().to_string())
+                .parent()
+                .unwrap_or(Path::new("")),
+        )
+        .args([
+            "--stdout",
+            "--",
+            npx_path.to_str().unwrap(),
+            "jazzer",
+            &paths[1],
+        ])
+        .output()
+        .expect("failed to start casr-js");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() == 9);
+        assert_eq!(severity_type, "EXPLOITABLE");
+        assert_eq!(severity_desc, "stack-buffer-overflow(write)");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("native.cpp:9:13"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_dir_all(&test_dir);
 }
