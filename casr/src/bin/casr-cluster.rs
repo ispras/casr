@@ -92,7 +92,7 @@ fn make_clusters(
     let casrep_info = casrep_info.get_mut().unwrap();
     let badreports = badreports.get_mut().unwrap();
 
-    // Sort by casrep path
+    // Sort by casrep filename
     casrep_info.sort_by(|a, b| {
         a.0.file_name()
             .unwrap()
