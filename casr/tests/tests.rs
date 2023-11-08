@@ -2442,15 +2442,11 @@ fn test_casr_cluster_c() {
 
     // 2.casrep and 20.caserp without crashlines => no dedup
     // 3.casrep and 30.caserp with crashlines => dedup
-    // Thus, cluster with 2.casrep has 2 casreps and others have 1 casrep
+    // Thus, cluster (cl8) with 2.casrep has 2 casreps and others have 1 casrep
     for i in 1..clusters_cnt + 1 {
         let cluster_path = paths[1].to_owned() + "/cl" + &i.to_string();
         let size = std::fs::read_dir(cluster_path.clone()).unwrap().count();
-        let num = if Path::new(&(cluster_path + "/2.casrep")).exists() {
-            2
-        } else {
-            1
-        };
+        let num = if i == 8 { 2 } else { 1 };
         assert_eq!(size, num);
     }
 

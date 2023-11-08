@@ -54,7 +54,7 @@ fn make_clusters(
     let outpath = outpath.unwrap_or(inpath);
     let dir = fs::read_dir(inpath).with_context(|| format!("File: {}", inpath.display()))?;
 
-    let mut casreps: Vec<PathBuf> = dir
+    let casreps: Vec<PathBuf> = dir
         .map(|path| path.unwrap().path())
         .filter(|s| s.extension().is_some() && s.extension().unwrap() == "casrep")
         .collect();
@@ -63,37 +63,24 @@ fn make_clusters(
         bail!("{} reports, nothing to cluster...", len);
     }
 
-    casreps.sort_by(|a, b| {
-        a.file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .cmp(b.file_name().unwrap().to_str().unwrap())
-    });
-
     // Start thread pool.
     let custom_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(jobs.min(len))
         .build()
         .unwrap();
 
-    // Stacktraces from casreps
-    let traces: RwLock<Vec<Stacktrace>> = RwLock::new(Vec::new());
-    // Crashlines from casreps
-    let crashlines: RwLock<Vec<String>> = RwLock::new(Vec::new());
-    // Casreps with stacktraces, that we can parse
-    let filtered_casreps: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
+    // Report info from casreps: (casrep, (trace, crashline))
+    let mut casrep_info: RwLock<Vec<(PathBuf, (Stacktrace, String))>> = RwLock::new(Vec::new());
     // Casreps with stacktraces, that we cannot parse
     let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
     custom_pool.install(|| {
         (0..len).into_par_iter().for_each(|i| {
             if let Ok(report) = util::report_from_file(casreps[i].as_path()) {
                 if let Ok(trace) = report.filtered_stacktrace() {
-                    traces.write().unwrap().push(trace);
-                    filtered_casreps.write().unwrap().push(casreps[i].clone());
-                    if dedup {
-                        crashlines.write().unwrap().push(report.crashline);
-                    }
+                    casrep_info
+                        .write()
+                        .unwrap()
+                        .push((casreps[i].clone(), (trace, report.crashline)));
                 } else {
                     badreports.write().unwrap().push(casreps[i].clone());
                 }
@@ -102,10 +89,20 @@ fn make_clusters(
             }
         })
     });
-    let stacktraces = traces.read().unwrap();
-    let crashlines = crashlines.read().unwrap();
-    let casreps = filtered_casreps.read().unwrap();
+    let casrep_info = casrep_info.get_mut().unwrap();
     let badreports = badreports.get_mut().unwrap();
+
+    // Sort by casrep filename
+    casrep_info.sort_by(|a, b| {
+        a.0.file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .cmp(b.0.file_name().unwrap().to_str().unwrap())
+    });
+
+    let (casreps, (stacktraces, crashlines)): (Vec<_>, (Vec<_>, Vec<_>)) =
+        casrep_info.iter().cloned().unzip();
 
     if !badreports.is_empty() {
         fs::create_dir_all(format!("{}/clerr", &outpath.display()))?;

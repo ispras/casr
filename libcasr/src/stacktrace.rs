@@ -239,6 +239,10 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
         counter += 1;
     }
 
+    // Sort clusters by keys
+    let mut clusters = clusters.into_iter().collect::<Vec<_>>();
+    clusters.sort_by(|a, b| a.0.cmp(&b.0));
+
     // Flatten resulting clusters and reverse numbers
     let mut flat_clusters = vec![0; len];
     for (i, (_, nums)) in clusters.into_iter().enumerate() {
