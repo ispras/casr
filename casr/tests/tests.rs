@@ -44,7 +44,7 @@ fn abs_path(rpath: &str) -> String {
 fn npm_init(npm_path: &PathBuf, path: &str) {
     let mut npm = Command::new(npm_path)
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
+        .stdout(Stdio::null())
         .current_dir(path)
         .arg("init")
         .arg("-y")

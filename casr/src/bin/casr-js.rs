@@ -137,7 +137,9 @@ fn main() -> Result<()> {
     let re = Regex::new(r"^(?:.*Error:(?:\s+.*)?|Thrown at:)$").unwrap();
     if let Some(start) = js_stderr_list.iter().position(|x| re.is_match(x)) {
         report.js_report = js_stderr_list[start..].to_vec();
-        report.js_report.retain(|x| !x.is_empty());
+        report
+            .js_report
+            .retain(|x| !x.is_empty() && (x.trim().starts_with("at") || x.contains("Error")));
         let report_str = report.js_report.join("\n");
         report.stacktrace = JsStacktrace::extract_stacktrace(&report_str)?;
         if let Some(exception) = JsException::parse_exception(&report.js_report[0]) {

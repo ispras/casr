@@ -6,14 +6,17 @@ ASAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
 reports from gdb. Use `casr-python` to analyze python reports and get report
 from [Atheris](https://github.com/google/atheris). Use `casr-java` to analyze
 java reports and get report from
-[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). `casr-afl` is used
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). Use `casr-js`
+to analyze JavaScript reports and get report from
+[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz). `casr-afl` is used
 to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,
-Atheris, Jazzer). `casr-dojo` allows to upload new and unique CASR reports to
-[DefectDojo](https://github.com/DefectDojo/django-DefectDojo). `casr-cli` is
-meant to provide TUI for viewing reports and converting them into SARIF report.
-Reports triage (deduplication, clustering) is done by `casr-cluster`.
+Atheris, Jazzer, Jazzer.js, jsfuzz). `casr-dojo` allows to upload new and
+unique CASR reports to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo).
+`casr-cli` is meant to provide TUI for viewing reports and converting them into
+SARIF report. Reports triage (deduplication, clustering) is done by `casr-cluster`.
 
 ## casr-gdb
 
@@ -164,6 +167,31 @@ Create CASR reports (.casrep) from java reports
 Run casr-java:
 
     $ casr-java -o java.casrep -- java casr/tests/casr_tests/java/Test1.java
+
+## casr-js
+
+Create CASR reports (.casrep) from JavaScript reports
+
+    Usage: casr-js [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+
+    Arguments:
+      [ARGS]...  Add "-- <path> <arguments>" to run
+
+    Options:
+      -o, --output <REPORT>       Path to save report. Path can be a directory, then report
+                                  name is generated
+          --stdout                Print CASR report to stdout
+          --stdin <FILE>          Stdin file for program
+      -t, --timeout <SECONDS>     Timeout (in seconds) for target execution, 0 value means
+                                  that timeout is disabled [default: 0]
+          --ignore <FILE>         File with regular expressions for functions and file paths
+                                  that should be ignored
+      -h, --help                  Print help
+      -V, --version               Print version
+
+Run casr-js:
+
+    $ casr-js -o js.casrep -- node casr/tests/casr_tests/js/test_casr_js.js
 
 ## casr-core
 
@@ -345,7 +373,7 @@ Convert reports to SARIF report:
 
     $ casr-cli --sarif out.sarif --tool libfuzzer --source-root /xlnt casr/tests/casr_tests/casrep/test_clustering_san
 
-### Screnshots
+### Screenshots
 
 ![casrep](/docs/images/casr_report.png)
 
@@ -463,7 +491,8 @@ variable may be used by [casr-san](#casr-san).
 
 ## casr-libfuzzer
 
-Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
+Triage crashes found by libFuzzer based fuzzer
+(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz)
 
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> [-- <ARGS>...]
 
@@ -498,7 +527,8 @@ Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer)
 `casr-libfuzzer` provides integration with
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)/
-[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)).
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)).
 It is pretty much like `casr-afl`.
 
 libFuzzer example:
