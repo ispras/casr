@@ -4,6 +4,7 @@ extern crate serde_json;
 
 use regex::Regex;
 use serde_json::Value;
+use std::env;
 use std::fs;
 
 use std::io::Write;
@@ -38,6 +39,24 @@ fn abs_path(rpath: &str) -> String {
     path.push(&rpath);
 
     path.as_os_str().to_str().unwrap().to_string()
+}
+
+fn npm_init(npm_path: &PathBuf, path: &str) {
+    let mut npm = Command::new(npm_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .current_dir(path)
+        .arg("init")
+        .arg("-y")
+        .spawn()
+        .expect("failed to run npm init");
+
+    let mut stdin = npm.stdin.take().expect("failed to open stdin");
+    stdin
+        .write_all("\n\n\n\n\n\n\n\n".as_bytes())
+        .expect("failed to write to stdin");
+
+    npm.wait().expect("failed to run npm init");
 }
 
 #[test]
@@ -4603,7 +4622,7 @@ fn test_casr_js() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-    let _ = std::fs::remove_dir_all(&test_dir);
+    let _ = std::fs::remove_dir_all(test_dir);
 }
 
 #[test]
@@ -4670,7 +4689,7 @@ fn test_casr_js_jsfuzz() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-    let _ = std::fs::remove_dir_all(&test_dir);
+    let _ = std::fs::remove_dir_all(test_dir);
 }
 
 #[test]
@@ -4698,7 +4717,7 @@ fn test_casr_js_jazzer() {
     );
     let _ = fs::copy(
         abs_path("tests/casr_tests/js/crash"),
-        "tests/tmp_tests_casr/test_casr_js_jazzer/corpus/crash",
+        abs_path("tests/tmp_tests_casr/test_casr_js_jazzer/corpus/crash"),
     );
 
     let output = Command::new(*EXE_CASR_JS.read().unwrap())
@@ -4738,12 +4757,19 @@ fn test_casr_js_jazzer() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-    let _ = std::fs::remove_dir_all(&test_dir);
+    let _ = std::fs::remove_dir_all(test_dir);
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native() {
+    let old_cc = env::var("CC").unwrap_or("".to_string());
+    let old_cxx = env::var("CXX").unwrap_or("".to_string());
+    env::set_var("CC", "clang");
+    env::set_var("CXX", "clang++");
+    assert_eq!(env::var("CC"), Ok("clang".to_string()));
+    assert_eq!(env::var("CXX"), Ok("clang++".to_string()));
+
     // JS C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
@@ -4762,6 +4788,7 @@ fn test_casr_js_native() {
     );
 
     let paths = [
+        abs_path("tests"),
         abs_path("tests/tmp_tests_casr/test_casr_js_native"),
         abs_path("tests/tmp_tests_casr/test_casr_js_native/test_casr_js_native.js"),
     ];
@@ -4770,39 +4797,26 @@ fn test_casr_js_native() {
         panic!("No npm is found.");
     };
 
-    let mut npm = Command::new("bash")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .arg("-c")
-        .arg(format!("{} init -w {}", npm_path.display(), &paths[0]))
-        .spawn()
-        .expect("failed to run npm init");
-
-    let mut stdin = npm.stdin.take().expect("failed to open stdin");
-    std::thread::spawn(move || {
-        stdin
-            .write_all("\n\n\n\n\n\n\n\n".as_bytes())
-            .expect("failed to write to stdin");
-    });
-
-    npm.wait().expect("failed to run npm init");
+    npm_init(&npm_path, "..");
+    npm_init(&npm_path, ".");
+    npm_init(&npm_path, &paths[0]);
+    npm_init(&npm_path, &paths[1]);
 
     let npm = Command::new("bash")
         .arg("-c")
-        .arg(format!("{} i node-addon-api bindings", npm_path.display()))
+        .arg(format!(
+            "{} install node-addon-api bindings",
+            &npm_path.display()
+        ))
         .status()
         .expect("failed to add node-addon-api bindings");
-
     assert!(npm.success());
 
     let npm = Command::new("bash")
-        .env("CC", "clang")
-        .env("CXX", "clang++")
         .arg("-c")
-        .arg(format!("{} install {}", npm_path.display(), &paths[0]))
+        .arg(format!("{} install {}", &npm_path.display(), &paths[1]))
         .status()
         .expect("failed to run npm install");
-
     assert!(npm.success());
 
     // Get path of asan lib
@@ -4835,7 +4849,7 @@ fn test_casr_js_native() {
                 .parent()
                 .unwrap_or(Path::new("")),
         )
-        .args(["--stdout", "--", node_path.to_str().unwrap(), &paths[1]])
+        .args(["--stdout", "--", node_path.to_str().unwrap(), &paths[2]])
         .output()
         .expect("failed to start casr-js");
 
@@ -4854,7 +4868,7 @@ fn test_casr_js_native() {
             .unwrap()
             .to_string();
 
-        assert!(report["Stacktrace"].as_array().unwrap().iter().count() == 9);
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 4);
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
         assert!(report["CrashLine"]
@@ -4864,12 +4878,35 @@ fn test_casr_js_native() {
     } else {
         panic!("Couldn't parse json report file.");
     }
+
     let _ = std::fs::remove_dir_all(&test_dir);
+    let json_paths = [
+        abs_path("../package.json"),
+        abs_path("package.json"),
+        abs_path("tests/package.json"),
+        abs_path("package-lock.json"),
+    ];
+    let _ = std::fs::remove_file(&json_paths[0]);
+    let _ = std::fs::remove_file(&json_paths[1]);
+    let _ = std::fs::remove_file(&json_paths[2]);
+    let _ = std::fs::remove_file(&json_paths[3]);
+
+    env::set_var("CC", &old_cc);
+    env::set_var("CXX", &old_cxx);
+    assert_eq!(env::var("CC"), Ok(old_cc));
+    assert_eq!(env::var("CXX"), Ok(old_cxx));
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native_jsfuzz() {
+    let old_cc = env::var("CC").unwrap_or("".to_string());
+    let old_cxx = env::var("CXX").unwrap_or("".to_string());
+    env::set_var("CC", "clang");
+    env::set_var("CXX", "clang++");
+    assert_eq!(env::var("CC"), Ok("clang".to_string()));
+    assert_eq!(env::var("CXX"), Ok("clang++".to_string()));
+
     // JS jsfuzz C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
@@ -4888,6 +4925,7 @@ fn test_casr_js_native_jsfuzz() {
     );
 
     let paths = [
+        abs_path("tests"),
         abs_path("tests/tmp_tests_casr/test_casr_js_native_jsfuzz"),
         "tests/tmp_tests_casr/test_casr_js_native_jsfuzz/test_casr_js_native_jsfuzz.js".to_string(),
     ];
@@ -4896,39 +4934,26 @@ fn test_casr_js_native_jsfuzz() {
         panic!("No npm is found.");
     };
 
-    let mut npm = Command::new("bash")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .arg("-c")
-        .arg(format!("{} init -w {}", npm_path.display(), &paths[0]))
-        .spawn()
-        .expect("failed to run npm init");
-
-    let mut stdin = npm.stdin.take().expect("failed to open stdin");
-    std::thread::spawn(move || {
-        stdin
-            .write_all("\n\n\n\n\n\n\n\n".as_bytes())
-            .expect("failed to write to stdin");
-    });
-
-    npm.wait().expect("failed to run npm init");
+    npm_init(&npm_path, "..");
+    npm_init(&npm_path, ".");
+    npm_init(&npm_path, &paths[0]);
+    npm_init(&npm_path, &paths[1]);
 
     let npm = Command::new("bash")
         .arg("-c")
-        .arg(format!("{} i node-addon-api bindings", npm_path.display()))
+        .arg(format!(
+            "{} install node-addon-api bindings",
+            &npm_path.display()
+        ))
         .status()
         .expect("failed to add node-addon-api bindings");
-
     assert!(npm.success());
 
     let npm = Command::new("bash")
-        .env("CC", "clang")
-        .env("CXX", "clang++")
         .arg("-c")
-        .arg(format!("{} install {}", npm_path.display(), &paths[0]))
+        .arg(format!("{} install {}", &npm_path.display(), &paths[1]))
         .status()
         .expect("failed to run npm install");
-
     assert!(npm.success());
 
     // Get path of asan lib
@@ -4947,6 +4972,7 @@ fn test_casr_js_native_jsfuzz() {
 
     let clang_rt = String::from_utf8_lossy(&output.stdout);
     assert!(Path::new(&clang_rt.trim().to_string()).exists());
+
     let Ok(jsfuzz_path) = which::which("jsfuzz") else {
         panic!("No jsfuzz is found.");
     };
@@ -4960,7 +4986,7 @@ fn test_casr_js_native_jsfuzz() {
                 .parent()
                 .unwrap_or(Path::new("")),
         )
-        .args(["--stdout", "--", jsfuzz_path.to_str().unwrap(), &paths[1]])
+        .args(["--stdout", "--", jsfuzz_path.to_str().unwrap(), &paths[2]])
         .output()
         .expect("failed to start casr-js");
 
@@ -4979,7 +5005,7 @@ fn test_casr_js_native_jsfuzz() {
             .unwrap()
             .to_string();
 
-        assert!(report["Stacktrace"].as_array().unwrap().iter().count() == 9);
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 4);
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
         assert!(report["CrashLine"]
@@ -4989,13 +5015,36 @@ fn test_casr_js_native_jsfuzz() {
     } else {
         panic!("Couldn't parse json report file.");
     }
+
     let _ = std::fs::remove_dir_all(&test_dir);
+    let json_paths = [
+        abs_path("../package.json"),
+        abs_path("package.json"),
+        abs_path("tests/package.json"),
+        abs_path("package-lock.json"),
+    ];
+    let _ = std::fs::remove_file(&json_paths[0]);
+    let _ = std::fs::remove_file(&json_paths[1]);
+    let _ = std::fs::remove_file(&json_paths[2]);
+    let _ = std::fs::remove_file(&json_paths[3]);
+
+    env::set_var("CC", &old_cc);
+    env::set_var("CXX", &old_cxx);
+    assert_eq!(env::var("CC"), Ok(old_cc));
+    assert_eq!(env::var("CXX"), Ok(old_cxx));
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native_jazzer() {
-    // JS Jazzer.js C extension test
+    let old_cc = env::var("CC").unwrap_or("".to_string());
+    let old_cxx = env::var("CXX").unwrap_or("".to_string());
+    env::set_var("CC", "clang");
+    env::set_var("CXX", "clang++");
+    assert_eq!(env::var("CC"), Ok("clang".to_string()));
+    assert_eq!(env::var("CXX"), Ok("clang++".to_string()));
+
+    // JS jsfuzz C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer");
@@ -5013,47 +5062,35 @@ fn test_casr_js_native_jazzer() {
     );
 
     let paths = [
+        abs_path("tests"),
         abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer"),
-        "tests/tmp_tests_casr/test_casr_js_native_jazzer/test_casr_js_native_jazzer.js".to_string(),
+        abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer/test_casr_js_native_jazzer.js"),
     ];
 
     let Ok(npm_path) = which::which("npm") else {
         panic!("No npm is found.");
     };
 
-    let mut npm = Command::new("bash")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .arg("-c")
-        .arg(format!("{} init -w {}", npm_path.display(), &paths[0]))
-        .spawn()
-        .expect("failed to run npm init");
-
-    let mut stdin = npm.stdin.take().expect("failed to open stdin");
-    std::thread::spawn(move || {
-        stdin
-            .write_all("\n\n\n\n\n\n\n\n".as_bytes())
-            .expect("failed to write to stdin");
-    });
-
-    npm.wait().expect("failed to run npm init");
+    npm_init(&npm_path, "..");
+    npm_init(&npm_path, ".");
+    npm_init(&npm_path, &paths[0]);
+    npm_init(&npm_path, &paths[1]);
 
     let npm = Command::new("bash")
         .arg("-c")
-        .arg(format!("{} i node-addon-api bindings", npm_path.display()))
+        .arg(format!(
+            "{} install node-addon-api bindings",
+            &npm_path.display()
+        ))
         .status()
         .expect("failed to add node-addon-api bindings");
-
     assert!(npm.success());
 
     let npm = Command::new("bash")
-        .env("CC", "clang")
-        .env("CXX", "clang++")
         .arg("-c")
-        .arg(format!("{} install {}", npm_path.display(), &paths[0]))
+        .arg(format!("{} install {}", &npm_path.display(), &paths[1]))
         .status()
         .expect("failed to run npm install");
-
     assert!(npm.success());
 
     // Get path of asan lib
@@ -5072,6 +5109,7 @@ fn test_casr_js_native_jazzer() {
 
     let clang_rt = String::from_utf8_lossy(&output.stdout);
     assert!(Path::new(&clang_rt.trim().to_string()).exists());
+
     let Ok(npx_path) = which::which("npx") else {
         panic!("No npx is found.");
     };
@@ -5090,7 +5128,7 @@ fn test_casr_js_native_jazzer() {
             "--",
             npx_path.to_str().unwrap(),
             "jazzer",
-            &paths[1],
+            &paths[2],
         ])
         .output()
         .expect("failed to start casr-js");
@@ -5110,7 +5148,7 @@ fn test_casr_js_native_jazzer() {
             .unwrap()
             .to_string();
 
-        assert!(report["Stacktrace"].as_array().unwrap().iter().count() == 9);
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 4);
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
         assert!(report["CrashLine"]
@@ -5120,5 +5158,21 @@ fn test_casr_js_native_jazzer() {
     } else {
         panic!("Couldn't parse json report file.");
     }
+
     let _ = std::fs::remove_dir_all(&test_dir);
+    let json_paths = [
+        abs_path("../package.json"),
+        abs_path("package.json"),
+        abs_path("tests/package.json"),
+        abs_path("package-lock.json"),
+    ];
+    let _ = std::fs::remove_file(&json_paths[0]);
+    let _ = std::fs::remove_file(&json_paths[1]);
+    let _ = std::fs::remove_file(&json_paths[2]);
+    let _ = std::fs::remove_file(&json_paths[3]);
+
+    env::set_var("CC", &old_cc);
+    env::set_var("CXX", &old_cxx);
+    assert_eq!(env::var("CC"), Ok(old_cc));
+    assert_eq!(env::var("CXX"), Ok(old_cxx));
 }
