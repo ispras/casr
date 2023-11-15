@@ -41,24 +41,6 @@ fn abs_path(rpath: &str) -> String {
     path.as_os_str().to_str().unwrap().to_string()
 }
 
-fn npm_init(npm_path: &PathBuf, path: &str) {
-    let mut npm = Command::new(npm_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .current_dir(path)
-        .arg("init")
-        .arg("-y")
-        .spawn()
-        .expect("failed to run npm init");
-
-    let mut stdin = npm.stdin.take().expect("failed to open stdin");
-    stdin
-        .write_all("\n\n\n\n\n\n\n\n".as_bytes())
-        .expect("failed to write to stdin");
-
-    npm.wait().expect("failed to run npm init");
-}
-
 #[test]
 fn test_segfault_on_pc() {
     let paths = [
@@ -4588,6 +4570,7 @@ fn test_casr_cluster_d_python() {
 fn test_casr_js() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js");
     let test_path = abs_path("tests/casr_tests/js/test_casr_js.js");
+    let _ = std::fs::remove_dir_all(&test_dir);
     let Ok(node_path) = which::which("node") else {
         panic!("No node is found.");
     };
@@ -4629,6 +4612,7 @@ fn test_casr_js() {
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_jsfuzz() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_jsfuzz");
+    let _ = std::fs::remove_dir_all(&test_dir);
     let paths = [
         "tests/casr_tests/js/test_casr_js_jsfuzz.js".to_string(),
         "tests/tmp_tests_casr/test_casr_js_jsfuzz/corpus".to_string(),
@@ -4696,6 +4680,7 @@ fn test_casr_js_jsfuzz() {
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_jazzer() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_jazzer");
+    let _ = std::fs::remove_dir_all(&test_dir);
     let paths = [
         abs_path("tests/casr_tests/js/test_casr_js_jazzer.js"),
         abs_path("tests/tmp_tests_casr/test_casr_js_jazzer/corpus"),
@@ -4763,17 +4748,11 @@ fn test_casr_js_jazzer() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native() {
-    let old_cc = env::var("CC").unwrap_or("".to_string());
-    let old_cxx = env::var("CXX").unwrap_or("".to_string());
-    env::set_var("CC", "clang");
-    env::set_var("CXX", "clang++");
-    assert_eq!(env::var("CC"), Ok("clang".to_string()));
-    assert_eq!(env::var("CXX"), Ok("clang++".to_string()));
-
     // JS C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native");
+    let _ = std::fs::remove_dir_all(&test_dir);
 
     let output = Command::new("cp")
         .args(["-r", &work_dir, &test_dir])
@@ -4797,12 +4776,28 @@ fn test_casr_js_native() {
         panic!("No npm is found.");
     };
 
-    npm_init(&npm_path, "..");
-    npm_init(&npm_path, ".");
-    npm_init(&npm_path, &paths[0]);
-    npm_init(&npm_path, &paths[1]);
+    let mut npm = Command::new(&npm_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .current_dir(&paths[1])
+        .env("CC", "clang")
+        .env("CXX", "clang++")
+        .arg("init")
+        .arg("-y")
+        .spawn()
+        .expect("failed to run npm init");
+
+    let mut stdin = npm.stdin.take().expect("failed to open stdin");
+    stdin
+        .write_all("\n\n\n\n\n\n\n\n".as_bytes())
+        .expect("failed to write to stdin");
+
+    npm.wait().expect("failed to run npm init");
 
     let npm = Command::new("bash")
+        .current_dir(&paths[1])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .arg("-c")
         .arg(format!(
             "{} install node-addon-api bindings",
@@ -4813,6 +4808,11 @@ fn test_casr_js_native() {
     assert!(npm.success());
 
     let npm = Command::new("bash")
+        .current_dir(&paths[1])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .env("CC", "clang")
+        .env("CXX", "clang++")
         .arg("-c")
         .arg(format!("{} install {}", &npm_path.display(), &paths[1]))
         .status()
@@ -4880,37 +4880,16 @@ fn test_casr_js_native() {
     }
 
     let _ = std::fs::remove_dir_all(&test_dir);
-    let json_paths = [
-        abs_path("../package.json"),
-        abs_path("package.json"),
-        abs_path("tests/package.json"),
-        abs_path("package-lock.json"),
-    ];
-    let _ = std::fs::remove_file(&json_paths[0]);
-    let _ = std::fs::remove_file(&json_paths[1]);
-    let _ = std::fs::remove_file(&json_paths[2]);
-    let _ = std::fs::remove_file(&json_paths[3]);
-
-    env::set_var("CC", &old_cc);
-    env::set_var("CXX", &old_cxx);
-    assert_eq!(env::var("CC"), Ok(old_cc));
-    assert_eq!(env::var("CXX"), Ok(old_cxx));
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native_jsfuzz() {
-    let old_cc = env::var("CC").unwrap_or("".to_string());
-    let old_cxx = env::var("CXX").unwrap_or("".to_string());
-    env::set_var("CC", "clang");
-    env::set_var("CXX", "clang++");
-    assert_eq!(env::var("CC"), Ok("clang".to_string()));
-    assert_eq!(env::var("CXX"), Ok("clang++".to_string()));
-
     // JS jsfuzz C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jsfuzz");
+    let _ = std::fs::remove_dir_all(&test_dir);
 
     let output = Command::new("cp")
         .args(["-r", &work_dir, &test_dir])
@@ -4934,12 +4913,28 @@ fn test_casr_js_native_jsfuzz() {
         panic!("No npm is found.");
     };
 
-    npm_init(&npm_path, "..");
-    npm_init(&npm_path, ".");
-    npm_init(&npm_path, &paths[0]);
-    npm_init(&npm_path, &paths[1]);
+    let mut npm = Command::new(&npm_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .current_dir(&paths[1])
+        .env("CC", "clang")
+        .env("CXX", "clang++")
+        .arg("init")
+        .arg("-y")
+        .spawn()
+        .expect("failed to run npm init");
+
+    let mut stdin = npm.stdin.take().expect("failed to open stdin");
+    stdin
+        .write_all("\n\n\n\n\n\n\n\n".as_bytes())
+        .expect("failed to write to stdin");
+
+    npm.wait().expect("failed to run npm init");
 
     let npm = Command::new("bash")
+        .current_dir(&paths[1])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .arg("-c")
         .arg(format!(
             "{} install node-addon-api bindings",
@@ -4950,6 +4945,11 @@ fn test_casr_js_native_jsfuzz() {
     assert!(npm.success());
 
     let npm = Command::new("bash")
+        .current_dir(&paths[1])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .env("CC", "clang")
+        .env("CXX", "clang++")
         .arg("-c")
         .arg(format!("{} install {}", &npm_path.display(), &paths[1]))
         .status()
@@ -5017,37 +5017,16 @@ fn test_casr_js_native_jsfuzz() {
     }
 
     let _ = std::fs::remove_dir_all(&test_dir);
-    let json_paths = [
-        abs_path("../package.json"),
-        abs_path("package.json"),
-        abs_path("tests/package.json"),
-        abs_path("package-lock.json"),
-    ];
-    let _ = std::fs::remove_file(&json_paths[0]);
-    let _ = std::fs::remove_file(&json_paths[1]);
-    let _ = std::fs::remove_file(&json_paths[2]);
-    let _ = std::fs::remove_file(&json_paths[3]);
-
-    env::set_var("CC", &old_cc);
-    env::set_var("CXX", &old_cxx);
-    assert_eq!(env::var("CC"), Ok(old_cc));
-    assert_eq!(env::var("CXX"), Ok(old_cxx));
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native_jazzer() {
-    let old_cc = env::var("CC").unwrap_or("".to_string());
-    let old_cxx = env::var("CXX").unwrap_or("".to_string());
-    env::set_var("CC", "clang");
-    env::set_var("CXX", "clang++");
-    assert_eq!(env::var("CC"), Ok("clang".to_string()));
-    assert_eq!(env::var("CXX"), Ok("clang++".to_string()));
-
     // JS jsfuzz C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer");
+    let _ = std::fs::remove_dir_all(&test_dir);
 
     let output = Command::new("cp")
         .args(["-r", &work_dir, &test_dir])
@@ -5071,12 +5050,28 @@ fn test_casr_js_native_jazzer() {
         panic!("No npm is found.");
     };
 
-    npm_init(&npm_path, "..");
-    npm_init(&npm_path, ".");
-    npm_init(&npm_path, &paths[0]);
-    npm_init(&npm_path, &paths[1]);
+    let mut npm = Command::new(&npm_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .current_dir(&paths[1])
+        .env("CC", "clang")
+        .env("CXX", "clang++")
+        .arg("init")
+        .arg("-y")
+        .spawn()
+        .expect("failed to run npm init");
+
+    let mut stdin = npm.stdin.take().expect("failed to open stdin");
+    stdin
+        .write_all("\n\n\n\n\n\n\n\n".as_bytes())
+        .expect("failed to write to stdin");
+
+    npm.wait().expect("failed to run npm init");
 
     let npm = Command::new("bash")
+        .current_dir(&paths[1])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .arg("-c")
         .arg(format!(
             "{} install node-addon-api bindings",
@@ -5087,6 +5082,11 @@ fn test_casr_js_native_jazzer() {
     assert!(npm.success());
 
     let npm = Command::new("bash")
+        .current_dir(&paths[1])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .env("CC", "clang")
+        .env("CXX", "clang++")
         .arg("-c")
         .arg(format!("{} install {}", &npm_path.display(), &paths[1]))
         .status()
@@ -5160,19 +5160,4 @@ fn test_casr_js_native_jazzer() {
     }
 
     let _ = std::fs::remove_dir_all(&test_dir);
-    let json_paths = [
-        abs_path("../package.json"),
-        abs_path("package.json"),
-        abs_path("tests/package.json"),
-        abs_path("package-lock.json"),
-    ];
-    let _ = std::fs::remove_file(&json_paths[0]);
-    let _ = std::fs::remove_file(&json_paths[1]);
-    let _ = std::fs::remove_file(&json_paths[2]);
-    let _ = std::fs::remove_file(&json_paths[3]);
-
-    env::set_var("CC", &old_cc);
-    env::set_var("CXX", &old_cxx);
-    assert_eq!(env::var("CC"), Ok(old_cc));
-    assert_eq!(env::var("CXX"), Ok(old_cxx));
 }
