@@ -4632,10 +4632,11 @@ fn test_casr_js_jsfuzz() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let _ = fs::copy(
-        abs_path("tests/casr_tests/js/crash"),
+    let mut crash_file = fs::File::create(abs_path(
         "tests/tmp_tests_casr/test_casr_js_jsfuzz/corpus/crash",
-    );
+    ))
+    .unwrap();
+    crash_file.write_all(b"AAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
 
     let output = Command::new(*EXE_CASR_JS.read().unwrap())
         .args([
@@ -4700,10 +4701,11 @@ fn test_casr_js_jazzer() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let _ = fs::copy(
-        abs_path("tests/casr_tests/js/crash"),
-        abs_path("tests/tmp_tests_casr/test_casr_js_jazzer/corpus/crash"),
-    );
+    let mut crash_file = fs::File::create(abs_path(
+        "tests/tmp_tests_casr/test_casr_js_jazzer/corpus/crash",
+    ))
+    .unwrap();
+    crash_file.write_all(b"AAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
 
     let output = Command::new(*EXE_CASR_JS.read().unwrap())
         .args([
@@ -5160,4 +5162,254 @@ fn test_casr_js_native_jazzer() {
     }
 
     let _ = std::fs::remove_dir_all(&test_dir);
+}
+
+// Jsfuzz is available only in very old version and it behaves very strangely.
+// Launching jsfuzz on a simple example doesn't work correctly.
+// There are problems in updating jsfuzz to the newer version due to its moving
+// to gitlab (they have several open issues about it).
+// Do we need this fuzzer at all?
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_libfuzzer_jsfuzz() {
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jsfuzz");
+    let _ = std::fs::remove_dir_all(&test_dir);
+    let paths = [
+        "tests/casr_tests/js/test_casr_libfuzzer_jsfuzz.js".to_string(),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jsfuzz/crashes"),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jsfuzz/casr_out"),
+    ];
+    let Ok(jsfuzz_path) = which::which("jsfuzz") else {
+        panic!("No jsfuzz is found.");
+    };
+
+    // Create crashes dir
+    let output = Command::new("mkdir")
+        .args(["-p", &paths[1]])
+        .output()
+        .expect("failed to create dir");
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let mut crash = PathBuf::from(&paths[1]);
+    crash.push("crash-1");
+    let mut crash_file = fs::File::create(&crash).unwrap();
+    crash_file.write_all(b"211").unwrap();
+    crash.pop();
+    crash.push("crash-2");
+    let mut crash_file = fs::File::create(&crash).unwrap();
+    crash_file.write_all(b"121").unwrap();
+    crash.pop();
+    crash.push("crash-3");
+    let mut crash_file = fs::File::create(&crash).unwrap();
+    crash_file.write_all(b"112").unwrap();
+
+    let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
+        .parent()
+        .unwrap();
+    let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
+    cmd.args([
+        "-i",
+        &paths[1],
+        "-o",
+        &paths[2],
+        "--",
+        jsfuzz_path.to_str().unwrap(),
+        &paths[0],
+    ])
+    .env(
+        "PATH",
+        format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+    );
+    let output = cmd.output().expect("failed to start casr-libfuzzer");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let err = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!err.is_empty());
+
+    assert!(err.contains("NOT_EXPLOITABLE"));
+    // assert!(err.contains("TypeError"));
+    assert!(err.contains("ReferenceError"));
+    // assert!(err.contains("RangeError"));
+    assert!(err.contains("test_casr_libfuzzer_jsfuzz.js"));
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 1, "Invalid number of deduplicated reports");
+
+    // let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    // let clusters_cnt = re
+    //     .captures(&err)
+    //     .unwrap()
+    //     .name("clusters")
+    //     .map(|x| x.as_str())
+    //     .unwrap()
+    //     .parse::<u32>()
+    //     .unwrap();
+
+    // assert_eq!(clusters_cnt, 1, "Invalid number of clusters");
+
+    // let mut storage: HashMap<String, u32> = HashMap::new();
+    // for entry in fs::read_dir(&paths[2]).unwrap() {
+    //     let e = entry.unwrap().path();
+    //     let fname = e.file_name().unwrap().to_str().unwrap();
+    //     if fname.starts_with("cl") && e.is_dir() {
+    //         for file in fs::read_dir(e).unwrap() {
+    //             let mut e = file.unwrap().path();
+    //             if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+    //                 e = e.with_extension("");
+    //             }
+    //             let fname = e.file_name().unwrap().to_str().unwrap();
+    //             if let Some(v) = storage.get_mut(fname) {
+    //                 *v += 1;
+    //             } else {
+    //                 storage.insert(fname.to_string(), 1);
+    //             }
+    //         }
+    //     }
+    // }
+
+    // assert!(storage.values().all(|x| *x > 1));
+    let _ = std::fs::remove_dir_all(test_dir);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_libfuzzer_jazzer_js() {
+    use std::collections::HashMap;
+
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js");
+    let _ = std::fs::remove_dir_all(&test_dir);
+    let paths = [
+        abs_path("tests/casr_tests/js/test_casr_libfuzzer_jazzer_js.js"),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js/crashes"),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js/casr_out"),
+    ];
+    let Ok(npx_path) = which::which("npx") else {
+        panic!("No npx is found.");
+    };
+
+    // Create crashes dir
+    let output = Command::new("mkdir")
+        .args(["-p", &paths[1]])
+        .output()
+        .expect("failed to create dir");
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let mut crash = PathBuf::from(&paths[1]);
+    crash.push("crash-1");
+    let mut crash_file = fs::File::create(&crash).unwrap();
+    crash_file.write_all(b"211").unwrap();
+    crash.pop();
+    crash.push("crash-2");
+    let mut crash_file = fs::File::create(&crash).unwrap();
+    crash_file.write_all(b"121").unwrap();
+    crash.pop();
+    crash.push("crash-3");
+    let mut crash_file = fs::File::create(&crash).unwrap();
+    crash_file.write_all(b"112").unwrap();
+
+    let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
+        .parent()
+        .unwrap();
+    let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
+    cmd.args([
+        "-i",
+        &paths[1],
+        "-o",
+        &paths[2],
+        "--",
+        npx_path.to_str().unwrap(),
+        "jazzer",
+        &paths[0],
+    ])
+    .env(
+        "PATH",
+        format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+    );
+    let output = cmd.output().expect("failed to start casr-libfuzzer");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let err = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!err.is_empty());
+
+    assert!(err.contains("NOT_EXPLOITABLE"));
+    assert!(err.contains("TypeError"));
+    assert!(err.contains("ReferenceError"));
+    assert!(err.contains("RangeError"));
+    assert!(err.contains("test_casr_libfuzzer_jazzer_js.js"));
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 3, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 1, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[2]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
+    let _ = std::fs::remove_dir_all(test_dir);
 }
