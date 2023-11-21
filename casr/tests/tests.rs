@@ -5168,7 +5168,6 @@ fn test_casr_js_native_jazzer() {
 // Launching jsfuzz on a simple example doesn't work correctly.
 // There are problems in updating jsfuzz to the newer version due to its moving
 // to gitlab (they have several open issues about it).
-// Do we need this fuzzer at all?
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_libfuzzer_jsfuzz() {
@@ -5194,18 +5193,13 @@ fn test_casr_libfuzzer_jsfuzz() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let mut crash = PathBuf::from(&paths[1]);
-    crash.push("crash-1");
-    let mut crash_file = fs::File::create(&crash).unwrap();
-    crash_file.write_all(b"211").unwrap();
-    crash.pop();
-    crash.push("crash-2");
-    let mut crash_file = fs::File::create(&crash).unwrap();
-    crash_file.write_all(b"121").unwrap();
-    crash.pop();
-    crash.push("crash-3");
-    let mut crash_file = fs::File::create(&crash).unwrap();
-    crash_file.write_all(b"112").unwrap();
+
+    Command::new("unzip")
+        .arg(abs_path("tests/casr_tests/js/crashes.zip"))
+        .args(["-d", &paths[1]])
+        .stdout(Stdio::null())
+        .status()
+        .expect("failed to unzip crashes.zip");
 
     let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
         .parent()
@@ -5235,6 +5229,7 @@ fn test_casr_libfuzzer_jsfuzz() {
     let err = String::from_utf8_lossy(&output.stderr);
 
     assert!(!err.is_empty());
+    println!("Test STDERR: {err}");
 
     assert!(err.contains("NOT_EXPLOITABLE"));
     // assert!(err.contains("TypeError"));
@@ -5254,39 +5249,6 @@ fn test_casr_libfuzzer_jsfuzz() {
 
     assert_eq!(unique_cnt, 1, "Invalid number of deduplicated reports");
 
-    // let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
-    // let clusters_cnt = re
-    //     .captures(&err)
-    //     .unwrap()
-    //     .name("clusters")
-    //     .map(|x| x.as_str())
-    //     .unwrap()
-    //     .parse::<u32>()
-    //     .unwrap();
-
-    // assert_eq!(clusters_cnt, 1, "Invalid number of clusters");
-
-    // let mut storage: HashMap<String, u32> = HashMap::new();
-    // for entry in fs::read_dir(&paths[2]).unwrap() {
-    //     let e = entry.unwrap().path();
-    //     let fname = e.file_name().unwrap().to_str().unwrap();
-    //     if fname.starts_with("cl") && e.is_dir() {
-    //         for file in fs::read_dir(e).unwrap() {
-    //             let mut e = file.unwrap().path();
-    //             if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
-    //                 e = e.with_extension("");
-    //             }
-    //             let fname = e.file_name().unwrap().to_str().unwrap();
-    //             if let Some(v) = storage.get_mut(fname) {
-    //                 *v += 1;
-    //             } else {
-    //                 storage.insert(fname.to_string(), 1);
-    //             }
-    //         }
-    //     }
-    // }
-
-    // assert!(storage.values().all(|x| *x > 1));
     let _ = std::fs::remove_dir_all(test_dir);
 }
 
@@ -5317,18 +5279,13 @@ fn test_casr_libfuzzer_jazzer_js() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let mut crash = PathBuf::from(&paths[1]);
-    crash.push("crash-1");
-    let mut crash_file = fs::File::create(&crash).unwrap();
-    crash_file.write_all(b"211").unwrap();
-    crash.pop();
-    crash.push("crash-2");
-    let mut crash_file = fs::File::create(&crash).unwrap();
-    crash_file.write_all(b"121").unwrap();
-    crash.pop();
-    crash.push("crash-3");
-    let mut crash_file = fs::File::create(&crash).unwrap();
-    crash_file.write_all(b"112").unwrap();
+
+    Command::new("unzip")
+        .arg(abs_path("tests/casr_tests/js/crashes.zip"))
+        .args(["-d", &paths[1]])
+        .stdout(Stdio::null())
+        .status()
+        .expect("failed to unzip crashes.zip");
 
     let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
         .parent()
