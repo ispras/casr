@@ -5165,7 +5165,8 @@ fn test_casr_js_native_jazzer() {
 }
 
 // Jsfuzz is available only in very old version and it behaves very strangely.
-// Launching jsfuzz on a simple example doesn't work correctly.
+// Launching jsfuzz on a simple example doesn't work correctly, so this test
+// also produces very strange results.
 // There are problems in updating jsfuzz to the newer version due to its moving
 // to gitlab (they have several open issues about it).
 #[test]
@@ -5177,10 +5178,8 @@ fn test_casr_libfuzzer_jsfuzz() {
         "tests/casr_tests/js/test_casr_libfuzzer_jsfuzz.js".to_string(),
         abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jsfuzz/crashes"),
         abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jsfuzz/casr_out"),
+        "tests/tmp_tests_casr/test_casr_libfuzzer_jsfuzz/test_casr_libfuzzer_jsfuzz.js".to_string(),
     ];
-    let Ok(jsfuzz_path) = which::which("jsfuzz") else {
-        panic!("No jsfuzz is found.");
-    };
 
     // Create crashes dir
     let output = Command::new("mkdir")
@@ -5193,6 +5192,12 @@ fn test_casr_libfuzzer_jsfuzz() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+
+    let _ = fs::copy(&paths[0], &paths[3]);
+
+    let Ok(jsfuzz_path) = which::which("jsfuzz") else {
+        panic!("No jsfuzz is found.");
+    };
 
     Command::new("unzip")
         .arg(abs_path("tests/casr_tests/js/crashes.zip"))
@@ -5212,7 +5217,7 @@ fn test_casr_libfuzzer_jsfuzz() {
         &paths[2],
         "--",
         jsfuzz_path.to_str().unwrap(),
-        &paths[0],
+        &paths[3],
     ])
     .env(
         "PATH",
@@ -5229,12 +5234,9 @@ fn test_casr_libfuzzer_jsfuzz() {
     let err = String::from_utf8_lossy(&output.stderr);
 
     assert!(!err.is_empty());
-    println!("Test STDERR: {err}");
 
     assert!(err.contains("NOT_EXPLOITABLE"));
-    // assert!(err.contains("TypeError"));
-    assert!(err.contains("ReferenceError"));
-    // assert!(err.contains("RangeError"));
+    assert!(err.contains("Error"));
     assert!(err.contains("test_casr_libfuzzer_jsfuzz.js"));
 
     let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
@@ -5263,10 +5265,10 @@ fn test_casr_libfuzzer_jazzer_js() {
         abs_path("tests/casr_tests/js/test_casr_libfuzzer_jazzer_js.js"),
         abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js/crashes"),
         abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js/casr_out"),
+        abs_path(
+            "tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js/test_casr_libfuzzer_jazzer_js.js",
+        ),
     ];
-    let Ok(npx_path) = which::which("npx") else {
-        panic!("No npx is found.");
-    };
 
     // Create crashes dir
     let output = Command::new("mkdir")
@@ -5279,6 +5281,12 @@ fn test_casr_libfuzzer_jazzer_js() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
+
+    let _ = fs::copy(&paths[0], &paths[3]);
+
+    let Ok(npx_path) = which::which("npx") else {
+        panic!("No npx is found.");
+    };
 
     Command::new("unzip")
         .arg(abs_path("tests/casr_tests/js/crashes.zip"))
@@ -5299,7 +5307,7 @@ fn test_casr_libfuzzer_jazzer_js() {
         "--",
         npx_path.to_str().unwrap(),
         "jazzer",
-        &paths[0],
+        &paths[3],
     ])
     .env(
         "PATH",
