@@ -330,7 +330,6 @@ Uncaught ReferenceError: var is not defined
             panic!("{}", crash_line.err().unwrap());
         }
 
-        println!("Stacktrace: {stacktrace:?}");
         assert_eq!(stacktrace.len(), 9);
         assert_eq!(
             stacktrace[0].debug.file,
