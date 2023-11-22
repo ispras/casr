@@ -40,3 +40,4 @@ pub mod sarif;
 pub mod severity;
 pub mod stacktrace;
 pub mod ubsan;
+pub mod csharp;
