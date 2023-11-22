@@ -34,61 +34,8 @@ impl UbsanWarning {
             .map(|s| s.trim_end().to_string())
             .collect()
     }
-}
-
-impl Severity for UbsanWarning {
-    fn severity(&self) -> Result<ExecutionClass> {
-        let message = self.ubsan_report();
-        if message.len() <= 1 {
-            return Err(Error::Casr("Malformed ubsan message".to_string()));
-        }
-        // Get description (from first line)
-        let description = message.first().unwrap();
-        let re = Regex::new(r".+: runtime error: (.+)").unwrap();
-        let Some(cap) = re.captures(description) else {
-            return Err(Error::Casr(format!(
-                "Couldn't parse error description: {description}"
-            )));
-        };
-        let description = cap.get(1).unwrap().as_str().to_string();
-        // Get short description (from last line)
-        let short_description = message.last().unwrap();
-        let re = Regex::new(r"SUMMARY: UndefinedBehaviorSanitizer: ([A-Za-z_\-\(\)]+)").unwrap();
-        let Some(cap) = re.captures(short_description) else {
-            return Err(Error::Casr(format!(
-                "Couldn't parse ubsan summary: {short_description}"
-            )));
-        };
-        let short_description = cap.get(1).unwrap().as_str().to_string();
-
-        Ok(ExecutionClass::new((
-            "NOT_EXPLOITABLE",
-            &short_description,
-            &description,
-            "",
-        )))
-    }
-}
-
-impl CrashLineExt for UbsanWarning {
-    fn crash_line(&self) -> Result<CrashLine> {
-        let message = self.ubsan_report();
-        if message.is_empty() {
-            return Err(Error::Casr("Empty ubsan message".to_string()));
-        }
-        // If there is no stacktrace use crashline from first string
-        // May be not absolute
-        // Else use first string from stacktrace
-        let crashline = if let Some(crashline) = message
-            .iter()
-            .skip(1)
-            .find(|line| line.starts_with("    #0 "))
-        {
-            crashline
-        } else {
-            &message[0]
-        };
-
+    /// Get crashline from specified string
+    fn get_crash_line(crashline: &String) -> Result<CrashLine> {
         if let Ok(crashline) = UbsanWarning::parse_stacktrace_entry(crashline) {
             if !crashline.debug.file.is_empty() {
                 Ok(CrashLine::Source(crashline.debug))
@@ -131,6 +78,92 @@ impl CrashLineExt for UbsanWarning {
                 line,
                 column: 0,
             }))
+        }
+    }
+}
+
+impl Severity for UbsanWarning {
+    fn severity(&self) -> Result<ExecutionClass> {
+        let message = self.ubsan_report();
+        if message.len() <= 1 {
+            return Err(Error::Casr("Malformed ubsan message".to_string()));
+        }
+        // Get description (from first line)
+        let description = message.first().unwrap();
+        let re = Regex::new(r".+: runtime error: (.+)").unwrap();
+        let Some(cap) = re.captures(description) else {
+            return Err(Error::Casr(format!(
+                "Couldn't parse error description: {description}"
+            )));
+        };
+        let description = cap.get(1).unwrap().as_str().to_string();
+        // Get short description (from last line)
+        let short_description = message.last().unwrap();
+        let re = Regex::new(r"SUMMARY: UndefinedBehaviorSanitizer: ([A-Za-z_\-\(\)]+)").unwrap();
+        let Some(cap) = re.captures(short_description) else {
+            return Err(Error::Casr(format!(
+                "Couldn't parse ubsan summary: {short_description}"
+            )));
+        };
+        let short_description = cap.get(1).unwrap().as_str().to_string();
+
+        Ok(ExecutionClass::new((
+            "NOT_EXPLOITABLE",
+            &short_description,
+            &description,
+            "",
+        )))
+    }
+}
+
+impl CrashLineExt for UbsanWarning {
+    fn crash_line(&self) -> Result<CrashLine> {
+        let message = self.ubsan_report();
+        if message.is_empty() {
+            return Err(Error::Casr("Empty ubsan message".to_string()));
+        }
+        // If there is no stacktrace use first string from stacktrace
+        // Or combine with crashline from UbsanWarning first string
+        // Else use crashline from UbsanWarning first string
+        let header_crashline = UbsanWarning::get_crash_line(&message[0]);
+        if let Some(crashline) = message
+            .iter()
+            .skip(1)
+            .find(|line| line.starts_with("    #0 "))
+        {
+            let Ok(stack_crashline) = UbsanWarning::get_crash_line(crashline) else {
+                return header_crashline;
+            };
+            let Ok(header_crashline) = header_crashline else {
+                // Return error as it is
+                return header_crashline;
+            };
+            let CrashLine::Source(stack_crashline) = stack_crashline else {
+                // header_crashline may be CrashLine::Source
+                return Ok(header_crashline);
+            };
+            let CrashLine::Source(header_crashline) = header_crashline else {
+                return Ok(CrashLine::Source(stack_crashline));
+            };
+            // Get line and column if it's possible
+            let line = if header_crashline.line != 0 {
+                header_crashline.line
+            } else {
+                stack_crashline.line
+            };
+            let column = if header_crashline.column != 0 {
+                header_crashline.column
+            } else {
+                stack_crashline.column
+            };
+            // Path from header may be not absolute
+            Ok(CrashLine::Source(DebugInfo {
+                file: stack_crashline.file,
+                line,
+                column,
+            }))
+        } else {
+            header_crashline
         }
     }
 }
