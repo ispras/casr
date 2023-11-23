@@ -34,52 +34,6 @@ impl UbsanWarning {
             .map(|s| s.trim_end().to_string())
             .collect()
     }
-    /// Get crashline from specified string
-    fn get_crash_line(crashline: &String) -> Result<CrashLine> {
-        if let Ok(crashline) = UbsanWarning::parse_stacktrace_entry(crashline) {
-            if !crashline.debug.file.is_empty() {
-                Ok(CrashLine::Source(crashline.debug))
-            } else if !crashline.module.is_empty() && crashline.offset != 0 {
-                Ok(CrashLine::Module {
-                    file: crashline.module,
-                    offset: crashline.offset,
-                })
-            } else {
-                Err(Error::Casr(format!(
-                    "Couldn't collect crashline from stack trace: {:?}",
-                    crashline
-                )))
-            }
-        } else {
-            let re = Regex::new(r"(.+?):(\d+):(?:(\d+):)? runtime error: ").unwrap();
-            let Some(cap) = re.captures(crashline) else {
-                return Err(Error::Casr(format!(
-                    "Couldn't parse error crashline: {crashline}"
-                )));
-            };
-            let file = cap.get(1).unwrap().as_str().to_string();
-            let line = cap.get(2).unwrap().as_str().parse::<u64>();
-            let Ok(line) = line else {
-                return Err(Error::Casr(format!(
-                    "Couldn't parse crashline line: {crashline}"
-                )));
-            };
-            if let Some(column) = cap.get(3) {
-                let column = column.as_str().parse::<u64>();
-                let Ok(column) = column else {
-                    return Err(Error::Casr(format!(
-                        "Couldn't parse crashline column: {crashline}"
-                    )));
-                };
-                return Ok(CrashLine::Source(DebugInfo { file, line, column }));
-            }
-            Ok(CrashLine::Source(DebugInfo {
-                file,
-                line,
-                column: 0,
-            }))
-        }
-    }
 }
 
 impl Severity for UbsanWarning {
@@ -118,6 +72,53 @@ impl Severity for UbsanWarning {
 
 impl CrashLineExt for UbsanWarning {
     fn crash_line(&self) -> Result<CrashLine> {
+        /// Get crashline from specified string
+        fn get_crash_line(crashline: &String) -> Result<CrashLine> {
+            if let Ok(crashline) = UbsanWarning::parse_stacktrace_entry(crashline) {
+                if !crashline.debug.file.is_empty() {
+                    Ok(CrashLine::Source(crashline.debug))
+                } else if !crashline.module.is_empty() && crashline.offset != 0 {
+                    Ok(CrashLine::Module {
+                        file: crashline.module,
+                        offset: crashline.offset,
+                    })
+                } else {
+                    Err(Error::Casr(format!(
+                        "Couldn't collect crashline from stack trace: {:?}",
+                        crashline
+                    )))
+                }
+            } else {
+                let re = Regex::new(r"(.+?):(\d+):(?:(\d+):)? runtime error: ").unwrap();
+                let Some(cap) = re.captures(crashline) else {
+                    return Err(Error::Casr(format!(
+                        "Couldn't parse error crashline: {crashline}"
+                    )));
+                };
+                let file = cap.get(1).unwrap().as_str().to_string();
+                let line = cap.get(2).unwrap().as_str().parse::<u64>();
+                let Ok(line) = line else {
+                    return Err(Error::Casr(format!(
+                        "Couldn't parse crashline line: {crashline}"
+                    )));
+                };
+                if let Some(column) = cap.get(3) {
+                    let column = column.as_str().parse::<u64>();
+                    let Ok(column) = column else {
+                        return Err(Error::Casr(format!(
+                            "Couldn't parse crashline column: {crashline}"
+                        )));
+                    };
+                    return Ok(CrashLine::Source(DebugInfo { file, line, column }));
+                }
+                Ok(CrashLine::Source(DebugInfo {
+                    file,
+                    line,
+                    column: 0,
+                }))
+            }
+        }
+
         let message = self.ubsan_report();
         if message.is_empty() {
             return Err(Error::Casr("Empty ubsan message".to_string()));
@@ -125,13 +126,13 @@ impl CrashLineExt for UbsanWarning {
         // If there is no stacktrace use first string from stacktrace
         // Or combine with crashline from UbsanWarning first string
         // Else use crashline from UbsanWarning first string
-        let header_crashline = UbsanWarning::get_crash_line(&message[0]);
+        let header_crashline = get_crash_line(&message[0]);
         if let Some(crashline) = message
             .iter()
             .skip(1)
             .find(|line| line.starts_with("    #0 "))
         {
-            let Ok(stack_crashline) = UbsanWarning::get_crash_line(crashline) else {
+            let Ok(stack_crashline) = get_crash_line(crashline) else {
                 return header_crashline;
             };
             let Ok(header_crashline) = header_crashline else {
@@ -143,7 +144,7 @@ impl CrashLineExt for UbsanWarning {
                 return Ok(header_crashline);
             };
             let CrashLine::Source(header_crashline) = header_crashline else {
-                return Ok(CrashLine::Source(stack_crashline));
+                return Ok(header_crashline);
             };
             // Get line and column if it's possible
             let line = if header_crashline.line != 0 {
@@ -236,10 +237,16 @@ Executed sql-out/corpus/7daf7545bad605f9ea192f6523d5427c757e56a4 in 66 ms
     #11 0x7f296f4d7082 in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x24082) (BuildId: 1878e6b475720c7c51969e69ab2d276fae6d1dee)
     #12 0x7d895d in _start (/sql_fuzzer+0x7d895d)
 
-SUMMARY: UndefinedBehaviorSanitizer: nullptr-with-nonzero-offset /tarantool/src/lib/small/include/small/lf_lifo.h:86:59 in";
+SUMMARY: UndefinedBehaviorSanitizer: nullptr-with-nonzero-offset /tarantool/src/lib/small/include/small/lf_lifo.h:86:59 in
+/openjpeg/src/lib/openjp2/j2k.c:10085:46: runtime error: unsigned integer overflow: 255 - 536870656 cannot be represented in type 'unsigned int'
+    #0 0x601e15 in opj_j2k_update_image_data /openjpeg/src/lib/openjp2/j2k.c
+    #1 0x5f7cb3 in opj_j2k_decode_tiles /openjpeg/src/lib/openjp2/j2k.c:11743:15
+    #2 0x54e785 in opj_j2k_exec /openjpeg/src/lib/openjp2/j2k.c:9031:33
+
+SUMMARY: UndefinedBehaviorSanitizer: unsigned-integer-overflow /openjpeg/src/lib/openjp2/j2k.c:10085:46 in";
         // Check warning extract
         let warnings = extract_ubsan_warnings(stderr);
-        assert_eq!(warnings.len(), 3, "{:?}", warnings);
+        assert_eq!(warnings.len(), 4, "{:?}", warnings);
 
         // Check warning
         let warning = &warnings[0];
@@ -340,6 +347,37 @@ SUMMARY: UndefinedBehaviorSanitizer: nullptr-with-nonzero-offset /tarantool/src/
             assert_eq!(
                 crash_line.to_string(),
                 "/tarantool/src/lib/small/include/small/lf_lifo.h:86:59"
+            );
+        } else {
+            panic!("{}", crash_line.err().unwrap());
+        }
+
+        // Check warning
+        let warning = &warnings[3];
+        assert_eq!(warning.ubsan_report().len(), 6);
+
+        // Check severity
+        let execution_class = warning.severity();
+        let Ok(execution_class) = execution_class else {
+            panic!("{}", execution_class.err().unwrap());
+        };
+        assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
+        assert_eq!(
+            execution_class.short_description,
+            "unsigned-integer-overflow"
+        );
+        assert_eq!(
+            execution_class.description,
+            "unsigned integer overflow: 255 - 536870656 cannot be represented in type 'unsigned int'"
+        );
+        assert_eq!(execution_class.explanation, "");
+
+        // Check crashline
+        let crash_line = warning.crash_line();
+        if let Ok(crash_line) = crash_line {
+            assert_eq!(
+                crash_line.to_string(),
+                "/openjpeg/src/lib/openjp2/j2k.c:10085:46"
             );
         } else {
             panic!("{}", crash_line.err().unwrap());
