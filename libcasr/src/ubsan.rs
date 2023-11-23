@@ -2,7 +2,7 @@
 use crate::asan::AsanStacktrace;
 use crate::severity::Severity;
 use crate::stacktrace::{CrashLine, CrashLineExt, DebugInfo};
-use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
+use crate::stacktrace::{ParseStacktrace, StacktraceEntry};
 
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
@@ -22,10 +22,6 @@ impl UbsanWarning {
     /// Transform stack trace line into StacktraceEntry type.
     pub fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
         AsanStacktrace::parse_stacktrace_entry(entry)
-    }
-    /// Transform stack trace strings into Stacktrace type.
-    pub fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
-        AsanStacktrace::parse_stacktrace(entries)
     }
     /// Get ubsan runtime error message as a vector of lines.
     pub fn ubsan_report(&self) -> Vec<String> {
