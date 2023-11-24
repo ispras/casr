@@ -27,4 +27,5 @@ jobs:
         rustup install nightly
         export PATH=/root/.cargo/bin:$PATH
         cargo install cargo-fuzz
-        cargo test --release --verbose
+        cargo test --release --verbose --lib -- --test-threads 1
+        cargo test --release --verbose --bin
