@@ -119,7 +119,7 @@ impl CrashLineExt for UbsanWarning {
         if message.is_empty() {
             return Err(Error::Casr("Empty ubsan message".to_string()));
         }
-        // If there is no stacktrace use first string from stacktrace
+        // If there is a stacktrace use first string from stacktrace
         // Or combine with crashline from UbsanWarning first string
         // Else use crashline from UbsanWarning first string
         let header_crashline = get_crash_line(&message[0]);
@@ -135,7 +135,7 @@ impl CrashLineExt for UbsanWarning {
                 return Ok(stack_crashline);
             };
             let CrashLine::Source(stack_crashline) = stack_crashline else {
-                // header_crashline may be CrashLine::Source
+                // header_crashline may be a CrashLine::Source
                 return Ok(header_crashline);
             };
             let CrashLine::Source(header_crashline) = header_crashline else {
