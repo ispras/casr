@@ -34,4 +34,4 @@ jobs:
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
           cargo build --all-features --release --verbose
           cargo test --release --verbose --lib -- --test-threads 1
-          cargo test --release --verbose --bin
+          cargo test --release --verbose --package casr

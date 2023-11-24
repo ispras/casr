@@ -35,7 +35,7 @@ jobs:
         rustup component add llvm-tools-preview
         cargo +nightly build --all-features --verbose
         cargo +nightly test --release --verbose --lib -- --test-threads 1
-        cargo +nightly test --release --verbose --bin
+        cargo +nightly test --release --verbose --package casr
     - name: Collect Coverage
       run: |
         mkdir target/coverage
