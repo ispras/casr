@@ -132,15 +132,14 @@ impl CrashLineExt for UbsanWarning {
                 return header_crashline;
             };
             let Ok(header_crashline) = header_crashline else {
-                // Return error as it is
-                return header_crashline;
+                return Ok(stack_crashline);
             };
             let CrashLine::Source(stack_crashline) = stack_crashline else {
                 // header_crashline may be CrashLine::Source
                 return Ok(header_crashline);
             };
             let CrashLine::Source(header_crashline) = header_crashline else {
-                return Ok(header_crashline);
+                return Ok(CrashLine::Source(stack_crashline));
             };
             // Get line and column if it's possible
             let line = if header_crashline.line != 0 {
