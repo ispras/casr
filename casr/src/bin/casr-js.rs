@@ -12,7 +12,7 @@ use std::process::Command;
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-js")
         .version(clap::crate_version!())
-        .about("Create CASR reports (.casrep) from JS reports")
+        .about("Create CASR reports (.casrep) from JavaScript crash reports")
         .term_width(90)
         .arg(
             Arg::new("output")
@@ -71,7 +71,7 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    init_ignored_frames!("js"); //TODO
+    init_ignored_frames!("js");
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;
     }
@@ -135,7 +135,7 @@ fn main() -> Result<()> {
         report.js_report = js_stderr_list[start..].to_vec();
         report
             .js_report
-            .retain(|x| !x.is_empty() && (x.trim().starts_with("at") || x.contains("Error")));
+            .retain(|x| !x.is_empty() && (x.trim().starts_with("at") || x.contains("Error:")));
         let report_str = report.js_report.join("\n");
         report.stacktrace = JsStacktrace::extract_stacktrace(&report_str)?;
         if let Some(exception) = JsException::parse_exception(&report.js_report[0]) {

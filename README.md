@@ -184,13 +184,11 @@ Triage libFuzzer crashes with casr-libfuzzer:
 Triage Atheris crashes with casr-libfuzzer:
 
     $ unzip casr/tests/casr_tests/python/ruamel.zip
-    $ cp casr/tests/casr_tests/python/yaml_fuzzer.py .
-    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- ./yaml_fuzzer.py
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- casr/tests/casr_tests/python/yaml_fuzzer.py
 
 Triage Jazzer.js crashes with casr-libfuzzer:
     $ unzip casr/tests/casr_tests/js/crashes.zip -d crashes
-    $ cp casr/tests/casr_tests/js/test_casr_libfuzzer_jazzer_js.js .
-    $ casr-libfuzzer -i ./crashes -o casr/tests/tmp_tests_casr/casr_libfuzzer_jazzer_js_out -- npx jazzer ./test_casr_libfuzzer_jazzer_js.js
+    $ casr-libfuzzer -i ./crashes -o casr/tests/tmp_tests_casr/casr_libfuzzer_jazzer_js_out -- npx jazzer casr/tests/casr_tests/js/test_casr_libfuzzer_jazzer_js.js
 
 Upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo):
