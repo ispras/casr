@@ -113,10 +113,10 @@ fn main() -> Result<()> {
             };
             path_to_tool = full_path_to_tool;
             let fname = fname.to_string_lossy();
-            if (fname.ends_with("node") || fname.ends_with("jsfuzz")) && argv[1].ends_with(".js") {
+            if (fname == "node" || fname == "jsfuzz") && argv[1].ends_with(".js") {
                 report.executable_path = argv[1].to_string();
             } else if argv.len() > 2
-                && fname.ends_with("npx")
+                && fname == "npx"
                 && argv[1] == "jazzer"
                 && argv[2].ends_with(".js")
             {
