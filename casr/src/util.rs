@@ -3,13 +3,17 @@ extern crate libcasr;
 
 use libcasr::report::CrashReport;
 use libcasr::stacktrace::{
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
+    Stacktrace, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
 };
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
+use is_executable::IsExecutable;
 use log::{info, warn};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use simplelog::*;
+use wait_timeout::ChildExt;
+
 use std::collections::HashSet;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -18,9 +22,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::RwLock;
 use std::time::Duration;
-
-use is_executable::IsExecutable;
-use wait_timeout::ChildExt;
 
 /// Call casr-san with the provided options
 ///
@@ -301,7 +302,7 @@ pub fn get_atheris_lib() -> Result<String> {
     Ok(format!("{out}/asan_with_fuzzer.so"))
 }
 
-/// Create output, timeout and oom directories
+/// Create output, timeout and oOLDdirectories
 ///
 /// # Arguments
 ///
@@ -410,4 +411,85 @@ pub fn get_path(tool: &str) -> Result<PathBuf> {
             "{path_to_tool:?}: No {tool} next to {current_tool}. And there is no {tool} in PATH."
         );
     }
+}
+
+/// Get CASR reports from specified directory
+///
+/// # Arguments
+///
+/// * `dir` - directory path
+///
+/// # Return value
+///
+/// A vector of reports paths
+pub fn get_reports(dir: &Path) -> Result<Vec<PathBuf>> {
+    let dir = fs::read_dir(dir).with_context(|| format!("File: {}", dir.display()))?;
+    let casreps: Vec<PathBuf> = dir
+        .map(|path| path.unwrap().path())
+        .filter(|s| s.extension().is_some() && s.extension().unwrap() == "casrep")
+        .collect();
+    Ok(casreps)
+}
+
+/// Parse CASR reports from specified paths.
+///
+/// # Arguments
+///
+/// * `casreps` - a vector of report paths
+///
+/// * `jobs` - number of jobs for parsing process
+///
+/// # Return value
+///
+/// * A vector of reports paths
+/// * A vector of reports stacktraces
+/// * A vector of reports crashlines
+/// * A vector of bad reports
+pub fn reports_from_dirs(
+    casreps: Vec<PathBuf>,
+    jobs: usize,
+) -> (Vec<PathBuf>, Vec<Stacktrace>, Vec<String>, Vec<PathBuf>) {
+    // Get len
+    let len = casreps.len();
+    // Start thread pool.
+    let custom_pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(jobs.min(len))
+        .build()
+        .unwrap();
+    // Report info from casreps: (casrep, (trace, crashline))
+    let mut casrep_info: RwLock<Vec<(PathBuf, (Stacktrace, String))>> = RwLock::new(Vec::new());
+    // Casreps with stacktraces, that we cannot parse
+    let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
+    custom_pool.install(|| {
+        (0..len).into_par_iter().for_each(|i| {
+            if let Ok(report) = report_from_file(casreps[i].as_path()) {
+                if let Ok(trace) = report.filtered_stacktrace() {
+                    casrep_info
+                        .write()
+                        .unwrap()
+                        .push((casreps[i].clone(), (trace, report.crashline)));
+                } else {
+                    badreports.write().unwrap().push(casreps[i].clone());
+                }
+            } else {
+                badreports.write().unwrap().push(casreps[i].clone());
+            }
+        })
+    });
+    let casrep_info = casrep_info.get_mut().unwrap();
+    let badreports = badreports.get_mut().unwrap().to_vec();
+    // Sort by casrep filename
+    casrep_info.sort_by(|a, b| {
+        a.0.file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .cmp(b.0.file_name().unwrap().to_str().unwrap())
+    });
+
+    // Unzip casrep info
+    let (casreps, (stacktraces, crashlines)): (Vec<_>, (Vec<_>, Vec<_>)) =
+        casrep_info.iter().cloned().unzip();
+
+    (casreps, stacktraces, crashlines, badreports)
 }

@@ -11,6 +11,7 @@ use crate::constants::{
     STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
 };
 use crate::error::*;
+use core::f64::MAX;
 use kodama::{linkage, Method};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
@@ -32,6 +33,43 @@ lazy_static::lazy_static! {
     /// Regular expressions for file paths to be ignored.
     pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
         Vec::new());
+}
+
+/// Threshold for clusters diameter
+const THRESHOLD: f64 = 0.3;
+
+/// Relation between a CASR report and a cluster
+#[derive(Clone, Debug)]
+pub enum Relation {
+    /// The CASR report is a duplicate of one from cluster
+    Dup,
+    /// The CASR report is "inside" the cluster with some measure
+    Inner(f64),
+    /// The CASR report is "outside" the cluster with some measure
+    Outer(f64),
+    /// The CASR report is out of threshold
+    Oot,
+}
+
+/// Cluster accumulation strategy
+pub enum AccumStrategy {
+    /// Argmin diam (cluster + {new})
+    Diam,
+    /// Argmin (diam (cluster + {new}) - diam (cluster))
+    DiamDelta,
+    /// Argmin dist (cluster, {new})
+    Dist,
+}
+
+/// Structure provides an interface for leverages with CASR report clusters
+#[derive(Clone, Debug)]
+pub struct Cluster {
+    /// Cluster number
+    pub number: usize,
+    /// Cluster report stacktraces
+    pub stacktraces: Vec<Stacktrace>,
+    /// Cluster diameter
+    pub diam: f64,
 }
 
 /// This macro updates variables used to remove trusted functions from stack trace
@@ -215,15 +253,12 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
     // at the beginning every node is in its own cluster
     let mut clusters = (0..len).map(|x| (x, vec![x])).collect::<HashMap<_, _>>();
 
-    // Set threshold
-    let distance = 0.3;
-
     // Counter for new clusters, which are formed as unions of previous ones
     let mut counter = len;
 
     for step in dendrogram.steps() {
         // Break if threshold is reached
-        if step.dissimilarity >= distance {
+        if step.dissimilarity >= THRESHOLD {
             break;
         }
 
@@ -247,7 +282,8 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
     let mut flat_clusters = vec![0; len];
     for (i, (_, nums)) in clusters.into_iter().enumerate() {
         for num in nums {
-            flat_clusters[num] = i + 1; // Number clusters from 1, not 0
+            // Note: Clusters enumerate from 1, not 0
+            flat_clusters[num] = i + 1;
         }
     }
 
@@ -290,6 +326,86 @@ pub fn dedup_crashlines(crashlines: &[String], clusters: &mut [usize]) -> usize 
         }
     }
     unique_cnt
+}
+
+/// Get diameter of specified cluster
+///
+/// # Arguments
+///
+/// * `stacktraces` - cluster represented as slice of `Stacktrace` structures
+///
+/// # Return value
+///
+/// Value of diameter
+pub fn diam(stacktraces: &[Stacktrace]) -> f64 {
+    let mut diam = 0f64;
+    let len = stacktraces.len();
+    for i in 0..len {
+        for j in i + 1..len {
+            let dist = 1.0 - similarity(&stacktraces[i], &stacktraces[j]);
+            if dist > diam {
+                diam = dist;
+            }
+        }
+    }
+    diam
+}
+
+/// Get "relation" between new report and specified cluster
+///
+/// # Arguments
+///
+/// * `new` - new report stacktrace
+///
+/// * `stacktraces` - cluster represented as slice of `Stacktrace` structures
+///
+/// * `inner_strategy` - cluster accumulation strategy if `new` is "inner"
+///
+/// * `inner_strategy` - cluster accumulation strategy if `new` is "outer"
+///
+/// # Return value
+///
+/// `Relation` enum with measure according specified strategy
+pub fn relation(
+    new: &Stacktrace,
+    cluster: &Cluster,
+    inner_strategy: AccumStrategy,
+    outer_strategy: AccumStrategy,
+) -> Relation {
+    let diam = cluster.diam;
+    let mut min = MAX;
+    let mut max = 0f64;
+    for stacktrace in &cluster.stacktraces {
+        let dist = 1.0 - similarity(new, stacktrace);
+        if dist == 0.0 {
+            return Relation::Dup;
+        } else if dist > THRESHOLD {
+            return Relation::Oot;
+        }
+        if dist < min {
+            min = dist;
+        }
+        if dist > max {
+            max = dist;
+        }
+    }
+    if diam >= max {
+        // Inner
+        let rel = match inner_strategy {
+            // DiamDelta is a nonsensical strategy in this case
+            AccumStrategy::Diam => diam,
+            _ => min,
+        };
+        Relation::Inner(rel)
+    } else {
+        // Outer
+        let rel = match outer_strategy {
+            AccumStrategy::Diam => max,
+            AccumStrategy::DiamDelta => max - diam,
+            AccumStrategy::Dist => min,
+        };
+        Relation::Outer(rel)
+    }
 }
 
 /// Stack trace filtering trait.
