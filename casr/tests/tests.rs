@@ -5378,3 +5378,128 @@ fn test_casr_libfuzzer_jazzer_js() {
     assert!(storage.values().all(|x| *x > 1));
     let _ = std::fs::remove_dir_all(test_dir);
 }
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_libfuzzer_jazzer_js_xml2js() {
+    use std::collections::HashMap;
+
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js_xml2js");
+    let _ = std::fs::remove_dir_all(&test_dir);
+    let paths = [
+        abs_path("tests/casr_tests/js/test_casr_libfuzzer_jazzer_js_xml2js.js"),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js_xml2js/crashes"),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js_xml2js/casr_out"),
+        abs_path(
+            "tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js_xml2js/test_casr_libfuzzer_jazzer_js_xml2js.js",
+        ),
+    ];
+
+    // Create crashes dir
+    let output = Command::new("mkdir")
+        .args(["-p", &paths[1]])
+        .output()
+        .expect("failed to create dir");
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let _ = fs::copy(&paths[0], &paths[3]);
+
+    Command::new("unzip")
+        .arg(abs_path("tests/casr_tests/js/xml2js.zip"))
+        .args(["-d", &paths[1]])
+        .stdout(Stdio::null())
+        .status()
+        .expect("failed to unzip xml2js.zip");
+
+    let Ok(npx_path) = which::which("npx") else {
+        panic!("No npx is found.");
+    };
+
+    let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
+        .parent()
+        .unwrap();
+    let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
+    cmd.args([
+        "-i",
+        &paths[1],
+        "-o",
+        &paths[2],
+        "--",
+        npx_path.to_str().unwrap(),
+        "jazzer",
+        &paths[3],
+    ])
+    .env(
+        "PATH",
+        format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+    );
+    let output = cmd.output().expect("failed to start casr-libfuzzer");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let err = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!err.is_empty());
+
+    assert!(err.contains("NOT_EXPLOITABLE"));
+    assert!(err.contains("TypeError"));
+    assert!(err.contains("xml2js/lib/parser.js"));
+    assert!(err.contains("Error"));
+    assert!(err.contains("sax/lib/sax.js"));
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 3, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 2, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[2]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
+    let _ = std::fs::remove_dir_all(test_dir);
+}
