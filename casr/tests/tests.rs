@@ -5420,12 +5420,12 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
         panic!("No npm is found.");
     };
 
-    let npm = Command::new("bash")
+    let npm = Command::new(npm_path)
         .current_dir(&test_dir)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .arg("-c")
-        .arg(format!("{} install xml2js", &npm_path.display()))
+        .args(["install", "xml2js"])
         .status()
         .expect("failed to install xml2js");
     assert!(npm.success());

@@ -111,7 +111,7 @@ fn main() -> Result<()> {
         if let Some(fname) = fpath.file_name() {
             path_to_tool = if fname == fpath.as_os_str() {
                 let Ok(full_path_to_tool) = which::which(fname) else {
-                    bail!("Could not get the full path of {}", argv[0]);
+                    bail!("{} is not found in PATH", argv[0]);
                 };
                 full_path_to_tool
             } else {
