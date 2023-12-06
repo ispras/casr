@@ -94,6 +94,11 @@ impl<'a> CrashInfo {
             .output()
             .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
 
+        if tool_name.eq("casr-js") {
+            println!("CASR-JS STDOUT: {}", String::from_utf8_lossy(&casr_output.stdout));
+            println!("CASR-JS STDERR: {}", String::from_utf8_lossy(&casr_output.stderr));
+        }
+
         if !casr_output.status.success() {
             let err = String::from_utf8_lossy(&casr_output.stderr);
             if err.contains("Timeout") {

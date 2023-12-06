@@ -143,6 +143,7 @@ fn main() -> Result<()> {
             .retain(|x| !x.is_empty() && (x.trim().starts_with("at") || x.contains("Error:")));
         let report_str = report.js_report.join("\n");
         report.stacktrace = JsStacktrace::extract_stacktrace(&report_str)?;
+        println!("JS STACKTRACE: {:?}", &report.stacktrace);
         if let Some(exception) = JsException::parse_exception(&report.js_report[0]) {
             report.execution_class = exception;
         }
