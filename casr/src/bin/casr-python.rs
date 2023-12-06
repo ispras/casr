@@ -75,7 +75,7 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    init_ignored_frames!("python");
+    init_ignored_frames!("python", "cpp");
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;
     }

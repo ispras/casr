@@ -109,7 +109,7 @@ fn main() -> Result<()> {
     if argv.len() > 1 {
         let fpath = Path::new(argv[0]);
         if let Some(fname) = fpath.file_name() {
-            path_to_tool = if !fpath.is_absolute() {
+            path_to_tool = if fname == fpath.as_os_str() {
                 let Ok(full_path_to_tool) = which::which(fname) else {
                     bail!("Could not get the full path of {}", argv[0]);
                 };
@@ -117,6 +117,9 @@ fn main() -> Result<()> {
             } else {
                 fpath.to_path_buf()
             };
+            if !path_to_tool.exists() {
+                bail!("Could not find the tool in the specified path {}", argv[0]);
+            }
             let fname = fname.to_string_lossy();
             if (fname == "node" || fname == "jsfuzz") && argv[1].ends_with(".js") {
                 report.executable_path = argv[1].to_string();
@@ -143,7 +146,6 @@ fn main() -> Result<()> {
             .retain(|x| !x.is_empty() && (x.trim().starts_with("at") || x.contains("Error:")));
         let report_str = report.js_report.join("\n");
         report.stacktrace = JsStacktrace::extract_stacktrace(&report_str)?;
-        println!("JS STACKTRACE: {:?}", &report.stacktrace);
         if let Some(exception) = JsException::parse_exception(&report.js_report[0]) {
             report.execution_class = exception;
         }

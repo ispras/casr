@@ -5416,6 +5416,20 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
         .status()
         .expect("failed to unzip xml2js.zip");
 
+    let Ok(npm_path) = which::which("npm") else {
+        panic!("No npm is found.");
+    };
+
+    let npm = Command::new("bash")
+        .current_dir(&test_dir)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .arg("-c")
+        .arg(format!("{} install xml2js", &npm_path.display()))
+        .status()
+        .expect("failed to install xml2js");
+    assert!(npm.success());
+
     let Ok(npx_path) = which::which("npx") else {
         panic!("No npx is found.");
     };
@@ -5447,11 +5461,8 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
         String::from_utf8_lossy(&output.stderr)
     );
     let err = String::from_utf8_lossy(&output.stderr);
-    let out = String::from_utf8_lossy(&output.stdout);
 
     assert!(!err.is_empty());
-    println!("STDOUT: {out}");
-    println!("STDERR: {err}");
 
     assert!(err.contains("NOT_EXPLOITABLE"));
     assert!(err.contains("TypeError"));
