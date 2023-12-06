@@ -71,7 +71,7 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    init_ignored_frames!("js");
+    init_ignored_frames!("js", "cpp");
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;
     }
@@ -107,11 +107,16 @@ fn main() -> Result<()> {
     let mut path_to_tool = PathBuf::new();
     path_to_tool.push(argv[0]);
     if argv.len() > 1 {
-        if let Some(fname) = Path::new(argv[0]).file_name() {
-            let Ok(full_path_to_tool) = which::which(fname) else {
-                bail!("Could not get the full path of {}", argv[0]);
+        let fpath = Path::new(argv[0]);
+        if let Some(fname) = fpath.file_name() {
+            path_to_tool = if !fpath.is_absolute() {
+                let Ok(full_path_to_tool) = which::which(fname) else {
+                    bail!("Could not get the full path of {}", argv[0]);
+                };
+                full_path_to_tool
+            } else {
+                fpath.to_path_buf()
             };
-            path_to_tool = full_path_to_tool;
             let fname = fname.to_string_lossy();
             if (fname == "node" || fname == "jsfuzz") && argv[1].ends_with(".js") {
                 report.executable_path = argv[1].to_string();

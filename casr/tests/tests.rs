@@ -5447,8 +5447,11 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
         String::from_utf8_lossy(&output.stderr)
     );
     let err = String::from_utf8_lossy(&output.stderr);
+    let out = String::from_utf8_lossy(&output.stdout);
 
     assert!(!err.is_empty());
+    println!("STDOUT: {out}");
+    println!("STDERR: {err}");
 
     assert!(err.contains("NOT_EXPLOITABLE"));
     assert!(err.contains("TypeError"));

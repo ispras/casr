@@ -546,8 +546,8 @@ Atheris example:
     $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- casr/tests/casr_tests/python/yaml_fuzzer.py
 
 Jazzer.js example:
-    $ unzip casr/tests/casr_tests/js/crashes.zip -d crashes
-    $ casr-libfuzzer -i ./crashes -o casr/tests/tmp_tests_casr/casr_libfuzzer_jazzer_js_out -- npx jazzer casr/tests/casr_tests/js/test_casr_libfuzzer_jazzer_js.js
+    $ unzip casr/tests/casr_tests/js/xml2js.zip -d xml2js
+    $ casr-libfuzzer -i ./xml2js -o casr/tests/tmp_tests_casr/casr_libfuzzer_jazzer_js_xml2js_out -- npx jazzer casr/tests/casr_tests/js/test_casr_libfuzzer_jazzer_js_xml2js.js
 
 You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-libfuzzer`. This
 variable may be used by [casr-san](#casr-san).
