@@ -61,17 +61,43 @@ pub enum AccumStrategy {
     Dist,
 }
 
-// TODO: lazy diam
-// TODO: encapsulation
 /// Structure provides an interface for leverages with CASR report clusters
 #[derive(Clone, Debug)]
 pub struct Cluster {
     /// Cluster number
     pub number: usize,
     /// Cluster report stacktraces
-    pub stacktraces: Vec<Stacktrace>,
+    stacktraces: Vec<Stacktrace>,
     /// Cluster diameter
-    pub diam: f64,
+    diam: Option<f64>,
+}
+
+impl Cluster {
+    /// Create new `Cluster`
+    pub fn new(number: usize, stacktraces: Vec<Stacktrace>) -> Self {
+        Cluster {
+            number,
+            stacktraces,
+            diam: None,
+        }
+    }
+    /// Get CASR report stactraces
+    pub fn stacktraces(&self) -> Vec<Stacktrace> {
+        self.stacktraces.clone()
+    }
+    /// Add CASR report stacktrace to cluster
+    pub fn push(&mut self, stacktrace: Stacktrace) {
+        self.stacktraces.push(stacktrace);
+        self.diam = None;
+    }
+    /// Get cluster diameter
+    pub fn diam(&mut self) -> f64 {
+        if self.diam.is_none() {
+            diam(&self.stacktraces)
+        } else {
+            self.diam.unwrap()
+        }
+    }
 }
 
 /// This macro updates variables used to remove trusted functions from stack trace
@@ -339,7 +365,7 @@ pub fn dedup_crashlines(crashlines: &[String], clusters: &mut [usize]) -> usize 
 /// # Return value
 ///
 /// Value of diameter
-pub fn diam(stacktraces: &[Stacktrace]) -> f64 {
+fn diam(stacktraces: &[Stacktrace]) -> f64 {
     let mut diam = 0f64;
     let len = stacktraces.len();
     for i in 0..len {
@@ -370,15 +396,15 @@ pub fn diam(stacktraces: &[Stacktrace]) -> f64 {
 /// `Relation` enum with measure according specified strategy
 pub fn relation(
     new: &Stacktrace,
-    cluster: &Cluster,
+    cluster: &mut Cluster,
     inner_strategy: AccumStrategy,
     outer_strategy: AccumStrategy,
 ) -> Relation {
-    let diam = cluster.diam;
+    let diam = cluster.diam();
     let mut min = MAX;
     let mut max = 0f64;
-    for stacktrace in &cluster.stacktraces {
-        let dist = 1.0 - similarity(new, stacktrace);
+    for stacktrace in cluster.stacktraces() {
+        let dist = 1.0 - similarity(new, &stacktrace);
         if dist == 0.0 {
             return Relation::Dup;
         } else if dist > THRESHOLD {

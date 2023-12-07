@@ -366,12 +366,7 @@ fn update_clusters(
         let casreps = util::get_reports(cluster)?;
         let (_, stacktraces, crashlines, _) = util::reports_from_dirs(casreps, jobs);
         // Fill cluster info structures
-        let diam = diam(&stacktraces);
-        clusters.push(Cluster {
-            number: i,
-            stacktraces,
-            diam,
-        });
+        clusters.push(Cluster::new(i, stacktraces));
         if dedup {
             for crashline in crashlines {
                 // NOTE: Clusters enumerate from 1, not 0
@@ -396,8 +391,7 @@ fn update_clusters(
         let mut outers: Vec<(usize, f64)> = Vec::new();
         // Checker if casrep is duplicate of someone else
         let mut dup = false;
-        for cluster in &clusters {
-            // TODO: Add strategy options
+        for cluster in &mut clusters {
             let relation = relation(
                 stacktrace,
                 cluster,
@@ -454,8 +448,7 @@ fn update_clusters(
 
         // Update cluster
         let i = clusters.iter().position(|a| a.number == number).unwrap();
-        clusters[i].stacktraces.push(stacktrace.to_vec());
-        clusters[i].diam = diam(&clusters[i].stacktraces);
+        clusters[i].push(stacktrace.to_vec());
     }
 
     // Handle deviant casreps

@@ -302,7 +302,7 @@ pub fn get_atheris_lib() -> Result<String> {
     Ok(format!("{out}/asan_with_fuzzer.so"))
 }
 
-/// Create output, timeout and oOLDdirectories
+/// Create output, timeout and oom directories
 ///
 /// # Arguments
 ///
