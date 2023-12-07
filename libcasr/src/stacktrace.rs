@@ -410,6 +410,61 @@ pub fn relation(
     }
 }
 
+/// Get "a" subcoefficient silhouette coefficient calculating for given stacktrace
+/// Read more: https://en.wikipedia.org/wiki/Silhouette_(clustering)#Definition
+///
+/// # Arguments
+///
+/// * `num` - given stacktrace number
+///
+/// * `stacktraces` - cluster represented as slice of `Stacktrace` structures
+///
+/// # Return value
+///
+/// "a" subcoefficient silhouette coefficient
+pub fn get_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
+    let mut sum = 0f64;
+    for i in 0..stacktraces.len() - 1 {
+        if i == num {
+            continue;
+        }
+        sum += 1.0 - similarity(&stacktraces[num], &stacktraces[i]);
+    }
+    sum / (stacktraces.len() - 1) as f64
+}
+
+/// Get "b" subcoefficient silhouette coefficient calculating for given stacktrace
+/// Read more: https://en.wikipedia.org/wiki/Silhouette_(clustering)#Definition
+///
+/// # Arguments
+///
+/// * `num` - given stacktrace number
+///
+/// * `cl` - cluster number of given stacktrace
+///
+/// * `clusters` - a vector of clusters represented as slice of `Stacktrace` structures
+///
+/// # Return value
+///
+/// "b" subcoefficient silhouette coefficient
+pub fn get_subcoef_b(num: usize, cl: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
+    let mut min = MAX;
+    for j in 0..clusters.len() - 1 {
+        if j == cl {
+            continue;
+        }
+        let mut sum = 0f64;
+        for i in 0..clusters[j].len() - 1 {
+            sum += 1.0 - similarity(&clusters[cl][num], &clusters[j][i]);
+        }
+        let res = sum / clusters[j].len() as f64;
+        if res < min {
+            min = res;
+        }
+    }
+    min
+}
+
 /// Stack trace filtering trait.
 pub trait Filter {
     /// Filter frames from the stack trace that are not related to analyzed code containing crash.

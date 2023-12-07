@@ -2654,6 +2654,7 @@ fn test_casr_cluster_u() {
     let paths = [
         abs_path("tests/casr_tests/casrep/test_clustering_small"),
         abs_path("tests/tmp_tests_casr/clustering_out"),
+        abs_path("tests/tmp_tests_casr/clustering_out/cl8/20.casrep"),
         abs_path("tests/tmp_tests_casr/clustering_out/cl9"),
     ];
 
@@ -2688,7 +2689,8 @@ fn test_casr_cluster_u() {
 
     assert_eq!(clusters_cnt, 9, "Clusters count mismatch.");
 
-    let _ = std::fs::remove_dir_all(&paths[2]);
+    let _ = std::fs::remove_file(&paths[2]);
+    let _ = std::fs::remove_dir_all(&paths[3]);
 
     let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(["-u", &paths[0], &paths[1]])
@@ -2772,6 +2774,18 @@ fn test_casr_cluster_u() {
         .unwrap();
 
     assert_eq!(after_cnt, 1, "After count mismatch.");
+
+    let re = Regex::new(r"Cluster silhouette index: (?P<sil>\d+)").unwrap();
+    let sil = re
+        .captures(&res)
+        .unwrap()
+        .name("sil")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(sil, 0, "Silhouette index mismatch.");
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }

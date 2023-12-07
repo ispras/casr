@@ -481,6 +481,69 @@ fn update_clusters(
     Ok((added, duplicates, deduplicated, result, before, after))
 }
 
+/// Calculate silhouette coefficient
+///
+/// # Arguments
+///
+/// * `dir` - path to directory with CASR report clusters
+///
+/// * `jobs` - number of jobs for calculating process
+///
+/// # Return value
+///
+/// Silhouette coefficient
+fn get_sil(dir: &Path, jobs: usize) -> Result<f64> {
+    // Get cluster dirs
+    let dirs: Vec<PathBuf> = fs::read_dir(dir)
+        .unwrap()
+        .map(|path| path.unwrap().path())
+        .filter(|path| {
+            path.clone()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with("cl")
+        })
+        .collect();
+
+    if dirs.len() < 2 {
+        bail!("{} valid cluster, nothing to calculate...", dirs.len());
+    }
+
+    // Init clusters vector
+    let mut clusters: Vec<Vec<Stacktrace>> = Vec::new();
+    // Init casreps nuber counter
+    let mut size = 0usize;
+    // Get casreps from each cluster
+    for dir in &dirs {
+        // Get casreps from cluster
+        let casreps = util::get_reports(dir)?;
+        // Get stacktraces from cluster
+        let (_, stacktraces, _, _) = util::reports_from_dirs(casreps, jobs);
+        // Update size
+        size += stacktraces.len();
+        // Add stacktraces
+        clusters.push(stacktraces);
+    }
+    // Init sil sum
+    let mut sum = 0f64;
+    // Calculate silhouette coefficient for each casrep
+    for i in 0..clusters.len() - 1 {
+        for num in 0..clusters[i].len() - 1 {
+            let sil = if clusters[i].len() != 1 {
+                let a = get_subcoef_a(num, &clusters[i]);
+                let b = get_subcoef_b(num, i, &clusters);
+                (b - a) / a.max(b)
+            } else {
+                0f64
+            };
+            sum += sil;
+        }
+    }
+    Ok(sum / size as f64)
+}
+
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-cluster")
         .version(clap::crate_version!())
@@ -575,6 +638,14 @@ fn main() -> Result<()> {
                 .value_parser(["Delta", "Diam", "Dist"])
                 .default_value("Dist")
                 .help("Strategy for outer cluster choosing when updating"),
+        )
+        .arg(
+            Arg::new("estimation")
+                .long("estimation")
+                .value_name("DIR")
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
+                .help("Make cluster estimation for DIR using silhouette index"),
         )
         .arg(
             Arg::new("ignore")
@@ -686,6 +757,12 @@ fn main() -> Result<()> {
             println!("Number of reports before crashline deduplication in new clusters: {before}");
             println!("Number of reports after crashline deduplication in new clusters: {after}");
         }
+        let sil = get_sil(paths[1], jobs)?;
+        println!("Cluster silhouette index: {sil}");
+    } else if matches.contains_id("estimation") {
+        let path: &PathBuf = matches.get_one::<PathBuf>("estimation").unwrap();
+        let sil = get_sil(path, jobs)?;
+        println!("Cluster silhouette index: {sil}");
     }
 
     Ok(())
