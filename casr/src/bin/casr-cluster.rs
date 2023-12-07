@@ -316,9 +316,9 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 ///
 /// # Return value
 ///
-/// * Number casreps of added to old clusters
+/// * Number of casreps added to old clusters
 /// * Number of duplicates
-/// * TODO: crashlines...
+/// * Number of casreps deduplicated by crashline
 /// * Number of new clusters
 /// * Number of valid casreps before crashiline deduplication in new clusters
 /// * Number of valid casreps after crashiline deduplication in new clusters
@@ -327,7 +327,7 @@ fn update_clusters(
     oldpath: &Path,
     jobs: usize,
     dedup: bool,
-) -> Result<(usize, usize, usize, usize, usize)> {
+) -> Result<(usize, usize, usize, usize, usize, usize)> {
     // Get new casreps
     let casreps = util::get_reports(newpath)?;
     let (casreps, stacktraces, crashlines, _) = util::reports_from_dirs(casreps, jobs);
@@ -384,7 +384,8 @@ fn update_clusters(
     let mut added = 0usize;
     // Init duplicates counter
     let mut duplicates = 0usize;
-    // TODO: Init crashline duplicates counter
+    // Init crashline duplicates counter
+    let mut deduplicated = 0usize;
     // Try to insert each new casrep
     for (casrep, (stacktrace, crashline)) in casreps {
         // list of "inner" clusters for casrep
@@ -432,7 +433,11 @@ fn update_clusters(
             continue;
         };
 
-        // TODO: Check crashline
+        // Make crashline deduplication
+        if !crashline.is_empty() && !unique_crashlines[number - 1].insert(crashline.to_string()) {
+            deduplicated += 1;
+            continue;
+        }
 
         added += 1;
         // Save casrep
@@ -471,7 +476,7 @@ fn update_clusters(
     } else {
         (0, 0, 0)
     };
-    Ok((added, duplicates, result, before, after))
+    Ok((added, duplicates, deduplicated, result, before, after))
 }
 
 fn main() -> Result<()> {
@@ -628,10 +633,13 @@ fn main() -> Result<()> {
     } else if matches.contains_id("update") {
         let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("update").unwrap().collect();
 
-        let (added, duplicates, result, before, after) =
+        let (added, duplicates, deduplicated, result, before, after) =
             update_clusters(paths[0], paths[1], jobs, dedup_crashlines)?;
         println!("Number of casreps added to old clusters: {added}");
         println!("Number of duplicates: {duplicates}");
+        if deduplicated != 0 {
+            println!("Number of casreps deduplicated by crashline");
+        }
         if result != 0 {
             println!("Number of new clusters: {result}");
         }
