@@ -43,8 +43,8 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
 /// # Return value
 ///
 /// * Number of clusters
-/// * Number of valid casrep before crashiline deduplication
-/// * Number of valid casrep after crashiline deduplication
+/// * Number of valid casreps before crashiline deduplication
+/// * Number of valid casreps after crashiline deduplication
 fn make_clusters(
     inpath: &Path,
     outpath: Option<&Path>,
@@ -314,7 +314,20 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 ///
 /// * `dedup` - deduplicate casrep by crashline for each cluster, if true
 ///
-fn update_clusters(newpath: &Path, oldpath: &Path, jobs: usize, dedup: bool) -> Result<()> {
+/// # Return value
+///
+/// * Number casreps of added to old clusters
+/// * Number of duplicates
+/// * TODO: crashlines...
+/// * Number of new clusters
+/// * Number of valid casreps before crashiline deduplication in new clusters
+/// * Number of valid casreps after crashiline deduplication in new clusters
+fn update_clusters(
+    newpath: &Path,
+    oldpath: &Path,
+    jobs: usize,
+    dedup: bool,
+) -> Result<(usize, usize, usize, usize, usize)> {
     // Get new casreps
     let casreps = util::get_reports(newpath)?;
     let (casreps, stacktraces, crashlines, _) = util::reports_from_dirs(casreps, jobs);
@@ -359,7 +372,7 @@ fn update_clusters(newpath: &Path, oldpath: &Path, jobs: usize, dedup: bool) -> 
         });
         if dedup {
             for crashline in crashlines {
-                // Note: Clusters enumerate from 1, not 0
+                // NOTE: Clusters enumerate from 1, not 0
                 unique_crashlines[i - 1].insert(crashline);
             }
         }
@@ -367,7 +380,11 @@ fn update_clusters(newpath: &Path, oldpath: &Path, jobs: usize, dedup: bool) -> 
 
     // Init list of casreps, which aren't suitable for any cluster
     let mut deviants = Vec::<&PathBuf>::new();
-
+    // Init added casreps counter
+    let mut added = 0usize;
+    // Init duplicates counter
+    let mut duplicates = 0usize;
+    // TODO: Init crashline duplicates counter
     // Try to insert each new casrep
     for (casrep, (stacktrace, crashline)) in casreps {
         // list of "inner" clusters for casrep
@@ -387,6 +404,7 @@ fn update_clusters(newpath: &Path, oldpath: &Path, jobs: usize, dedup: bool) -> 
             match relation {
                 Relation::Dup => {
                     dup = true;
+                    duplicates += 1;
                     break;
                 }
                 Relation::Inner(measure) => {
@@ -415,6 +433,8 @@ fn update_clusters(newpath: &Path, oldpath: &Path, jobs: usize, dedup: bool) -> 
         };
 
         // TODO: Check crashline
+
+        added += 1;
         // Save casrep
         fs::copy(
             casrep,
@@ -432,7 +452,7 @@ fn update_clusters(newpath: &Path, oldpath: &Path, jobs: usize, dedup: bool) -> 
     }
 
     // Handle deviant casreps
-    if !deviants.is_empty() {
+    let (result, before, after) = if !deviants.is_empty() {
         // Copy casrep to tmp dir
         let deviant_dir = format!("{}/deviant", &oldpath.display());
         fs::create_dir_all(&deviant_dir)?;
@@ -447,10 +467,11 @@ fn update_clusters(newpath: &Path, oldpath: &Path, jobs: usize, dedup: bool) -> 
             )?;
         }
         // Cluster deviant casreps
-        let (result, before, after) =
-            make_clusters(Path::new(&deviant_dir), Some(oldpath), jobs, dedup, len)?;
-    }
-    Ok(())
+        make_clusters(Path::new(&deviant_dir), Some(oldpath), jobs, dedup, len)?
+    } else {
+        (0, 0, 0)
+    };
+    Ok((added, duplicates, result, before, after))
 }
 
 fn main() -> Result<()> {
@@ -607,7 +628,18 @@ fn main() -> Result<()> {
     } else if matches.contains_id("update") {
         let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("update").unwrap().collect();
 
-        update_clusters(paths[0], paths[1], jobs, dedup_crashlines)?;
+        let (added, duplicates, result, before, after) =
+            update_clusters(paths[0], paths[1], jobs, dedup_crashlines)?;
+        println!("Number of casreps added to old clusters: {added}");
+        println!("Number of duplicates: {duplicates}");
+        if result != 0 {
+            println!("Number of new clusters: {result}");
+        }
+        // Print crashline dedup summary
+        if before != after {
+            println!("Number of reports before crashline deduplication in new clusters: {before}");
+            println!("Number of reports after crashline deduplication in new clusters: {after}");
+        }
     }
 
     Ok(())

@@ -61,6 +61,8 @@ pub enum AccumStrategy {
     Dist,
 }
 
+// TODO: lazy diam
+// TODO: encapsulation
 /// Structure provides an interface for leverages with CASR report clusters
 #[derive(Clone, Debug)]
 pub struct Cluster {
@@ -282,7 +284,7 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
     let mut flat_clusters = vec![0; len];
     for (i, (_, nums)) in clusters.into_iter().enumerate() {
         for num in nums {
-            // Note: Clusters enumerate from 1, not 0
+            // NOTE: Clusters enumerate from 1, not 0
             flat_clusters[num] = i + 1;
         }
     }
