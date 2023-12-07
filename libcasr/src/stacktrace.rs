@@ -39,7 +39,6 @@ lazy_static::lazy_static! {
 const THRESHOLD: f64 = 0.3;
 
 /// Relation between a CASR report and a cluster
-#[derive(Clone, Debug)]
 pub enum Relation {
     /// The CASR report is a duplicate of one from cluster
     Dup,
@@ -52,11 +51,12 @@ pub enum Relation {
 }
 
 /// Cluster accumulation strategy
+#[derive(Clone, Debug)]
 pub enum AccumStrategy {
+    /// Argmin (diam (cluster + {new}) - diam (cluster))
+    Delta,
     /// Argmin diam (cluster + {new})
     Diam,
-    /// Argmin (diam (cluster + {new}) - diam (cluster))
-    DiamDelta,
     /// Argmin dist (cluster, {new})
     Dist,
 }
@@ -394,7 +394,7 @@ pub fn relation(
     if diam >= max {
         // Inner
         let rel = match inner_strategy {
-            // DiamDelta is a nonsensical strategy in this case
+            // Delta is a nonsensical strategy in this case
             AccumStrategy::Diam => diam,
             _ => min,
         };
@@ -403,7 +403,7 @@ pub fn relation(
         // Outer
         let rel = match outer_strategy {
             AccumStrategy::Diam => max,
-            AccumStrategy::DiamDelta => max - diam,
+            AccumStrategy::Delta => max - diam,
             AccumStrategy::Dist => min,
         };
         Relation::Outer(rel)

@@ -233,6 +233,14 @@ Tool for clustering CASR reports
       -m, --merge <INPUT_DIR> <OUTPUT_DIR>
               Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from INPUT_DIR will be
               added to OUTPUT_DIR.
+      -u, --update <NEW_DIR> <OLD_DIR>
+              Update clusters from OLD_DIR using CASR reports from NEW_DIR.
+          --inner-strategy <STRATEGY>
+              Strategy for inner cluster choosing when updating [default: Dist] [possible
+              values: Diam, Dist]
+          --outer-strategy <STRATEGY>
+              Strategy for outer cluster choosing when updating [default: Dist] [possible
+              values: Delta, Diam, Dist]
           --ignore <FILE>
               File with regular expressions for functions and file paths that should be
               ignored

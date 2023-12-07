@@ -327,6 +327,8 @@ fn update_clusters(
     oldpath: &Path,
     jobs: usize,
     dedup: bool,
+    inner_strategy: AccumStrategy,
+    outer_strategy: AccumStrategy,
 ) -> Result<(usize, usize, usize, usize, usize, usize)> {
     // Get new casreps
     let casreps = util::get_reports(newpath)?;
@@ -399,8 +401,8 @@ fn update_clusters(
             let relation = relation(
                 stacktrace,
                 cluster,
-                AccumStrategy::Dist,
-                AccumStrategy::Dist,
+                inner_strategy.clone(),
+                outer_strategy.clone(),
             );
             match relation {
                 Relation::Dup => {
@@ -422,7 +424,7 @@ fn update_clusters(
         if dup {
             continue;
         }
-        // Get cluster with min measure
+        // Get cluster with min measure, a.k.a. "closest" one
         let number = if !inners.is_empty() {
             inners.iter().min_by(|a, b| a.1.total_cmp(&b.1)).unwrap().0
         } else if !outers.is_empty() {
@@ -557,6 +559,24 @@ fn main() -> Result<()> {
                 ),
         )
         .arg(
+            Arg::new("inner-strategy")
+                .long("inner-strategy")
+                .value_name("STRATEGY")
+                .action(ArgAction::Set)
+                .value_parser(["Diam", "Dist"])
+                .default_value("Dist")
+                .help("Strategy for inner cluster choosing when updating"),
+        )
+        .arg(
+            Arg::new("outer-strategy")
+                .long("outer-strategy")
+                .value_name("STRATEGY")
+                .action(ArgAction::Set)
+                .value_parser(["Delta", "Diam", "Dist"])
+                .default_value("Dist")
+                .help("Strategy for outer cluster choosing when updating"),
+        )
+        .arg(
             Arg::new("ignore")
                 .long("ignore")
                 .action(ArgAction::Set)
@@ -633,12 +653,30 @@ fn main() -> Result<()> {
     } else if matches.contains_id("update") {
         let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("update").unwrap().collect();
 
-        let (added, duplicates, deduplicated, result, before, after) =
-            update_clusters(paths[0], paths[1], jobs, dedup_crashlines)?;
+        let inner_strategy = matches.get_one::<String>("inner-strategy").unwrap();
+        let inner_strategy = match inner_strategy.as_str() {
+            "Diam" => AccumStrategy::Diam,
+            _ => AccumStrategy::Dist,
+        };
+        let outer_strategy = matches.get_one::<String>("outer-strategy").unwrap();
+        let outer_strategy = match outer_strategy.as_str() {
+            "Delta" => AccumStrategy::Delta,
+            "Diam" => AccumStrategy::Diam,
+            _ => AccumStrategy::Dist,
+        };
+
+        let (added, duplicates, deduplicated, result, before, after) = update_clusters(
+            paths[0],
+            paths[1],
+            jobs,
+            dedup_crashlines,
+            inner_strategy,
+            outer_strategy,
+        )?;
         println!("Number of casreps added to old clusters: {added}");
         println!("Number of duplicates: {duplicates}");
         if deduplicated != 0 {
-            println!("Number of casreps deduplicated by crashline");
+            println!("Number of casreps deduplicated by crashline: {deduplicated}");
         }
         if result != 0 {
             println!("Number of new clusters: {result}");
