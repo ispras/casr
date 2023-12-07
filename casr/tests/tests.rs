@@ -2650,6 +2650,133 @@ fn test_casr_cluster_d_and_m() {
 }
 
 #[test]
+fn test_casr_cluster_u() {
+    let paths = [
+        abs_path("tests/casr_tests/casrep/test_clustering_small"),
+        abs_path("tests/tmp_tests_casr/clustering_out"),
+        abs_path("tests/tmp_tests_casr/clustering_out/cl9"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+        .args(["-c", &paths[0], &paths[1]])
+        .env("CASR_CLUSTER_UNIQUE_CRASHLINE", "1")
+        .output()
+        .expect("failed to start casr-cluster");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let res = String::from_utf8_lossy(&output.stdout);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 9, "Clusters count mismatch.");
+
+    let _ = std::fs::remove_dir_all(&paths[2]);
+
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+        .args(["-u", &paths[0], &paths[1]])
+        .env("CASR_CLUSTER_UNIQUE_CRASHLINE", "1")
+        .output()
+        .expect("failed to start casr-cluster");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let res = String::from_utf8_lossy(&output.stdout);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of casreps added to old clusters: (?P<added>\d+)").unwrap();
+    let added_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("added")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(added_cnt, 0, "Added count mismatch.");
+
+    let re = Regex::new(r"Number of duplicates: (?P<duplicates>\d+)").unwrap();
+    let duplicates_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("duplicates")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(duplicates_cnt, 9, "Duplicates count mismatch.");
+
+    let re = Regex::new(r"Number of new clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 1, "Clusters count mismatch.");
+
+    let re = Regex::new(
+        r"Number of reports before crashline deduplication in new clusters: (?P<before>\d+)",
+    )
+    .unwrap();
+    let before_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("before")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(before_cnt, 2, "Before count mismatch.");
+
+    let re = Regex::new(
+        r"Number of reports after crashline deduplication in new clusters: (?P<after>\d+)",
+    )
+    .unwrap();
+    let after_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("after")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(after_cnt, 1, "After count mismatch.");
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
+}
+
+#[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san() {
     // Double free test
