@@ -5402,7 +5402,7 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
         .expect("failed to create dir");
     assert!(
         output.status.success(),
-        "Stdout {}.\n Stderr: {}",
+        "Stdout: {}.\n Stderr: {}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -5420,15 +5420,39 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
         panic!("No npm is found.");
     };
 
-    let npm = Command::new(npm_path)
-        .current_dir(&test_dir)
+    let mut npm = Command::new(&npm_path)
+        .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .current_dir(&test_dir)
+        .env("CC", "clang")
+        .env("CXX", "clang++")
+        .arg("init")
+        .arg("-y")
+        .spawn()
+        .expect("failed to run npm init");
+
+    let mut stdin = npm.stdin.take().expect("failed to open stdin");
+    stdin
+        .write_all("\n\n\n\n\n\n\n\n".as_bytes())
+        .expect("failed to write to stdin");
+
+    npm.wait().expect("failed to run npm init");
+
+    let npm = Command::new("bash")
+        .current_dir(&test_dir)
+        // .stdout(Stdio::null())
+        // .stderr(Stdio::null())
         .arg("-c")
-        .args(["install", "xml2js"])
-        .status()
+        .arg(format!("{} install xml2js", &npm_path.display()))
+        .output()
         .expect("failed to install xml2js");
-    assert!(npm.success());
+    // assert!(npm.success());
+    assert!(
+        npm.status.success(),
+        "Stdout: {}.\n Stderr: {}",
+        String::from_utf8_lossy(&npm.stdout),
+        String::from_utf8_lossy(&npm.stderr)
+    );
 
     let Ok(npx_path) = which::which("npx") else {
         panic!("No npx is found.");
