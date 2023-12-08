@@ -338,7 +338,7 @@ fn update_clusters(
         .zip(stacktraces.iter().zip(crashlines.iter()));
 
     // Get casreps from existing clusters
-    let cluster_dirs: Vec<PathBuf> = fs::read_dir(oldpath)
+    let mut cluster_dirs: Vec<PathBuf> = fs::read_dir(oldpath)
         .unwrap()
         .map(|path| path.unwrap().path())
         .filter(|path| {
@@ -350,6 +350,7 @@ fn update_clusters(
                 .starts_with("cl")
         })
         .collect();
+    cluster_dirs.sort();
     let len = cluster_dirs.len();
     // Init clusters vector
     let mut clusters: Vec<Cluster> = Vec::new();
@@ -415,11 +416,10 @@ fn update_clusters(
                 }
             }
         }
-        if dup {
-            continue;
-        }
         // Get cluster with min measure, a.k.a. "closest" one
-        let number = if !inners.is_empty() {
+        let number = if dup {
+            continue;
+        } else if !inners.is_empty() {
             inners.iter().min_by(|a, b| a.1.total_cmp(&b.1)).unwrap().0
         } else if !outers.is_empty() {
             outers.iter().min_by(|a, b| a.1.total_cmp(&b.1)).unwrap().0
@@ -438,8 +438,8 @@ fn update_clusters(
             continue;
         }
 
-        added += 1;
         // Save casrep
+        added += 1;
         fs::copy(
             casrep,
             format!(
@@ -488,9 +488,9 @@ fn update_clusters(
 /// # Return value
 ///
 /// Silhouette coefficient
-fn get_sil(dir: &Path, jobs: usize) -> Result<f64> {
+fn avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
     // Get cluster dirs
-    let dirs: Vec<PathBuf> = fs::read_dir(dir)
+    let mut dirs: Vec<PathBuf> = fs::read_dir(dir)
         .unwrap()
         .map(|path| path.unwrap().path())
         .filter(|path| {
@@ -502,6 +502,7 @@ fn get_sil(dir: &Path, jobs: usize) -> Result<f64> {
                 .starts_with("cl")
         })
         .collect();
+    dirs.sort();
 
     if dirs.len() < 2 {
         bail!("{} valid cluster, nothing to calculate...", dirs.len());
@@ -525,9 +526,10 @@ fn get_sil(dir: &Path, jobs: usize) -> Result<f64> {
     // Init sil sum
     let mut sum = 0f64;
     // Calculate silhouette coefficient for each casrep
-    for i in 0..clusters.len() - 1 {
-        for num in 0..clusters[i].len() - 1 {
-            sum += sil_coef(num, i, &clusters);
+    for i in 0..clusters.len() {
+        for num in 0..clusters[i].len() {
+            let sil = sil_coef(num, i, &clusters);
+            sum += sil;
         }
     }
     Ok(sum / size as f64)
@@ -629,8 +631,8 @@ fn main() -> Result<()> {
                 .help("Strategy for outer cluster choosing when updating"),
         )
         .arg(
-            Arg::new("estimation")
-                .long("estimation")
+            Arg::new("estimate")
+                .long("estimate")
                 .value_name("DIR")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(PathBuf))
@@ -746,11 +748,11 @@ fn main() -> Result<()> {
             println!("Number of reports before crashline deduplication in new clusters: {before}");
             println!("Number of reports after crashline deduplication in new clusters: {after}");
         }
-        let sil = get_sil(paths[1], jobs)?;
+        let sil = avg_sil(paths[1], jobs)?;
         println!("Cluster silhouette index: {sil}");
-    } else if matches.contains_id("estimation") {
-        let path: &PathBuf = matches.get_one::<PathBuf>("estimation").unwrap();
-        let sil = get_sil(path, jobs)?;
+    } else if matches.contains_id("estimate") {
+        let path: &PathBuf = matches.get_one::<PathBuf>("estimate").unwrap();
+        let sil = avg_sil(path, jobs)?;
         println!("Cluster silhouette index: {sil}");
     }
 

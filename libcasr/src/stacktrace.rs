@@ -42,9 +42,9 @@ const THRESHOLD: f64 = 0.3;
 pub enum Relation {
     /// The CASR report is a duplicate of one from cluster
     Dup,
-    /// The CASR report is "inside" the cluster with some measure
+    /// The CASR report is "inside" the cluster with some proximity measure
     Inner(f64),
-    /// The CASR report is "outside" the cluster with some measure
+    /// The CASR report is "outside" the cluster with some proximity measure
     Outer(f64),
     /// The CASR report is out of threshold
     Oot,
@@ -62,7 +62,6 @@ pub enum AccumStrategy {
 }
 
 /// Structure provides an interface for leverages with CASR report clusters
-#[derive(Clone, Debug)]
 pub struct Cluster {
     /// Cluster number
     pub number: usize,
@@ -392,7 +391,7 @@ fn diam(stacktraces: &[Stacktrace]) -> f64 {
 ///
 /// # Return value
 ///
-/// `Relation` enum with measure according specified strategy
+/// `Relation` enum with proximity measure according specified strategy
 pub fn relation(
     new: &Stacktrace,
     cluster: &mut Cluster,
@@ -449,7 +448,7 @@ pub fn relation(
 /// "a" subcoefficient silhouette coefficient
 fn sil_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
     let mut sum = 0f64;
-    for i in 0..stacktraces.len() - 1 {
+    for i in 0..stacktraces.len() {
         if i == num {
             continue;
         }
@@ -474,12 +473,12 @@ fn sil_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
 /// "b" subcoefficient silhouette coefficient
 fn sil_subcoef_b(num: usize, cl: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
     let mut min = MAX;
-    for j in 0..clusters.len() - 1 {
+    for j in 0..clusters.len() {
         if j == cl {
             continue;
         }
         let mut sum = 0f64;
-        for i in 0..clusters[j].len() - 1 {
+        for i in 0..clusters[j].len() {
             sum += 1.0 - similarity(&clusters[cl][num], &clusters[j][i]);
         }
         let res = sum / clusters[j].len() as f64;

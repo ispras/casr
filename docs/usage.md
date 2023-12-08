@@ -241,7 +241,7 @@ Tool for clustering CASR reports
           --outer-strategy <STRATEGY>
               Strategy for outer cluster choosing when updating [default: Dist] [possible
               values: Delta, Diam, Dist]
-          --estimation <DIR>
+          --estimate <DIR>
               Make cluster estimation for DIR using silhouette index
           --ignore <FILE>
               File with regular expressions for functions and file paths that should be
