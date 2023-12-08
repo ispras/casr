@@ -7,6 +7,6 @@ Please follow the next recommendations for your pull requests:
 - compile with *stable* rust
 - use `cargo fmt`
 - check the output of `cargo clippy --all-features --all --tests`
-- run tests `cargo test`
+- run tests `cargo test --lib -- --test-threads 1` and `cargo test --package casr`
 - if you have updated usage of any casr tool, you could simply run
   `update_usage.py` to change the `docs/usage.md` file properly
