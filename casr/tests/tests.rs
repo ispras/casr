@@ -3295,7 +3295,7 @@ fn test_casr_san_rust_panic() {
         ),
     ];
 
-    let clang = Command::new("cargo")
+    let cargo = Command::new("cargo")
         .args([
             "+nightly",
             "fuzz",
@@ -3309,12 +3309,15 @@ fn test_casr_san_rust_panic() {
             "-s",
             "address",
         ])
+        // Clear env
+        .env("RUSTFLAGS", "")
+        .env("RUSTDOCFLAGS", "")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
         .expect("failed to execute cargo fuzz build");
 
-    assert!(clang.success());
+    assert!(cargo.success());
 
     let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(["--stdout", "--", &paths[2], &paths[2]])
