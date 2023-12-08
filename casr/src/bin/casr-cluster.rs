@@ -430,7 +430,10 @@ fn update_clusters(
         };
 
         // Make crashline deduplication
-        if !crashline.is_empty() && !unique_crashlines[number - 1].insert(crashline.to_string()) {
+        if dedup
+            && !crashline.is_empty()
+            && !unique_crashlines[number - 1].insert(crashline.to_string())
+        {
             deduplicated += 1;
             continue;
         }
@@ -524,14 +527,7 @@ fn get_sil(dir: &Path, jobs: usize) -> Result<f64> {
     // Calculate silhouette coefficient for each casrep
     for i in 0..clusters.len() - 1 {
         for num in 0..clusters[i].len() - 1 {
-            let sil = if clusters[i].len() != 1 {
-                let a = get_subcoef_a(num, &clusters[i]);
-                let b = get_subcoef_b(num, i, &clusters);
-                (b - a) / a.max(b)
-            } else {
-                0f64
-            };
-            sum += sil;
+            sum += sil_coef(num, i, &clusters);
         }
     }
     Ok(sum / size as f64)

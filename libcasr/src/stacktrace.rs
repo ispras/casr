@@ -93,10 +93,9 @@ impl Cluster {
     /// Get cluster diameter
     pub fn diam(&mut self) -> f64 {
         if self.diam.is_none() {
-            diam(&self.stacktraces)
-        } else {
-            self.diam.unwrap()
+            self.diam = Some(diam(&self.stacktraces));
         }
+        self.diam.unwrap()
     }
 }
 
@@ -448,7 +447,7 @@ pub fn relation(
 /// # Return value
 ///
 /// "a" subcoefficient silhouette coefficient
-pub fn get_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
+fn sil_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
     let mut sum = 0f64;
     for i in 0..stacktraces.len() - 1 {
         if i == num {
@@ -473,7 +472,7 @@ pub fn get_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
 /// # Return value
 ///
 /// "b" subcoefficient silhouette coefficient
-pub fn get_subcoef_b(num: usize, cl: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
+fn sil_subcoef_b(num: usize, cl: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
     let mut min = MAX;
     for j in 0..clusters.len() - 1 {
         if j == cl {
@@ -489,6 +488,30 @@ pub fn get_subcoef_b(num: usize, cl: usize, clusters: &[Vec<Stacktrace>]) -> f64
         }
     }
     min
+}
+
+/// Get silhouette coefficient calculating for given stacktrace
+/// Read more: https://en.wikipedia.org/wiki/Silhouette_(clustering)#Definition
+///
+/// # Arguments
+///
+/// * `num` - given stacktrace number
+///
+/// * `i` - cluster number of given stacktrace
+///
+/// * `clusters` - a vector of clusters represented as slice of `Stacktrace` structures
+///
+/// # Return value
+///
+/// "b" subcoefficient silhouette coefficient
+pub fn sil_coef(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
+    if clusters[i].len() != 1 {
+        let a = sil_subcoef_a(num, &clusters[i]);
+        let b = sil_subcoef_b(num, i, clusters);
+        (b - a) / a.max(b)
+    } else {
+        0f64
+    }
 }
 
 /// Stack trace filtering trait.
