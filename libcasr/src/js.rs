@@ -233,7 +233,7 @@ impl ParseStacktrace for JsStacktrace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{init_ignored_frames, stacktrace::CrashLineExt, stacktrace::Filter};
+    use crate::stacktrace::{tests::safe_init_ignore_stack_frames, CrashLineExt, Filter};
 
     #[test]
     fn test_js_stacktrace() {
@@ -310,7 +310,7 @@ Uncaught ReferenceError: var is not defined
         }
         let mut stacktrace = sttr.unwrap();
 
-        init_ignored_frames!("js");
+        safe_init_ignore_stack_frames();
         stacktrace.filter();
 
         // Check crashline

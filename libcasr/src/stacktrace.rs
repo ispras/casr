@@ -439,8 +439,23 @@ fn get_interval_repetitions<T: PartialEq>(arr: &[T]) -> Vec<bool> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
+    use std::sync::RwLock;
+
     use crate::stacktrace::*;
+
+    lazy_static::lazy_static! {
+        static ref INITED_STACKFRAMES_FILTER: RwLock<bool> = RwLock::new(false);
+    }
+
+    /// Thread-safe initialization of all stackframe filters
+    pub fn safe_init_ignore_stack_frames() {
+        let mut is_inited = INITED_STACKFRAMES_FILTER.write().unwrap();
+        if !*is_inited {
+            *is_inited = true;
+            init_ignored_frames!("cpp", "rust", "python", "go", "java", "js");
+        }
+    }
 
     #[test]
     fn test_main_lorentz() {
