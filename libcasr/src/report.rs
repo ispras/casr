@@ -796,10 +796,7 @@ pub fn cluster_reports(casreps: &[CrashReport]) -> Result<Vec<usize>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        init_ignored_frames,
-        stacktrace::{Filter, Stacktrace},
-    };
+    use crate::stacktrace::tests::safe_init_ignore_stack_frames;
 
     #[test]
     fn test_report_display() {
@@ -962,7 +959,7 @@ mod tests {
         ];
 
         // Init ignored frames for correct filtering
-        init_ignored_frames!("cpp");
+        safe_init_ignore_stack_frames();
 
         let res = dedup_reports(&[report.clone(), report.clone()]);
         let Ok(res) = res else {
@@ -986,7 +983,7 @@ mod tests {
         ];
 
         // Init ignored frames for correct filtering
-        init_ignored_frames!("cpp");
+        safe_init_ignore_stack_frames();
 
         let res = cluster_reports(&[report.clone(), report.clone()]);
         let Ok(res) = res else {
