@@ -4570,7 +4570,7 @@ fn test_casr_cluster_d_python() {
 fn test_casr_js() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js");
     let test_path = abs_path("tests/casr_tests/js/test_casr_js.js");
-    let _ = std::fs::remove_dir_all(&test_dir);
+    let _ = std::fs::remove_dir_all(test_dir);
     let Ok(node_path) = which::which("node") else {
         panic!("No node is found.");
     };
@@ -4605,14 +4605,13 @@ fn test_casr_js() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-    let _ = std::fs::remove_dir_all(test_dir);
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_jsfuzz() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_jsfuzz");
-    let _ = std::fs::remove_dir_all(&test_dir);
+    let _ = std::fs::remove_dir_all(test_dir);
     let paths = [
         "tests/casr_tests/js/test_casr_js_jsfuzz.js".to_string(),
         "tests/tmp_tests_casr/test_casr_js_jsfuzz/corpus".to_string(),
@@ -4674,14 +4673,13 @@ fn test_casr_js_jsfuzz() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-    let _ = std::fs::remove_dir_all(test_dir);
 }
 
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_jazzer() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_jazzer");
-    let _ = std::fs::remove_dir_all(&test_dir);
+    let _ = std::fs::remove_dir_all(test_dir);
     let paths = [
         abs_path("tests/casr_tests/js/test_casr_js_jazzer.js"),
         abs_path("tests/tmp_tests_casr/test_casr_js_jazzer/corpus"),
@@ -4744,7 +4742,6 @@ fn test_casr_js_jazzer() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-    let _ = std::fs::remove_dir_all(test_dir);
 }
 
 #[test]
@@ -4880,8 +4877,6 @@ fn test_casr_js_native() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-
-    let _ = std::fs::remove_dir_all(&test_dir);
 }
 
 #[test]
@@ -5017,8 +5012,6 @@ fn test_casr_js_native_jsfuzz() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-
-    let _ = std::fs::remove_dir_all(&test_dir);
 }
 
 #[test]
@@ -5160,8 +5153,6 @@ fn test_casr_js_native_jazzer() {
     } else {
         panic!("Couldn't parse json report file.");
     }
-
-    let _ = std::fs::remove_dir_all(&test_dir);
 }
 
 // Jsfuzz is available only in very old version and it behaves very strangely.
@@ -5173,7 +5164,7 @@ fn test_casr_js_native_jazzer() {
 #[cfg(target_arch = "x86_64")]
 fn test_casr_libfuzzer_jsfuzz() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jsfuzz");
-    let _ = std::fs::remove_dir_all(&test_dir);
+    let _ = std::fs::remove_dir_all(test_dir);
     let paths = [
         "tests/casr_tests/js/test_casr_libfuzzer_jsfuzz.js".to_string(),
         abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jsfuzz/crashes"),
@@ -5250,8 +5241,6 @@ fn test_casr_libfuzzer_jsfuzz() {
         .unwrap();
 
     assert_eq!(unique_cnt, 1, "Invalid number of deduplicated reports");
-
-    let _ = std::fs::remove_dir_all(test_dir);
 }
 
 #[test]
@@ -5260,7 +5249,7 @@ fn test_casr_libfuzzer_jazzer_js() {
     use std::collections::HashMap;
 
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js");
-    let _ = std::fs::remove_dir_all(&test_dir);
+    let _ = std::fs::remove_dir_all(test_dir);
     let paths = [
         abs_path("tests/casr_tests/js/test_casr_libfuzzer_jazzer_js.js"),
         abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_jazzer_js/crashes"),
@@ -5376,7 +5365,6 @@ fn test_casr_libfuzzer_jazzer_js() {
     }
 
     assert!(storage.values().all(|x| *x > 1));
-    let _ = std::fs::remove_dir_all(test_dir);
 }
 
 #[test]
@@ -5536,5 +5524,4 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
     }
 
     assert!(storage.values().all(|x| *x > 1));
-    let _ = std::fs::remove_dir_all(test_dir);
 }
