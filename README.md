@@ -192,6 +192,7 @@ Triage Jazzer.js crashes with casr-libfuzzer (Jazzer.js installation [guide](htt
     $ mkdir -p casr/tests/tmp_tests_casr/xml2js_fuzzer_out
     $ cp casr/tests/casr_tests/js/test_casr_libfuzzer_jazzer_js_xml2js.js casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
     $ sudo npm install xml2js
+    $ sudo npm install --save-dev @jazzer.js/core
     $ casr-libfuzzer -i ./xml2js -o casr/tests/tmp_tests_casr/xml2js_fuzzer_out/out -- npx jazzer casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
 
 Upload new and unique CASR reports to

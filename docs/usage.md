@@ -551,6 +551,7 @@ Jazzer.js example (Jazzer.js installation [guide](https://github.com/CodeIntelli
     $ mkdir -p casr/tests/tmp_tests_casr/xml2js_fuzzer_out
     $ cp casr/tests/casr_tests/js/test_casr_libfuzzer_jazzer_js_xml2js.js casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
     $ sudo npm install xml2js
+    $ sudo npm install --save-dev @jazzer.js/core
     $ casr-libfuzzer -i ./xml2js -o casr/tests/tmp_tests_casr/xml2js_fuzzer_out/out -- npx jazzer casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
 
 You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-libfuzzer`. This
