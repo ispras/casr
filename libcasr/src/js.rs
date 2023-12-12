@@ -241,53 +241,59 @@ mod tests {
     at new Uint8Array (<anonymous>)
     at Object.decode (/fuzz/node_modules/jpeg-js/lib/decoder.js:1110:13)
     at fuzz (/fuzz/FuzzTarget.js:6:14)
-    at result (/fuzz/node_modules/@jazzer.js/core/core.ts:335:15)
+    at result (/fuzz/node_modules/fuzzer/core/core.ts:335:15)
     at Worker.fuzz [as fn] (/home/user/test_js_stacktrace/main.js:1:2017)
-    at process.<anonymous> (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/jsfuzz/build/src/worker.js:55:30)
+    at process.<anonymous> (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/fuzzer/build/src/worker.js:55:30)
     at process.emit (node:events:527:28)
     at <anonymous>
     at bootstrap_node.js:609:3
     at file:///home/user/node/offset.js:3:37
+    at fuzz (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/jsfuzz/build/src/worker.js:55:30)
     at async Loader.import (internal/modules/esm/loader.js:178:24)
     at eval (eval at <anonymous> (eval at g (/fuzz/FuzzTarget.js:7:7)), <anonymous>:4:23)
     at eval (eval at <anonymous> (file:///home/user/node/offset.js:3:3), <anonymous>:3:7)
     at eval (eval at g (/fuzz/FuzzTarget.js:7:7), <anonymous>:8:13)
     at eval (/.svelte-kit/runtime/components/layout.svelte:8:41)
+    at fuzz (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/@jazzer.js/build/src/worker.js:55:30)
     at handler (:3:10)
 
 Uncaught ReferenceError: var is not defined
     at Object.decode (/fuzz/node_modules/jpeg-js/lib/decoder.js:1110:13)
     at fuzz (/fuzz/FuzzTarget.js:6:14)
-    at result (/fuzz/node_modules/@jazzer.js/core/core.ts:335:15)
+    at result (/fuzz/node_modules/fuzzer/core/core.ts:335:15)
     at Worker.fuzz [as fn] (/home/user/test_js_stacktrace/main.js:1:2017)
-    at process.<anonymous> (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/jsfuzz/build/src/worker.js:55:30)
+    at process.<anonymous> (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/fuzzer/build/src/worker.js:55:30)
     at process.emit (node:events:527:28)
     at <anonymous>
     at bootstrap_node.js:609:3
     at file:///home/user/node/offset.js:3:37
+    at fuzz (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/jsfuzz/build/src/worker.js:55:30)
     at async Loader.import (internal/modules/esm/loader.js:178:24)
     at eval (eval at <anonymous> (eval at g (/fuzz/FuzzTarget.js:7:7)), <anonymous>:4:23)
     at eval (eval at <anonymous> (file:///home/user/node/offset.js:3:3), <anonymous>:3:7)
     at eval (eval at g (/fuzz/FuzzTarget.js:7:7), <anonymous>:8:13)
     at eval (/.svelte-kit/runtime/components/layout.svelte:8:41)
+    at fuzz (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/@jazzer.js/build/src/worker.js:55:30)
     at handler (:3:10)"#;
 
         let raw_stacktrace = &[
             "at new Uint8Array (<anonymous>)",
             "at Object.decode (/fuzz/node_modules/jpeg-js/lib/decoder.js:1110:13)",
             "at fuzz (/fuzz/FuzzTarget.js:6:14)",
-            "at result (/fuzz/node_modules/@jazzer.js/core/core.ts:335:15)",
+            "at result (/fuzz/node_modules/fuzzer/core/core.ts:335:15)",
             "at Worker.fuzz [as fn] (/home/user/test_js_stacktrace/main.js:1:2017)",
-            "at process.<anonymous> (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/jsfuzz/build/src/worker.js:55:30)",
+            "at process.<anonymous> (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/fuzzer/build/src/worker.js:55:30)",
             "at process.emit (node:events:527:28)",
             "at <anonymous>",
             "at bootstrap_node.js:609:3",
             "at file:///home/user/node/offset.js:3:37",
+            "at fuzz (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/jsfuzz/build/src/worker.js:55:30)",
             "at async Loader.import (internal/modules/esm/loader.js:178:24)",
             "at eval (eval at <anonymous> (eval at g (/fuzz/FuzzTarget.js:7:7)), <anonymous>:4:23)",
             "at eval (eval at <anonymous> (file:///home/user/node/offset.js:3:3), <anonymous>:3:7)",
             "at eval (eval at g (/fuzz/FuzzTarget.js:7:7), <anonymous>:8:13)",
             "at eval (/.svelte-kit/runtime/components/layout.svelte:8:41)",
+            "at fuzz (/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/@jazzer.js/build/src/worker.js:55:30)",
             "at handler (:3:10)",
         ];
 
@@ -338,7 +344,7 @@ Uncaught ReferenceError: var is not defined
         assert_eq!(stacktrace[1].function, "fuzz".to_string());
         assert_eq!(
             stacktrace[2].debug.file,
-            "/fuzz/node_modules/@jazzer.js/core/core.ts".to_string()
+            "/fuzz/node_modules/fuzzer/core/core.ts".to_string()
         );
         assert_eq!(stacktrace[2].debug.line, 335);
         assert_eq!(stacktrace[2].debug.column, 15);
@@ -352,7 +358,7 @@ Uncaught ReferenceError: var is not defined
         assert_eq!(stacktrace[3].function, "Worker.fuzz [as fn]".to_string());
         assert_eq!(
             stacktrace[4].debug.file,
-            "/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/jsfuzz/build/src/worker.js"
+            "/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/fuzzer/build/src/worker.js"
                 .to_string()
         );
         assert_eq!(stacktrace[4].debug.line, 55);

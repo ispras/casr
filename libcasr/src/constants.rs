@@ -244,6 +244,10 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS: &[&str] = &[
     // JS internal modules
     r"^(|node:)internal/?",
     r"^(|node:)events/?",
+    // Jazzer.js internal modules
+    r"node_modules/@jazzer.js",
+    // jsfuzz internal modules
+    r"node_modules/jsfuzz",
 ];
 
 /// Regular expressions for paths to python files that should be ignored.

@@ -4,3 +4,6 @@ Cargo.lock
 */Cargo.lock
 */tests/tmp_tests_casr
 *.swp
+node_modules
+*/node_modules/*
+.vscode
