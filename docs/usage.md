@@ -321,6 +321,7 @@ Every CASR report may be in one of several states:
  * `Inner` - the report is "inside" a some cluster with some proximity measure,
  * `Outer` - the report is "outside" a some cluster with some proximity measure,
  * `Out` of threshold - the report is out of threshold for any cluster.
+
 If report is `Duplicate` we do nothing.
 If report is `Oot` we perform clustering for all such reports.
 If report is `Inner` or `Outer` for a single cluster we update the cluster.
@@ -332,6 +333,7 @@ If there are several `Inner` or `Outer` clusters for the report we choose the
             i.e. `Argmin diam (cluster + {new})`
  * `Dist` - we choose cluster with minimal distance between cluster and report,
             i.e. `Argmin dist (cluster, {new})`
+
 N.B. `Delta` strategy is a nonsensical strategy in `Inner` case
 
 ## casr-cli
