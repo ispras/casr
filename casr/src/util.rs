@@ -441,7 +441,7 @@ pub fn get_reports(dir: &Path) -> Result<Vec<PathBuf>> {
 ///
 /// # Return value
 ///
-/// * A vector of reports paths
+/// * A vector of paths to correctly parsed reports
 /// * A vector of reports stacktraces
 /// * A vector of reports crashlines
 /// * A vector of bad reports

@@ -2780,7 +2780,7 @@ fn test_casr_cluster_u() {
 
     assert_eq!(after_cnt, 1, "After count mismatch.");
 
-    let re = Regex::new(r"Cluster silhouette index: (?P<sil>\d+.\d+)").unwrap();
+    let re = Regex::new(r"Cluster silhouette score: (?P<sil>\d+.\d+)").unwrap();
     let sil = re
         .captures(&res)
         .unwrap()
@@ -2790,7 +2790,7 @@ fn test_casr_cluster_u() {
         .parse::<f64>()
         .unwrap();
 
-    assert_eq!(sil, 0.15436556855344655, "Silhouette index mismatch.");
+    assert_eq!(sil, 0.15436556855344655, "Silhouette score mismatch.");
 
     // Test estimation
     let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
@@ -2809,7 +2809,7 @@ fn test_casr_cluster_u() {
 
     assert!(!res.is_empty());
 
-    let re = Regex::new(r"Cluster silhouette index: (?P<sil>\d+.\d+)").unwrap();
+    let re = Regex::new(r"Cluster silhouette score: (?P<sil>\d+.\d+)").unwrap();
     let sil = re
         .captures(&res)
         .unwrap()
@@ -2819,7 +2819,7 @@ fn test_casr_cluster_u() {
         .parse::<f64>()
         .unwrap();
 
-    assert_eq!(sil, 0.15436556855344655, "Silhouette index mismatch.");
+    assert_eq!(sil, 0.15436556855344655, "Silhouette score mismatch.");
 
     let _ = std::fs::remove_dir_all(&paths[1]);
 }

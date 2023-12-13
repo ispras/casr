@@ -51,7 +51,7 @@ pub enum Relation {
 }
 
 /// Cluster accumulation strategy
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum AccumStrategy {
     /// Argmin (diam (cluster + {new}) - diam (cluster))
     Delta,
@@ -61,7 +61,7 @@ pub enum AccumStrategy {
     Dist,
 }
 
-/// Structure provides an interface for leverages with CASR report clusters
+/// Structure provides an abstraction for cluster with CASR reports
 pub struct Cluster {
     /// Cluster number
     pub number: usize,
@@ -81,8 +81,8 @@ impl Cluster {
         }
     }
     /// Get CASR report stactraces
-    pub fn stacktraces(&self) -> Vec<Stacktrace> {
-        self.stacktraces.clone()
+    pub fn stacktraces(&self) -> &Vec<Stacktrace> {
+        &self.stacktraces
     }
     /// Add CASR report stacktrace to cluster
     pub fn push(&mut self, stacktrace: Stacktrace) {
@@ -95,6 +95,60 @@ impl Cluster {
             self.diam = Some(diam(&self.stacktraces));
         }
         self.diam.unwrap()
+    }
+    /// Get "relation" between new report and specified cluster
+    ///
+    /// # Arguments
+    ///
+    /// * `new` - new report stacktrace
+    ///
+    /// * `inner_strategy` - cluster accumulation strategy if `new` is "inner"
+    ///
+    /// * `inner_strategy` - cluster accumulation strategy if `new` is "outer"
+    ///
+    /// # Return value
+    ///
+    /// `Relation` enum with proximity measure according specified strategy
+    pub fn relation(
+        &mut self,
+        new: &Stacktrace,
+        inner_strategy: AccumStrategy,
+        outer_strategy: AccumStrategy,
+    ) -> Relation {
+        let diam = self.diam();
+        let mut min = MAX;
+        let mut max = 0f64;
+        for stacktrace in self.stacktraces() {
+            let dist = 1.0 - similarity(new, stacktrace);
+            if dist == 0.0 {
+                return Relation::Dup;
+            } else if dist > THRESHOLD {
+                return Relation::Oot;
+            }
+            if dist < min {
+                min = dist;
+            }
+            if dist > max {
+                max = dist;
+            }
+        }
+        if diam >= max {
+            // Inner
+            let rel = match inner_strategy {
+                // Delta is a nonsensical strategy in this case
+                AccumStrategy::Diam => diam,
+                _ => min,
+            };
+            Relation::Inner(rel)
+        } else {
+            // Outer
+            let rel = match outer_strategy {
+                AccumStrategy::Diam => max,
+                AccumStrategy::Delta => max - diam,
+                AccumStrategy::Dist => min,
+            };
+            Relation::Outer(rel)
+        }
     }
 }
 
@@ -375,63 +429,6 @@ fn diam(stacktraces: &[Stacktrace]) -> f64 {
         }
     }
     diam
-}
-
-/// Get "relation" between new report and specified cluster
-///
-/// # Arguments
-///
-/// * `new` - new report stacktrace
-///
-/// * `stacktraces` - cluster represented as slice of `Stacktrace` structures
-///
-/// * `inner_strategy` - cluster accumulation strategy if `new` is "inner"
-///
-/// * `inner_strategy` - cluster accumulation strategy if `new` is "outer"
-///
-/// # Return value
-///
-/// `Relation` enum with proximity measure according specified strategy
-pub fn relation(
-    new: &Stacktrace,
-    cluster: &mut Cluster,
-    inner_strategy: AccumStrategy,
-    outer_strategy: AccumStrategy,
-) -> Relation {
-    let diam = cluster.diam();
-    let mut min = MAX;
-    let mut max = 0f64;
-    for stacktrace in cluster.stacktraces() {
-        let dist = 1.0 - similarity(new, &stacktrace);
-        if dist == 0.0 {
-            return Relation::Dup;
-        } else if dist > THRESHOLD {
-            return Relation::Oot;
-        }
-        if dist < min {
-            min = dist;
-        }
-        if dist > max {
-            max = dist;
-        }
-    }
-    if diam >= max {
-        // Inner
-        let rel = match inner_strategy {
-            // Delta is a nonsensical strategy in this case
-            AccumStrategy::Diam => diam,
-            _ => min,
-        };
-        Relation::Inner(rel)
-    } else {
-        // Outer
-        let rel = match outer_strategy {
-            AccumStrategy::Diam => max,
-            AccumStrategy::Delta => max - diam,
-            AccumStrategy::Dist => min,
-        };
-        Relation::Outer(rel)
-    }
 }
 
 /// Get "a" subcoefficient silhouette coefficient calculating for given stacktrace

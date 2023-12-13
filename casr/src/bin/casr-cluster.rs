@@ -302,7 +302,7 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
     Ok(new)
 }
 
-/// Perform the clustering of casreps
+/// Add new reports to existing clustering structure
 ///
 /// # Arguments
 ///
@@ -313,6 +313,10 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 /// * `jobs` - number of jobs for cluster updating process
 ///
 /// * `dedup` - deduplicate casrep by crashline for each cluster, if true
+///
+/// * `inner_strategy` - strategy for "inner" report case
+///
+/// * `outer_strategy` - strategy for "outer" report case
 ///
 /// # Return value
 ///
@@ -359,20 +363,20 @@ fn update_clusters(
     // Get casreps from each existing cluster
     for cluster in &cluster_dirs {
         // Get cluster number
-        let i = cluster.clone().file_name().unwrap().to_str().unwrap()[2..]
+        let Ok(i) = cluster.clone().file_name().unwrap().to_str().unwrap()[2..]
             .to_string()
             .parse::<usize>()
-            .unwrap();
+        else {
+            continue;
+        };
         // Get casreps from cluster
         let casreps = util::get_reports(cluster)?;
         let (_, stacktraces, crashlines, _) = util::reports_from_dirs(casreps, jobs);
         // Fill cluster info structures
         clusters.push(Cluster::new(i, stacktraces));
         if dedup {
-            for crashline in crashlines {
-                // NOTE: Clusters enumerate from 1, not 0
-                unique_crashlines[i - 1].insert(crashline);
-            }
+            // NOTE: Clusters enumerate from 1, not 0
+            unique_crashlines[i - 1].extend(crashlines);
         }
     }
 
@@ -393,12 +397,7 @@ fn update_clusters(
         // Checker if casrep is duplicate of someone else
         let mut dup = false;
         for cluster in &mut clusters {
-            let relation = relation(
-                stacktrace,
-                cluster,
-                inner_strategy.clone(),
-                outer_strategy.clone(),
-            );
+            let relation = cluster.relation(stacktrace, inner_strategy, outer_strategy);
             match relation {
                 Relation::Dup => {
                     dup = true;
@@ -470,7 +469,10 @@ fn update_clusters(
             )?;
         }
         // Cluster deviant casreps
-        make_clusters(Path::new(&deviant_dir), Some(oldpath), jobs, dedup, len)?
+        let (result, before, after) =
+            make_clusters(Path::new(&deviant_dir), Some(oldpath), jobs, dedup, len)?;
+        let _ = fs::remove_dir_all(&deviant_dir);
+        (result, before, after)
     } else {
         (0, 0, 0)
     };
@@ -609,7 +611,7 @@ fn main() -> Result<()> {
                 .value_parser(clap::value_parser!(PathBuf))
                 .value_names(["NEW_DIR", "OLD_DIR"])
                 .help(
-                    "Update clusters from OLD_DIR using CASR reports from NEW_DIR.",
+                    "Update clusters from OLD_DIR using CASR reports from NEW_DIR",
                 ),
         )
         .arg(
@@ -636,7 +638,7 @@ fn main() -> Result<()> {
                 .value_name("DIR")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(PathBuf))
-                .help("Make cluster estimation for DIR using silhouette index"),
+                .help("Calculate silhouette score for clustering results"),
         )
         .arg(
             Arg::new("ignore")
@@ -749,11 +751,11 @@ fn main() -> Result<()> {
             println!("Number of reports after crashline deduplication in new clusters: {after}");
         }
         let sil = avg_sil(paths[1], jobs)?;
-        println!("Cluster silhouette index: {sil}");
+        println!("Cluster silhouette score: {sil}");
     } else if matches.contains_id("estimate") {
         let path: &PathBuf = matches.get_one::<PathBuf>("estimate").unwrap();
         let sil = avg_sil(path, jobs)?;
-        println!("Cluster silhouette index: {sil}");
+        println!("Cluster silhouette score: {sil}");
     }
 
     Ok(())
