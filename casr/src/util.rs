@@ -445,7 +445,7 @@ pub fn get_reports(dir: &Path) -> Result<Vec<PathBuf>> {
 /// * A vector of reports stacktraces
 /// * A vector of reports crashlines
 /// * A vector of bad reports
-pub fn reports_from_dirs(
+pub fn reports_from_paths(
     casreps: Vec<PathBuf>,
     jobs: usize,
 ) -> (Vec<PathBuf>, Vec<Stacktrace>, Vec<String>, Vec<PathBuf>) {

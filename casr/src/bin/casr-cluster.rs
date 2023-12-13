@@ -61,7 +61,7 @@ fn make_clusters(
     }
 
     // Get casreps with stacktraces and crashlines
-    let (casreps, stacktraces, crashlines, badreports) = util::reports_from_dirs(casreps, jobs);
+    let (casreps, stacktraces, crashlines, badreports) = util::reports_from_paths(casreps, jobs);
 
     if !badreports.is_empty() {
         fs::create_dir_all(format!("{}/clerr", &outpath.display()))?;
@@ -336,7 +336,7 @@ fn update_clusters(
 ) -> Result<(usize, usize, usize, usize, usize, usize)> {
     // Get new casreps
     let casreps = util::get_reports(newpath)?;
-    let (casreps, stacktraces, crashlines, _) = util::reports_from_dirs(casreps, jobs);
+    let (casreps, stacktraces, crashlines, _) = util::reports_from_paths(casreps, jobs);
     let casreps = casreps
         .iter()
         .zip(stacktraces.iter().zip(crashlines.iter()));
@@ -346,12 +346,8 @@ fn update_clusters(
         .unwrap()
         .map(|path| path.unwrap().path())
         .filter(|path| {
-            path.clone()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .starts_with("cl")
+            let name = path.file_name().unwrap().to_str().unwrap();
+            name.starts_with("cl") && !name.starts_with("clerr")
         })
         .collect();
     cluster_dirs.sort();
@@ -363,15 +359,13 @@ fn update_clusters(
     // Get casreps from each existing cluster
     for cluster in &cluster_dirs {
         // Get cluster number
-        let Ok(i) = cluster.clone().file_name().unwrap().to_str().unwrap()[2..]
+        let i = cluster.clone().file_name().unwrap().to_str().unwrap()[2..]
             .to_string()
             .parse::<usize>()
-        else {
-            continue;
-        };
+            .unwrap();
         // Get casreps from cluster
         let casreps = util::get_reports(cluster)?;
-        let (_, stacktraces, crashlines, _) = util::reports_from_dirs(casreps, jobs);
+        let (_, stacktraces, crashlines, _) = util::reports_from_paths(casreps, jobs);
         // Fill cluster info structures
         clusters.push(Cluster::new(i, stacktraces));
         if dedup {
@@ -496,12 +490,8 @@ fn avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
         .unwrap()
         .map(|path| path.unwrap().path())
         .filter(|path| {
-            path.clone()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .starts_with("cl")
+            let name = path.file_name().unwrap().to_str().unwrap();
+            name.starts_with("cl") && !name.starts_with("clerr")
         })
         .collect();
     dirs.sort();
@@ -519,11 +509,14 @@ fn avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
         // Get casreps from cluster
         let casreps = util::get_reports(dir)?;
         // Get stacktraces from cluster
-        let (_, stacktraces, _, _) = util::reports_from_dirs(casreps, jobs);
+        let (_, stacktraces, _, _) = util::reports_from_paths(casreps, jobs);
         // Update size
         size += stacktraces.len();
         // Add stacktraces
         clusters.push(stacktraces);
+    }
+    if size == 0 {
+        bail!("{} valid reports, nothing to calculate...", size);
     }
     // Init sil sum
     let mut sum = 0f64;

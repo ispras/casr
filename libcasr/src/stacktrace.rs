@@ -445,11 +445,11 @@ fn diam(stacktraces: &[Stacktrace]) -> f64 {
 /// "a" subcoefficient silhouette coefficient
 fn sil_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
     let mut sum = 0f64;
-    for i in 0..stacktraces.len() {
+    for (i, stacktrace) in stacktraces.iter().enumerate() {
         if i == num {
             continue;
         }
-        sum += 1.0 - similarity(&stacktraces[num], &stacktraces[i]);
+        sum += 1.0 - similarity(&stacktraces[num], stacktrace);
     }
     sum / (stacktraces.len() - 1) as f64
 }
@@ -461,24 +461,24 @@ fn sil_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
 ///
 /// * `num` - given stacktrace number
 ///
-/// * `cl` - cluster number of given stacktrace
+/// * `i` - cluster number of given stacktrace
 ///
 /// * `clusters` - a vector of clusters represented as slice of `Stacktrace` structures
 ///
 /// # Return value
 ///
 /// "b" subcoefficient silhouette coefficient
-fn sil_subcoef_b(num: usize, cl: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
+fn sil_subcoef_b(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
     let mut min = MAX;
-    for j in 0..clusters.len() {
-        if j == cl {
+    for (j, cluster) in clusters.iter().enumerate() {
+        if j == i {
             continue;
         }
         let mut sum = 0f64;
-        for i in 0..clusters[j].len() {
-            sum += 1.0 - similarity(&clusters[cl][num], &clusters[j][i]);
+        for stacktrace in cluster {
+            sum += 1.0 - similarity(&clusters[i][num], stacktrace);
         }
-        let res = sum / clusters[j].len() as f64;
+        let res = sum / cluster.len() as f64;
         if res < min {
             min = res;
         }
@@ -499,7 +499,7 @@ fn sil_subcoef_b(num: usize, cl: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
 ///
 /// # Return value
 ///
-/// "b" subcoefficient silhouette coefficient
+/// Silhouette coefficient
 pub fn sil_coef(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
     if clusters[i].len() != 1 {
         let a = sil_subcoef_a(num, &clusters[i]);
