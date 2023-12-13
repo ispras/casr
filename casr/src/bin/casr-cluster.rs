@@ -351,7 +351,9 @@ fn update_clusters(
         })
         .collect();
     cluster_dirs.sort();
-    let len = cluster_dirs.len();
+
+    // Max cluster number
+    let mut max = 0usize;
     // Init clusters vector
     let mut clusters: Vec<Cluster> = Vec::new();
     // Init dedup crashline list for each cluster
@@ -363,18 +365,16 @@ fn update_clusters(
             .to_string()
             .parse::<usize>()
             .unwrap();
+        // Update max cluster number
+        max = max.max(i);
         // Get casreps from cluster
         let casreps = util::get_reports(cluster)?;
         let (_, stacktraces, crashlines, _) = util::reports_from_paths(casreps, jobs);
         // Fill cluster info structures
         clusters.push(Cluster::new(i, stacktraces));
         if dedup {
-            // NOTE: Clusters enumerate from 1, not 0
-            unique_crashlines.insert(i - 1, HashSet::new());
-            unique_crashlines
-                .get_mut(&(i - 1))
-                .unwrap()
-                .extend(crashlines);
+            unique_crashlines.insert(i, HashSet::new());
+            unique_crashlines.get_mut(&(i)).unwrap().extend(crashlines);
         }
     }
 
@@ -430,7 +430,7 @@ fn update_clusters(
         if dedup
             && !crashline.is_empty()
             && !unique_crashlines
-                .get_mut(&(number - 1))
+                .get_mut(&(number))
                 .unwrap()
                 .insert(crashline.to_string())
         {
@@ -471,7 +471,7 @@ fn update_clusters(
         }
         // Cluster deviant casreps
         let (result, before, after) =
-            make_clusters(Path::new(&deviant_dir), Some(oldpath), jobs, dedup, len)?;
+            make_clusters(Path::new(&deviant_dir), Some(oldpath), jobs, dedup, max)?;
         let _ = fs::remove_dir_all(&deviant_dir);
         (result, before, after)
     } else {
