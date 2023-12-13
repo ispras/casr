@@ -5,7 +5,7 @@ use anyhow::{bail, Context, Result};
 use clap::{builder::FalseyValueParser, Arg, ArgAction};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
@@ -355,7 +355,7 @@ fn update_clusters(
     // Init clusters vector
     let mut clusters: Vec<Cluster> = Vec::new();
     // Init dedup crashline list for each cluster
-    let mut unique_crashlines: Vec<HashSet<String>> = vec![HashSet::new(); len];
+    let mut unique_crashlines: HashMap<usize, HashSet<String>> = HashMap::new();
     // Get casreps from each existing cluster
     for cluster in &cluster_dirs {
         // Get cluster number
@@ -370,7 +370,11 @@ fn update_clusters(
         clusters.push(Cluster::new(i, stacktraces));
         if dedup {
             // NOTE: Clusters enumerate from 1, not 0
-            unique_crashlines[i - 1].extend(crashlines);
+            unique_crashlines.insert(i - 1, HashSet::new());
+            unique_crashlines
+                .get_mut(&(i - 1))
+                .unwrap()
+                .extend(crashlines);
         }
     }
 
@@ -425,7 +429,10 @@ fn update_clusters(
         // Make crashline deduplication
         if dedup
             && !crashline.is_empty()
-            && !unique_crashlines[number - 1].insert(crashline.to_string())
+            && !unique_crashlines
+                .get_mut(&(number - 1))
+                .unwrap()
+                .insert(crashline.to_string())
         {
             deduplicated += 1;
             continue;
