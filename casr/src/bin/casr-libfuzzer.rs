@@ -128,7 +128,8 @@ fn main() -> Result<()> {
         "casr-python"
     } else if argv[0].ends_with("jazzer") || argv[0].ends_with("java") {
         "casr-java"
-    } else if argv[0].ends_with("node")
+    } else if argv[0].ends_with(".js")
+        || argv[0].ends_with("node")
         || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
         || argv[0].ends_with("jsfuzz")
     {
