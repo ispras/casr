@@ -2794,7 +2794,7 @@ fn test_casr_cluster_u() {
 
     // Test estimation
     let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
-        .args(["--estimate", &paths[1]])
+        .args(["-e", &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
 

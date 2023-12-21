@@ -61,6 +61,18 @@ pub enum AccumStrategy {
     Dist,
 }
 
+/// Cluster tolerance level to new CASR reports
+#[derive(Clone, Copy, Debug)]
+pub enum ToleranceLevel {
+    /// May insert any "Inner" and "Outer" CASR reports
+    Loyal,
+    /// May insert only "Inner" CASR reports
+    Hard,
+    /// May insert any "Inner" CASR reports
+    /// But "Outers" may be added only as subclusters after their clustering
+    Soft,
+}
+
 /// Structure provides an abstraction for cluster with CASR reports
 pub struct Cluster {
     /// Cluster number

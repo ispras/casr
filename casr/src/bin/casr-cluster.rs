@@ -318,6 +318,8 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 ///
 /// * `outer_strategy` - strategy for "outer" report case
 ///
+/// * `tolerance_level` - cluster tolerance level to "outer" reports
+///
 /// # Return value
 ///
 /// * Number of casreps added to old clusters
@@ -333,6 +335,7 @@ fn update_clusters(
     dedup: bool,
     inner_strategy: AccumStrategy,
     outer_strategy: AccumStrategy,
+    tolerance_level: ToleranceLevel,
 ) -> Result<(usize, usize, usize, usize, usize, usize)> {
     // Get new casreps
     let casreps = util::get_reports(newpath)?;
@@ -406,7 +409,15 @@ fn update_clusters(
                     inners.push((cluster.number, measure));
                 }
                 Relation::Outer(measure) => {
-                    outers.push((cluster.number, measure));
+                    match tolerance_level {
+                        ToleranceLevel::Loyal => {
+                            outers.push((cluster.number, measure));
+                        }
+                        // TODO: Add "Soft"
+                        _ => {
+                            deviants.push(casrep);
+                        }
+                    }
                 }
                 Relation::Oot => {
                     continue;
@@ -633,7 +644,17 @@ fn main() -> Result<()> {
                 .help("Strategy for outer cluster choosing when updating"),
         )
         .arg(
+            Arg::new("tolerance-level")
+                .long("tolerance-level")
+                .value_name("LEVEL")
+                .action(ArgAction::Set)
+                .value_parser(["Loyal", "Hard"]) // TODO: Add "Soft"
+                .default_value("Loyal")
+                .help("Cluster tolerance level to new CASR reports")
+        )
+        .arg(
             Arg::new("estimate")
+                .short('e')
                 .long("estimate")
                 .value_name("DIR")
                 .action(ArgAction::Set)
@@ -728,6 +749,12 @@ fn main() -> Result<()> {
             "Diam" => AccumStrategy::Diam,
             _ => AccumStrategy::Dist,
         };
+        let tolerance_level = matches.get_one::<String>("tolerance-level").unwrap();
+        let tolerance_level = match tolerance_level.as_str() {
+            "Loyal" => ToleranceLevel::Loyal,
+            // TODO: Add "Soft"
+            _ => ToleranceLevel::Hard,
+        };
 
         let (added, duplicates, deduplicated, result, before, after) = update_clusters(
             paths[0],
@@ -736,6 +763,7 @@ fn main() -> Result<()> {
             dedup_crashlines,
             inner_strategy,
             outer_strategy,
+            tolerance_level,
         )?;
         println!("Number of casreps added to old clusters: {added}");
         println!("Number of duplicates: {duplicates}");
