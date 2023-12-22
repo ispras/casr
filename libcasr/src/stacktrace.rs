@@ -85,7 +85,7 @@ pub struct Cluster {
     /// Cluster diameter
     diam: Option<f64>,
     /// Cluster report crashlines
-    crashlines: HashSet<String>,
+    crashlines: HashMap<String, usize>,
 }
 
 impl Cluster {
@@ -96,8 +96,10 @@ impl Cluster {
         stacktraces: Vec<Stacktrace>,
         crashlines: Vec<String>,
     ) -> Self {
-        let mut unique_crashlines: HashSet<String> = HashSet::new();
-        unique_crashlines.extend(crashlines);
+        let mut unique_crashlines: HashMap<String, usize> = HashMap::new();
+        for (i, crashline) in crashlines.iter().enumerate().take(crashlines.len()) {
+            unique_crashlines.insert(crashline.clone(), i);
+        }
         Cluster {
             number,
             paths,
@@ -135,12 +137,14 @@ impl Cluster {
         crashline: String,
         dedup: bool,
     ) -> bool {
-        if dedup && !crashline.is_empty() && !self.crashlines.insert(crashline.to_string()) {
+        if dedup && !crashline.is_empty() && self.crashlines.contains_key(&crashline) {
             return false;
         }
         self.paths.push(path);
         self.stacktraces.push(stacktrace);
         self.diam = None;
+        self.crashlines
+            .insert(crashline.to_string(), self.paths.len());
         true
     }
     /// Get cluster diameter
@@ -204,10 +208,40 @@ impl Cluster {
             Relation::Outer(rel)
         }
     }
+    /// Check if cluster may be merged with another one
+    pub fn may_merge(&self, cluster: &Cluster) -> bool {
+        let mut stacktraces1 = self.stacktraces.clone();
+        let mut stacktraces2 = cluster.stacktraces().clone();
+        stacktraces1.append(&mut stacktraces2);
+        diam(&stacktraces1) < THRESHOLD
+    }
+    // TODO: change type
+    /// Convert cluster to iterator
+    pub fn reports(&self) -> Vec<(PathBuf, Stacktrace, String)> {
+        let mut reports: Vec<(PathBuf, Stacktrace, String)> = Vec::new();
+        let mut crashlines = self.crashlines.clone();
+        for i in 0..self.paths.len() {
+            // Get crashline for cur casrep
+            let mut crashline = String::new();
+            for (line, &number) in &crashlines {
+                if number == i {
+                    crashline = line.to_string();
+                    break;
+                }
+            }
+            // Drop cur crashline from crashlines
+            crashlines.remove(&crashline);
+            // Update results
+            reports.push((
+                self.paths[i].clone(),
+                self.stacktraces[i].clone(),
+                crashline,
+            ));
+        }
+        reports
+    }
 }
 
-// TODO: Write a better description...
-// NOTE: It's just interlayer between `Cluster` and `cluster_stacktrace` fn
 /// Generate clusters from CASR report info
 ///
 /// # Arguments

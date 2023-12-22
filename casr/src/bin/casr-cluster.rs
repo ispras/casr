@@ -451,7 +451,18 @@ fn update_clusters(
     // Handle deviant casreps
     let (result, before, after) = if !deviants.is_empty() {
         // Get clusters from deviants
-        let (deviant_clusters, before, after) = gen_clusters(&deviants, max, dedup)?;
+        let (mut deviant_clusters, before, mut after) = gen_clusters(&deviants, max, dedup)?;
+        if let ToleranceLevel::Soft = tolerance_level {
+            // Merge old and new clusters
+            let removed = if let Ok(removed) =
+                merge_clusters(&mut clusters, &mut deviant_clusters, oldpath, dedup)
+            {
+                removed
+            } else {
+                0
+            };
+            after -= removed;
+        }
         // Save deviant clusters
         util::save_clusters(&deviant_clusters, oldpath)?;
         (deviant_clusters.len(), before, after)
@@ -459,6 +470,68 @@ fn update_clusters(
         (0, 0, 0)
     };
     Ok((added, duplicates, deduplicated, result, before, after))
+}
+
+/// Try to merge new clusters to old clusters
+///
+/// # Arguments
+///
+/// * `olds` - list of old clusters represented as `HashMap` of `Cluster`
+///
+/// * `news` - list of new clusters represented as `HashMap` of `Cluster`
+///
+/// * `dir` - out directory
+///
+/// * `dedup` - deduplicate crashline, if true
+///
+/// # Return value
+///
+/// Number of removed by crashline deduplication CASR reports
+pub fn merge_clusters(
+    olds: &mut HashMap<usize, Cluster>,
+    news: &mut HashMap<usize, Cluster>,
+    dir: &Path,
+    dedup: bool,
+) -> Result<usize> {
+    let mut duplicate = 0usize;
+    for old in olds.values_mut() {
+        let mut merged = Vec::new();
+        for new in news.values() {
+            if !old.may_merge(new) {
+                continue;
+            }
+            // Copy casreps from new to old
+            for (casrep, stacktrace, crashline) in new.reports() {
+                // Update cluster (and dedup crashline)
+                if !old.insert(
+                    casrep.to_path_buf(),
+                    stacktrace.to_vec(),
+                    crashline.to_string(),
+                    dedup,
+                ) {
+                    duplicate += 1;
+                    continue;
+                }
+                // Save report
+                fs::copy(
+                    &casrep,
+                    format!(
+                        "{}/cl{}/{}",
+                        &dir.display(),
+                        old.number,
+                        &casrep.file_name().unwrap().to_str().unwrap()
+                    ),
+                )?;
+            }
+            // Mark merged cluster for drop
+            merged.push(new.number);
+        }
+        // Drop marked cluster
+        for number in merged {
+            news.remove(&number);
+        }
+    }
+    Ok(duplicate)
 }
 
 /// Calculate silhouette coefficient
