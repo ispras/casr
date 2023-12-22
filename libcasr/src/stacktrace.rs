@@ -27,6 +27,9 @@ pub type DebugInfo = gdb_command::stacktrace::DebugInfo;
 /// Represents the information about one line of the stack trace.
 pub type StacktraceEntry = gdb_command::stacktrace::StacktraceEntry;
 
+/// Represents the information about CASR report
+pub type ReportInfo = (PathBuf, (Stacktrace, String));
+
 lazy_static::lazy_static! {
     /// Regular expressions for functions to be ignored.
     pub static ref STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
@@ -215,7 +218,6 @@ impl Cluster {
         stacktraces1.append(&mut stacktraces2);
         diam(&stacktraces1) < THRESHOLD
     }
-    // TODO: change type
     /// Convert cluster to iterator
     pub fn reports(&self) -> Vec<(PathBuf, Stacktrace, String)> {
         let mut reports: Vec<(PathBuf, Stacktrace, String)> = Vec::new();
@@ -258,7 +260,7 @@ impl Cluster {
 /// * Number of valid casreps before crashiline deduplication
 /// * Number of valid casreps after crashiline deduplication
 pub fn gen_clusters(
-    reports: &[(&PathBuf, (Stacktrace, String))],
+    reports: &[ReportInfo],
     offset: usize,
     dedup: bool,
 ) -> Result<(HashMap<usize, Cluster>, usize, usize)> {

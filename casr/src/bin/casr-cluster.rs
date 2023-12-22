@@ -58,7 +58,7 @@ fn make_clusters(
     }
 
     // Get casreps with stacktraces and crashlines
-    let (casreps, stacktraces, crashlines, badreports) = util::reports_from_paths(casreps, jobs);
+    let (casreps, badreports) = util::reports_from_paths(casreps, jobs);
 
     if !badreports.is_empty() {
         fs::create_dir_all(format!("{}/clerr", &outpath.display()))?;
@@ -74,44 +74,16 @@ fn make_clusters(
         }
     }
 
-    if stacktraces.len() < 2 {
-        bail!("{} valid reports, nothing to cluster...", stacktraces.len());
+    if casreps.len() < 2 {
+        bail!("{} valid reports, nothing to cluster...", casreps.len());
     }
 
     // Get clusters
-    let mut clusters = cluster_stacktraces(&stacktraces)?;
+    let (clusters, before, after) = gen_clusters(&casreps, 0, dedup)?;
+    // Save clusters
+    util::save_clusters(&clusters, outpath)?;
 
-    // Cluster formation
-    let cluster_cnt: usize = *clusters.iter().max().unwrap();
-    for i in 1..=cluster_cnt {
-        fs::create_dir_all(format!("{}/cl{}", &outpath.display(), i))?;
-    }
-
-    // Init before and after dedup counters
-    let before_cnt = casreps.len();
-    let mut after_cnt = before_cnt;
-
-    // Get clusters with crashline deduplication
-    if dedup {
-        after_cnt = dedup_crashlines(&crashlines, &mut clusters);
-    }
-
-    for i in 0..clusters.len() {
-        // Skip casreps with duplicate crashlines
-        if clusters[i] == 0 {
-            continue;
-        }
-        fs::copy(
-            &casreps[i],
-            format!(
-                "{}/cl{}/{}",
-                &outpath.display(),
-                clusters[i],
-                &casreps[i].file_name().unwrap().to_str().unwrap()
-            ),
-        )?;
-    }
-    Ok((cluster_cnt, before_cnt, after_cnt))
+    Ok((clusters.len(), before, after))
 }
 
 /// Remove duplicate casreps
@@ -336,10 +308,7 @@ fn update_clusters(
 ) -> Result<(usize, usize, usize, usize, usize, usize)> {
     // Get new casreps
     let casreps = util::get_reports(newpath)?;
-    let (casreps, stacktraces, crashlines, _) = util::reports_from_paths(casreps, jobs);
-    let casreps = casreps
-        .iter()
-        .zip(stacktraces.iter().zip(crashlines.iter()));
+    let (casreps, _) = util::reports_from_paths(casreps, jobs);
 
     // Get casreps from existing clusters
     let mut cluster_dirs: Vec<PathBuf> = fs::read_dir(oldpath)
@@ -367,7 +336,7 @@ fn update_clusters(
     }
 
     // Init list of casreps, which aren't suitable for any cluster
-    let mut deviants: Vec<(&PathBuf, (Stacktrace, String))> = Vec::new();
+    let mut deviants: Vec<ReportInfo> = Vec::new();
     // Init added casreps counter
     let mut added = 0usize;
     // Init duplicates counter
@@ -383,7 +352,7 @@ fn update_clusters(
         // Checker if casrep is duplicate of someone else
         let mut dup = false;
         for cluster in clusters.values_mut() {
-            let relation = cluster.relation(stacktrace, inner_strategy, outer_strategy);
+            let relation = cluster.relation(&stacktrace, inner_strategy, outer_strategy);
             match relation {
                 Relation::Dup => {
                     dup = true;
@@ -430,7 +399,7 @@ fn update_clusters(
         // Save casrep
         added += 1;
         fs::copy(
-            casrep,
+            &casrep,
             format!(
                 "{}/{}",
                 &cluster_dirs[number - 1].display(),
@@ -563,7 +532,8 @@ fn avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
         // Get casreps from cluster
         let casreps = util::get_reports(dir)?;
         // Get stacktraces from cluster
-        let (_, stacktraces, _, _) = util::reports_from_paths(casreps, jobs);
+        let (casreps, _) = util::reports_from_paths(casreps, jobs);
+        let (_, (stacktraces, _)): (Vec<_>, (Vec<_>, Vec<_>)) = casreps.iter().cloned().unzip();
         // Update size
         size += stacktraces.len();
         // Add stacktraces

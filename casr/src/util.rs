@@ -3,7 +3,7 @@ extern crate libcasr;
 
 use libcasr::report::CrashReport;
 use libcasr::stacktrace::{
-    Cluster, Stacktrace, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
+    Cluster, ReportInfo, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
 };
 
 use anyhow::{bail, Context, Result};
@@ -441,14 +441,9 @@ pub fn get_reports(dir: &Path) -> Result<Vec<PathBuf>> {
 ///
 /// # Return value
 ///
-/// * A vector of paths to correctly parsed reports
-/// * A vector of reports stacktraces
-/// * A vector of reports crashlines
+/// * A vector of correctly parsed report info: paths, stacktraces and crashlines
 /// * A vector of bad reports
-pub fn reports_from_paths(
-    casreps: Vec<PathBuf>,
-    jobs: usize,
-) -> (Vec<PathBuf>, Vec<Stacktrace>, Vec<String>, Vec<PathBuf>) {
+pub fn reports_from_paths(casreps: Vec<PathBuf>, jobs: usize) -> (Vec<ReportInfo>, Vec<PathBuf>) {
     // Get len
     let len = casreps.len();
     // Start thread pool.
@@ -457,7 +452,7 @@ pub fn reports_from_paths(
         .build()
         .unwrap();
     // Report info from casreps: (casrep, (trace, crashline))
-    let mut casrep_info: RwLock<Vec<(PathBuf, (Stacktrace, String))>> = RwLock::new(Vec::new());
+    let mut casrep_info: RwLock<Vec<ReportInfo>> = RwLock::new(Vec::new());
     // Casreps with stacktraces, that we cannot parse
     let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
     custom_pool.install(|| {
@@ -487,11 +482,7 @@ pub fn reports_from_paths(
             .cmp(b.0.file_name().unwrap().to_str().unwrap())
     });
 
-    // Unzip casrep info
-    let (casreps, (stacktraces, crashlines)): (Vec<_>, (Vec<_>, Vec<_>)) =
-        casrep_info.iter().cloned().unzip();
-
-    (casreps, stacktraces, crashlines, badreports)
+    (casrep_info.to_vec(), badreports)
 }
 
 /// Get `Cluster` structure from specified directory path.
@@ -513,7 +504,9 @@ pub fn cluster_from_dir(dir: &Path, jobs: usize) -> Result<Cluster> {
         .unwrap();
     // Get casreps from cluster
     let casreps = get_reports(dir)?;
-    let (_, stacktraces, crashlines, _) = reports_from_paths(casreps, jobs);
+    let (casreps, _) = reports_from_paths(casreps, jobs);
+    let (_, (stacktraces, crashlines)): (Vec<_>, (Vec<_>, Vec<_>)) =
+        casreps.iter().cloned().unzip();
     // Create cluster
     // NOTE: We don't care about paths of casreps from existing clusters
     Ok(Cluster::new(i, Vec::new(), stacktraces, crashlines))
