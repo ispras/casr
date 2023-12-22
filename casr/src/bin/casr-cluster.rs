@@ -357,22 +357,13 @@ fn update_clusters(
     // Init clusters vector
     let mut clusters: HashMap<usize, Cluster> = HashMap::new();
     // Get casreps from each existing cluster
-    for cluster in &cluster_dirs {
-        // Get cluster number
-        let i = cluster.clone().file_name().unwrap().to_str().unwrap()[2..]
-            .to_string()
-            .parse::<usize>()
-            .unwrap();
+    for cluster_dir in &cluster_dirs {
+        // Get cluster
+        let cluster = util::cluster_from_dir(cluster_dir, jobs)?;
         // Update max cluster number
-        max = max.max(i);
-        // Get casreps from cluster
-        let casreps = util::get_reports(cluster)?;
-        let (_, stacktraces, crashlines, _) = util::reports_from_paths(casreps, jobs);
-        // Drop crashlines if they're unused
-        let crashlines = if dedup { crashlines } else { Vec::new() };
+        max = max.max(cluster.number);
         // Fill cluster info structures
-        // NOTE: We don't care about paths of casreps from existing clusters
-        clusters.insert(i, Cluster::new(i, Vec::new(), stacktraces, crashlines));
+        clusters.insert(cluster.number, cluster);
     }
 
     // Init list of casreps, which aren't suitable for any cluster
@@ -451,17 +442,16 @@ fn update_clusters(
     // Handle deviant casreps
     let (result, before, after) = if !deviants.is_empty() {
         // Get clusters from deviants
-        let (mut deviant_clusters, before, mut after) = gen_clusters(&deviants, max, dedup)?;
+        let (mut deviant_clusters, mut before, mut after) = gen_clusters(&deviants, max, dedup)?;
         if let ToleranceLevel::Soft = tolerance_level {
             // Merge old and new clusters
-            let removed = if let Ok(removed) =
-                merge_clusters(&mut clusters, &mut deviant_clusters, oldpath, dedup)
-            {
-                removed
-            } else {
-                0
-            };
-            after -= removed;
+            let (moved, removed) =
+                merge_clusters(&mut clusters, &mut deviant_clusters, oldpath, dedup)?;
+            // Adjust stat
+            added += moved;
+            deduplicated += removed;
+            before = 0; // Impossible to know (proofed by @hkctkuy)
+            after -= moved + removed;
         }
         // Save deviant clusters
         util::save_clusters(&deviant_clusters, oldpath)?;
@@ -486,14 +476,16 @@ fn update_clusters(
 ///
 /// # Return value
 ///
+/// Number of moved to old clusters CASR reports
 /// Number of removed by crashline deduplication CASR reports
 pub fn merge_clusters(
     olds: &mut HashMap<usize, Cluster>,
     news: &mut HashMap<usize, Cluster>,
     dir: &Path,
     dedup: bool,
-) -> Result<usize> {
-    let mut duplicate = 0usize;
+) -> Result<(usize, usize)> {
+    let mut moved = 0usize;
+    let mut removed = 0usize;
     for old in olds.values_mut() {
         let mut merged = Vec::new();
         for new in news.values() {
@@ -509,10 +501,11 @@ pub fn merge_clusters(
                     crashline.to_string(),
                     dedup,
                 ) {
-                    duplicate += 1;
+                    removed += 1;
                     continue;
                 }
                 // Save report
+                moved += 1;
                 fs::copy(
                     &casrep,
                     format!(
@@ -531,7 +524,7 @@ pub fn merge_clusters(
             news.remove(&number);
         }
     }
-    Ok(duplicate)
+    Ok((moved, removed))
 }
 
 /// Calculate silhouette coefficient
@@ -816,8 +809,10 @@ fn main() -> Result<()> {
             println!("Number of new clusters: {result}");
         }
         // Print crashline dedup summary
-        if before != after {
+        if before != 0 {
             println!("Number of reports before crashline deduplication in new clusters: {before}");
+        }
+        if before != after {
             println!("Number of reports after crashline deduplication in new clusters: {after}");
         }
         let sil = avg_sil(paths[1], jobs)?;

@@ -241,7 +241,10 @@ Tool for clustering CASR reports
           --outer-strategy <STRATEGY>
               Strategy for outer cluster choosing when updating [default: Dist] [possible
               values: Delta, Diam, Dist]
-          --estimate <DIR>
+          --tolerance-level <LEVEL>
+              Cluster tolerance level to new CASR reports [default: Loyal] [possible values:
+              Loyal, Soft, Hard]
+      -e, --estimate <DIR>
               Calculate silhouette score for clustering results
           --ignore <FILE>
               File with regular expressions for functions and file paths that should be

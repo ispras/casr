@@ -494,6 +494,31 @@ pub fn reports_from_paths(
     (casreps, stacktraces, crashlines, badreports)
 }
 
+/// Get `Cluster` structure from specified directory path.
+///
+/// # Arguments
+///
+/// * `dir` - valid cluster dir path
+///
+/// * `jobs` - number of jobs for parsing process
+///
+/// # Return value
+///
+/// `Cluster` structure
+pub fn cluster_from_dir(dir: &Path, jobs: usize) -> Result<Cluster> {
+    // Get cluster number
+    let i = dir.file_name().unwrap().to_str().unwrap()[2..]
+        .to_string()
+        .parse::<usize>()
+        .unwrap();
+    // Get casreps from cluster
+    let casreps = get_reports(dir)?;
+    let (_, stacktraces, crashlines, _) = reports_from_paths(casreps, jobs);
+    // Create cluster
+    // NOTE: We don't care about paths of casreps from existing clusters
+    Ok(Cluster::new(i, Vec::new(), stacktraces, crashlines))
+}
+
 /// Save clusters to directory
 ///
 /// # Arguments
