@@ -16,6 +16,7 @@ use kodama::{linkage, Method};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write};
+use std::path::PathBuf;
 use std::sync::RwLock;
 
 // Re-export types from gdb_command for convenient use from Casr library
@@ -77,6 +78,8 @@ pub enum ToleranceLevel {
 pub struct Cluster {
     /// Cluster number
     pub number: usize,
+    /// Cluster report paths
+    paths: Vec<PathBuf>,
     /// Cluster report stacktraces
     stacktraces: Vec<Stacktrace>,
     /// Cluster diameter
@@ -87,15 +90,25 @@ pub struct Cluster {
 
 impl Cluster {
     /// Create new `Cluster`
-    pub fn new(number: usize, stacktraces: Vec<Stacktrace>, crashlines: Vec<String>) -> Self {
+    pub fn new(
+        number: usize,
+        paths: Vec<PathBuf>,
+        stacktraces: Vec<Stacktrace>,
+        crashlines: Vec<String>,
+    ) -> Self {
         let mut unique_crashlines: HashSet<String> = HashSet::new();
         unique_crashlines.extend(crashlines);
         Cluster {
             number,
+            paths,
             stacktraces,
             diam: None,
             crashlines: unique_crashlines,
         }
+    }
+    /// Get CASR report paths
+    pub fn paths(&self) -> &Vec<PathBuf> {
+        &self.paths
     }
     /// Get CASR report stactraces
     pub fn stacktraces(&self) -> &Vec<Stacktrace> {
@@ -115,10 +128,17 @@ impl Cluster {
     ///
     /// `true` if new CASR report may be added,
     /// `false` if report is duplicate of someone else
-    pub fn insert(&mut self, stacktrace: Stacktrace, crashline: String, dedup: bool) -> bool {
+    pub fn insert(
+        &mut self,
+        path: PathBuf,
+        stacktrace: Stacktrace,
+        crashline: String,
+        dedup: bool,
+    ) -> bool {
         if dedup && !crashline.is_empty() && !self.crashlines.insert(crashline.to_string()) {
             return false;
         }
+        self.paths.push(path);
         self.stacktraces.push(stacktrace);
         self.diam = None;
         true
@@ -184,6 +204,63 @@ impl Cluster {
             Relation::Outer(rel)
         }
     }
+}
+
+// TODO: Write a better description...
+// NOTE: It's just interlayer between `Cluster` and `cluster_stacktrace` fn
+/// Generate clusters from CASR report info
+///
+/// # Arguments
+///
+/// * `reports` - slice of report info: path, stacktrace, crashline
+///
+/// * `offset` - cluster enumerate offset
+///
+/// * `dedup` - deduplicate crashline, if true
+///
+/// # Return value
+///
+/// * `HashMap` of `Cluster`
+/// * Number of valid casreps before crashiline deduplication
+/// * Number of valid casreps after crashiline deduplication
+pub fn gen_clusters(
+    reports: &[(&PathBuf, (Stacktrace, String))],
+    offset: usize,
+    dedup: bool,
+) -> Result<(HashMap<usize, Cluster>, usize, usize)> {
+    // Unzip casrep info
+    let (casreps, (stacktraces, crashlines)): (Vec<_>, (Vec<_>, Vec<_>)) =
+        reports.iter().cloned().unzip();
+    let len = casreps.len();
+    // Get stacktraces cluster numbers
+    let mut numbers = cluster_stacktraces(&stacktraces)?;
+    // Deduplicate by crashiline
+    let after = if dedup {
+        dedup_crashlines(&crashlines, &mut numbers)
+    } else {
+        len
+    };
+    // Create clusters
+    let mut clusters: HashMap<usize, Cluster> = HashMap::new();
+    for i in 0..len {
+        if numbers[i] == 0 {
+            // Skip casreps with duplicate crashlines
+            continue;
+        }
+        let number = numbers[i] + offset;
+        // Add new cluster if not exists
+        clusters
+            .entry(number)
+            .or_insert_with(|| Cluster::new(number, Vec::new(), Vec::new(), Vec::new()));
+        // Update cluster
+        clusters.get_mut(&number).unwrap().insert(
+            casreps[i].to_path_buf(),
+            stacktraces[i].to_vec(),
+            crashlines[i].to_string(),
+            dedup,
+        );
+    }
+    Ok((clusters, len, after))
 }
 
 /// This macro updates variables used to remove trusted functions from stack trace

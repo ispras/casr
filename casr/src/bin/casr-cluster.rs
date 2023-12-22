@@ -38,8 +38,6 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
 ///
 /// * `dedup` - deduplicate casrep by crashline for each cluster, if true
 ///
-/// * `offset` - cluster enumerate offset
-///
 /// # Return value
 ///
 /// * Number of clusters
@@ -50,7 +48,6 @@ fn make_clusters(
     outpath: Option<&Path>,
     jobs: usize,
     dedup: bool,
-    offset: usize,
 ) -> Result<(usize, usize, usize)> {
     // if outpath is "None" we consider that outpath and inpath are the same
     let outpath = outpath.unwrap_or(inpath);
@@ -87,7 +84,7 @@ fn make_clusters(
     // Cluster formation
     let cluster_cnt: usize = *clusters.iter().max().unwrap();
     for i in 1..=cluster_cnt {
-        fs::create_dir_all(format!("{}/cl{}", &outpath.display(), i + offset))?;
+        fs::create_dir_all(format!("{}/cl{}", &outpath.display(), i))?;
     }
 
     // Init before and after dedup counters
@@ -109,7 +106,7 @@ fn make_clusters(
             format!(
                 "{}/cl{}/{}",
                 &outpath.display(),
-                clusters[i] + offset,
+                clusters[i],
                 &casreps[i].file_name().unwrap().to_str().unwrap()
             ),
         )?;
@@ -374,11 +371,12 @@ fn update_clusters(
         // Drop crashlines if they're unused
         let crashlines = if dedup { crashlines } else { Vec::new() };
         // Fill cluster info structures
-        clusters.insert(i, Cluster::new(i, stacktraces, crashlines));
+        // NOTE: We don't care about paths of casreps from existing clusters
+        clusters.insert(i, Cluster::new(i, Vec::new(), stacktraces, crashlines));
     }
 
     // Init list of casreps, which aren't suitable for any cluster
-    let mut deviants = Vec::<&PathBuf>::new();
+    let mut deviants: Vec<(&PathBuf, (Stacktrace, String))> = Vec::new();
     // Init added casreps counter
     let mut added = 0usize;
     // Init duplicates counter
@@ -404,14 +402,11 @@ fn update_clusters(
                 Relation::Inner(measure) => {
                     inners.push((cluster.number, measure));
                 }
-                Relation::Outer(measure) => match tolerance_level {
-                    ToleranceLevel::Loyal => {
+                Relation::Outer(measure) => {
+                    if let ToleranceLevel::Loyal = tolerance_level {
                         outers.push((cluster.number, measure));
                     }
-                    _ => {
-                        deviants.push(casrep);
-                    }
-                },
+                }
                 Relation::Oot => {
                     continue;
                 }
@@ -426,12 +421,13 @@ fn update_clusters(
             outers.iter().min_by(|a, b| a.1.total_cmp(&b.1)).unwrap().0
         } else {
             // Out of threshold
-            deviants.push(casrep);
+            deviants.push((casrep, (stacktrace.to_vec(), crashline.to_string())));
             continue;
         };
 
         // Update cluster (and dedup crashline)
-        if !clusters.get_mut(&(number)).unwrap().insert(
+        if !clusters.get_mut(&number).unwrap().insert(
+            casrep.to_path_buf(),
             stacktrace.to_vec(),
             crashline.to_string(),
             dedup,
@@ -454,24 +450,11 @@ fn update_clusters(
 
     // Handle deviant casreps
     let (result, before, after) = if !deviants.is_empty() {
-        // Copy casrep to tmp dir
-        let deviant_dir = format!("{}/deviant", &oldpath.display());
-        fs::create_dir_all(&deviant_dir)?;
-        for casrep in deviants {
-            fs::copy(
-                casrep,
-                format!(
-                    "{}/{}",
-                    &deviant_dir,
-                    &casrep.file_name().unwrap().to_str().unwrap()
-                ),
-            )?;
-        }
-        // Cluster deviant casreps
-        let (result, before, after) =
-            make_clusters(Path::new(&deviant_dir), Some(oldpath), jobs, dedup, max)?;
-        let _ = fs::remove_dir_all(&deviant_dir);
-        (result, before, after)
+        // Get clusters from deviants
+        let (deviant_clusters, before, after) = gen_clusters(&deviants, max, dedup)?;
+        // Save deviant clusters
+        util::save_clusters(&deviant_clusters, oldpath)?;
+        (deviant_clusters.len(), before, after)
     } else {
         (0, 0, 0)
     };
@@ -698,7 +681,6 @@ fn main() -> Result<()> {
             paths.get(1).map(|x| x.as_path()),
             jobs,
             dedup_crashlines,
-            0,
         )?;
         println!("Number of clusters: {result}");
         // Print crashline dedup summary

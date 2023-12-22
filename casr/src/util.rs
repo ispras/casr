@@ -3,7 +3,7 @@ extern crate libcasr;
 
 use libcasr::report::CrashReport;
 use libcasr::stacktrace::{
-    Stacktrace, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
+    Cluster, Stacktrace, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
 };
 
 use anyhow::{bail, Context, Result};
@@ -14,7 +14,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use simplelog::*;
 use wait_timeout::ChildExt;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::io::{BufRead, BufReader};
@@ -492,4 +492,29 @@ pub fn reports_from_paths(
         casrep_info.iter().cloned().unzip();
 
     (casreps, stacktraces, crashlines, badreports)
+}
+
+/// Save clusters to directory
+///
+/// # Arguments
+///
+/// * `clusters` - given `Cluster` structures for saving
+///
+/// * `dir` - out directory
+pub fn save_clusters(clusters: &HashMap<usize, Cluster>, dir: &Path) -> Result<()> {
+    for cluster in clusters.values() {
+        fs::create_dir_all(format!("{}/cl{}", &dir.display(), cluster.number))?;
+        for casrep in cluster.paths() {
+            fs::copy(
+                casrep,
+                format!(
+                    "{}/cl{}/{}",
+                    &dir.display(),
+                    cluster.number,
+                    &casrep.file_name().unwrap().to_str().unwrap()
+                ),
+            )?;
+        }
+    }
+    Ok(())
 }
