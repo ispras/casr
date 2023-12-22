@@ -358,9 +358,7 @@ fn update_clusters(
     // Max cluster number
     let mut max = 0usize;
     // Init clusters vector
-    let mut clusters: Vec<Cluster> = Vec::new();
-    // Init dedup crashline list for each cluster
-    let mut unique_crashlines: HashMap<usize, HashSet<String>> = HashMap::new();
+    let mut clusters: HashMap<usize, Cluster> = HashMap::new();
     // Get casreps from each existing cluster
     for cluster in &cluster_dirs {
         // Get cluster number
@@ -373,12 +371,10 @@ fn update_clusters(
         // Get casreps from cluster
         let casreps = util::get_reports(cluster)?;
         let (_, stacktraces, crashlines, _) = util::reports_from_paths(casreps, jobs);
+        // Drop crashlines if they're unused
+        let crashlines = if dedup { crashlines } else { Vec::new() };
         // Fill cluster info structures
-        clusters.push(Cluster::new(i, stacktraces));
-        if dedup {
-            unique_crashlines.insert(i, HashSet::new());
-            unique_crashlines.get_mut(&(i)).unwrap().extend(crashlines);
-        }
+        clusters.insert(i, Cluster::new(i, stacktraces, crashlines));
     }
 
     // Init list of casreps, which aren't suitable for any cluster
@@ -397,7 +393,7 @@ fn update_clusters(
         let mut outers: Vec<(usize, f64)> = Vec::new();
         // Checker if casrep is duplicate of someone else
         let mut dup = false;
-        for cluster in &mut clusters {
+        for cluster in clusters.values_mut() {
             let relation = cluster.relation(stacktrace, inner_strategy, outer_strategy);
             match relation {
                 Relation::Dup => {
@@ -408,17 +404,14 @@ fn update_clusters(
                 Relation::Inner(measure) => {
                     inners.push((cluster.number, measure));
                 }
-                Relation::Outer(measure) => {
-                    match tolerance_level {
-                        ToleranceLevel::Loyal => {
-                            outers.push((cluster.number, measure));
-                        }
-                        // TODO: Add "Soft"
-                        _ => {
-                            deviants.push(casrep);
-                        }
+                Relation::Outer(measure) => match tolerance_level {
+                    ToleranceLevel::Loyal => {
+                        outers.push((cluster.number, measure));
                     }
-                }
+                    _ => {
+                        deviants.push(casrep);
+                    }
+                },
                 Relation::Oot => {
                     continue;
                 }
@@ -437,14 +430,12 @@ fn update_clusters(
             continue;
         };
 
-        // Make crashline deduplication
-        if dedup
-            && !crashline.is_empty()
-            && !unique_crashlines
-                .get_mut(&(number))
-                .unwrap()
-                .insert(crashline.to_string())
-        {
+        // Update cluster (and dedup crashline)
+        if !clusters.get_mut(&(number)).unwrap().insert(
+            stacktrace.to_vec(),
+            crashline.to_string(),
+            dedup,
+        ) {
             deduplicated += 1;
             continue;
         }
@@ -459,10 +450,6 @@ fn update_clusters(
                 &casrep.file_name().unwrap().to_str().unwrap()
             ),
         )?;
-
-        // Update cluster
-        let i = clusters.iter().position(|a| a.number == number).unwrap();
-        clusters[i].push(stacktrace.to_vec());
     }
 
     // Handle deviant casreps
@@ -648,7 +635,7 @@ fn main() -> Result<()> {
                 .long("tolerance-level")
                 .value_name("LEVEL")
                 .action(ArgAction::Set)
-                .value_parser(["Loyal", "Hard"]) // TODO: Add "Soft"
+                .value_parser(["Loyal", "Soft", "Hard"])
                 .default_value("Loyal")
                 .help("Cluster tolerance level to new CASR reports")
         )
@@ -752,7 +739,7 @@ fn main() -> Result<()> {
         let tolerance_level = matches.get_one::<String>("tolerance-level").unwrap();
         let tolerance_level = match tolerance_level.as_str() {
             "Loyal" => ToleranceLevel::Loyal,
-            // TODO: Add "Soft"
+            "Soft" => ToleranceLevel::Soft,
             _ => ToleranceLevel::Hard,
         };
 

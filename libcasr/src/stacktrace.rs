@@ -81,25 +81,47 @@ pub struct Cluster {
     stacktraces: Vec<Stacktrace>,
     /// Cluster diameter
     diam: Option<f64>,
+    /// Cluster report crashlines
+    crashlines: HashSet<String>,
 }
 
 impl Cluster {
     /// Create new `Cluster`
-    pub fn new(number: usize, stacktraces: Vec<Stacktrace>) -> Self {
+    pub fn new(number: usize, stacktraces: Vec<Stacktrace>, crashlines: Vec<String>) -> Self {
+        let mut unique_crashlines: HashSet<String> = HashSet::new();
+        unique_crashlines.extend(crashlines);
         Cluster {
             number,
             stacktraces,
             diam: None,
+            crashlines: unique_crashlines,
         }
     }
     /// Get CASR report stactraces
     pub fn stacktraces(&self) -> &Vec<Stacktrace> {
         &self.stacktraces
     }
-    /// Add CASR report stacktrace to cluster
-    pub fn push(&mut self, stacktrace: Stacktrace) {
+    /// Add new CASR report to cluster
+    ///
+    /// # Arguments
+    ///
+    /// * `stacktrace` - new CASR report stacktrace
+    ///
+    /// * `crashline` - new CASR report crashline
+    ///
+    /// * `dedup` - deduplicate crashline, if true
+    ///
+    /// # Return value
+    ///
+    /// `true` if new CASR report may be added,
+    /// `false` if report is duplicate of someone else
+    pub fn insert(&mut self, stacktrace: Stacktrace, crashline: String, dedup: bool) -> bool {
+        if dedup && !crashline.is_empty() && !self.crashlines.insert(crashline.to_string()) {
+            return false;
+        }
         self.stacktraces.push(stacktrace);
         self.diam = None;
+        true
     }
     /// Get cluster diameter
     pub fn diam(&mut self) -> f64 {
