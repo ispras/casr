@@ -60,18 +60,9 @@ fn make_clusters(
     // Get casreps with stacktraces and crashlines
     let (casreps, badreports) = util::reports_from_paths(casreps, jobs);
 
+    // Handle bad reports
     if !badreports.is_empty() {
-        fs::create_dir_all(format!("{}/clerr", &outpath.display()))?;
-        for report in badreports {
-            fs::copy(
-                &report,
-                format!(
-                    "{}/clerr/{}",
-                    &outpath.display(),
-                    &report.file_name().unwrap().to_str().unwrap()
-                ),
-            )?;
-        }
+        util::save_badreports(badreports, format!("{}/clerr", &outpath.display()))?;
     }
 
     if casreps.len() < 2 {
@@ -417,10 +408,12 @@ fn update_clusters(
             let (moved, removed) =
                 merge_clusters(&mut clusters, &mut deviant_clusters, oldpath, dedup)?;
             // Adjust stat
-            added += moved;
-            deduplicated += removed;
-            before = 0; // Impossible to know (proofed by @hkctkuy)
-            after -= moved + removed;
+            if moved != 0 || removed != 0 {
+                added += moved;
+                deduplicated += removed;
+                before = 0; // Impossible to know (proofed by @hkctkuy)
+                after -= moved + removed;
+            }
         }
         // Save deviant clusters
         util::save_clusters(&deviant_clusters, oldpath)?;
