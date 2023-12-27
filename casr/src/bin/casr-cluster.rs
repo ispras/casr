@@ -405,8 +405,7 @@ fn update_clusters(
         let (mut deviant_clusters, mut before, mut after) = gen_clusters(&deviants, max, dedup)?;
         if let ToleranceLevel::Soft = tolerance_level {
             // Merge old and new clusters
-            let (moved, removed) =
-                merge_clusters(&mut clusters, &mut deviant_clusters, oldpath, dedup)?;
+            let (moved, removed) = merge_clusters(clusters, &mut deviant_clusters, oldpath, dedup)?;
             // Adjust stat
             if moved != 0 || removed != 0 {
                 added += moved;
@@ -441,16 +440,20 @@ fn update_clusters(
 /// Number of moved to old clusters CASR reports
 /// Number of removed by crashline deduplication CASR reports
 pub fn merge_clusters(
-    olds: &mut HashMap<usize, Cluster>,
+    olds: HashMap<usize, Cluster>,
     news: &mut HashMap<usize, Cluster>,
     dir: &Path,
     dedup: bool,
 ) -> Result<(usize, usize)> {
     let mut moved = 0usize;
     let mut removed = 0usize;
-    for old in olds.values_mut() {
+    let mut olds: Vec<Cluster> = olds.into_values().collect();
+    olds.sort_by(|a, b| a.number.cmp(&b.number));
+    for mut old in olds {
         let mut merged = Vec::new();
-        for new in news.values() {
+        let mut values: Vec<&Cluster> = news.values().collect();
+        values.sort_by(|a, b| a.number.cmp(&b.number));
+        for new in values {
             if !old.may_merge(new) {
                 continue;
             }
