@@ -100,7 +100,7 @@ impl Cluster {
         crashlines: Vec<String>,
     ) -> Self {
         let mut unique_crashlines: HashMap<String, usize> = HashMap::new();
-        for (i, crashline) in crashlines.iter().enumerate().take(crashlines.len()) {
+        for (i, crashline) in crashlines.iter().enumerate() {
             unique_crashlines.insert(crashline.clone(), i);
         }
         Cluster {
@@ -147,7 +147,7 @@ impl Cluster {
         self.stacktraces.push(stacktrace);
         self.diam = None;
         self.crashlines
-            .insert(crashline.to_string(), self.paths.len());
+            .insert(crashline.to_string(), self.paths.len() - 1);
         true
     }
     /// Get cluster diameter
