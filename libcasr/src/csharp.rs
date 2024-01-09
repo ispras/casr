@@ -8,40 +8,83 @@ use crate::stacktrace::StacktraceEntry;
 
 use regex::Regex;
 
-const PARSE_STACK_FRAME_ERR_PREFIX: &str = "Couldn't parse stacktrace line: ";
+#[derive(Copy, Clone)]
+enum StacktraceFormat {
+    Mono,
+    dotNET
+}
 
+impl StacktraceFormat {
+    fn get_regex_for_stacktrace_entry(&self) -> Regex {
+        match self {
+            StacktraceFormat::Mono => Regex::new(r"^at (?:\(.+?\) )?(?P<function>\S+)(?P<params> ?\(.*?\))? (?:<(?P<base>\w+) \+ (?P<offset>\w+)>|\[0x[\da-fA-F]+\]) in (?:<[\da-fA-F]+>|(?P<file>.+)):(?P<line>\w+)$"),
+            StacktraceFormat::dotNET => Regex::new(r"^at (?:\(.+?\) )?(?P<function>\S+)(?P<params>\(.*?\))?(?: in (?P<file>.+):line (?P<line>\w+))?$")
+        }.unwrap()
+    }
+
+    fn get_format_by_stacktrace_entry(entry: &str) -> Result<StacktraceFormat> {
+        for format in [StacktraceFormat::Mono, StacktraceFormat::dotNET] {
+            if format.get_regex_for_stacktrace_entry().is_match(entry) {
+                return Ok(format);
+            }
+        }
+
+        return Err(Error::Casr(format!("Couldn't parse stacktrace line: {entry}")));
+    }
+}
 /// Structure provides an interface for processing the stack trace.
 pub struct CSharpStacktrace;
 
 impl CSharpStacktrace {
-    fn parse_stacktrace_entry(entry: &str, use_mono_format: bool) -> Result<StacktraceEntry> {
-        let re =
-            if use_mono_format { Regex::new(r"^at (?:\(.+\) )?(.+?) ?\(.*\) (?:<0x(?<address>\w+).+>|\[\w+]) in (?:<\w+>|(?<file>.+)):(?<line>\w+)$") }
-            else { Regex::new(r"^at (?:\(.+\) )?(.+?)\(.*\)(?: in (?<file>.+):line (?<line>\w+))?$") }.unwrap();
+    fn parse_stacktrace_entry(entry: &str, format: StacktraceFormat) -> Result<StacktraceEntry> {
+        let re = format.get_regex_for_stacktrace_entry();
 
         let Some(cap) = re.captures(entry) else {
-            return Err(Error::Casr(format!("{PARSE_STACK_FRAME_ERR_PREFIX}{entry}")));
+            return Err(Error::Casr(format!("Couldn't parse stacktrace line: {entry}")));
         };
+
+        let get_group_by_name_as_str = |name| cap.name(name).map(|m| m.as_str());
 
         let mut stentry = StacktraceEntry::default();
 
-        if let Some(file) = cap.name("file").map(|m| m.as_str().to_string()) {
-            let Some(line) = cap.name("line").and_then(|m| m.as_str().parse::<u64>().ok()) else {
-                return Err(Error::Casr(format!("Couldn't parse stacktrace line num: {entry}")));
-            };
-            stentry.debug.file = file;
-            stentry.debug.line = line;
+        if let Some(file) = get_group_by_name_as_str("file") {
+            stentry.debug.file = file.to_string();
         }
 
-        if let Some(num) = cap.name("address").map(|m| m.as_str()) {
-            if let Ok(address) = u64::from_str_radix(num, 16) {
-                stentry.address = address;
-            } else {
-                return Err(Error::Casr(format!("Couldn't parse address: {num}")));
+        if let Some(line) = get_group_by_name_as_str("line") {
+            match line.parse::<u64>() {
+                Ok(parsed_line) if Regex::new(r"^\d+$").unwrap().is_match(line) => stentry.debug.line = parsed_line,
+                _ => return Err(Error::Casr(format!("Couldn't parse stacktrace line num: {entry}")))
             }
         }
 
-        stentry.function = cap.get(1).unwrap().as_str().to_string();
+        if let (Some(base), Some(offset)) = (get_group_by_name_as_str("base"), get_group_by_name_as_str("offset")) {
+            let parse_hex = |s| Regex::new(r"^0x([\da-fA-F]+)$")
+                .unwrap()
+                .captures(s)
+                .and_then(|c| c.get(1))
+                .and_then(|m| u64::from_str_radix(m.as_str(), 16).ok());
+
+            stentry.address = (|| {
+                if let (Some(base), Some(offset)) = (parse_hex(base), parse_hex(offset)) {
+                    if let Some(address) = base.checked_add(offset) {
+                        return Ok(address)
+                    }
+                }
+
+                return Err(Error::Casr(format!("Couldn't parse address: {base} + {offset}")));
+            })()?;
+        }
+
+
+        if let Some(function) = get_group_by_name_as_str("function") {
+            let mut function = function.to_string();
+            if let Some(params) = get_group_by_name_as_str("params") {
+                function.push_str(params)
+            }
+
+            stentry.function = function;
+        }
 
         Ok(stentry)
     }
@@ -49,12 +92,12 @@ impl CSharpStacktrace {
 
 impl ParseStacktrace for CSharpStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
-        let re = Regex::new(r"(?m)^Unhandled ([Ee])xception(:\n|\. )(?:.|\n)+?((?:\n[^\S\n]*(?:at.+|--- End of inner exception stack trace ---))+)$").unwrap();
+        let re = Regex::new(r"(?m)^Unhandled ([Ee])xception(:\n|\. )(?:.|\n)+?((?:\n\s*(?:at [\S ]+|--- End of inner exception stack trace ---))+)$").unwrap();
 
         let Some(cap) = re.captures(stream).and_then(|cap|
             ((cap.get(1).unwrap().as_str() == "E") == (cap.get(2).unwrap().as_str() == ":\n")).then_some(cap)
         ) else {
-            return Err(Error::Casr("Couldn't find stacktrace".to_string()));
+            return Err(Error::Casr("The stacktrace format is not recognized".to_string()));
         };
 
         Ok(cap
@@ -68,40 +111,38 @@ impl ParseStacktrace for CSharpStacktrace {
     }
 
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
-        match Self::parse_stacktrace_entry(entry, true) {
-            Err(Error::Casr(ref s)) if s.starts_with(PARSE_STACK_FRAME_ERR_PREFIX) => Self::parse_stacktrace_entry(entry, false),
-            r @ _ => r
-        }
+        Self::parse_stacktrace_entry(entry, StacktraceFormat::get_format_by_stacktrace_entry(entry)?)
     }
 
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
-        let iter = entries
+        let mut iter = entries
             .iter()
-            .scan((true, false), |(cancel_skip, skip), s| {
+            .scan((true, false), |(first_block, skip), s| {
                 // Skipping all blocks consisting of "--- End of inner exception stack trace ---"
                 // and one stack frame after each such block, except for the first block if entries start with it.
-                let not_stack_frame = s == "--- End of inner exception stack trace ---";
+                let not_stack_trace_entry = s == "--- End of inner exception stack trace ---";
 
-                if not_stack_frame || *skip {
-                    *skip = not_stack_frame;
+                if not_stack_trace_entry || *skip {
+                    *skip = not_stack_trace_entry;
 
-                    if !*cancel_skip || not_stack_frame {
+                    if !*first_block || not_stack_trace_entry {
                         return Some("");
                     }
                 }
 
-                *cancel_skip = false;
+                *first_block = false;
 
                 Some(s)
             })
-            .filter(|&s| !s.is_empty());
+            .filter(|&s| !s.is_empty()).peekable();
 
-        let re_mono = Regex::new(r"^at (?:\(.+\) )?(.+?) ?\(.*\) (?:<0x\w+.+>|\[\w+]) in (?:<\w+>|.+):\w+$").unwrap();
-        let use_mono_format = iter.clone().all(|s| re_mono.captures(s).is_some());
+        if let Some(s) = iter.peek() {
+            let f = StacktraceFormat::get_format_by_stacktrace_entry(s)?;
 
-        iter
-            .map(|s| Self::parse_stacktrace_entry(s, use_mono_format))
-            .collect()
+            return iter.map(|s| Self::parse_stacktrace_entry(s, f)).collect()
+        }
+
+        return std::iter::empty::<Result<StacktraceEntry>>().collect();
     }
 }
 
@@ -110,19 +151,21 @@ pub struct CSharpException;
 
 impl Exception for CSharpException {
     fn parse_exception(stream: &str) -> Option<ExecutionClass> {
-        let re_mono = Regex::new(r"(?m)^Unhandled Exception:\n((?:.|\n)+?(?: ---> (?:.|\n)+?)*?)\n[^\S\n]*(at.+|--- End of inner exception stack trace ---)$").unwrap();
-        let re_dotnet = Regex::new(r"(?m)^Unhandled exception\. ((?:.|\n)+?(?:\n ---> (?:.|\n)+?)*?)\n[^\S\n]*(at.+|--- End of inner exception stack trace ---)$").unwrap();
+        let re_mono = Regex::new(r"(?m)^Unhandled Exception:\n((?:.|\n)+?(?: ---> (?:.|\n)+?)*?)\n\s*(?:at .+|--- End of inner exception stack trace ---)$").unwrap();
+        let re_dotnet = Regex::new(r"(?m)^Unhandled exception\. ((?:.|\n)+?(?:\n ---> (?:.|\n)+?)*?)\n\s*(?:at .+|--- End of inner exception stack trace ---)$").unwrap();
 
         let description = re_mono.captures(stream)
-            .or (re_dotnet.captures(stream))?
+            .or(re_dotnet.captures(stream))?
             .get(1)?
             .as_str();
 
-        let v: Vec<&str> = description.trim_start().rsplit_once(" ---> ")
+        let (exception, message) = description
+            .trim_start()
+            .rsplit_once(" ---> ")
             .map_or(description, |(_, s)| s)
-            .splitn(2, ": ")
-            .collect();
+            .split_once(": ")
+            .unwrap();
 
-        Some(ExecutionClass { short_description: v[0].to_string(), description: v.get(1)?.to_string(), ..ExecutionClass::default()})
+        Some(ExecutionClass { short_description: exception.to_string(), description: message.to_string(), ..ExecutionClass::default()})
     }
 }
