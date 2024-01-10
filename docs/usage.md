@@ -236,13 +236,13 @@ Tool for clustering CASR reports
       -u, --update <NEW_DIR> <OLD_DIR>
               Update clusters from OLD_DIR using CASR reports from NEW_DIR
           --inner-strategy <STRATEGY>
-              Strategy for inner cluster choosing when updating [default: Dist] [possible
+              Strategy for inner cluster choosing when updating [default: Diam] [possible
               values: Diam, Dist]
           --outer-strategy <STRATEGY>
-              Strategy for outer cluster choosing when updating [default: Dist] [possible
+              Strategy for outer cluster choosing when updating [default: Diam] [possible
               values: Delta, Diam, Dist]
           --tolerance-level <LEVEL>
-              Cluster tolerance level to new CASR reports [default: Loyal] [possible values:
+              Cluster tolerance level to new CASR reports [default: Soft] [possible values:
               Loyal, Soft, Hard]
       -e, --estimate <DIR>
               Calculate silhouette score for clustering results

@@ -625,7 +625,7 @@ fn main() -> Result<()> {
                 .value_name("STRATEGY")
                 .action(ArgAction::Set)
                 .value_parser(["Diam", "Dist"])
-                .default_value("Dist")
+                .default_value("Diam")
                 .help("Strategy for inner cluster choosing when updating"),
         )
         .arg(
@@ -634,7 +634,7 @@ fn main() -> Result<()> {
                 .value_name("STRATEGY")
                 .action(ArgAction::Set)
                 .value_parser(["Delta", "Diam", "Dist"])
-                .default_value("Dist")
+                .default_value("Diam")
                 .help("Strategy for outer cluster choosing when updating"),
         )
         .arg(
@@ -643,7 +643,7 @@ fn main() -> Result<()> {
                 .value_name("LEVEL")
                 .action(ArgAction::Set)
                 .value_parser(["Loyal", "Soft", "Hard"])
-                .default_value("Loyal")
+                .default_value("Soft")
                 .help("Cluster tolerance level to new CASR reports")
         )
         .arg(

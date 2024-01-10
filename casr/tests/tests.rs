@@ -2751,21 +2751,6 @@ fn test_casr_cluster_u() {
     assert_eq!(clusters_cnt, 1, "Clusters count mismatch.");
 
     let re = Regex::new(
-        r"Number of reports before crashline deduplication in new clusters: (?P<before>\d+)",
-    )
-    .unwrap();
-    let before_cnt = re
-        .captures(&res)
-        .unwrap()
-        .name("before")
-        .map(|x| x.as_str())
-        .unwrap()
-        .parse::<u32>()
-        .unwrap();
-
-    assert_eq!(before_cnt, 2, "Before count mismatch.");
-
-    let re = Regex::new(
         r"Number of reports after crashline deduplication in new clusters: (?P<after>\d+)",
     )
     .unwrap();
