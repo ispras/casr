@@ -537,18 +537,18 @@ pub fn save_clusters(clusters: &HashMap<usize, Cluster>, dir: &Path) -> Result<(
     Ok(())
 }
 
-/// Save invalid CASR reports to given directory
+/// Save CASR reports to given directory
 ///
 /// # Arguments
 ///
-/// * `badreports` - A vector of invalid CASR reports
+/// * `reports` - A vector of CASR reports
 ///
 /// * `dir` - out directory
-pub fn save_badreports(badreports: Vec<PathBuf>, dir: String) -> Result<()> {
+pub fn save_reports(reports: Vec<PathBuf>, dir: String) -> Result<()> {
     if !Path::new(&dir).exists() {
         fs::create_dir_all(&dir)?;
     }
-    for report in badreports {
+    for report in reports {
         fs::copy(
             &report,
             format!("{}/{}", dir, &report.file_name().unwrap().to_str().unwrap()),

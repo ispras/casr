@@ -339,6 +339,12 @@ If there are several `Inner` or `Outer` clusters for the report we choose the
 
 N.B. `Delta` strategy is a nonsensical strategy in `Inner` case
 
+Example:
+
+    $ casr-cluster -c casr/tests/casr_tests/casrep/test_clustering_small out
+    $ rm -f out/cl9/40.casrep out/cl7/20.casrep && rm -rf out/cl8 && mv out/cl9 out/cl8
+    $ casr-cluster -u casr/tests/casr_tests/casrep/test_clustering_small out
+
 ## casr-cli
 
 App provides text-based user interface to view CASR reports, prints joint statistics for

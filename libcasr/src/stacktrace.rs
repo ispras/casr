@@ -100,8 +100,8 @@ impl Cluster {
         crashlines: Vec<String>,
     ) -> Self {
         let mut unique_crashlines: HashMap<String, usize> = HashMap::new();
-        for (i, crashline) in crashlines.iter().enumerate() {
-            unique_crashlines.insert(crashline.clone(), i);
+        for (i, crashline) in crashlines.into_iter().enumerate() {
+            unique_crashlines.insert(crashline, i);
         }
         Cluster {
             number,
@@ -146,8 +146,7 @@ impl Cluster {
         self.paths.push(path);
         self.stacktraces.push(stacktrace);
         self.diam = None;
-        self.crashlines
-            .insert(crashline.to_string(), self.paths.len() - 1);
+        self.crashlines.insert(crashline, self.paths.len() - 1);
         true
     }
     /// Get cluster diameter
@@ -218,11 +217,11 @@ impl Cluster {
         stacktraces1.append(&mut stacktraces2);
         diam(&stacktraces1) < THRESHOLD
     }
-    /// Convert cluster to iterator
-    pub fn reports(&self) -> Vec<(PathBuf, Stacktrace, String)> {
-        let mut reports: Vec<(PathBuf, Stacktrace, String)> = Vec::new();
+    /// Convert cluster to vector of reports
+    pub fn reports(&self) -> Vec<ReportInfo> {
+        let mut reports: Vec<ReportInfo> = Vec::new();
         let mut crashlines = self.crashlines.clone();
-        for i in 0..self.paths.len() {
+        for (i, path) in self.paths.iter().enumerate() {
             // Get crashline for cur casrep
             let mut crashline = String::new();
             for (line, &number) in &crashlines {
@@ -234,11 +233,7 @@ impl Cluster {
             // Drop cur crashline from crashlines
             crashlines.remove(&crashline);
             // Update results
-            reports.push((
-                self.paths[i].clone(),
-                self.stacktraces[i].clone(),
-                crashline,
-            ));
+            reports.push((path.clone(), (self.stacktraces[i].clone(), crashline)));
         }
         reports
     }

@@ -62,7 +62,7 @@ fn make_clusters(
 
     // Handle bad reports
     if !badreports.is_empty() {
-        util::save_badreports(badreports, format!("{}/clerr", &outpath.display()))?;
+        util::save_reports(badreports, format!("{}/clerr", &outpath.display()))?;
     }
 
     if casreps.len() < 2 {
@@ -268,7 +268,7 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 ///
 /// * `newpath` - path to directory with new CASR reports
 ///
-/// * `oldpath` - target directory for exiting clusters
+/// * `oldpath` - target directory for existing clusters
 ///
 /// * `jobs` - number of jobs for cluster updating process
 ///
@@ -439,7 +439,7 @@ fn update_clusters(
 ///
 /// Number of moved to old clusters CASR reports
 /// Number of removed by crashline deduplication CASR reports
-pub fn merge_clusters(
+fn merge_clusters(
     olds: HashMap<usize, Cluster>,
     news: &mut HashMap<usize, Cluster>,
     dir: &Path,
@@ -458,7 +458,7 @@ pub fn merge_clusters(
                 continue;
             }
             // Copy casreps from new to old
-            for (casrep, stacktrace, crashline) in new.reports() {
+            for (casrep, (stacktrace, crashline)) in new.reports() {
                 // Update cluster (and dedup crashline)
                 if !old.insert(
                     casrep.to_path_buf(),
