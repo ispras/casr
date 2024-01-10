@@ -365,7 +365,7 @@ impl CrashLineExt for Stacktrace {
         let mut trace = self.clone();
         trace.filter();
 
-        let Some(crash_entry) = trace.get(0) else {
+        let Some(crash_entry) = trace.first() else {
             return Err(Error::Casr(
                 "No stack trace entries after filtering".to_string(),
             ));
