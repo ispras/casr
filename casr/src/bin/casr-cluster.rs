@@ -503,7 +503,7 @@ fn merge_clusters(
 /// # Return value
 ///
 /// Silhouette coefficient
-fn avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
+fn calc_avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
     // Get cluster dirs
     let mut dirs: Vec<PathBuf> = fs::read_dir(dir)
         .unwrap()
@@ -538,16 +538,8 @@ fn avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
     if size == 0 {
         bail!("{} valid reports, nothing to calculate...", size);
     }
-    // Init sil sum
-    let mut sum = 0f64;
-    // Calculate silhouette coefficient for each casrep
-    for i in 0..clusters.len() {
-        for num in 0..clusters[i].len() {
-            let sil = sil_coef(num, i, &clusters);
-            sum += sil;
-        }
-    }
-    Ok(sum / size as f64)
+    let avg_sil = avg_sil_ceof(&clusters, size);
+    Ok(avg_sil)
 }
 
 fn main() -> Result<()> {
@@ -781,11 +773,11 @@ fn main() -> Result<()> {
         if before != after {
             println!("Number of reports after crashline deduplication in new clusters: {after}");
         }
-        let sil = avg_sil(paths[1], jobs)?;
+        let sil = calc_avg_sil(paths[1], jobs)?;
         println!("Cluster silhouette score: {sil}");
     } else if matches.contains_id("estimate") {
         let path: &PathBuf = matches.get_one::<PathBuf>("estimate").unwrap();
-        let sil = avg_sil(path, jobs)?;
+        let sil = calc_avg_sil(path, jobs)?;
         println!("Cluster silhouette score: {sil}");
     }
 

@@ -642,7 +642,7 @@ fn sil_subcoef_b(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
 /// # Return value
 ///
 /// Silhouette coefficient
-pub fn sil_coef(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
+fn sil_coef(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
     if clusters[i].len() != 1 {
         let a = sil_subcoef_a(num, &clusters[i]);
         let b = sil_subcoef_b(num, i, clusters);
@@ -650,6 +650,31 @@ pub fn sil_coef(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
     } else {
         0f64
     }
+}
+
+/// Get average silhouette coefficient calculating for given stacktraces
+/// Read more: https://en.wikipedia.org/wiki/Silhouette_(clustering)#Definition
+///
+/// # Arguments
+///
+/// * `clusters` - a vector of clusters represented as slice of `Stacktrace` structures
+///
+/// * `size` - total amount of elements in clusters
+///
+/// # Return value
+///
+/// Average silhouette coefficient
+pub fn avg_sil_ceof(clusters: &[Vec<Stacktrace>], size: usize) -> f64 {
+    // Init sil sum
+    let mut sum = 0f64;
+    // Calculate silhouette coefficient for each casrep
+    for i in 0..clusters.len() {
+        for num in 0..clusters[i].len() {
+            let sil = sil_coef(num, i, clusters);
+            sum += sil;
+        }
+    }
+    sum / size as f64
 }
 
 /// Stack trace filtering trait.
