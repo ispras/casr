@@ -42,6 +42,7 @@ fn main() -> Result<()> {
             .value_parser(clap::value_parser!(PathBuf))
             .help("Path to input core file")
             .required_if_eq("mode","offline")
+            .required_unless_present("mode")
             .action(ArgAction::Set))
         .arg(Arg::new("output")
             .short('o')
