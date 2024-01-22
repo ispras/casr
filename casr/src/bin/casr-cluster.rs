@@ -287,7 +287,7 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
 ///
 /// * `input` - path to directory with new CASR reports
 ///
-/// * `input` - path to directory with previous CASR reports
+/// * `output` - path to output directory with CASR reports
 ///
 /// * `diff` - optional: path to save unique (`input` \ `output`) reports
 ///
