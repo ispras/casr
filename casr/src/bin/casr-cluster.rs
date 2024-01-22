@@ -279,7 +279,9 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
     Ok((before, after))
 }
 
-/// Merge new reports from input directory into output directory
+/// Merge unique reports from `input` directory into `output` directory.
+/// If `diff` directory is set, unique (`input` \ `output`) reports are saved
+/// in `diff` directory.
 ///
 /// # Arguments
 ///
@@ -287,10 +289,12 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
 ///
 /// * `output` - path to output directory with CASR reports
 ///
+/// * `diff` - optional: path to save unique (`input` \ `output`) reports
+///
 /// # Return value
 ///
 /// Number of merged reports
-fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
+fn merge_or_diff(input: &Path, output: &Path, diff: Option<&Path>) -> Result<u64> {
     let dir = fs::read_dir(output).with_context(|| {
         format!(
             "Error occurred while opening directory with CASR reports. Directory: {}",
@@ -316,12 +320,19 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
         )
     })?;
 
+    let save_dir = if let Some(diff) = diff {
+        fs::create_dir(diff)?;
+        diff
+    } else {
+        output
+    };
+
     let mut new: u64 = 0;
     for entry in dir.flatten() {
         if entry.path().extension().is_some() && entry.path().extension().unwrap() == "casrep" {
             if let Ok(trace) = stacktrace(entry.path().as_path()) {
                 if mainhash.insert(trace) {
-                    let target = Path::new(&output).join(entry.file_name());
+                    let target = Path::new(&save_dir).join(entry.file_name());
                     if target.exists() {
                         eprintln!(
                             "File with name {} already exists in OUTPUT_DIR.",
@@ -409,6 +420,18 @@ fn main() -> Result<()> {
                 ),
         )
         .arg(
+            Arg::new("diff")
+                .long("diff")
+                .action(ArgAction::Set)
+                .num_args(3)
+                .value_parser(clap::value_parser!(PathBuf))
+                .value_names(["NEW_DIR", "PREV_DIR", "DIFF_DIR"])
+                .help(
+                    "Compute report sets difference NEW_DIR \\ PREV_DIR. \
+                    Copy new CASR reports from NEW_DIR into DIFF_DIR.",
+                ),
+        )
+        .arg(
             Arg::new("ignore")
                 .long("ignore")
                 .action(ArgAction::Set)
@@ -474,11 +497,19 @@ fn main() -> Result<()> {
         println!("Number of reports after deduplication: {after}");
     } else if matches.contains_id("merge") {
         let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("merge").unwrap().collect();
-        let new = merge_dirs(paths[0], paths[1])?;
+        let new = merge_or_diff(paths[0], paths[1], None)?;
         println!(
             "Merged {} new reports into {} directory",
             new,
             paths[1].display()
+        );
+    } else if matches.contains_id("diff") {
+        let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("diff").unwrap().collect();
+        let new = merge_or_diff(paths[0], paths[1], Some(paths[2]))?;
+        println!(
+            "Diff of {} new reports is saved into {} directory",
+            new,
+            paths[2].display()
         );
     }
 

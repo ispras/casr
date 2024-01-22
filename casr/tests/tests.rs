@@ -2603,9 +2603,11 @@ fn test_casr_cluster_d_and_m() {
     let paths = [
         abs_path("tests/casr_tests/casrep/dedup/in"),
         abs_path("tests/tmp_tests_casr/dedup_out"),
+        abs_path("tests/tmp_tests_casr/dedup_diff"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::remove_dir_all(&paths[2]);
 
     let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
         .args(["-d", &paths[0], &paths[1]])
@@ -2648,7 +2650,24 @@ fn test_casr_cluster_d_and_m() {
         "Something went wrong while merging directories"
     );
 
-    let _ = std::fs::remove_dir_all(&paths[1]);
+    // Test --diff option
+    dirvec = match fs::read_dir(&paths[1]) {
+        Ok(vec) => vec,
+        Err(why) => {
+            panic!("{:?}", why.kind());
+        }
+    };
+    let casrep = dirvec.next().unwrap().unwrap().path();
+    let _ = std::fs::remove_file(casrep);
+    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+        .args(["--diff", &paths[0], &paths[1], &paths[2]])
+        .output()
+        .expect("failed to start casr-cluster");
+    let out = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        out.contains("Diff of 1 new reports") && (fs::read_dir(&paths[2]).unwrap().count() == 1),
+        "Something went wrong while diffing directories"
+    );
 }
 
 #[test]
