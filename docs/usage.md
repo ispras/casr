@@ -170,7 +170,7 @@ Run casr-java:
 
 ## casr-js
 
-Create CASR reports (.casrep) from JavaScript reports
+Create CASR reports (.casrep) from JavaScript crash reports
 
     Usage: casr-js [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
 
@@ -178,16 +178,16 @@ Create CASR reports (.casrep) from JavaScript reports
       [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>       Path to save report. Path can be a directory, then report
-                                  name is generated
-          --stdout                Print CASR report to stdout
-          --stdin <FILE>          Stdin file for program
-      -t, --timeout <SECONDS>     Timeout (in seconds) for target execution, 0 value means
-                                  that timeout is disabled [default: 0]
-          --ignore <FILE>         File with regular expressions for functions and file paths
-                                  that should be ignored
-      -h, --help                  Print help
-      -V, --version               Print version
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                               is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                               timeout is disabled [default: 0]
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                               should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
 
 Run casr-js:
 
@@ -261,6 +261,8 @@ Tool for clustering CASR reports
       -m, --merge <INPUT_DIR> <OUTPUT_DIR>
               Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from INPUT_DIR will be
               added to OUTPUT_DIR.
+          --diff <NEW_DIR> <PREV_DIR> <DIFF_DIR>
+              Compute NEW_DIR \ PREV_DIR. Save new CASR reports from NEW_DIR into DIFF_DIR.
           --ignore <FILE>
               File with regular expressions for functions and file paths that should be
               ignored
