@@ -2664,7 +2664,6 @@ fn test_casr_cluster_d_and_m() {
         .output()
         .expect("failed to start casr-cluster");
     let out = String::from_utf8_lossy(&output.stdout);
-    println!("{}", out);
     assert!(
         out.contains("Diff of 1 new reports") && (fs::read_dir(&paths[2]).unwrap().count() == 1),
         "Something went wrong while diffing directories"

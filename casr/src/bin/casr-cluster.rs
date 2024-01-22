@@ -279,26 +279,26 @@ fn deduplication(indir: &Path, outdir: Option<PathBuf>, jobs: usize) -> Result<(
     Ok((before, after))
 }
 
-/// Merge unique reports from `new` directory into `prev` directory.
-/// If `diff` directory is set unique (`new` \ `prev`) reports are saved
+/// Merge unique reports from `input` directory into `output` directory.
+/// If `diff` directory is set, unique (`input` \ `output`) reports are saved
 /// in `diff` directory.
 ///
 /// # Arguments
 ///
-/// * `new` - path to directory with new CASR reports
+/// * `input` - path to directory with new CASR reports
 ///
-/// * `prev` - path to directory with previous CASR reports
+/// * `input` - path to directory with previous CASR reports
 ///
-/// * `diff` - optional: path to save unique (`new` \ `prev`) reports
+/// * `diff` - optional: path to save unique (`input` \ `output`) reports
 ///
 /// # Return value
 ///
 /// Number of merged reports
-fn merge_or_diff(new: &Path, prev: &Path, diff: Option<&Path>) -> Result<u64> {
-    let dir = fs::read_dir(prev).with_context(|| {
+fn merge_or_diff(input: &Path, output: &Path, diff: Option<&Path>) -> Result<u64> {
+    let dir = fs::read_dir(output).with_context(|| {
         format!(
             "Error occurred while opening directory with CASR reports. Directory: {}",
-            prev.display()
+            output.display()
         )
     })?;
 
@@ -313,10 +313,10 @@ fn merge_or_diff(new: &Path, prev: &Path, diff: Option<&Path>) -> Result<u64> {
         }
     }
 
-    let dir = fs::read_dir(new).with_context(|| {
+    let dir = fs::read_dir(input).with_context(|| {
         format!(
             "Error occurred while opening directory with CASR reports. Directory: {}",
-            new.display()
+            input.display()
         )
     })?;
 
@@ -324,7 +324,7 @@ fn merge_or_diff(new: &Path, prev: &Path, diff: Option<&Path>) -> Result<u64> {
         fs::create_dir(diff)?;
         diff
     } else {
-        prev
+        output
     };
 
     let mut new: u64 = 0;
@@ -427,8 +427,8 @@ fn main() -> Result<()> {
                 .value_parser(clap::value_parser!(PathBuf))
                 .value_names(["NEW_DIR", "PREV_DIR", "DIFF_DIR"])
                 .help(
-                    "Compute NEW_DIR \\ PREV_DIR. Save new CASR reports from \
-                    NEW_DIR into DIFF_DIR.",
+                    "Compute report sets difference NEW_DIR \\ PREV_DIR. \
+                    Copy new CASR reports from NEW_DIR into DIFF_DIR.",
                 ),
         )
         .arg(

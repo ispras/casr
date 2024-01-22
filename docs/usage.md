@@ -262,7 +262,8 @@ Tool for clustering CASR reports
               Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from INPUT_DIR will be
               added to OUTPUT_DIR.
           --diff <NEW_DIR> <PREV_DIR> <DIFF_DIR>
-              Compute NEW_DIR \ PREV_DIR. Save new CASR reports from NEW_DIR into DIFF_DIR.
+              Compute report sets difference NEW_DIR \ PREV_DIR. Copy new CASR reports from
+              NEW_DIR into DIFF_DIR.
           --ignore <FILE>
               File with regular expressions for functions and file paths that should be
               ignored
