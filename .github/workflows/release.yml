@@ -259,5 +259,5 @@ jobs:
           name: ${{ fromJson(needs.host.outputs.val).announcement_title }}
           body: ${{ fromJson(needs.host.outputs.val).announcement_github_body }}
           prerelease: ${{ fromJson(needs.host.outputs.val).announcement_is_prerelease }}
-          # Upload only binary release and checksum rot it.
+          # Upload only binary release and checksum fot it.
           artifacts: "artifacts/casr-x86_64-unknown-linux-gnu.tar.xz*"
