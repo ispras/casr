@@ -2,6 +2,22 @@
 version = "2.10.0"
 authors = ["Andrey Fedotov  <splashgitar@gmail.com>", "Alexey Vishnyakov <pmvishnya@gmail.com>", "Georgy Savidov <avgor46@ispras.ru>", "Ilya Yegorov <Yegorov_Ilya@ispras.ru>", "Darya Parygina <pa_darochek@ispras.ru>"]
 
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.8.0"
+# CI backends to support
+ci = ["github"]
+# The installers to generate for each app
+installers = []
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = ["x86_64-unknown-linux-gnu"]
+# Publish jobs to run in CI
+pr-run-mode = "skip"
+# Whether to pass --all-features to cargo build
+all-features = true
+allow-dirty = ["ci"]
+
 [workspace]
 resolver = "2"
 members = ["casr", "libcasr"]
@@ -9,3 +25,7 @@ members = ["casr", "libcasr"]
 [profile.release]
 lto = true
 opt-level = 3
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
