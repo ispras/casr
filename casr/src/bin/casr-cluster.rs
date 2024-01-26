@@ -274,12 +274,6 @@ fn merge_dirs(input: &Path, output: &Path) -> Result<u64> {
 ///
 /// * `dedup` - deduplicate casrep by crashline for each cluster, if true
 ///
-/// * `inner_strategy` - strategy for "inner" report case
-///
-/// * `outer_strategy` - strategy for "outer" report case
-///
-/// * `tolerance_level` - cluster tolerance level to "outer" reports
-///
 /// # Return value
 ///
 /// * Number of casreps added to old clusters
@@ -293,9 +287,6 @@ fn update_clusters(
     oldpath: &Path,
     jobs: usize,
     dedup: bool,
-    inner_strategy: AccumStrategy,
-    outer_strategy: AccumStrategy,
-    tolerance_level: ToleranceLevel,
 ) -> Result<(usize, usize, usize, usize, usize, usize)> {
     // Get new casreps
     let casreps = util::get_reports(newpath)?;
@@ -338,12 +329,10 @@ fn update_clusters(
     for (casrep, (stacktrace, crashline)) in casreps {
         // list of "inner" clusters for casrep
         let mut inners: Vec<(usize, f64)> = Vec::new();
-        // list of "outer" clusters for casrep
-        let mut outers: Vec<(usize, f64)> = Vec::new();
         // Checker if casrep is duplicate of someone else
         let mut dup = false;
         for cluster in clusters.values_mut() {
-            let relation = cluster.relation(&stacktrace, inner_strategy, outer_strategy);
+            let relation = cluster.relation(&stacktrace);
             match relation {
                 Relation::Dup => {
                     dup = true;
@@ -353,12 +342,7 @@ fn update_clusters(
                 Relation::Inner(measure) => {
                     inners.push((cluster.number, measure));
                 }
-                Relation::Outer(measure) => {
-                    if let ToleranceLevel::Loyal = tolerance_level {
-                        outers.push((cluster.number, measure));
-                    }
-                }
-                Relation::Oot => {
+                Relation::Outer => {
                     continue;
                 }
             }
@@ -368,10 +352,8 @@ fn update_clusters(
             continue;
         } else if !inners.is_empty() {
             inners.iter().min_by(|a, b| a.1.total_cmp(&b.1)).unwrap().0
-        } else if !outers.is_empty() {
-            outers.iter().min_by(|a, b| a.1.total_cmp(&b.1)).unwrap().0
         } else {
-            // Out of threshold
+            // Outer
             deviants.push((casrep, (stacktrace.to_vec(), crashline.to_string())));
             continue;
         };
@@ -403,16 +385,14 @@ fn update_clusters(
     let (result, before, after) = if !deviants.is_empty() {
         // Get clusters from deviants
         let (mut deviant_clusters, mut before, mut after) = gen_clusters(&deviants, max, dedup)?;
-        if let ToleranceLevel::Soft = tolerance_level {
-            // Merge old and new clusters
-            let (moved, removed) = merge_clusters(clusters, &mut deviant_clusters, oldpath, dedup)?;
-            // Adjust stat
-            if moved != 0 || removed != 0 {
-                added += moved;
-                deduplicated += removed;
-                before = 0; // Impossible to know (proofed by @hkctkuy)
-                after -= moved + removed;
-            }
+        // Merge old and new clusters
+        let (moved, removed) = merge_clusters(clusters, &mut deviant_clusters, oldpath, dedup)?;
+        // Adjust stat
+        if moved != 0 || removed != 0 {
+            added += moved;
+            deduplicated += removed;
+            before = 0; // Impossible to know (proofed by @hkctkuy)
+            after -= moved + removed;
         }
         // Save deviant clusters
         util::save_clusters(&deviant_clusters, oldpath)?;
@@ -620,33 +600,6 @@ fn main() -> Result<()> {
                 ),
         )
         .arg(
-            Arg::new("inner-strategy")
-                .long("inner-strategy")
-                .value_name("STRATEGY")
-                .action(ArgAction::Set)
-                .value_parser(["Diam", "Dist"])
-                .default_value("Diam")
-                .help("Strategy for inner cluster choosing when updating"),
-        )
-        .arg(
-            Arg::new("outer-strategy")
-                .long("outer-strategy")
-                .value_name("STRATEGY")
-                .action(ArgAction::Set)
-                .value_parser(["Delta", "Diam", "Dist"])
-                .default_value("Diam")
-                .help("Strategy for outer cluster choosing when updating"),
-        )
-        .arg(
-            Arg::new("tolerance-level")
-                .long("tolerance-level")
-                .value_name("LEVEL")
-                .action(ArgAction::Set)
-                .value_parser(["Loyal", "Soft", "Hard"])
-                .default_value("Soft")
-                .help("Cluster tolerance level to new CASR reports")
-        )
-        .arg(
             Arg::new("estimate")
                 .short('e')
                 .long("estimate")
@@ -731,33 +684,8 @@ fn main() -> Result<()> {
     } else if matches.contains_id("update") {
         let paths: Vec<&PathBuf> = matches.get_many::<PathBuf>("update").unwrap().collect();
 
-        let inner_strategy = matches.get_one::<String>("inner-strategy").unwrap();
-        let inner_strategy = match inner_strategy.as_str() {
-            "Diam" => AccumStrategy::Diam,
-            _ => AccumStrategy::Dist,
-        };
-        let outer_strategy = matches.get_one::<String>("outer-strategy").unwrap();
-        let outer_strategy = match outer_strategy.as_str() {
-            "Delta" => AccumStrategy::Delta,
-            "Diam" => AccumStrategy::Diam,
-            _ => AccumStrategy::Dist,
-        };
-        let tolerance_level = matches.get_one::<String>("tolerance-level").unwrap();
-        let tolerance_level = match tolerance_level.as_str() {
-            "Loyal" => ToleranceLevel::Loyal,
-            "Soft" => ToleranceLevel::Soft,
-            _ => ToleranceLevel::Hard,
-        };
-
-        let (added, duplicates, deduplicated, result, before, after) = update_clusters(
-            paths[0],
-            paths[1],
-            jobs,
-            dedup_crashlines,
-            inner_strategy,
-            outer_strategy,
-            tolerance_level,
-        )?;
+        let (added, duplicates, deduplicated, result, before, after) =
+            update_clusters(paths[0], paths[1], jobs, dedup_crashlines)?;
         println!("Number of casreps added to old clusters: {added}");
         println!("Number of duplicates: {duplicates}");
         if deduplicated != 0 {

@@ -48,33 +48,8 @@ pub enum Relation {
     Dup,
     /// The CASR report is "inside" the cluster with some proximity measure
     Inner(f64),
-    /// The CASR report is "outside" the cluster with some proximity measure
-    Outer(f64),
-    /// The CASR report is out of threshold
-    Oot,
-}
-
-/// Cluster accumulation strategy
-#[derive(Clone, Copy, Debug)]
-pub enum AccumStrategy {
-    /// Argmin (diam (cluster + {new}) - diam (cluster))
-    Delta,
-    /// Argmin diam (cluster + {new})
-    Diam,
-    /// Argmin dist (cluster, {new})
-    Dist,
-}
-
-/// Cluster tolerance level to new CASR reports
-#[derive(Clone, Copy, Debug)]
-pub enum ToleranceLevel {
-    /// May insert any "Inner" and "Outer" CASR reports
-    Loyal,
-    /// May insert only "Inner" CASR reports
-    Hard,
-    /// May insert any "Inner" CASR reports
-    /// But "Outers" may be added only as subclusters after their clustering
-    Soft,
+    /// The CASR report is "outside" the cluster
+    Outer,
 }
 
 /// Structure provides an abstraction for cluster with CASR reports
@@ -162,31 +137,18 @@ impl Cluster {
     ///
     /// * `new` - new report stacktrace
     ///
-    /// * `inner_strategy` - cluster accumulation strategy if `new` is "inner"
-    ///
-    /// * `inner_strategy` - cluster accumulation strategy if `new` is "outer"
-    ///
     /// # Return value
     ///
     /// `Relation` enum with proximity measure according specified strategy
-    pub fn relation(
-        &mut self,
-        new: &Stacktrace,
-        inner_strategy: AccumStrategy,
-        outer_strategy: AccumStrategy,
-    ) -> Relation {
+    pub fn relation(&mut self, new: &Stacktrace) -> Relation {
         let diam = self.diam();
-        let mut min = MAX;
         let mut max = 0f64;
         for stacktrace in self.stacktraces() {
             let dist = 1.0 - similarity(new, stacktrace);
             if dist == 0.0 {
                 return Relation::Dup;
             } else if dist > THRESHOLD {
-                return Relation::Oot;
-            }
-            if dist < min {
-                min = dist;
+                return Relation::Outer;
             }
             if dist > max {
                 max = dist;
@@ -194,20 +156,10 @@ impl Cluster {
         }
         if diam >= max {
             // Inner
-            let rel = match inner_strategy {
-                // Delta is a nonsensical strategy in this case
-                AccumStrategy::Diam => diam,
-                _ => min,
-            };
-            Relation::Inner(rel)
+            Relation::Inner(diam)
         } else {
             // Outer
-            let rel = match outer_strategy {
-                AccumStrategy::Diam => max,
-                AccumStrategy::Delta => max - diam,
-                AccumStrategy::Dist => min,
-            };
-            Relation::Outer(rel)
+            Relation::Outer
         }
     }
     /// Check if cluster may be merged with another one
