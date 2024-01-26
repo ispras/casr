@@ -1,9 +1,10 @@
 //! Common utility functions.
 extern crate libcasr;
 
+use libcasr::cluster::{Cluster, ReportInfo};
 use libcasr::report::CrashReport;
 use libcasr::stacktrace::{
-    Cluster, ReportInfo, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
 };
 
 use anyhow::{bail, Context, Result};

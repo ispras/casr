@@ -235,15 +235,6 @@ Tool for clustering CASR reports
               added to OUTPUT_DIR.
       -u, --update <NEW_DIR> <OLD_DIR>
               Update clusters from OLD_DIR using CASR reports from NEW_DIR
-          --inner-strategy <STRATEGY>
-              Strategy for inner cluster choosing when updating [default: Diam] [possible
-              values: Diam, Dist]
-          --outer-strategy <STRATEGY>
-              Strategy for outer cluster choosing when updating [default: Diam] [possible
-              values: Delta, Diam, Dist]
-          --tolerance-level <LEVEL>
-              Cluster tolerance level to new CASR reports [default: Soft] [possible values:
-              Loyal, Soft, Hard]
       -e, --estimate <DIR>
               Calculate silhouette score for clustering results
           --ignore <FILE>
@@ -317,27 +308,6 @@ Frames that match these regular expressions will be not considered during analys
 For `CASR_CLUSTER_UNIQUE_CRASHLINE` a `false` literal is `n`, `no`, `f`,
 `false`, `off` or `0`. An absent environment variable will also be considered as
 `false`. Anything else will considered as true.
-
-For updating clusters we use the following strategy:
-Every CASR report may be in one of several states:
- * `Duplicate` - the report is a duplicate of one from cluster,
- * `Inner` - the report is "inside" a some cluster with some proximity measure,
- * `Outer` - the report is "outside" a some cluster with some proximity measure,
- * `Out` of threshold - the report is out of threshold for any cluster.
-
-If report is `Duplicate` we do nothing.
-If report is `Oot` we perform clustering for all such reports.
-If report is `Inner` or `Outer` for a single cluster we update the cluster.
-If there are several `Inner` or `Outer` clusters for the report we choose the
-"closest" according according to one of the following strategies:
- * `Delta` - we choose cluster with minimal diameter change,
-             i.e. `Argmin (diam (cluster + {new}) - diam (cluster))`
- * `Diam` - we choose cluster with minimal diameter,
-            i.e. `Argmin diam (cluster + {new})`
- * `Dist` - we choose cluster with minimal distance between cluster and report,
-            i.e. `Argmin dist (cluster, {new})`
-
-N.B. `Delta` strategy is a nonsensical strategy in `Inner` case
 
 Example:
 

@@ -1,5 +1,5 @@
 use casr::util;
-use libcasr::{init_ignored_frames, stacktrace::*};
+use libcasr::{cluster::*, init_ignored_frames, stacktrace::*};
 
 use anyhow::{bail, Context, Result};
 use clap::{builder::FalseyValueParser, Arg, ArgAction};
@@ -70,7 +70,7 @@ fn make_clusters(
     }
 
     // Get clusters
-    let (clusters, before, after) = gen_clusters(&casreps, 0, dedup)?;
+    let (clusters, before, after) = Cluster::gen_clusters(&casreps, 0, dedup)?;
     // Save clusters
     util::save_clusters(&clusters, outpath)?;
 
@@ -384,7 +384,8 @@ fn update_clusters(
     // Handle deviant casreps
     let (result, before, after) = if !deviants.is_empty() {
         // Get clusters from deviants
-        let (mut deviant_clusters, mut before, mut after) = gen_clusters(&deviants, max, dedup)?;
+        let (mut deviant_clusters, mut before, mut after) =
+            Cluster::gen_clusters(&deviants, max, dedup)?;
         // Merge old and new clusters
         let (moved, removed) = merge_clusters(clusters, &mut deviant_clusters, oldpath, dedup)?;
         // Adjust stat
