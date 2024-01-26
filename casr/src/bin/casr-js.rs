@@ -1,10 +1,6 @@
 use casr::util;
 use libcasr::{
-    exception::Exception,
-    init_ignored_frames,
-    python::{PythonException, PythonStacktrace},
-    report::CrashReport,
-    stacktrace::*,
+    exception::Exception, init_ignored_frames, js::*, report::CrashReport, stacktrace::*,
 };
 
 use anyhow::{bail, Result};
@@ -14,9 +10,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() -> Result<()> {
-    let matches = clap::Command::new("casr-python")
+    let matches = clap::Command::new("casr-js")
         .version(clap::crate_version!())
-        .about("Create CASR reports (.casrep) from python reports")
+        .about("Create CASR reports (.casrep) from JavaScript crash reports")
         .term_width(90)
         .arg(
             Arg::new("output")
@@ -75,7 +71,7 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    init_ignored_frames!("python", "cpp");
+    init_ignored_frames!("js", "cpp");
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;
     }
@@ -93,25 +89,46 @@ fn main() -> Result<()> {
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
     // Run program.
-    let mut python_cmd = Command::new(argv[0]);
+    let mut js_cmd = Command::new(argv[0]);
     if let Some(ref file) = stdin_file {
-        python_cmd.stdin(std::fs::File::open(file)?);
+        js_cmd.stdin(std::fs::File::open(file)?);
     }
     if argv.len() > 1 {
-        python_cmd.args(&argv[1..]);
+        js_cmd.args(&argv[1..]);
     }
-    let python_result = util::get_output(&mut python_cmd, timeout, true)?;
+    let js_result = util::get_output(&mut js_cmd, timeout, true)?;
 
-    let python_stderr = String::from_utf8_lossy(&python_result.stderr);
+    let js_stderr = String::from_utf8_lossy(&js_result.stderr);
 
     // Create report.
     let mut report = CrashReport::new();
+    // Set executable path.
     report.executable_path = argv[0].to_string();
+    let mut path_to_tool = PathBuf::new();
+    path_to_tool.push(argv[0]);
     if argv.len() > 1 {
-        if let Some(fname) = Path::new(argv[0]).file_name() {
+        let fpath = Path::new(argv[0]);
+        if let Some(fname) = fpath.file_name() {
+            path_to_tool = if fname == fpath.as_os_str() {
+                let Ok(full_path_to_tool) = which::which(fname) else {
+                    bail!("{} is not found in PATH", argv[0]);
+                };
+                full_path_to_tool
+            } else {
+                fpath.to_path_buf()
+            };
+            if !path_to_tool.exists() {
+                bail!("Could not find the tool in the specified path {}", argv[0]);
+            }
             let fname = fname.to_string_lossy();
-            if fname.starts_with("python") && !fname.ends_with(".py") && argv[1].ends_with(".py") {
+            if (fname == "node" || fname == "jsfuzz") && argv[1].ends_with(".js") {
                 report.executable_path = argv[1].to_string();
+            } else if argv.len() > 2
+                && fname == "npx"
+                && argv[1] == "jazzer"
+                && argv[2].ends_with(".js")
+            {
+                report.executable_path = argv[2].to_string();
             }
         }
     }
@@ -119,64 +136,27 @@ fn main() -> Result<()> {
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
 
-    // Get python report.
-    let python_stderr_list: Vec<String> =
-        python_stderr.split('\n').map(|l| l.to_string()).collect();
-
-    let re = Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
-    if python_stderr_list.iter().any(|line| re.is_match(line)) {
-        let python_stdout = String::from_utf8_lossy(&python_result.stdout);
-        let python_stdout_list: Vec<String> =
-            python_stdout.split('\n').map(|l| l.to_string()).collect();
-
-        if let Some(report_start) = python_stdout_list
-            .iter()
-            .position(|line| line.contains("Uncaught Python exception: "))
-        {
-            // Set python report in casr report.
-            let Some(report_end) = python_stdout_list.iter().rposition(|s| !s.is_empty()) else {
-                bail!("Corrupted output: can't find stdout end");
-            };
-            let report_end = report_end + 1;
-            report.python_report = Vec::from(&python_stdout_list[report_start..report_end]);
-
-            report.stacktrace =
-                PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
-            // Get exception from python report.
-            if report.python_report.len() > 1 {
-                if let Some(exception) = PythonException::parse_exception(&report.python_report[1])
-                {
-                    report.execution_class = exception;
-                }
-            }
-        } else {
-            // Call casr-san
-            return util::call_casr_san(&matches, &argv, "casr-python");
-        }
-    } else if let Some(report_start) = python_stderr_list
-        .iter()
-        .position(|line| line.contains("Traceback "))
-    {
-        // Set python report in casr report.
-        let Some(report_end) = python_stderr_list.iter().rposition(|s| !s.is_empty()) else {
-            bail!("Corrupted output: can't find stderr end");
-        };
-        let report_end = report_end + 1;
-        report.python_report = Vec::from(&python_stderr_list[report_start..report_end]);
-
-        report.stacktrace = PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
-
-        if let Some(exception) =
-            PythonException::parse_exception(report.python_report.last().unwrap())
-        {
+    // Get JS report.
+    let js_stderr_list: Vec<String> = js_stderr.split('\n').map(|l| l.to_string()).collect();
+    let re = Regex::new(r"^(?:.*Error:(?:\s+.*)?|Thrown at:)$").unwrap();
+    if let Some(start) = js_stderr_list.iter().position(|x| re.is_match(x)) {
+        report.js_report = js_stderr_list[start..].to_vec();
+        report
+            .js_report
+            .retain(|x| !x.is_empty() && (x.trim().starts_with("at") || x.contains("Error:")));
+        let report_str = report.js_report.join("\n");
+        report.stacktrace = JsStacktrace::extract_stacktrace(&report_str)?;
+        if let Some(exception) = JsException::parse_exception(&report.js_report[0]) {
             report.execution_class = exception;
         }
     } else {
-        // Call casr-san
-        return util::call_casr_san(&matches, &argv, "casr-python");
+        // Call casr-san with absolute path to interpreter/fuzzer
+        let mut modified_argv = argv.clone();
+        modified_argv[0] = path_to_tool.to_str().unwrap_or(argv[0]);
+        return util::call_casr_san(&matches, &modified_argv, "casr-js");
     }
 
-    if let Ok(crash_line) = PythonStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
+    if let Ok(crash_line) = JsStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = CrashReport::sources(&debug) {

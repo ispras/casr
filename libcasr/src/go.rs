@@ -35,6 +35,13 @@ impl ParseStacktrace for GoStacktrace {
             lines
         };
 
+        let re = Regex::new(r"==\d+== ERROR: ").unwrap();
+        let lines = if let Some(libfuzzer_idx) = lines.iter().position(|line| re.is_match(line)) {
+            &lines[..libfuzzer_idx]
+        } else {
+            lines
+        };
+
         if lines.len() % 2 != 0 {
             return Err(Error::Casr(
                 "Go stacktrace line count should be even".to_string(),
@@ -398,6 +405,39 @@ created by _rt0_go\n\
             "runtime.goexit() in /usr/local/go/src/pkg/runtime/proc.c:1445 fp=0xc213ca9fb0 sp=0xc213ca9fa8",
             "created by _rt0_go in /usr/local/go/src/pkg/runtime/asm_amd64.s:97 +0x120"
         ];
+        let trace = raw_stacktrace
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<String>>();
+        let sttr = GoStacktrace::extract_stacktrace(output);
+        if sttr.is_err() {
+            panic!("{}", sttr.err().unwrap());
+        }
+
+        let stacktrace = sttr.unwrap();
+
+        assert_eq!(stacktrace, trace);
+        let output = "panic: runtime error: index out of range [5] with length 5\n\
+\n\
+goroutine 45 [running]:\n\
+func1()\n\
+        /home/user/project/stats.go:60 +0x125\n\
+golang.org/x/sync/errgroup.(*Group).Go.func1()\n\
+        /home/user/project/go/vendor/golang.org/x/sync/errgroup/errgroup.go:75 +0x77\n\
+created by golang.org/x/sync/errgroup.(*Group).Go in goroutine 17\n\
+        /home/user/project/go/vendor/golang.org/x/sync/errgroup/errgroup.go:72 +0xf5\n\
+==308624== ERROR: libFuzzer: deadly signal\n\
+    #0 0x55ddb86b7d74 in __sanitizer_print_stack_trace (/home/user/project/fuzzing/fuzz+0x6e6d74) (BuildId: 9f270ffff7c55fdda697fd22ff11aff48a0bbd69)\n\
+    #1 0x55ddb868e788 in fuzzer::PrintStackTrace() (/home/user/project/fuzzing/fuzz+0x6bd788) (BuildId: 9f270ffff7c55fdda697fd22ff11aff48a0bbd69)\n\
+    #2 0x55ddb8674203 in fuzzer::Fuzzer::CrashCallback() (/home/user/project/fuzzing/fuzz+0x6a3203) (BuildId: 9f270ffff7c55fdda697fd22ff11aff48a0bbd69)\n\
+    #3 0x7f9dfc64251f  (/lib/x86_64-linux-gnu/libc.so.6+0x4251f) (BuildId: c289da5071a3399de893d2af81d6a30c62646e1e)\n\
+    #4 0x55ddb872e760 in runtime.raise.abi0 /usr/local/go/src/runtime/sys_linux_amd64.s:153";
+
+        let raw_stacktrace = &["func1() in /home/user/project/stats.go:60 +0x125",
+            "golang.org/x/sync/errgroup.(*Group).Go.func1() in /home/user/project/go/vendor/golang.org/x/sync/errgroup/errgroup.go:75 +0x77",
+            "created by golang.org/x/sync/errgroup.(*Group).Go in goroutine 17 in /home/user/project/go/vendor/golang.org/x/sync/errgroup/errgroup.go:72 +0xf5"
+        ];
+
         let trace = raw_stacktrace
             .iter()
             .map(|e| e.to_string())

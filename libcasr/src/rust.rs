@@ -107,10 +107,7 @@ impl ParseStacktrace for RustStacktrace {
 mod tests {
 
     use super::*;
-    use crate::{
-        init_ignored_frames,
-        stacktrace::{Filter, Stacktrace},
-    };
+    use crate::stacktrace::{tests::safe_init_ignore_stack_frames, Filter};
 
     #[test]
     fn test_rust_parse_stacktrace() {
@@ -267,7 +264,7 @@ SUMMARY: libFuzzer: deadly signal"#;
         assert_eq!(bt, trace);
 
         let mut stacktrace = RustStacktrace::parse_stacktrace(&bt).unwrap();
-        init_ignored_frames!("rust");
+        safe_init_ignore_stack_frames();
         stacktrace.filter();
 
         assert_eq!(stacktrace[0].address, 0x557e259648d8);

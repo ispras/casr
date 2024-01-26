@@ -20,6 +20,7 @@ CASR is maintained by:
 * [Alexey Vishnyakov](https://github.com/SweetVishnya) \<pmvishnya@gmail.com\>
 * [Georgy Savidov](https://github.com/Avgor46) \<avgor46@ispras.ru\>
 * [Ilya Yegorov](https://github.com/hkctkuy) \<Yegorov_Ilya@ispras.ru\>
+* [Darya Parygina](https://github.com/PaDarochek) \<pa_darochek@ispras.ru\>
 
 ## Overview
 
@@ -29,7 +30,10 @@ ASAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
 reports from gdb. Use `casr-python` to analyze python reports and get report
 from [Atheris](https://github.com/google/atheris). Use `casr-java` to analyze
 java reports and get report from
-[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer).
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). Use `casr-js`
+to analyze JavaScript reports and get report from
+[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz).
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable))
 for x86, x86\_64, arm32, aarch64, rv32g, rv64g architectures,
@@ -43,7 +47,8 @@ Triage is based on stack trace comparison from [gdb-command](https://github.com/
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)
-/[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)).
+/[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)).
 `casr-dojo` allows to upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) (available with
 `dojo` feature).
@@ -74,6 +79,7 @@ and program languages:
 * Go
 * Python
 * Java
+* JavaScript
 
 It could be built with `exploitable` feature for severity estimation crashes
 collected from gdb. To save crash reports as json use `serde` feature.
@@ -136,6 +142,10 @@ Create report from java:
 
     $ casr-java -o java.casrep -- java casr/tests/casr_tests/java/Test1.java
 
+Create report from JavaScript:
+
+    $ casr-js -o js.casrep -- node casr/tests/casr_tests/js/test_casr_js.js
+
 View report:
 
     $ casr-cli casr/tests/casr_tests/casrep/test_clustering_san/load_fuzzer_crash-120697a7f5b87c03020f321c8526adf0f4bcc2dc.casrep
@@ -175,8 +185,16 @@ Triage libFuzzer crashes with casr-libfuzzer:
 Triage Atheris crashes with casr-libfuzzer:
 
     $ unzip casr/tests/casr_tests/python/ruamel.zip
-    $ cp casr/tests/casr_tests/python/yaml_fuzzer.py .
-    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- ./yaml_fuzzer.py
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/atheris_crashes_ruamel_yaml -o casr/tests/tmp_tests_casr/casr_libfuzzer_atheris_out -- casr/tests/casr_tests/python/yaml_fuzzer.py
+
+Triage Jazzer.js crashes with casr-libfuzzer (Jazzer.js installation [guide](https://github.com/CodeIntelligenceTesting/jazzer.js#quickstart)):
+
+    $ unzip casr/tests/casr_tests/js/xml2js.zip -d xml2js
+    $ mkdir -p casr/tests/tmp_tests_casr/xml2js_fuzzer_out
+    $ cp casr/tests/casr_tests/js/test_casr_libfuzzer_jazzer_js_xml2js.js casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
+    $ sudo npm install xml2js
+    $ sudo npm install --save-dev @jazzer.js/core
+    $ casr-libfuzzer -i ./xml2js -o casr/tests/tmp_tests_casr/xml2js_fuzzer_out/out -- npx jazzer casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
 
 Upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo):
@@ -194,7 +212,7 @@ Upload new and unique CASR reports to
 When you have crashes from fuzzing you may do the following steps:
 
 1. Create reports for all crashes via `casr-san`, `casr-gdb` (if no sanitizers
-   are present), `casr-python`, or `casr-java`.
+   are present), `casr-python`, `casr-java`, or `casr-js`.
 2. Deduplicate collected crash reports via `casr-cluster -d`.
 3. Cluster deduplicated crash reports via `casr-cluster -c`.
 4. Create reports and deduplicate them for all UBSAN errors via `casr-ubsan`.
@@ -207,7 +225,9 @@ If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus), the pipeline
 `casr-afl`.
 
 If you use [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
-(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)),
+(C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)
+/[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)),
 the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically
 by `casr-libfuzzer`.
 
