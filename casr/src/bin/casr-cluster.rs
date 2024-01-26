@@ -58,11 +58,11 @@ fn make_clusters(
     }
 
     // Get casreps with stacktraces and crashlines
-    let (casreps, badreports) = util::reports_from_paths(casreps, jobs);
+    let (casreps, badreports) = util::reports_from_paths(&casreps, jobs);
 
     // Handle bad reports
     if !badreports.is_empty() {
-        util::save_reports(badreports, format!("{}/clerr", &outpath.display()))?;
+        util::save_reports(&badreports, format!("{}/clerr", &outpath.display()))?;
     }
 
     if casreps.len() < 2 {
@@ -70,7 +70,7 @@ fn make_clusters(
     }
 
     // Get clusters
-    let (clusters, before, after) = Cluster::gen_clusters(&casreps, 0, dedup)?;
+    let (clusters, before, after) = Cluster::cluster_reports(&casreps, 0, dedup)?;
     // Save clusters
     util::save_clusters(&clusters, outpath)?;
 
@@ -301,7 +301,7 @@ fn update_clusters(
 ) -> Result<(usize, usize, usize, usize, usize, usize)> {
     // Get new casreps
     let casreps = util::get_reports(newpath)?;
-    let (casreps, _) = util::reports_from_paths(casreps, jobs);
+    let (casreps, _) = util::reports_from_paths(&casreps, jobs);
 
     // Get casreps from existing clusters
     let mut cluster_dirs: Vec<PathBuf> = fs::read_dir(oldpath)
@@ -396,7 +396,7 @@ fn update_clusters(
     let (result, before, after) = if !deviants.is_empty() {
         // Get clusters from deviants
         let (mut deviant_clusters, mut before, mut after) =
-            Cluster::gen_clusters(&deviants, max, dedup)?;
+            Cluster::cluster_reports(&deviants, max, dedup)?;
         // Merge old and new clusters
         let (moved, removed) = merge_clusters(clusters, &mut deviant_clusters, oldpath, dedup)?;
         // Adjust stat
@@ -520,7 +520,7 @@ fn calc_avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
         // Get casreps from cluster
         let casreps = util::get_reports(dir)?;
         // Get stacktraces from cluster
-        let (casreps, _) = util::reports_from_paths(casreps, jobs);
+        let (casreps, _) = util::reports_from_paths(&casreps, jobs);
         let (_, (stacktraces, _)): (Vec<_>, (Vec<_>, Vec<_>)) = casreps.iter().cloned().unzip();
         // Update size
         size += stacktraces.len();

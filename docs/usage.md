@@ -326,6 +326,15 @@ After clustering result directory will have the following structure:
 
 Similar CASR reports are inside one cluster.
 
+Report accumulation is based on stack trace comparison, recognition similar
+stack traces and clustering with merging different ones.
+
+Example:
+
+    $ casr-cluster -c casr/tests/casr_tests/casrep/test_clustering_small out
+    $ rm -f out/cl9/40.casrep out/cl7/20.casrep && rm -rf out/cl8 && mv out/cl9 out/cl8
+    $ casr-cluster -u casr/tests/casr_tests/casrep/test_clustering_small out
+
 For the **--ignore <FILE>** option, file format should be as follows:
 
     FUNCTIONS
@@ -339,12 +348,6 @@ Frames that match these regular expressions will be not considered during analys
 For `CASR_CLUSTER_UNIQUE_CRASHLINE` a `false` literal is `n`, `no`, `f`,
 `false`, `off` or `0`. An absent environment variable will also be considered as
 `false`. Anything else will considered as true.
-
-Example:
-
-    $ casr-cluster -c casr/tests/casr_tests/casrep/test_clustering_small out
-    $ rm -f out/cl9/40.casrep out/cl7/20.casrep && rm -rf out/cl8 && mv out/cl9 out/cl8
-    $ casr-cluster -u casr/tests/casr_tests/casrep/test_clustering_small out
 
 ## casr-cli
 

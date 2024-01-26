@@ -76,7 +76,7 @@ impl Cluster {
     /// * `HashMap` of `Cluster`
     /// * Number of valid casreps before crashiline deduplication
     /// * Number of valid casreps after crashiline deduplication
-    pub fn gen_clusters(
+    pub fn cluster_reports(
         reports: &[ReportInfo],
         offset: usize,
         dedup: bool,

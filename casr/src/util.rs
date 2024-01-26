@@ -444,7 +444,7 @@ pub fn get_reports(dir: &Path) -> Result<Vec<PathBuf>> {
 ///
 /// * A vector of correctly parsed report info: paths, stacktraces and crashlines
 /// * A vector of bad reports
-pub fn reports_from_paths(casreps: Vec<PathBuf>, jobs: usize) -> (Vec<ReportInfo>, Vec<PathBuf>) {
+pub fn reports_from_paths(casreps: &Vec<PathBuf>, jobs: usize) -> (Vec<ReportInfo>, Vec<PathBuf>) {
     // Get len
     let len = casreps.len();
     // Start thread pool.
@@ -505,7 +505,7 @@ pub fn cluster_from_dir(dir: &Path, jobs: usize) -> Result<Cluster> {
         .unwrap();
     // Get casreps from cluster
     let casreps = get_reports(dir)?;
-    let (casreps, _) = reports_from_paths(casreps, jobs);
+    let (casreps, _) = reports_from_paths(&casreps, jobs);
     let (_, (stacktraces, crashlines)): (Vec<_>, (Vec<_>, Vec<_>)) =
         casreps.iter().cloned().unzip();
     // Create cluster
@@ -545,13 +545,13 @@ pub fn save_clusters(clusters: &HashMap<usize, Cluster>, dir: &Path) -> Result<(
 /// * `reports` - A vector of CASR reports
 ///
 /// * `dir` - out directory
-pub fn save_reports(reports: Vec<PathBuf>, dir: String) -> Result<()> {
+pub fn save_reports(reports: &Vec<PathBuf>, dir: String) -> Result<()> {
     if !Path::new(&dir).exists() {
         fs::create_dir_all(&dir)?;
     }
     for report in reports {
         fs::copy(
-            &report,
+            report,
             format!("{}/{}", dir, &report.file_name().unwrap().to_str().unwrap()),
         )?;
     }
