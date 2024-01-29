@@ -304,7 +304,7 @@ fn update_clusters(
     let (casreps, _) = util::reports_from_paths(&casreps, jobs);
 
     // Get casreps from existing clusters
-    let mut cluster_dirs: Vec<PathBuf> = fs::read_dir(oldpath)
+    let mut dirs: Vec<PathBuf> = fs::read_dir(oldpath)
         .unwrap()
         .map(|path| path.unwrap().path())
         .filter(|path| {
@@ -312,18 +312,22 @@ fn update_clusters(
             name.starts_with("cl") && !name.starts_with("clerr")
         })
         .collect();
-    cluster_dirs.sort();
+    dirs.sort();
 
     // Max cluster number
     let mut max = 0usize;
     // Init clusters vector
     let mut clusters: HashMap<usize, Cluster> = HashMap::new();
+    // Init cluster paths vector
+    let mut paths: HashMap<usize, &PathBuf> = HashMap::new();
     // Get casreps from each existing cluster
-    for cluster_dir in &cluster_dirs {
+    for dir in &dirs {
         // Get cluster
-        let cluster = util::cluster_from_dir(cluster_dir, jobs)?;
+        let cluster = util::cluster_from_dir(dir, jobs)?;
         // Update max cluster number
         max = max.max(cluster.number);
+        // Add cluster path
+        paths.insert(cluster.number, dir);
         // Fill cluster info structures
         clusters.insert(cluster.number, cluster);
     }
@@ -386,7 +390,7 @@ fn update_clusters(
             &casrep,
             format!(
                 "{}/{}",
-                &cluster_dirs[number - 1].display(),
+                &paths.get(&number).unwrap().display(),
                 &casrep.file_name().unwrap().to_str().unwrap()
             ),
         )?;
