@@ -8,38 +8,29 @@ use crate::stacktrace::StacktraceEntry;
 
 use regex::Regex;
 
-#[derive(Copy, Clone)]
-enum StacktraceFormat {
-    Mono,
-    dotNET
-}
-
-impl StacktraceFormat {
-    fn get_regex_for_stacktrace_entry(&self) -> Regex {
-        match self {
-            StacktraceFormat::Mono => Regex::new(r"^at (?:\(.+?\) )?(?P<function>\S+)(?P<params> ?\(.*?\))? (?:<(?P<base>\w+) \+ (?P<offset>\w+)>|\[0x[\da-fA-F]+\]) in (?:<[\da-fA-F]+>|(?P<file>.+)):(?P<line>\w+)$"),
-            StacktraceFormat::dotNET => Regex::new(r"^at (?:\(.+?\) )?(?P<function>\S+)(?P<params>\(.*?\))?(?: in (?P<file>.+):line (?P<line>\w+))?$")
-        }.unwrap()
-    }
-
-    fn get_format_by_stacktrace_entry(entry: &str) -> Result<StacktraceFormat> {
-        for format in [StacktraceFormat::Mono, StacktraceFormat::dotNET] {
-            if format.get_regex_for_stacktrace_entry().is_match(entry) {
-                return Ok(format);
-            }
-        }
-
-        return Err(Error::Casr(format!("Couldn't parse stacktrace line: {entry}")));
-    }
-}
 /// Structure provides an interface for processing the stack trace.
 pub struct CSharpStacktrace;
 
 impl CSharpStacktrace {
-    fn parse_stacktrace_entry(entry: &str, format: StacktraceFormat) -> Result<StacktraceEntry> {
-        let re = format.get_regex_for_stacktrace_entry();
+    fn get_regex_format_for_stacktrace_entry(entry: &str) -> Result<Regex> {
+        let regexps = [
+            // Mono
+            Regex::new(r"^at (?P<service_info>\(.+?\) )?(?P<function>\S+?)(?: ?(?P<params>\(.*?\)))? (?:<(?P<base>\w+) \+ (?P<offset>\w+)>|\[0x[\da-fA-F]+\]) in (?:<[\da-fA-F#]+>|(?P<file>.+)):(?P<line>\w+)$").unwrap(),
+            // DotNet
+            Regex::new(r"^at (?P<service_info>\(.+?\) )?(?P<function>\S+?)(?P<params>\(.*?\))?(?: in (?P<file>.+):line (?P<line>\w+))?$").unwrap()
+        ];
+        
+        for re in regexps {
+            if re.is_match(entry) {
+                return Ok(re);
+            }
+        }
 
-        let Some(cap) = re.captures(entry) else {
+        Err(Error::Casr(format!("Couldn't parse stacktrace line: {entry}")))
+    }
+
+    pub fn parse_stacktrace_entry(entry: &str, format_regex: &Regex) -> Result<StacktraceEntry> {
+        let Some(cap) = format_regex.captures(entry) else {
             return Err(Error::Casr(format!("Couldn't parse stacktrace line: {entry}")));
         };
 
@@ -52,35 +43,39 @@ impl CSharpStacktrace {
         }
 
         if let Some(line) = get_group_by_name_as_str("line") {
-            match line.parse::<u64>() {
-                Ok(parsed_line) if Regex::new(r"^\d+$").unwrap().is_match(line) => stentry.debug.line = parsed_line,
-                _ => return Err(Error::Casr(format!("Couldn't parse stacktrace line num: {entry}")))
-            }
+            let Ok(parsed_line) = line.parse::<u64>() else {
+                return Err(Error::Casr(format!("Couldn't parse stacktrace line num: {line}")))
+            };
+
+            stentry.debug.line = parsed_line;
         }
 
         if let (Some(base), Some(offset)) = (get_group_by_name_as_str("base"), get_group_by_name_as_str("offset")) {
-            let parse_hex = |s| Regex::new(r"^0x([\da-fA-F]+)$")
-                .unwrap()
+            let re_hex = Regex::new(r"^0x([\da-fA-F]+)$").unwrap();
+            let parse_hex = |s| re_hex
                 .captures(s)
-                .and_then(|c| c.get(1))
-                .and_then(|m| u64::from_str_radix(m.as_str(), 16).ok());
+                .and_then(|c| u64::from_str_radix(c.get(1).unwrap().as_str(), 16).ok());
 
-            stentry.address = (|| {
-                if let (Some(base), Some(offset)) = (parse_hex(base), parse_hex(offset)) {
-                    if let Some(address) = base.checked_add(offset) {
-                        return Ok(address)
-                    }
+            if let (Some(parsed_base), Some(parsed_offset)) = (parse_hex(base), parse_hex(offset)) {
+                if let Some(address) = parsed_base.checked_add(parsed_offset) {
+                    stentry.address = address;
+                } else {
+                    return Err(Error::Casr(format!("Couldn't parse address: {base} + {offset}")));
                 }
-
+            } else {
                 return Err(Error::Casr(format!("Couldn't parse address: {base} + {offset}")));
-            })()?;
-        }
-
+            };
+        };
 
         if let Some(function) = get_group_by_name_as_str("function") {
             let mut function = function.to_string();
+
             if let Some(params) = get_group_by_name_as_str("params") {
                 function.push_str(params)
+            }
+
+            if let Some(service_info) = get_group_by_name_as_str("service_info") {
+                function.insert_str(0, service_info);
             }
 
             stentry.function = function;
@@ -92,7 +87,7 @@ impl CSharpStacktrace {
 
 impl ParseStacktrace for CSharpStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
-        let re = Regex::new(r"(?m)^Unhandled ([Ee])xception(:\n|\. )(?:.|\n)+?((?:\n\s*(?:at [\S ]+|--- End of inner exception stack trace ---))+)$").unwrap();
+        let re = Regex::new(r"(?m)^Unhandled ([Ee])xception(:\n|\. )(?:.|\n)*?((?:\n\s*(?:at [\S ]+|--- End of inner exception stack trace ---))+)$").unwrap();
 
         let Some(cap) = re.captures(stream).and_then(|cap|
             ((cap.get(1).unwrap().as_str() == "E") == (cap.get(2).unwrap().as_str() == ":\n")).then_some(cap)
@@ -111,7 +106,7 @@ impl ParseStacktrace for CSharpStacktrace {
     }
 
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
-        Self::parse_stacktrace_entry(entry, StacktraceFormat::get_format_by_stacktrace_entry(entry)?)
+        Self::parse_stacktrace_entry(entry, &Self::get_regex_format_for_stacktrace_entry(entry)?)
     }
 
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
@@ -137,9 +132,9 @@ impl ParseStacktrace for CSharpStacktrace {
             .filter(|&s| !s.is_empty()).peekable();
 
         if let Some(s) = iter.peek() {
-            let f = StacktraceFormat::get_format_by_stacktrace_entry(s)?;
+            let re = Self::get_regex_format_for_stacktrace_entry(s)?;
 
-            return iter.map(|s| Self::parse_stacktrace_entry(s, f)).collect()
+            return iter.map(|s| Self::parse_stacktrace_entry(s, &re)).collect()
         }
 
         return std::iter::empty::<Result<StacktraceEntry>>().collect();
