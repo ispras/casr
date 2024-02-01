@@ -41,8 +41,8 @@ fn stacktrace(path: &Path) -> Result<Stacktrace> {
 /// # Return value
 ///
 /// * Number of clusters
-/// * Number of valid casreps before crashiline deduplication
-/// * Number of valid casreps after crashiline deduplication
+/// * Number of valid casreps before crashline deduplication
+/// * Number of valid casreps after crashline deduplication
 fn make_clusters(
     inpath: &Path,
     outpath: Option<&Path>,
@@ -291,8 +291,8 @@ fn merge_or_diff(input: &Path, output: &Path, diff: Option<&Path>) -> Result<u64
 /// * Number of duplicates
 /// * Number of casreps deduplicated by crashline
 /// * Number of new clusters
-/// * Number of valid casreps before crashiline deduplication in new clusters
-/// * Number of valid casreps after crashiline deduplication in new clusters
+/// * Number of valid casreps before crashline deduplication in new clusters
+/// * Number of valid casreps after crashline deduplication in new clusters
 fn update_clusters(
     newpath: &Path,
     oldpath: &Path,
@@ -517,7 +517,7 @@ fn calc_avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
 
     // Init clusters vector
     let mut clusters: Vec<Vec<Stacktrace>> = Vec::new();
-    // Init casreps nuber counter
+    // Init casreps number counter
     let mut size = 0usize;
     // Get casreps from each cluster
     for dir in &dirs {
@@ -612,7 +612,7 @@ fn main() -> Result<()> {
                 .value_parser(clap::value_parser!(PathBuf))
                 .value_names(["NEW_DIR", "OLD_DIR"])
                 .help(
-                    "Update clusters from OLD_DIR using CASR reports from NEW_DIR",
+                    "Update clusters in OLD_DIR using CASR reports from NEW_DIR",
                 ),
         )
         .arg(

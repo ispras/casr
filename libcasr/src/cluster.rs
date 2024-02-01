@@ -74,8 +74,8 @@ impl Cluster {
     /// # Return value
     ///
     /// * `HashMap` of `Cluster`
-    /// * Number of valid casreps before crashiline deduplication
-    /// * Number of valid casreps after crashiline deduplication
+    /// * Number of valid casreps before crashline deduplication
+    /// * Number of valid casreps after crashline deduplication
     pub fn cluster_reports(
         reports: &[ReportInfo],
         offset: usize,
@@ -87,7 +87,7 @@ impl Cluster {
         let len = casreps.len();
         // Get stacktraces cluster numbers
         let mut numbers = cluster_stacktraces(&stacktraces)?;
-        // Deduplicate by crashiline
+        // Deduplicate by crashline
         let after = if dedup {
             dedup_crashlines(&crashlines, &mut numbers)
         } else {

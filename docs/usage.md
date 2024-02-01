@@ -262,7 +262,7 @@ Tool for clustering CASR reports
               Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from INPUT_DIR will be
               added to OUTPUT_DIR.
       -u, --update <NEW_DIR> <OLD_DIR>
-              Update clusters from OLD_DIR using CASR reports from NEW_DIR
+              Update clusters in OLD_DIR using CASR reports from NEW_DIR
       -e, --estimate <DIR>
               Calculate silhouette score for clustering results
           --diff <NEW_DIR> <PREV_DIR> <DIFF_DIR>
