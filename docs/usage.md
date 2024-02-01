@@ -536,12 +536,12 @@ It is pretty much like `casr-afl`.
 
 libFuzzer example:
 
-    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt -o casr/tests/tmp_tests_casr/casr_libfuzzer_out -- casr/tests/casr_tests/bin/load_fuzzer
+    $ casr-libfuzzer -t 30 -i casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt -o casr/tests/tmp_tests_casr/casr_libfuzzer_out -- casr/tests/casr_tests/bin/load_fuzzer
 
 You may also run `casr-libfuzzer` with additional report generation for non-instrumented
 binary with `casr-gdb`:
 
-    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt -o casr/tests/tmp_tests_casr/casr_libfuzzer_out --casr-gdb-args 'casr/tests/casr_tests/bin/load_sydr @@' -- casr/tests/casr_tests/bin/load_fuzzer
+    $ casr-libfuzzer -t 30 -i casr/tests/casr_tests/casrep/libfuzzer_crashes_xlnt -o casr/tests/tmp_tests_casr/casr_libfuzzer_out --casr-gdb-args 'casr/tests/casr_tests/bin/load_sydr @@' -- casr/tests/casr_tests/bin/load_fuzzer
 
 Atheris example:
 
