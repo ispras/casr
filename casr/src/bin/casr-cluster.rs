@@ -537,7 +537,7 @@ fn calc_avg_sil(dir: &Path, jobs: usize) -> Result<f64> {
     if size == 0 {
         bail!("{} valid reports, nothing to calculate...", size);
     }
-    let avg_sil = avg_sil_ceof(&clusters, size);
+    let avg_sil = avg_sil_coef(&clusters, size);
     Ok(avg_sil)
 }
 

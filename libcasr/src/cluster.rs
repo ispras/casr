@@ -329,7 +329,7 @@ fn sil_coef(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
 /// # Return value
 ///
 /// Average silhouette coefficient
-pub fn avg_sil_ceof(clusters: &[Vec<Stacktrace>], size: usize) -> f64 {
+pub fn avg_sil_coef(clusters: &[Vec<Stacktrace>], size: usize) -> f64 {
     // Init sil sum
     let mut sum = 0f64;
     // Calculate silhouette coefficient for each casrep
