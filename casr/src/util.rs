@@ -1,6 +1,7 @@
 //! Common utility functions.
 extern crate libcasr;
 
+use libcasr::cluster::{Cluster, ReportInfo};
 use libcasr::report::CrashReport;
 use libcasr::stacktrace::{
     STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
@@ -8,9 +9,13 @@ use libcasr::stacktrace::{
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
+use is_executable::IsExecutable;
 use log::{info, warn};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use simplelog::*;
-use std::collections::HashSet;
+use wait_timeout::ChildExt;
+
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::io::{BufRead, BufReader};
@@ -18,9 +23,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::RwLock;
 use std::time::Duration;
-
-use is_executable::IsExecutable;
-use wait_timeout::ChildExt;
 
 /// Call casr-san with the provided options
 ///
@@ -410,4 +412,149 @@ pub fn get_path(tool: &str) -> Result<PathBuf> {
             "{path_to_tool:?}: No {tool} next to {current_tool}. And there is no {tool} in PATH."
         );
     }
+}
+
+/// Get CASR reports from specified directory
+///
+/// # Arguments
+///
+/// * `dir` - directory path
+///
+/// # Return value
+///
+/// A vector of reports paths
+pub fn get_reports(dir: &Path) -> Result<Vec<PathBuf>> {
+    let dir = fs::read_dir(dir).with_context(|| format!("File: {}", dir.display()))?;
+    let casreps: Vec<PathBuf> = dir
+        .map(|path| path.unwrap().path())
+        .filter(|s| s.extension().is_some() && s.extension().unwrap() == "casrep")
+        .collect();
+    Ok(casreps)
+}
+
+/// Parse CASR reports from specified paths.
+///
+/// # Arguments
+///
+/// * `casreps` - a vector of report paths
+///
+/// * `jobs` - number of jobs for parsing process
+///
+/// # Return value
+///
+/// * A vector of correctly parsed report info: paths, stacktraces and crashlines
+/// * A vector of bad reports
+pub fn reports_from_paths(casreps: &Vec<PathBuf>, jobs: usize) -> (Vec<ReportInfo>, Vec<PathBuf>) {
+    // Get len
+    let len = casreps.len();
+    // Start thread pool.
+    let custom_pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(jobs.min(len))
+        .build()
+        .unwrap();
+    // Report info from casreps: (casrep, (trace, crashline))
+    let mut casrep_info: RwLock<Vec<ReportInfo>> = RwLock::new(Vec::new());
+    // Casreps with stacktraces, that we cannot parse
+    let mut badreports: RwLock<Vec<PathBuf>> = RwLock::new(Vec::new());
+    custom_pool.install(|| {
+        (0..len).into_par_iter().for_each(|i| {
+            if let Ok(report) = report_from_file(casreps[i].as_path()) {
+                if let Ok(trace) = report.filtered_stacktrace() {
+                    casrep_info
+                        .write()
+                        .unwrap()
+                        .push((casreps[i].clone(), (trace, report.crashline)));
+                } else {
+                    badreports.write().unwrap().push(casreps[i].clone());
+                }
+            } else {
+                badreports.write().unwrap().push(casreps[i].clone());
+            }
+        })
+    });
+    let casrep_info = casrep_info.get_mut().unwrap();
+    let badreports = badreports.get_mut().unwrap().to_vec();
+    // Sort by casrep filename
+    casrep_info.sort_by(|a, b| {
+        a.0.file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .cmp(b.0.file_name().unwrap().to_str().unwrap())
+    });
+
+    (casrep_info.to_vec(), badreports)
+}
+
+/// Get `Cluster` structure from specified directory path.
+///
+/// # Arguments
+///
+/// * `dir` - valid cluster dir path
+///
+/// * `jobs` - number of jobs for parsing process
+///
+/// # Return value
+///
+/// `Cluster` structure
+/// NOTE: Resulting cluster does not contains path info
+pub fn load_cluster(dir: &Path, jobs: usize) -> Result<Cluster> {
+    // Get cluster number
+    let i = dir.file_name().unwrap().to_str().unwrap();
+    if i.len() < 3 {
+        bail!("Invalid cluster path: {}", &dir.display());
+    }
+    let i = i[2..].to_string().parse::<usize>()?;
+    // Get casreps from cluster
+    let casreps = get_reports(dir)?;
+    let (casreps, _) = reports_from_paths(&casreps, jobs);
+    let (_, (stacktraces, crashlines)): (Vec<_>, (Vec<_>, Vec<_>)) =
+        casreps.iter().cloned().unzip();
+    // Create cluster
+    Ok(Cluster::new(i, Vec::new(), stacktraces, crashlines))
+}
+
+/// Save clusters to given directory
+///
+/// # Arguments
+///
+/// * `clusters` - given `Cluster` structures for saving
+///
+/// * `dir` - out directory
+pub fn save_clusters(clusters: &HashMap<usize, Cluster>, dir: &Path) -> Result<()> {
+    for cluster in clusters.values() {
+        fs::create_dir_all(format!("{}/cl{}", &dir.display(), cluster.number))?;
+        for casrep in cluster.paths() {
+            fs::copy(
+                casrep,
+                format!(
+                    "{}/cl{}/{}",
+                    &dir.display(),
+                    cluster.number,
+                    &casrep.file_name().unwrap().to_str().unwrap()
+                ),
+            )?;
+        }
+    }
+    Ok(())
+}
+
+/// Save CASR reports to given directory
+///
+/// # Arguments
+///
+/// * `reports` - A vector of CASR reports
+///
+/// * `dir` - out directory
+pub fn save_reports(reports: &Vec<PathBuf>, dir: &str) -> Result<()> {
+    if !Path::new(&dir).exists() {
+        fs::create_dir_all(dir)?;
+    }
+    for report in reports {
+        fs::copy(
+            report,
+            format!("{}/{}", dir, &report.file_name().unwrap().to_str().unwrap()),
+        )?;
+    }
+    Ok(())
 }

@@ -261,6 +261,10 @@ Tool for clustering CASR reports
       -m, --merge <INPUT_DIR> <OUTPUT_DIR>
               Merge INPUT_DIR into OUTPUT_DIR. Only new CASR reports from INPUT_DIR will be
               added to OUTPUT_DIR.
+      -u, --update <NEW_DIR> <OLD_DIR>
+              Update clusters in OLD_DIR using CASR reports from NEW_DIR
+      -e, --estimate <DIR>
+              Calculate silhouette score for clustering results
           --diff <NEW_DIR> <PREV_DIR> <DIFF_DIR>
               Compute report sets difference NEW_DIR \ PREV_DIR. Copy new CASR reports from
               NEW_DIR into DIFF_DIR.
@@ -321,6 +325,15 @@ After clustering result directory will have the following structure:
         └── crash-76f90b8ba0ee1e10f04692607a2aae17a1ced499.casrep
 
 Similar CASR reports are inside one cluster.
+
+Report accumulation is based on stack trace comparison, recognition similar
+stack traces and clustering with merging different ones.
+
+Example:
+
+    $ casr-cluster -c casr/tests/casr_tests/casrep/test_clustering_small out
+    $ rm -f out/cl9/40.casrep out/cl7/20.casrep && rm -rf out/cl8 && mv out/cl9 out/cl8
+    $ casr-cluster -u casr/tests/casr_tests/casrep/test_clustering_small out
 
 For the **--ignore <FILE>** option, file format should be as follows:
 

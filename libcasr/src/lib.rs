@@ -22,6 +22,7 @@
 //! collected from gdb. To save crash reports as json (.casrep/.sarif) use `serde` feature.
 
 pub mod asan;
+pub mod cluster;
 pub mod constants;
 pub mod cpp;
 pub mod error;

@@ -34,6 +34,9 @@ lazy_static::lazy_static! {
         Vec::new());
 }
 
+/// Threshold for clusters diameter
+pub const THRESHOLD: f64 = 0.3;
+
 /// This macro updates variables used to remove trusted functions from stack trace
 #[macro_export]
 macro_rules! init_ignored_frames {
@@ -215,15 +218,12 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
     // at the beginning every node is in its own cluster
     let mut clusters = (0..len).map(|x| (x, vec![x])).collect::<HashMap<_, _>>();
 
-    // Set threshold
-    let distance = 0.3;
-
     // Counter for new clusters, which are formed as unions of previous ones
     let mut counter = len;
 
     for step in dendrogram.steps() {
         // Break if threshold is reached
-        if step.dissimilarity >= distance {
+        if step.dissimilarity >= THRESHOLD {
             break;
         }
 
@@ -247,7 +247,8 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
     let mut flat_clusters = vec![0; len];
     for (i, (_, nums)) in clusters.into_iter().enumerate() {
         for num in nums {
-            flat_clusters[num] = i + 1; // Number clusters from 1, not 0
+            // NOTE: Clusters enumerate from 1, not 0
+            flat_clusters[num] = i + 1;
         }
     }
 
