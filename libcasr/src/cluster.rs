@@ -6,7 +6,7 @@ use core::f64::MAX;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// Represents the information about CASR report
+/// Represents the information about CASR report: path, stacktrace and crashline
 pub type ReportInfo = (PathBuf, (Stacktrace, String));
 
 /// Relation between a CASR report and a cluster
@@ -43,6 +43,9 @@ impl Cluster {
     ) -> Self {
         let mut unique_crashlines: HashMap<String, usize> = HashMap::new();
         for (i, crashline) in crashlines.into_iter().enumerate() {
+            if unique_crashlines.contains_key(&crashline) {
+                continue;
+            }
             unique_crashlines.insert(crashline, i);
         }
         Cluster {
@@ -61,11 +64,11 @@ impl Cluster {
     pub fn stacktraces(&self) -> &Vec<Stacktrace> {
         &self.stacktraces
     }
-    /// Generate clusters from CASR report info
+    /// Perform CASR reports clustering
     ///
     /// # Arguments
     ///
-    /// * `reports` - slice of report info: path, stacktrace, crashline
+    /// * `reports` - slice of `ReportInfo`
     ///
     /// * `offset` - cluster enumerate offset
     ///
@@ -73,7 +76,7 @@ impl Cluster {
     ///
     /// # Return value
     ///
-    /// * `HashMap` of `Cluster`
+    /// * `HashMap` of `Cluster` with cluster number as key
     /// * Number of valid casreps before crashline deduplication
     /// * Number of valid casreps after crashline deduplication
     pub fn cluster_reports(

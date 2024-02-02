@@ -62,7 +62,10 @@ fn make_clusters(
 
     // Handle bad reports
     if !badreports.is_empty() {
-        util::save_reports(&badreports, format!("{}/clerr", &outpath.display()))?;
+        util::save_reports(
+            &badreports,
+            format!("{}/clerr", &outpath.display()).as_str(),
+        )?;
     }
 
     if casreps.len() < 2 {
@@ -323,7 +326,7 @@ fn update_clusters(
     // Get casreps from each existing cluster
     for dir in &dirs {
         // Get cluster
-        let cluster = util::cluster_from_dir(dir, jobs)?;
+        let cluster = util::load_cluster(dir, jobs)?;
         // Update max cluster number
         max = max.max(cluster.number);
         // Add cluster path

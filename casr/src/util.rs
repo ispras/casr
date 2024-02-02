@@ -497,19 +497,20 @@ pub fn reports_from_paths(casreps: &Vec<PathBuf>, jobs: usize) -> (Vec<ReportInf
 /// # Return value
 ///
 /// `Cluster` structure
-pub fn cluster_from_dir(dir: &Path, jobs: usize) -> Result<Cluster> {
+/// NOTE: Resulting cluster does not contains path info
+pub fn load_cluster(dir: &Path, jobs: usize) -> Result<Cluster> {
     // Get cluster number
-    let i = dir.file_name().unwrap().to_str().unwrap()[2..]
-        .to_string()
-        .parse::<usize>()
-        .unwrap();
+    let i = dir.file_name().unwrap().to_str().unwrap();
+    if i.len() < 3 {
+        bail!("Invalid cluster path: {}", &dir.display());
+    }
+    let i = i[2..].to_string().parse::<usize>()?;
     // Get casreps from cluster
     let casreps = get_reports(dir)?;
     let (casreps, _) = reports_from_paths(&casreps, jobs);
     let (_, (stacktraces, crashlines)): (Vec<_>, (Vec<_>, Vec<_>)) =
         casreps.iter().cloned().unzip();
     // Create cluster
-    // NOTE: We don't care about paths of casreps from existing clusters
     Ok(Cluster::new(i, Vec::new(), stacktraces, crashlines))
 }
 
@@ -545,9 +546,9 @@ pub fn save_clusters(clusters: &HashMap<usize, Cluster>, dir: &Path) -> Result<(
 /// * `reports` - A vector of CASR reports
 ///
 /// * `dir` - out directory
-pub fn save_reports(reports: &Vec<PathBuf>, dir: String) -> Result<()> {
+pub fn save_reports(reports: &Vec<PathBuf>, dir: &str) -> Result<()> {
     if !Path::new(&dir).exists() {
-        fs::create_dir_all(&dir)?;
+        fs::create_dir_all(dir)?;
     }
     for report in reports {
         fs::copy(
