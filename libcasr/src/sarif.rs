@@ -254,7 +254,7 @@ impl SarifReport {
         let mut stacks: Vec<Value> = Vec::new();
         let mut stack = Map::new();
         let mut frames: Vec<Value> = Vec::new();
-        init_ignored_frames!("cpp", "rust", "python", "go", "java");
+        init_ignored_frames!("cpp", "rust", "python", "go", "java", "js");
         let stacktrace = report.filtered_stacktrace()?;
         for (n, entry) in stacktrace.iter().enumerate() {
             let mut frame = Map::new();
