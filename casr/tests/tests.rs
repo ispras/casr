@@ -2852,6 +2852,7 @@ fn test_casr_san() {
 
     let output = Command::new(*EXE_CASR_SAN.read().unwrap())
         .args(["--stdout", "--", &paths[1]])
+        .env("CASR_STRIP_PATH", env::current_dir().unwrap())
         .output()
         .expect("failed to start casr-san");
 
@@ -2884,7 +2885,7 @@ fn test_casr_san() {
             report["CrashLine"]
                 .as_str()
                 .unwrap()
-                .contains("test_asan_df.cpp:8:5")
+                .eq("tests/casr_tests/test_asan_df.cpp:8:5")
                 // We build a test on ubuntu18 and run it on ubuntu20.
                 // Debug information is broken.
                 || report["CrashLine"]
