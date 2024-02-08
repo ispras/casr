@@ -84,6 +84,14 @@ fn main() -> Result<()> {
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
+            Arg::new("strip-path")
+                .long("strip-path")
+                .env("CASR_STRIP_PATH")
+                .action(ArgAction::Set)
+                .value_name("PREFIX")
+                .help("Path prefix to strip from stacktrace and crash line"),
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .num_args(1..)
@@ -284,6 +292,10 @@ fn main() -> Result<()> {
                 report.source = sources;
             }
         }
+    }
+
+    if let Some(path) = matches.get_one::<String>("strip-path") {
+        util::strip_paths(&mut report, &stacktrace, path);
     }
 
     util::output_report(&report, &matches, &argv)

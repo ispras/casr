@@ -63,6 +63,14 @@ fn main() -> Result<()> {
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
         .arg(
+            Arg::new("strip-path")
+                .long("strip-path")
+                .env("CASR_STRIP_PATH")
+                .action(ArgAction::Set)
+                .value_name("PREFIX")
+                .help("Path prefix to strip from stacktrace and crash line"),
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .num_args(1..)
@@ -155,14 +163,18 @@ fn main() -> Result<()> {
         modified_argv[0] = path_to_tool.to_str().unwrap_or(argv[0]);
         return util::call_casr_san(&matches, &modified_argv, "casr-js");
     }
-
-    if let Ok(crash_line) = JsStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
+    let stacktrace = JsStacktrace::parse_stacktrace(&report.stacktrace)?;
+    if let Ok(crash_line) = stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
             if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
         }
+    }
+
+    if let Some(path) = matches.get_one::<String>("strip-path") {
+        util::strip_paths(&mut report, &stacktrace, path);
     }
 
     //Output report
