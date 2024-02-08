@@ -28,16 +28,18 @@ Create CASR reports (.casrep) from gdb execution
       [ARGS]...  Add "-- ./binary <arguments>" to run executable
 
     Options:
-      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                               is generated
-          --stdout             Print CASR report to stdout
-          --stdin <FILE>       Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                               timeout is disabled [default: 0]
-          --ignore <FILE>      File with regular expressions for functions and file paths that
-                               should be ignored
-      -h, --help               Print help
-      -V, --version            Print version
+      -o, --output <REPORT>      Path to save report. Path can be a directory, then report
+                                 name is generated
+          --stdout               Print CASR report to stdout
+          --stdin <FILE>         Stdin file for program
+      -t, --timeout <SECONDS>    Timeout (in seconds) for target execution, 0 value means that
+                                 timeout is disabled [default: 0]
+          --ignore <FILE>        File with regular expressions for functions and file paths
+                                 that should be ignored
+          --strip-path <PREFIX>  Path prefix to strip from stacktrace and crash line [env:
+                                 CASR_STRIP_PATH=]
+      -h, --help                 Print help
+      -V, --version              Print version
 
 Example:
 
@@ -53,16 +55,18 @@ Create CASR reports (.casrep) from AddressSanitizer reports
       [ARGS]...  Add "-- ./binary <arguments>" to run executable
 
     Options:
-      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                               is generated
-          --stdout             Print CASR report to stdout
-          --stdin <FILE>       Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                               timeout is disabled [default: 0]
-          --ignore <FILE>      File with regular expressions for functions and file paths that
-                               should be ignored
-      -h, --help               Print help
-      -V, --version            Print version
+      -o, --output <REPORT>      Path to save report. Path can be a directory, then report
+                                 name is generated
+          --stdout               Print CASR report to stdout
+          --stdin <FILE>         Stdin file for program
+      -t, --timeout <SECONDS>    Timeout (in seconds) for target execution, 0 value means that
+                                 timeout is disabled [default: 0]
+          --ignore <FILE>        File with regular expressions for functions and file paths
+                                 that should be ignored
+          --strip-path <PREFIX>  Path prefix to strip from stacktrace and crash line [env:
+                                 CASR_STRIP_PATH=]
+      -h, --help                 Print help
+      -V, --version              Print version
 
 Compile binary with ASAN:
 
@@ -126,16 +130,17 @@ Create CASR reports (.casrep) from python reports
       [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                               is generated
-          --stdout             Print CASR report to stdout
-          --stdin <FILE>       Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                               timeout is disabled [default: 0]
-          --ignore <FILE>      File with regular expressions for functions and file paths that
-                               should be ignored
-      -h, --help               Print help
-      -V, --version            Print version
+      -o, --output <REPORT>      Path to save report. Path can be a directory, then report
+                                 name is generated
+          --stdout               Print CASR report to stdout
+          --stdin <FILE>         Stdin file for program
+      -t, --timeout <SECONDS>    Timeout (in seconds) for target execution, 0 value means that
+                                 timeout is disabled [default: 0]
+          --ignore <FILE>        File with regular expressions for functions and file paths
+                                 that should be ignored
+          --strip-path <PREFIX>  Path prefix to strip from stacktrace [env: CASR_STRIP_PATH=]
+      -h, --help                 Print help
+      -V, --version              Print version
 
 Example:
 
@@ -161,6 +166,8 @@ Create CASR reports (.casrep) from java reports
                                   that timeout is disabled [default: 0]
           --ignore <FILE>         File with regular expressions for functions and file paths
                                   that should be ignored
+          --strip-path <PREFIX>   Path prefix to strip from stacktrace and crash line [env:
+                                  CASR_STRIP_PATH=]
       -h, --help                  Print help
       -V, --version               Print version
 
@@ -178,16 +185,18 @@ Create CASR reports (.casrep) from JavaScript crash reports
       [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                               is generated
-          --stdout             Print CASR report to stdout
-          --stdin <FILE>       Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                               timeout is disabled [default: 0]
-          --ignore <FILE>      File with regular expressions for functions and file paths that
-                               should be ignored
-      -h, --help               Print help
-      -V, --version            Print version
+      -o, --output <REPORT>      Path to save report. Path can be a directory, then report
+                                 name is generated
+          --stdout               Print CASR report to stdout
+          --stdin <FILE>         Stdin file for program
+      -t, --timeout <SECONDS>    Timeout (in seconds) for target execution, 0 value means that
+                                 timeout is disabled [default: 0]
+          --ignore <FILE>        File with regular expressions for functions and file paths
+                                 that should be ignored
+          --strip-path <PREFIX>  Path prefix to strip from stacktrace and crash line [env:
+                                 CASR_STRIP_PATH=]
+      -h, --help                 Print help
+      -V, --version              Print version
 
 Run casr-js:
 

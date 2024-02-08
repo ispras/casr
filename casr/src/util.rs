@@ -4,11 +4,12 @@ extern crate libcasr;
 use libcasr::cluster::{Cluster, ReportInfo};
 use libcasr::report::CrashReport;
 use libcasr::stacktrace::{
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
+    Stacktrace, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
 };
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
+use gdb_command::stacktrace::StacktraceExt;
 use is_executable::IsExecutable;
 use log::{info, warn};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -557,4 +558,33 @@ pub fn save_reports(reports: &Vec<PathBuf>, dir: &str) -> Result<()> {
         )?;
     }
     Ok(())
+}
+
+/// Strip paths for stacktrace and crash line in CrashReport
+///
+/// # Arguments
+///
+/// * `report` - CASR crash report struct
+///
+/// * 'stacktrace' - Stacktrace struct
+///
+/// * `prefix` - path prefix
+pub fn strip_paths(report: &mut CrashReport, stacktrace: &Stacktrace, prefix: &str) {
+    let mut stripped_stacktrace = stacktrace.clone();
+    stripped_stacktrace.strip_prefix(prefix);
+    for (idx, (entry, stripped)) in stacktrace
+        .iter()
+        .zip(stripped_stacktrace.iter())
+        .enumerate()
+    {
+        if !stripped.debug.file.is_empty() {
+            report.stacktrace[idx] =
+                report.stacktrace[idx].replace(&entry.debug.file, &stripped.debug.file);
+        }
+    }
+    if !report.crashline.is_empty() {
+        if let Ok(stripped) = Path::new(&report.crashline).strip_prefix(prefix) {
+            report.crashline = stripped.display().to_string();
+        }
+    }
 }
