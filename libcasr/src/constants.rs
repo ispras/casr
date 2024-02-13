@@ -228,6 +228,11 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
     r"^atheris::",
 ];
 
+/// Regular expressions for с# functions to be ignored.
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CSHARP: &[&str] = &[
+    r"^\(wrapper",
+];
+
 /// Regular expressions for paths to java files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA: &[&str] = &[
     // TODO
@@ -311,6 +316,11 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
     r".*libasan\.so",
     r".*libubsan\.so",
     r".*asan_with_fuzzer\.so",
+];
+
+/// Regular expressions for paths to c# files that should be ignored.
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP: &[&str] = &[
+    r"^[^.]$"
 ];
 
 // Signal numbers
