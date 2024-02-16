@@ -150,7 +150,7 @@ impl<'a> CrashInfo {
 pub fn fuzzing_crash_triage_pipeline(
     matches: &clap::ArgMatches,
     crashes: &HashMap<String, CrashInfo>,
-    gdb_args: &Vec<String>,
+    gdb_args: &[String],
 ) -> Result<()> {
     // Get casr-cluster path
     let casr_cluster = get_path("casr-cluster")?;
@@ -281,7 +281,7 @@ pub fn fuzzing_crash_triage_pipeline(
 fn summarize_results(
     matches: &clap::ArgMatches,
     crashes: &HashMap<String, CrashInfo>,
-    gdb_args: &Vec<String>,
+    gdb_args: &[String],
 ) -> Result<()> {
     // Get output dir
     let dir = matches.get_one::<PathBuf>("output").unwrap();
@@ -334,7 +334,7 @@ fn summarize_results(
                         crashes.par_iter().try_for_each(|crash| {
                             if let Err(e) = (CrashInfo {
                                 path: crash.to_path_buf(),
-                                target_args: gdb_args.clone(),
+                                target_args: gdb_args.to_vec(),
                                 envs: HashMap::new(),
                                 at_index,
                                 casr_tool: casr_gdb.clone(),
