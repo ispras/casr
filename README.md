@@ -115,6 +115,10 @@ Add `dojo` feature if you want to install `casr-dojo` (the same for `cargo build
 
 ## Usage
 
+**Running in Docker:** CASR disables address randomization for better
+deduplication and uses ptrace to run GDB. Thus, Docker should be started with
+`--cap-add=SYS_PTRACE --security-opt seccomp=unconfined`.
+
 Create report from coredump:
 
     $ casr-core -f casr/tests/casr_tests/bin/core.test_destAv -e casr/tests/casr_tests/bin/test_destAv -o destAv.casrep
