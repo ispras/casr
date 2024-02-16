@@ -445,7 +445,7 @@ pub fn get_reports(dir: &Path) -> Result<Vec<PathBuf>> {
 ///
 /// * A vector of correctly parsed report info: paths, stacktraces and crashlines
 /// * A vector of bad reports
-pub fn reports_from_paths(casreps: &Vec<PathBuf>, jobs: usize) -> (Vec<ReportInfo>, Vec<PathBuf>) {
+pub fn reports_from_paths(casreps: &[PathBuf], jobs: usize) -> (Vec<ReportInfo>, Vec<PathBuf>) {
     // Get len
     let len = casreps.len();
     // Start thread pool.
