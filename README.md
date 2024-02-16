@@ -86,7 +86,11 @@ collected from gdb. To save crash reports as json use `serde` feature.
 
 ## Dependencies
 
-Install build dependencies:
+Install runtime dependencies:
+
+    $ sudo apt install gdb lsb-release
+
+Install build dependencies when building from source:
 
     $ sudo apt install build-essential clang
 
@@ -94,11 +98,11 @@ Install [Rust](https://www.rust-lang.org/tools/install) or update existing Rust 
 
     $ rustup update
 
-Install runtime dependencies:
-
-    $ sudo apt install gdb lsb-release
-
 ## Install
+
+Download latest Linux 64-bit
+[release](https://github.com/ispras/casr/releases/latest/download/casr-x86_64-unknown-linux-gnu.tar.xz)
+or build from source as explained below.
 
 Build from Git repository:
 
