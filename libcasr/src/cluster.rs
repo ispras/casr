@@ -186,12 +186,26 @@ impl Cluster {
             Relation::Outer
         }
     }
-    /// Check if cluster may be merged with another one
-    pub fn may_merge(&self, cluster: &Cluster) -> bool {
-        let mut stacktraces1 = self.stacktraces.clone();
-        let mut stacktraces2 = cluster.stacktraces().clone();
+    /// Get complete distance between clusters
+    /// NOTE: Result also can be interpreted as diameter of cluster merge result
+    pub fn dist(cluster1: &Cluster, cluster2: &Cluster) -> f64 {
+        let mut stacktraces1 = cluster1.stacktraces().clone();
+        let mut stacktraces2 = cluster2.stacktraces().clone();
         stacktraces1.append(&mut stacktraces2);
-        diam(&stacktraces1) < THRESHOLD
+        diam(&stacktraces1)
+    }
+    /// Get complete distance between cluster and report
+    /// NOTE: Result also can be interpreted as diameter of cluster merge result
+    pub fn dist_rep(cluster: &Cluster, report: &ReportInfo) -> f64 {
+        let mut max = 0f64;
+        let (_, (trace, _)) = report;
+        for stacktrace in cluster.stacktraces() {
+            let dist = 1.0 - similarity(stacktrace, trace);
+            if dist > max {
+                max = dist;
+            }
+        }
+        max
     }
     /// Convert cluster to vector of reports
     pub fn reports(&self) -> Vec<ReportInfo> {
