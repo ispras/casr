@@ -26,6 +26,15 @@ jobs:
           export CARGO_TERM_COLOR=always
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
           apt-get update && apt-get install -y gdb pip curl python3.10-dev clang llvm build-essential
+          wget https://download.visualstudio.microsoft.com/download/pr/092bec24-9cad-421d-9b43-458b3a7549aa/84280dbd1eef750f9ed1625339235c22/dotnet-sdk-8.0.101-linux-arm64.tar.gz
+          mkdir /dotnet && tar zxf dotnet-sdk-8.0.101-linux-arm64.tar.gz -C /dotnet && rm -rf dotnet-sdk-8.0.101-linux-arm64.tar.gz
+          export DOTNET_ROOT=/dotnet
+          export PATH=$PATH:/dotnet
+          export DOTNET_CLI_TELEMETRY_OPTOUT=1
+          export DOTNET_UPGRADEASSISTANT_TELEMETRY_OPTOUT=1
+          dotnet tool install SharpFuzz.CommandLine --global
+          dotnet tool install minicover --global
+          export PATH=$PATH:/root/.dotnet/tools
           curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
           ./rustup.sh -y && rm rustup.sh
         run: |
