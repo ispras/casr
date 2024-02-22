@@ -207,26 +207,6 @@ impl Cluster {
         }
         max
     }
-    /// Convert cluster to vector of reports
-    pub fn reports(&self) -> Vec<ReportInfo> {
-        let mut reports: Vec<ReportInfo> = Vec::new();
-        let mut crashlines = self.crashlines.clone();
-        for (i, path) in self.paths.iter().enumerate() {
-            // Get crashline for cur casrep
-            let mut crashline = String::new();
-            for (line, &number) in &crashlines {
-                if number == i {
-                    crashline = line.to_string();
-                    break;
-                }
-            }
-            // Drop cur crashline from crashlines
-            crashlines.remove(&crashline);
-            // Update results
-            reports.push((path.clone(), (self.stacktraces[i].clone(), crashline)));
-        }
-        reports
-    }
 }
 
 /// Get diameter of specified cluster
