@@ -193,9 +193,9 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
 ///
 /// # Arguments
 ///
-/// * `len` - matrix length
-///
 /// * `matrix` - condensed dissimilarity matrix
+///
+/// * `len` - matrix length
 ///
 /// # Return value
 ///
