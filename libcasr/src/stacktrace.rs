@@ -195,7 +195,7 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
 ///
 /// * `matrix` - condensed dissimilarity matrix
 ///
-/// * `len` - matrix length
+/// * `len` - number of observations that are being clustered
 ///
 /// # Return value
 ///

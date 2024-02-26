@@ -479,7 +479,7 @@ fn hierarchical_accumulation(
     // New clusters
     let mut news: HashMap<usize, Cluster> = HashMap::new();
     let mut new_num = max;
-    for &num in res.iter().skip(clusters.len()).take(deviants.len()) {
+    for &num in res.iter().skip(clusters.len()) {
         if numbers.contains_key(&num) {
             continue;
         }

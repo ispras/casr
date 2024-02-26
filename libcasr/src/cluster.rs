@@ -197,15 +197,17 @@ impl Cluster {
     /// Get complete distance between cluster and report
     /// NOTE: Result also can be interpreted as diameter of cluster merge result
     pub fn dist_rep(cluster: &Cluster, report: &ReportInfo) -> f64 {
-        let mut max = 0f64;
         let (_, (trace, _)) = report;
-        for stacktrace in cluster.stacktraces() {
-            let dist = 1.0 - similarity(stacktrace, trace);
-            if dist > max {
-                max = dist;
-            }
+        if let Some(max) = cluster
+            .stacktraces()
+            .iter()
+            .map(|s| 1.0 - similarity(s, trace))
+            .max_by(|a, b| a.total_cmp(b))
+        {
+            max
+        } else {
+            0f64
         }
-        max
     }
 }
 
