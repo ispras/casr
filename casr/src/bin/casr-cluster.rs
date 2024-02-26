@@ -401,34 +401,27 @@ fn update_clusters(
 
     // Handle deviant casreps
     let (result, before, after) = if !deviants.is_empty() {
-        // Get clusters from deviants
-        let (mut deviant_clusters, mut before, mut after) =
-            Cluster::cluster_reports(&deviants, max, dedup)?;
-        // Merge old and new clusters
-        let (moved, removed) = merge_clusters(clusters, &mut deviant_clusters, oldpath, dedup)?;
+        let (moved, removed, result, before, after) =
+            hierarchical_accumulation(clusters, deviants, max, oldpath, dedup)?;
         // Adjust stat
-        if moved != 0 || removed != 0 {
-            added += moved;
-            deduplicated += removed;
-            before = 0; // Impossible to know (proofed by @hkctkuy)
-            after -= moved + removed;
-        }
-        // Save deviant clusters
-        util::save_clusters(&deviant_clusters, oldpath)?;
-        (deviant_clusters.len(), before, after)
+        added += moved;
+        deduplicated += removed;
+        (result, before, after)
     } else {
         (0, 0, 0)
     };
     Ok((added, duplicates, deduplicated, result, before, after))
 }
 
-/// Try to merge new clusters to old clusters
+/// Perform CASR report accumulation to old clusters using hierarchical clustering
 ///
 /// # Arguments
 ///
 /// * `olds` - list of old clusters represented as `HashMap` of `Cluster`
 ///
-/// * `news` - list of new clusters represented as `HashMap` of `Cluster`
+/// * `deviants` - list of deviant reports represented as `Vec` of `ReportInfo`
+///
+/// * `max` - old clusters max number
 ///
 /// * `dir` - out directory
 ///
@@ -436,59 +429,103 @@ fn update_clusters(
 ///
 /// # Return value
 ///
-/// Number of moved to old clusters CASR reports
-/// Number of removed by crashline deduplication CASR reports
-fn merge_clusters(
-    olds: HashMap<usize, Cluster>,
-    news: &mut HashMap<usize, Cluster>,
+/// * Number of moved to old clusters CASR reports
+/// * Number of removed from old clusters by crashline deduplication CASR reports
+/// * Number of new clusters
+/// * Number of valid casreps before crashline deduplication in new clusters
+/// * Number of valid casreps after crashline deduplication in new clusters
+fn hierarchical_accumulation(
+    mut olds: HashMap<usize, Cluster>,
+    deviants: Vec<ReportInfo>,
+    max: usize,
     dir: &Path,
     dedup: bool,
-) -> Result<(usize, usize)> {
+) -> Result<(usize, usize, usize, usize, usize)> {
     let mut moved = 0usize;
     let mut removed = 0usize;
-    let mut olds: Vec<Cluster> = olds.into_values().collect();
-    olds.sort_by(|a, b| a.number.cmp(&b.number));
-    for mut old in olds {
-        let mut merged = Vec::new();
-        let mut values: Vec<&Cluster> = news.values().collect();
-        values.sort_by(|a, b| a.number.cmp(&b.number));
-        for new in values {
-            if !old.may_merge(new) {
-                continue;
-            }
-            // Copy casreps from new to old
-            for (casrep, (stacktrace, crashline)) in new.reports() {
-                // Update cluster (and dedup crashline)
-                if !old.insert(
-                    casrep.to_path_buf(),
-                    stacktrace.to_vec(),
-                    crashline.to_string(),
-                    dedup,
-                ) {
-                    removed += 1;
-                    continue;
-                }
-                // Save report
-                moved += 1;
-                fs::copy(
-                    &casrep,
-                    format!(
-                        "{}/cl{}/{}",
-                        &dir.display(),
-                        old.number,
-                        &casrep.file_name().unwrap().to_str().unwrap()
-                    ),
-                )?;
-            }
-            // Mark merged cluster for drop
-            merged.push(new.number);
+    let mut before = 0usize;
+    let mut deduplicated = 0usize;
+    // Forming condensed dissimilarity matrix
+    let mut matrix = vec![];
+    let keys: Vec<_> = olds.keys().collect();
+    let clusters: Vec<_> = olds.values().collect();
+    for i in 0..clusters.len() {
+        // Write cluster-cluster dist
+        for j in i + 1..clusters.len() {
+            matrix.push(Cluster::dist(clusters[i], clusters[j]));
         }
-        // Drop marked cluster
-        for number in merged {
-            news.remove(&number);
+        // Write cluster-report dist
+        for deviant in &deviants {
+            matrix.push(Cluster::dist_rep(clusters[i], deviant));
         }
     }
-    Ok((moved, removed))
+    // Write report-report dist
+    for i in 0..deviants.len() {
+        let (_, (stacktrace1, _)) = &deviants[i];
+        for deviant2 in deviants.iter().skip(i + 1) {
+            let (_, (stacktrace2, _)) = &deviant2;
+            matrix.push(1.0 - similarity(stacktrace1, stacktrace2));
+        }
+    }
+
+    // Clustering
+    let res = cluster(matrix, clusters.len() + deviants.len())?;
+
+    // Sync real cluster numbers with resulting numbers
+    let mut numbers: HashMap<usize, usize> = HashMap::new();
+    for i in 0..clusters.len() {
+        numbers.insert(res[i], *keys[i]);
+    }
+    // New clusters
+    let mut news: HashMap<usize, Cluster> = HashMap::new();
+    let mut new_num = max;
+    for &num in res.iter().skip(clusters.len()) {
+        if numbers.contains_key(&num) {
+            continue;
+        }
+        new_num += 1;
+        numbers.insert(num, new_num);
+        // Create new cluster
+        let new = Cluster::new(new_num, vec![], vec![], vec![]);
+        news.insert(new_num, new);
+    }
+
+    // Save reports
+    for i in 0..deviants.len() {
+        // Get cluster number
+        let number = *numbers.get(&res[i + olds.len()]).unwrap();
+        // NOTE: We need not to track stacktraces
+        let (casrep, (_, crashline)) = &deviants[i];
+        if number > max {
+            // New cluster
+            before += 1;
+            let cluster = news.get_mut(&number).unwrap();
+            if !cluster.insert(casrep.to_path_buf(), vec![], crashline.to_string(), dedup) {
+                deduplicated += 1;
+                continue;
+            }
+        } else {
+            // Old cluster
+            let cluster = olds.get_mut(&number).unwrap();
+            if !cluster.insert(casrep.to_path_buf(), vec![], crashline.to_string(), dedup) {
+                removed += 1;
+                continue;
+            }
+            // Save report
+            moved += 1;
+            fs::copy(
+                casrep,
+                format!(
+                    "{}/cl{}/{}",
+                    &dir.display(),
+                    cluster.number,
+                    &casrep.file_name().unwrap().to_str().unwrap()
+                ),
+            )?;
+        }
+    }
+    util::save_clusters(&news, dir)?;
+    Ok((moved, removed, news.len(), before, before - deduplicated))
 }
 
 /// Calculate silhouette coefficient

@@ -189,30 +189,21 @@ pub fn dedup_stacktraces(stacktraces: &[Stacktrace]) -> Vec<bool> {
         .collect()
 }
 
-/// Perform the clustering of stack traces
+/// Perform the clustering by condensed dissimilarity matrix
 ///
 /// # Arguments
 ///
-/// * `stacktraces` - slice of `Stacktrace` structures
+/// * `matrix` - condensed dissimilarity matrix
+///
+/// * `len` - number of observations that are being clustered
 ///
 /// # Return value
 ///
-/// A vector of the same length as `stacktraces`.
-/// Vec\[i\] is the flat cluster number to which original stack trace i belongs.
-pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
-    // Writing distance matrix
-    // Only the values in the upper triangle are explicitly represented,
-    // not including the diagonal
-    let len = stacktraces.len();
-    let mut condensed_dissimilarity_matrix = vec![];
-    for i in 0..len {
-        for j in i + 1..len {
-            condensed_dissimilarity_matrix.push(1.0 - similarity(&stacktraces[i], &stacktraces[j]));
-        }
-    }
-
+/// A vector of the `len` length.
+/// Vec\[i\] is the flat cluster number to which original object i belongs.
+pub fn cluster(mut matrix: Vec<f64>, len: usize) -> Result<Vec<usize>> {
     // Get hierarchical clustering binary tree
-    let dendrogram = linkage(&mut condensed_dissimilarity_matrix, len, Method::Complete);
+    let dendrogram = linkage(&mut matrix, len, Method::Complete);
 
     // Iterate through merging step until threshold is reached
     // at the beginning every node is in its own cluster
@@ -253,6 +244,30 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
     }
 
     Ok(flat_clusters)
+}
+
+/// Perform the clustering of stack traces
+///
+/// # Arguments
+///
+/// * `stacktraces` - slice of `Stacktrace` structures
+///
+/// # Return value
+///
+/// A vector of the same length as `stacktraces`.
+/// Vec\[i\] is the flat cluster number to which original stack trace i belongs.
+pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
+    // Writing distance matrix
+    // Only the values in the upper triangle are explicitly represented,
+    // not including the diagonal
+    let len = stacktraces.len();
+    let mut condensed_dissimilarity_matrix = vec![];
+    for i in 0..len {
+        for j in i + 1..len {
+            condensed_dissimilarity_matrix.push(1.0 - similarity(&stacktraces[i], &stacktraces[j]));
+        }
+    }
+    cluster(condensed_dissimilarity_matrix, len)
 }
 
 /// Perform crashline deduplication for each cluster:

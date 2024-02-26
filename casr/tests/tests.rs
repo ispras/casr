@@ -2675,11 +2675,11 @@ fn test_casr_cluster_d_and_m() {
 fn test_casr_cluster_u() {
     let paths = [
         abs_path("tests/casr_tests/casrep/test_clustering_small"),
-        abs_path("tests/tmp_tests_casr/clustering_out"),
-        abs_path("tests/tmp_tests_casr/clustering_out/cl7/20.casrep"),
-        abs_path("tests/tmp_tests_casr/clustering_out/cl8"),
-        abs_path("tests/tmp_tests_casr/clustering_out/cl9"),
-        abs_path("tests/tmp_tests_casr/clustering_out/cl9/40.casrep"),
+        abs_path("tests/tmp_tests_casr/updating_out"),
+        abs_path("tests/tmp_tests_casr/updating_out/cl7/20.casrep"),
+        abs_path("tests/tmp_tests_casr/updating_out/cl8"),
+        abs_path("tests/tmp_tests_casr/updating_out/cl9"),
+        abs_path("tests/tmp_tests_casr/updating_out/cl9/40.casrep"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
