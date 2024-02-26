@@ -1,0 +1,10 @@
+Unhandled Exception:
+System.IndexOutOfRangeException: Index was outside the bounds of the array.
+  at B..ctor () [0x00008] in /home/user/mono/src/2.cs:33 
+  at A`1+<>c[T].<set_Q>b__1_1 () [0x00001] in /home/user/mono/src/2.cs:14 
+  at A`1[T].h[Z] (System.Func`1[TResult] a) [0x00001] in /home/user/mono/src/2.cs:25 
+  at A`1[T].<set_Q>g__g|1_0 (System.Int32[] arr) [0x00001] in /home/user/mono/src/2.cs:12 
+  at A`1[T].set_Q (System.Int32 value) [0x00002] in /home/user/mono/src/2.cs:19 
+  at Program+<>c.<Main>b__0_2 (System.Int32 i) [0x00000] in /home/user/mono/src/1.cs:8 
+  at Program.<Main>g__f|0_0 (System.Func`2[T,TResult] d, System.Int32& l, System.Int32 m) [0x00021] in /home/user/mono/src/1.cs:9 
+  at Program.Main () [0x00004] in /home/user/mono/src/1.cs:13

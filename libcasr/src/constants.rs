@@ -230,6 +230,7 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP: &[&str] = &[
 
 /// Regular expressions for с# functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_CSHARP: &[&str] = &[
+    // TODO
     r"^\(wrapper",
 ];
 
@@ -320,6 +321,7 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
 
 /// Regular expressions for paths to c# files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP: &[&str] = &[
+    // TODO
     r"^[^.]$"
 ];
 

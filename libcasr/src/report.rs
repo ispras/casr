@@ -1,5 +1,6 @@
 //! Report contains the main struct `CrashReport` with all information about crash.
 use crate::asan::AsanStacktrace;
+use crate::csharp::CSharpStacktrace;
 use crate::error;
 use crate::error::*;
 use crate::execution_class::*;
@@ -226,6 +227,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub js_report: Vec<String>,
+    /// C# report.
+    #[cfg_attr(
+    feature = "serde",
+    serde(rename(serialize = "CSharpReport", deserialize = "CSharpReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub csharp_report: Vec<String>,
     /// Crash line from stack trace: source:line or binary+offset.
     #[cfg_attr(
         feature = "serde",
@@ -580,6 +588,8 @@ impl CrashReport {
             RustStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.js_report.is_empty() {
             JsStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.csharp_report.is_empty() {
+            CSharpStacktrace::parse_stacktrace(&self.stacktrace)?
         } else {
             GdbStacktrace::parse_stacktrace(&self.stacktrace)?
         };
@@ -769,6 +779,14 @@ impl fmt::Display for CrashReport {
             }
         }
 
+        // CSharpReport
+        if !self.csharp_report.is_empty() {
+            report += "\n===CSharpReport===\n";
+            for e in self.csharp_report.iter() {
+                report += &format!("{e}\n");
+            }
+        }
+
         // Source
         if !self.source.is_empty() {
             report += "\n===Source===\n";
@@ -885,6 +903,11 @@ mod tests {
             "Uncaught ReferenceError: var is not defined".to_string(),
             "    at Worker.fuzz [as fn] (/home/user/test_js_stacktrace/main.js:1:2017)".to_string(),
         ];
+        report.csharp_report = vec![
+            "Unhandled Exception:".to_string(),
+            "System.IndexOutOfRangeException: Index was outside the bounds of the array.".to_string(),
+            "at Program.Main () <0x7fd826c45020 + 0x00019> in /home/user/mono/src/1.cs:5".to_string(),
+        ];
         report.source = vec![
             "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),"
                 .to_string(),
@@ -962,6 +985,11 @@ mod tests {
             "===JsReport===".to_string(),
             "Uncaught ReferenceError: var is not defined".to_string(),
             "    at Worker.fuzz [as fn] (/home/user/test_js_stacktrace/main.js:1:2017)".to_string(),
+            "".to_string(),
+            "===CSharpReport===".to_string(),
+            "Unhandled Exception:".to_string(),
+            "System.IndexOutOfRangeException: Index was outside the bounds of the array.".to_string(),
+            "at Program.Main () <0x7fd826c45020 + 0x00019> in /home/user/mono/src/1.cs:5".to_string(),
             "".to_string(),
             "===Source===".to_string(),
             "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),".to_string(),

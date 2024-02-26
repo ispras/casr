@@ -475,7 +475,7 @@ pub mod tests {
         let mut is_inited = INITED_STACKFRAMES_FILTER.write().unwrap();
         if !*is_inited {
             *is_inited = true;
-            init_ignored_frames!("cpp", "rust", "python", "go", "java", "js");
+            init_ignored_frames!("cpp", "rust", "python", "go", "java", "js", "csharp");
         }
     }
 

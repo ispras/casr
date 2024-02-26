@@ -1,34 +1,42 @@
 //! C# module implements `ParseStacktrace` and `Exception` traits for C# reports.
-use crate::exception::Exception;
-use crate::stacktrace::{ParseStacktrace, Stacktrace};
-
 use crate::error::*;
+use crate::exception::Exception;
 use crate::execution_class::ExecutionClass;
-use crate::stacktrace::StacktraceEntry;
-
+use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
 use regex::Regex;
+use std::vec::IntoIter;
 
 /// Structure provides an interface for processing the stack trace.
 pub struct CSharpStacktrace;
 
-impl CSharpStacktrace {
-    fn get_regex_format_for_stacktrace_entry(entry: &str) -> Result<Regex> {
-        let regexps = [
-            // DotNet
-            Regex::new(r"^at (?:(?P<service_info>\(.+?\)) )?(?P<function>\S+?)(?P<params>\(.*?\))?(?: in (?P<file>.+):line (?P<line>\w+))?$").unwrap(),
-            // Mono
-            Regex::new(r"^at (?:(?P<service_info>\(.+?\)) )?(?P<function>\S+?)(?: ?(?P<params>\(.*?\)))?(?: (?:<(?P<base>\w+)(?: \+ (?P<offset>\w+))?>|\[0x[\da-fA-F]+\]))?(?: in (?:<[\da-fA-F#]+>|(?P<file>.+)):(?P<line>\w+))?$").unwrap()
-        ];
+struct FormatRegexIterator<'a> {
+    entry: &'a str,
+    regexps: IntoIter<Regex>
+}
 
-        for re in regexps {
-            if re.is_match(entry) {
-                return Ok(re);
-            }
+impl<'a> FormatRegexIterator<'a> {
+    fn new(entry: &'a str) -> Self {
+        FormatRegexIterator {
+            entry,
+            regexps: vec![
+                // Mono
+                Regex::new(r"^at (?:(?P<service_info>\(.+?\)) )?(?P<function>\S+?)(?: ?(?P<params>\(.*?\)))?(?: (?:<(?P<base>\w+)(?: \+ (?P<offset>\w+))?>|\[0x[\da-fA-F]+\]))?(?: in (?:<[\da-fA-F#]+>|(?P<file>.+)):(?P<line>\w+))?$").unwrap(),
+                // DotNet
+                Regex::new(r"^at (?:(?P<service_info>\(.+?\)) )?(?P<function>\S+?)(?P<params>\(.*?\))?(?: in (?P<file>.+):line (?P<line>\w+))?$").unwrap()
+            ].into_iter()
         }
-
-        Err(Error::Casr(format!("Couldn't parse stacktrace line: {entry}")))
     }
+}
 
+impl Iterator for FormatRegexIterator<'_> {
+    type Item = Regex;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.regexps.find(|x| x.is_match(self.entry))
+    }
+}
+
+impl CSharpStacktrace {
     fn parse_stacktrace_entry(entry: &str, format_regex: &Regex) -> Result<StacktraceEntry> {
         let Some(cap) = format_regex.captures(entry) else {
             return Err(Error::Casr(format!("Couldn't parse stacktrace line: {entry}")));
@@ -87,7 +95,7 @@ impl CSharpStacktrace {
 
 impl ParseStacktrace for CSharpStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
-        let re = Regex::new(r"(?m)^Unhandled (e|E)xception(\. |:\n)(?:.|\n)*?((?:\s*(?:at [\S ]+|--- End of inner exception stack trace ---))+)$").unwrap();
+        let re = Regex::new(r"(?m)^Unhandled (E|e)xception(:\n|\. )(?:.|\n)*?((?:\s*(?:at [\S ]+|--- End of inner exception stack trace ---))+)$").unwrap();
 
         let Some(cap) = re.captures(stream).and_then(|cap|
             ((cap.get(1).unwrap().as_str() == "E") == (cap.get(2).unwrap().as_str() == ":\n")).then_some(cap)
@@ -106,7 +114,11 @@ impl ParseStacktrace for CSharpStacktrace {
     }
 
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
-        Self::parse_stacktrace_entry(entry, &Self::get_regex_format_for_stacktrace_entry(entry)?)
+        Self::parse_stacktrace_entry(
+            entry,
+            &FormatRegexIterator::new(entry)
+                .next()
+                .ok_or(Error::Casr(format!("Couldn't parse stacktrace line: {entry}")))?)
     }
 
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
@@ -131,12 +143,23 @@ impl ParseStacktrace for CSharpStacktrace {
             })
             .filter(|&s| !s.is_empty()).peekable();
 
-        if let Some(s) = iter.peek() {
-            let re = Self::get_regex_format_for_stacktrace_entry(s)?;
-            return iter.map(|s| Self::parse_stacktrace_entry(s, &re)).collect();
+        if let Some(entry) = iter.peek() {
+            let mut e = (0, Err(Error::Casr(format!("Couldn't parse stacktrace line: {entry}"))));
+
+            for re in FormatRegexIterator::new(entry) {
+                let mut iter = iter.clone().map(|s| Self::parse_stacktrace_entry(s, &re));
+                let sttr: Result<Stacktrace> = iter.clone().collect();
+
+                if sttr.is_ok() { return sttr; }
+
+                let n = iter.position(|r| r.is_err()).unwrap();
+                if n >= e.0 { e = (n, sttr); }
+            }
+
+            return e.1
         }
 
-        return std::iter::empty::<Result<StacktraceEntry>>().collect();
+        Ok(Stacktrace::default())
     }
 }
 
@@ -145,7 +168,7 @@ pub struct CSharpException;
 
 impl Exception for CSharpException {
     fn parse_exception(stream: &str) -> Option<ExecutionClass> {
-        let re = Regex::new(r"(?m)^Unhandled (e|E)xception(\. |:\n)((?:.|\n)*?)\s*(?:at [\S ]+|--- End of inner exception stack trace ---)$").unwrap();
+        let re = Regex::new(r"(?m)^Unhandled (E|e)xception(:\n|\. )((?:.|\n)*?)\s*(?:at [\S ]+|--- End of inner exception stack trace ---)$").unwrap();
 
         let cap = re.captures(stream)?;
         let get_group_as_str = |i| cap.get(i).unwrap().as_str();
@@ -169,46 +192,47 @@ impl Exception for CSharpException {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{init_ignored_frames, stacktrace::Filter};
+    use crate::stacktrace::{tests::safe_init_ignore_stack_frames, Filter};
 
     #[test]
     fn test_csharp_get_regex_format_for_stacktrace_entry() {
-        let re_dotnet = r"^at (?:(?P<service_info>\(.+?\)) )?(?P<function>\S+?)(?P<params>\(.*?\))?(?: in (?P<file>.+):line (?P<line>\w+))?$";
         let re_mono = r"^at (?:(?P<service_info>\(.+?\)) )?(?P<function>\S+?)(?: ?(?P<params>\(.*?\)))?(?: (?:<(?P<base>\w+)(?: \+ (?P<offset>\w+))?>|\[0x[\da-fA-F]+\]))?(?: in (?:<[\da-fA-F#]+>|(?P<file>.+)):(?P<line>\w+))?$";
+        let re_dotnet = r"^at (?:(?P<service_info>\(.+?\)) )?(?P<function>\S+?)(?P<params>\(.*?\))?(?: in (?P<file>.+):line (?P<line>\w+))?$";
 
-        fn get_regex(entry: &str) -> Result<String> {
-            CSharpStacktrace::get_regex_format_for_stacktrace_entry(entry).map(|r| r.to_string())
+        fn get_regex(iter: &mut FormatRegexIterator) -> Option<String> {
+            iter.next().map(|r| r.to_string())
         }
 
-        match get_regex("at A`1[T].h[Z] (System.Func`1[TResult] a) [0x00001] in <f6b2b0ea894844dc83a96f9504d8f570>:0") {
-            Ok(re) => assert_eq!(re, re_mono),
-            Err(err) => panic!("{err}")
-        }
+        let mut iter;
 
-        match get_regex("at A`1.<set_Q>g__g|1_0(Int32[] arr(((((((((( in /home/user/dotnet/2/A.cs:line 19") {
-            Ok(_) => assert!(false),
-            Err(err) => assert_eq!(err.to_string(), "Casr: Couldn't parse stacktrace line: at A`1.<set_Q>g__g|1_0(Int32[] arr(((((((((( in /home/user/dotnet/2/A.cs:line 19")
-        }
+        iter = FormatRegexIterator::new("at A`1[T].h[Z] (System.Func`1[TResult] a) [0x00001] in <f6b2b0ea894844dc83a96f9504d8f570>:0");
+        assert_eq!(get_regex(&mut iter).as_deref(), Some(re_mono));
+        assert_eq!(get_regex(&mut iter).as_deref(), None);
 
-        match get_regex("at Program+<>c.<Main>b__0_2 (System.Int32 i) <0x7f30488306b0 + 0x00035> in <f6b2b0ea894844dc83a96f9504d8f570#610bc057486c618efb3936233b088988>:0") {
-            Ok(re) => assert_eq!(re, re_mono),
-            Err(err) => panic!("{err}")
-        }
+        iter = FormatRegexIterator::new("at A`1.<set_Q>g__g|1_0(Int32[] arr(((((((((( in /home/user/dotnet/2/A.cs:line 19");
+        assert_eq!(get_regex(&mut iter).as_deref(), None);
 
-        match get_regex("at (wrapper managed-to-native) System.Drawing.GDIPlus:GdiplusStartup (ulong&,System.Drawing.GdiplusStartupInput&,System.Drawing.GdiplusStartupOutput&)") {
-            Ok(re) => assert_eq!(re, re_mono),
-            Err(err) => panic!("{err}")
-        }
+        iter = FormatRegexIterator::new("at Program+<>c.<Main>b__0_2 (System.Int32 i) <0x7f30488306b0 + 0x00035> in <f6b2b0ea894844dc83a96f9504d8f570#610bc057486c618efb3936233b088988>:0");
+        assert_eq!(get_regex(&mut iter).as_deref(), Some(re_mono));
+        assert_eq!(get_regex(&mut iter).as_deref(), None);
 
-        match get_regex("at Program.<Main>g__f|0_0(Func`2 d, Int32& l, Int32 m) in /home/user/dotnet/2/Program.cs:line 9") {
-            Ok(re) => assert_eq!(re, re_dotnet),
-            Err(err) => panic!("{err}")
-        }
+        iter = FormatRegexIterator::new("at (wrapper managed-to-native) System.Drawing.GDIPlus:GdiplusStartup (ulong&,System.Drawing.GdiplusStartupInput&,System.Drawing.GdiplusStartupOutput&)");
+        assert_eq!(get_regex(&mut iter).as_deref(), Some(re_mono));
+        assert_eq!(get_regex(&mut iter).as_deref(), None);
 
-        match get_regex("at Program.Main()") {
-            Ok(re) => assert_eq!(re, re_dotnet),
-            Err(err) => panic!("{err}")
-        }
+        iter = FormatRegexIterator::new("at A`1[T].set_Q (System.Int32 value) <0x40b74140 + 0x00082> in /home/user/mono/2/src/2.cs:24");
+        assert_eq!(get_regex(&mut iter).as_deref(), Some(re_mono));
+        assert_eq!(get_regex(&mut iter).as_deref(), None);
+
+        iter = FormatRegexIterator::new("at Program.<Main>g__f|0_0(Func`2 d, Int32& l, Int32 m) in /home/user/dotnet/2/Program.cs:line 9");
+        assert_eq!(get_regex(&mut iter).as_deref(), Some(re_dotnet));
+        assert_eq!(get_regex(&mut iter).as_deref(), None);
+
+        iter = FormatRegexIterator::new("at Program.Main()");
+        assert_eq!(get_regex(&mut iter).as_deref(), Some(re_mono));
+        assert_eq!(get_regex(&mut iter).as_deref(), Some(re_dotnet));
+        assert_eq!(get_regex(&mut iter).as_deref(), None);
+
     }
 
     #[test]
@@ -270,6 +294,7 @@ Unhandled exception. System.ArgumentException: 1111 ---> System.IO.IOException: 
    --- End of inner exception stack trace ---
    --- End of inner exception stack trace ---
    --- End of inner exception stack trace ---
+   at C.qwe()
    at B..ctor() in /home/user/dotnet/2/A.cs:line 37
    at A`1.<>c.<set_Q>b__1_1() in /home/user/dotnet/2/A.cs:line 15
    at A`1.h[Z](Func`1 a)
@@ -289,6 +314,7 @@ Unhandled exception. System.ArgumentException: 1111 ---> System.IO.IOException: 
             "--- End of inner exception stack trace ---",
             "--- End of inner exception stack trace ---",
             "--- End of inner exception stack trace ---",
+            "at C.qwe()",
             "at B..ctor() in /home/user/dotnet/2/A.cs:line 37",
             "at A`1.<>c.<set_Q>b__1_1() in /home/user/dotnet/2/A.cs:line 15",
             "at A`1.h[Z](Func`1 a)",
@@ -308,55 +334,56 @@ Unhandled exception. System.ArgumentException: 1111 ---> System.IO.IOException: 
 
         assert_eq!(bt, trace);
 
-        let mut stacktrace = match CSharpStacktrace::parse_stacktrace(&trace[0..8]) {
+        let mut stacktrace = match CSharpStacktrace::parse_stacktrace(&trace[0..10]) {
             Ok(s) => s,
             Err(e) => panic!("{e}")
         };
 
-        assert_eq!(stacktrace.len(), 3);
-        assert_eq!(stacktrace[0].function, "B..ctor()".to_string());
-        assert_eq!(stacktrace[0].debug.file, "/home/user/dotnet/2/A.cs".to_string());
-        assert_eq!(stacktrace[0].debug.line, 37);
-        assert_eq!(stacktrace[1].function, "A`1.<>c.<set_Q>b__1_1()".to_string());
+        assert_eq!(stacktrace.len(), 4);
+        assert_eq!(stacktrace[0].function, "C.qwe()".to_string());
+        assert_eq!(stacktrace[1].function, "B..ctor()".to_string());
         assert_eq!(stacktrace[1].debug.file, "/home/user/dotnet/2/A.cs".to_string());
-        assert_eq!(stacktrace[1].debug.line, 15);
-        assert_eq!(stacktrace[2].function, "A`1.h[Z](Func`1 a)".to_string());
+        assert_eq!(stacktrace[1].debug.line, 37);
+        assert_eq!(stacktrace[2].function, "A`1.<>c.<set_Q>b__1_1()".to_string());
+        assert_eq!(stacktrace[2].debug.file, "/home/user/dotnet/2/A.cs".to_string());
+        assert_eq!(stacktrace[2].debug.line, 15);
+        assert_eq!(stacktrace[3].function, "A`1.h[Z](Func`1 a)".to_string());
 
-        stacktrace = match CSharpStacktrace::parse_stacktrace(&trace[9..16]) {
+        stacktrace = match CSharpStacktrace::parse_stacktrace(&trace[9..]) {
             Ok(s) => s,
             Err(e) => panic!("{e}")
         };
 
-        assert_eq!(stacktrace.len(), 7);
+        assert_eq!(stacktrace.len(), 8);
         assert_eq!(
-            stacktrace[2].function,
+            stacktrace[3].function,
             "(wrapper runtime-invoke) staticperformanceoptimization.runtime_invoke_void(object,intptr,intptr,intptr)".to_string()
         );
         assert_eq!(
-            stacktrace[3].function,
+            stacktrace[4].function,
             "(wrapper managed-to-native) System.Drawing.GDIPlus:GdiplusStartup(ulong&,System.Drawing.GdiplusStartupInput&,System.Drawing.GdiplusStartupOutput&)".to_string()
         );
 
-        init_ignored_frames!("csharp");
+        safe_init_ignore_stack_frames();
         stacktrace.filter();
 
-        assert_eq!(stacktrace.len(), 5);
-        assert_eq!(stacktrace[0].address, 1085753106);
-        assert_eq!(stacktrace[0].function, "A`1[T].<set_Q>g__g|1_0(System.Int32[] arr)".to_string());
-        assert_eq!(stacktrace[0].debug.file, "/home/user/mono/2/src/2.cs".to_string());
-        assert_eq!(stacktrace[0].debug.line, 13);
-        assert_eq!(stacktrace[1].address, 1076318658);
-        assert_eq!(stacktrace[1].function, "A`1[T].set_Q(System.Int32 value)".to_string());
-
-        assert_eq!(stacktrace[2].address, 139758385043173);
-        assert_eq!(stacktrace[2].function, "Program+<>c.<Main>b__0_2(System.Int32 i)".to_string());
-        assert_eq!(stacktrace[3].address, 139758385041945);
+        assert_eq!(stacktrace.len(), 6);
+        assert_eq!(stacktrace[0].function, "A`1.h[Z](Func`1 a)".to_string());
+        assert_eq!(stacktrace[1].address, 1085753106);
+        assert_eq!(stacktrace[1].function, "A`1[T].<set_Q>g__g|1_0(System.Int32[] arr)".to_string());
+        assert_eq!(stacktrace[1].debug.file, "/home/user/mono/2/src/2.cs".to_string());
+        assert_eq!(stacktrace[1].debug.line, 13);
+        assert_eq!(stacktrace[2].address, 1076318658);
+        assert_eq!(stacktrace[2].function, "A`1[T].set_Q(System.Int32 value)".to_string());
+        assert_eq!(stacktrace[3].address, 139758385043173);
+        assert_eq!(stacktrace[3].function, "Program+<>c.<Main>b__0_2(System.Int32 i)".to_string());
+        assert_eq!(stacktrace[4].address, 139758385041945);
         assert_eq!(
-            stacktrace[3].function,
+            stacktrace[4].function,
             "Program.<Main>g__f|0_0(System.Func`2[T,TResult] d, System.Int32& l, System.Int32 m)".to_string()
         );
-        assert_eq!(stacktrace[4].address, 139758385041658);
-        assert_eq!(stacktrace[4].function, "Program.Main()".to_string());
+        assert_eq!(stacktrace[5].address, 139758385041658);
+        assert_eq!(stacktrace[5].function, "Program.Main()".to_string());
 
         let sttr = CSharpStacktrace::parse_stacktrace(&trace);
 
