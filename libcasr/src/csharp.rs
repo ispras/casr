@@ -388,6 +388,8 @@ Unhandled exception. System.ArgumentException: 1111 ---> System.IO.IOException: 
         let sttr = CSharpStacktrace::parse_stacktrace(&trace);
 
         assert!(sttr.is_err());
+
+        // Here is a check on which error exactly. The error is due to the fact that trace consists of blocks of two different formats.
         assert_eq!(sttr.err().unwrap().to_string(), "Casr: Couldn't parse stacktrace line: at A`1[T].<set_Q>g__g|1_0 (System.Int32[] arr) <0x40b745f0 + 0x00122> in /home/user/mono/2/src/2.cs:13");
     }
 }
