@@ -16,19 +16,24 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: cargo build --all-features --verbose
-      - name: Run tests
+      - name: Brew packages
         run: |
           brew update && brew install gdb curl python llvm \
-              openjdk@17 ca-certificates gnupg
+              openjdk ca-certificates gnupg
           pip3 install atheris
-
           brew update && brew install nodejs
+      - name: NPM packages
+        run: |
           sudo npm install -g jsfuzz
           sudo npm install --save-dev @jazzer.js/core
+      - name: Rust packages
+        run: |
           curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
           ./rustup.sh -y && rm rustup.sh
           rustup install nightly
           export PATH=/root/.cargo/bin:$PATH
           cargo install cargo-fuzz
+      - name: Run tests
+        run: |
           cargo test --release --verbose --lib -- --test-threads 1
           cargo test --release --verbose --package casr
