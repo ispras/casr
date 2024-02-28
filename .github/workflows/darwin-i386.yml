@@ -18,8 +18,8 @@ jobs:
         run: cargo build --all-features --verbose
       - name: Run tests
         run: |
-          brew update && brew install gdb python curl llvm \
-              openjdk-17-jdk ca-certificates gnupg
+          brew update && brew install gdb python curl python@3.10 llvm \
+              openjdk@17 ca-certificates gnupg
           pip3 install atheris
 
           brew update && brew install nodejs
