@@ -1,0 +1,34 @@
+name: darwin-i386
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  darwin-i386-latest:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cargo build --all-features --verbose
+      - name: Run tests
+        run: |
+          brew update && brew install gdb pip curl python3.10-dev llvm \
+              openjdk-17-jdk ca-certificates gnupg
+          pip3 install atheris
+
+          brew update && brew install nodejs
+          sudo npm install -g jsfuzz
+          sudo npm install --save-dev @jazzer.js/core
+          curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
+          ./rustup.sh -y && rm rustup.sh
+          rustup install nightly
+          export PATH=/root/.cargo/bin:$PATH
+          cargo install cargo-fuzz
+          cargo test --release --verbose --lib -- --test-threads 1
+          cargo test --release --verbose --package casr
