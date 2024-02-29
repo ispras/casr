@@ -14,17 +14,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Build
-        run: cargo build --all-features --verbose
       - name: Brew packages
         # Initial unlik due to https://github.com/pypa/pipenv/issues/3831
         run: |
           rm '/usr/local/bin/2to3'
+          rm '/usr/local/bin/2to3-3.12'
           brew unlink python@3.12
           brew update && brew install gdb curl python llvm \
               openjdk ca-certificates gnupg
           pip3 install atheris
           brew update && brew install nodejs
+      - name: Build
+        run: cargo build --all-features --verbose
       - name: NPM packages
         run: |
           sudo npm install -g jsfuzz
