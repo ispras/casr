@@ -17,8 +17,8 @@ jobs:
       - name: Build
         run: cargo build --all-features --verbose
       - name: Brew packages
+        # Initial unlik due to https://github.com/pypa/pipenv/issues/3831
         run: |
-          #  https://github.com/pypa/pipenv/issues/3831
           brew unlink /usr/local/bin/2to3
           brew update && brew install gdb curl python llvm \
               openjdk ca-certificates gnupg
