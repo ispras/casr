@@ -18,6 +18,7 @@ jobs:
         # Initial unlik due to https://github.com/pypa/pipenv/issues/3831
         run: |
           brew update
+          brew install gdb
       - name: Build
         run: cargo build --all-features --verbose
       - name: NPM packages
