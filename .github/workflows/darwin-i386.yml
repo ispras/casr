@@ -17,11 +17,7 @@ jobs:
       - name: Brew packages
         # Initial unlik due to https://github.com/pypa/pipenv/issues/3831
         run: |
-          brew link --overwrite python@3.12
-          brew update && brew install gdb curl llvm \
-              openjdk ca-certificates gnupg
-          pip3 install atheris
-          brew update && brew install nodejs
+          brew update
       - name: Build
         run: cargo build --all-features --verbose
       - name: NPM packages
