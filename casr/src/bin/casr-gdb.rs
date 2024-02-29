@@ -209,6 +209,8 @@ fn main() -> Result<()> {
         .map(|x| x.to_string())
         .collect();
 
+    println!("Debugging GBD output: {:?}", result);
+
     let siginfo = Siginfo::from_gdb(&result[1]);
 
     if let Err(error) = siginfo {
