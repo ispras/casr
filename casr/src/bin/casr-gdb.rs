@@ -209,12 +209,9 @@ fn main() -> Result<()> {
         .map(|x| x.to_string())
         .collect();
 
-    println!("Debugging GBD output: {:?}", result);
-
     let siginfo = Siginfo::from_gdb(&result[1]);
 
     if let Err(error) = siginfo {
-        println!("Debugging Noah: {:?}", error);
         let err_str = error.to_string();
         let re = Regex::new(r"\$\d+ = (0x0|void) doesn't match regex template").unwrap();
         if err_str.contains(":  doesn't match") || re.is_match(&err_str) {
