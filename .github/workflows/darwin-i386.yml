@@ -18,6 +18,7 @@ jobs:
         run: cargo build --all-features --verbose
       - name: Brew packages
         run: |
+          brew unlink /usr/local/bin/2to3
           brew update && brew install gdb curl python llvm \
               openjdk ca-certificates gnupg
           pip3 install atheris
