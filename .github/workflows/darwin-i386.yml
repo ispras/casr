@@ -19,9 +19,7 @@ jobs:
       - name: Brew packages
         # Initial unlik due to https://github.com/pypa/pipenv/issues/3831
         run: |
-          rm '/usr/local/bin/2to3-3.12'
-          rm '/usr/local/bin/idle3.12'
-          rm '/usr/local/bin/pydoc3.12'
+          rm '/usr/local/bin/2to3'
           brew unlink python@3.12
           brew update && brew install gdb curl python llvm \
               openjdk ca-certificates gnupg
