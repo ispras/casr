@@ -229,8 +229,8 @@ pub struct CrashReport {
     pub js_report: Vec<String>,
     /// C# report.
     #[cfg_attr(
-    feature = "serde",
-    serde(rename(serialize = "CSharpReport", deserialize = "CSharpReport"))
+        feature = "serde",
+        serde(rename(serialize = "CSharpReport", deserialize = "CSharpReport"))
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub csharp_report: Vec<String>,
@@ -905,8 +905,10 @@ mod tests {
         ];
         report.csharp_report = vec![
             "Unhandled Exception:".to_string(),
-            "System.IndexOutOfRangeException: Index was outside the bounds of the array.".to_string(),
-            "at Program.Main () <0x7fd826c45020 + 0x00019> in /home/user/mono/src/1.cs:5".to_string(),
+            "System.IndexOutOfRangeException: Index was outside the bounds of the array."
+                .to_string(),
+            "at Program.Main () <0x7fd826c45020 + 0x00019> in /home/user/mono/src/1.cs:5"
+                .to_string(),
         ];
         report.source = vec![
             "--->83             return utf16_to_utf8(std::u16string(name_array.begin(),"

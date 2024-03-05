@@ -322,7 +322,7 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP: &[&str] = &[
 /// Regular expressions for paths to c# files that should be ignored.
 pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP: &[&str] = &[
     // TODO
-    r"^[^.]$"
+    r"^[^.]$",
 ];
 
 // Signal numbers
