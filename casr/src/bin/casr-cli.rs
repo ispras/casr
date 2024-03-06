@@ -824,7 +824,11 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             .map(|res| res.unwrap().path())
             .any(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
     {
-        clusters.push((dir.canonicalize().unwrap().to_path_buf(), 0));
+        if let Ok(canon_dir) = dir.canonicalize() {
+            clusters.push((canon_dir.to_path_buf(), 0));
+        } else {
+            clusters.push((dir.to_path_buf(), 0));
+        }
     }
 
     for (clpath, _) in clusters {
