@@ -166,7 +166,7 @@ Create report from JavaScript:
 
 Create report from C#:
 
-    $ casr-csharp -o csharp.casrep -- dotnet casr/tests/casr_tests/csharp/test_casr_csharp.csproj
+    $ casr-csharp -o csharp.casrep -- dotnet casr/tests/casr_tests/csharp/test_casr_csharp.dll
 
 View report:
 

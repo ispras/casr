@@ -1,7 +1,6 @@
 use casr::util;
 use libcasr::{
-    csharp::*, exception::Exception, init_ignored_frames, java::*, report::CrashReport,
-    stacktrace::*,
+    csharp::*, exception::Exception, init_ignored_frames, report::CrashReport, stacktrace::*,
 };
 
 use anyhow::{bail, Result};
@@ -9,7 +8,6 @@ use clap::{Arg, ArgAction, ArgGroup};
 use regex::Regex;
 use std::path::PathBuf;
 use std::process::Command;
-use walkdir::WalkDir;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-csharp")
@@ -46,18 +44,6 @@ fn main() -> Result<()> {
                 .value_name("FILE")
                 .help("Stdin file for program"),
         )
-        // This is maybe not needed.
-        .arg(
-            Arg::new("source-dirs")
-                .long("source-dirs")
-                .env("CASR_SOURCE_DIRS")
-                .action(ArgAction::Set)
-                .num_args(1..)
-                .value_delimiter(':')
-                .value_parser(clap::value_parser!(PathBuf))
-                .value_name("DIR")
-                .help("Paths to directories with Java source files (list separated by ':' for env)"),
-        )
         .arg(
             Arg::new("timeout")
                 .short('t')
@@ -76,16 +62,6 @@ fn main() -> Result<()> {
                 .value_name("FILE")
                 .help("File with regular expressions for functions and file paths that should be ignored"),
         )
-        // This is maybe not needed.
-        .arg(
-            Arg::new("strip-path")
-                .long("strip-path")
-                .env("CASR_STRIP_PATH")
-                .action(ArgAction::Set)
-                .value_name("PREFIX")
-                .help("Path prefix to strip from stacktrace and crash line"),
-        )
-        // Maybe something else is needed to be added here.
         .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
@@ -95,7 +71,6 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    // Maybe here is not "csharp", but "cs".
     init_ignored_frames!("csharp", "cpp"); //TODO
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;
@@ -127,9 +102,13 @@ fn main() -> Result<()> {
 
     // Create report.
     let mut report = CrashReport::new();
-    //
-    // Here is the special code for csharp that creates report.
-    //
+    // Set executable path (for C# .dll file)
+    if let Some(pos) = argv.iter().position(|x| x.ends_with(".dll")) {
+        let Some(classes) = argv.get(pos + 1) else {
+            bail!("dotnet target is not specified by .dll executable.");
+        };
+        report.executable_path = classes.to_string();
+    }
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
@@ -137,40 +116,24 @@ fn main() -> Result<()> {
     // Get C# report.
     let csharp_stderr_list: Vec<String> =
         csharp_stderr.split('\n').map(|l| l.to_string()).collect();
-    let re = Regex::new(r"Exception in thread .*? |== Java Exception: ").unwrap();
-    //
-    // Here is the special regex for csharp.
-    //
+    let re = Regex::new(r"(?m)^Unhandled [Ee]xception(?::\n|\. )(?:.|\n)*?((?:[ \n\t]*(?:at [\S ]+|--- End of inner exception stack trace ---))+)$").unwrap();
     if let Some(start) = csharp_stderr_list.iter().position(|x| re.is_match(x)) {
         report.csharp_report = csharp_stderr_list[start..].to_vec();
-        //
-        // Parsing of stderr list here.
-        //
         let report_str = report.csharp_report.join("\n");
         report.stacktrace = CSharpStacktrace::extract_stacktrace(&report_str)?;
         if let Some(exception) = CSharpException::parse_exception(&report_str) {
             report.execution_class = exception;
         }
-    } else {
-        // Call error here maybe.
     }
 
-    let stacktrace = CSharpStacktrace::parse_stacktrace(&report.stacktrace)?;
-    if let Ok(crash_line) = stacktrace.crash_line() {
+    if let Ok(crash_line) = CSharpStacktrace::parse_stacktrace(&report.stacktrace)?.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
-            //
-            // Maybe other code is here.
-            //
             if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
         }
     }
-
-    //
-    // Something else is here maybe.
-    //
 
     //Output report
     util::output_report(&report, &matches, &argv)

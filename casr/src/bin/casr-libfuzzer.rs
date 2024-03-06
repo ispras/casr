@@ -142,7 +142,7 @@ fn main() -> Result<()> {
             "casr-gdb"
         }
     };
-    let tool = util::get_path(tool)?;
+    let tool_path = util::get_path(tool)?;
 
     // Get all crashes.
     let crashes: HashMap<String, CrashInfo> = fs::read_dir(input_dir)?
@@ -159,16 +159,18 @@ fn main() -> Result<()> {
                     target_args: argv.iter().map(|x| x.to_string()).collect(),
                     envs: envs.clone(),
                     at_index: Some(at_index),
-                    casr_tool: tool.clone(),
+                    casr_tool: tool_path.clone(),
                 },
             )
         })
         .collect();
 
-    let gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
-        shell_words::split(argv)?
-    } else {
+    let gdb_args: Vec<String>;
+    let argv = matches.get_one::<String>("casr-gdb-args");
+    gdb_args = if tool != "casr-gdb" && tool != "casr-san" && argv.is_none() {
         Vec::new()
+    } else {
+        shell_words::split(argv.unwrap())?
     };
 
     // Generate reports

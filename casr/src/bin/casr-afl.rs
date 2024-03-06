@@ -103,7 +103,6 @@ fn main() -> Result<()> {
         .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
-                .required(false)
                 .num_args(1..)
                 .last(true)
                 .help("Add \"-- fuzz_target <arguments> (for C#)\""),
@@ -112,13 +111,6 @@ fn main() -> Result<()> {
 
     // Init log.
     util::initialize_logging(&matches);
-
-    // Get gdb args.
-    let mut gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
-        shell_words::split(argv)?
-    } else {
-        Vec::new()
-    };
 
     // Get fuzz target args (for C#).
     let mut argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
@@ -131,6 +123,29 @@ fn main() -> Result<()> {
     } else {
         argv.push("@@");
         argv.len() - 1
+    };
+
+    // Get tool.
+    let tool = if !argv.is_empty() && argv[0].ends_with(".dll") {
+        "casr-csharp"
+    } else {
+        let sym_list = util::symbols_list(Path::new(argv[0]))?;
+        if sym_list.contains("__asan") {
+            "casr-san"
+        } else {
+            "casr-gdb"
+        }
+    };
+    let tool_path = util::get_path(tool)?;
+
+    // Get gdb args.
+    let argv = matches.get_one::<String>("casr-gdb-args");
+    let gdb_args = if (tool != "casr-gdb" && tool != "casr-san" && argv.is_none())
+        || matches.get_flag("ignore-cmdline")
+    {
+        Vec::new()
+    } else {
+        shell_words::split(argv.unwrap())?
     };
 
     // Get all crashes.
@@ -156,7 +171,6 @@ fn main() -> Result<()> {
                     }
                 },
                 envs: HashMap::new(),
-                casr_tool: util::get_path("casr-gdb")?,
                 ..Default::default()
             }
         } else {
@@ -172,15 +186,13 @@ fn main() -> Result<()> {
                 .into_iter()
                 .collect(),
                 at_index: Some(at_index),
-                casr_tool: util::get_path("casr-csharp")?,
                 ..Default::default()
             }
         };
+        crash_info.casr_tool = tool_path.clone();
 
         // When we triage crashes for binaries, use casr-san.
         if !gdb_args.is_empty() {
-            let casr_san = util::get_path("casr-san")?;
-
             crash_info.at_index = crash_info
                 .target_args
                 .iter()
@@ -189,16 +201,9 @@ fn main() -> Result<()> {
                 .map(|x| x + 1);
 
             if let Some(target) = crash_info.target_args.first() {
-                match util::symbols_list(Path::new(target)) {
-                    Ok(list) => {
-                        if list.contains("__asan") {
-                            crash_info.casr_tool = casr_san.clone()
-                        }
-                    }
-                    Err(e) => {
-                        error!("{e}");
-                        continue;
-                    }
+                if let Err(e) = util::symbols_list(Path::new(target)) {
+                    error!("{e}");
+                    continue;
                 }
             } else {
                 error!("Cmdline is empty. Path: {:?}", path.join("cmdline"));
@@ -220,10 +225,6 @@ fn main() -> Result<()> {
             info.path = crash.path();
             crashes.insert(crash.file_name().into_string().unwrap(), info);
         }
-    }
-
-    if matches.get_flag("ignore-cmdline") {
-        gdb_args = Vec::new();
     }
 
     // Generate reports
