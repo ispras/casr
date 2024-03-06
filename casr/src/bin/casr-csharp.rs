@@ -1,6 +1,7 @@
 use casr::util;
 use libcasr::{
-    exception::Exception, init_ignored_frames, java::*, report::CrashReport, stacktrace::*,
+    csharp::*, exception::Exception, init_ignored_frames, java::*, report::CrashReport,
+    stacktrace::*,
 };
 
 use anyhow::{bail, Result};
@@ -126,9 +127,8 @@ fn main() -> Result<()> {
 
     // Create report.
     let mut report = CrashReport::new();
-    // Set executable path (java class path)
     //
-    // Here is the special code for csharp.
+    // Here is the special code for csharp that creates report.
     //
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
@@ -146,17 +146,16 @@ fn main() -> Result<()> {
         //
         // Parsing of stderr list here.
         //
-        //let report_str = report.csharp_report.join("\n");
-        //report.stacktrace = CSharpStacktrace::extract_stacktrace(&report_str)?;
-        //if let Some(exception) = CSharpException::parse_exception(&report_str) {
-        //    report.execution_class = exception;
-        //}
+        let report_str = report.csharp_report.join("\n");
+        report.stacktrace = CSharpStacktrace::extract_stacktrace(&report_str)?;
+        if let Some(exception) = CSharpException::parse_exception(&report_str) {
+            report.execution_class = exception;
+        }
     } else {
         // Call error here maybe.
     }
 
-    let stacktrace = JavaStacktrace::parse_stacktrace(&report.stacktrace)?;
-    //let stacktrace = CSharpStacktrace::parse_stacktrace(&report.stacktrace)?;
+    let stacktrace = CSharpStacktrace::parse_stacktrace(&report.stacktrace)?;
     if let Ok(crash_line) = stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {

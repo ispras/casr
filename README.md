@@ -166,7 +166,7 @@ Create report from JavaScript:
 
 Create report from C#:
 
-    $ casr-csharp -o csharp.casrep -- dotnet casr/tests/casr_tests/csharp/test_casr_csharp.cs
+    $ casr-csharp -o csharp.casrep -- dotnet casr/tests/casr_tests/csharp/test_casr_csharp.csproj
 
 View report:
 
@@ -249,9 +249,10 @@ If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus), the pipeline
 If you use [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)
 /[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz))/[Sharpfuzz](https://github.com/Metalnem/sharpfuzz),
-the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)), the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically
 by `casr-libfuzzer`.
+
+If you use [Sharpfuzz](https://www.llvm.org/docs/LibFuzzer.html), the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically by `casr-afl`.
 
 ## Contributing
 

@@ -666,7 +666,7 @@ fn build_slider_report(
     }
 
     if !report.csharp_report.is_empty() {
-        select.add_item("CsharpReport", report.csharp_report.join("\n"));
+        select.add_item("CSharpReport", report.csharp_report.join("\n"));
     }
 
     if !report.csharp_report.is_empty() {
