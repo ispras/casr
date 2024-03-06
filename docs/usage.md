@@ -208,22 +208,22 @@ Run casr-js:
 
 Create CASR reports (.casrep) from C# reports
 
-Usage: casr-csharp [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-csharp [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
 
-Arguments:
-  [ARGS]...  Add "-- <path> <arguments>" to run
+    Arguments:
+    [ARGS]...  Add "-- <path> <arguments>" to run
 
-Options:
-  -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                           is generated
-      --stdout             Print CASR report to stdout
-      --stdin <FILE>       Stdin file for program
-  -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                           timeout is disabled [default: 0]
-      --ignore <FILE>      File with regular expressions for functions and file paths that
-                           should be ignored
-  -h, --help               Print help
-  -V, --version            Print version
+    Options:
+    -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                            is generated
+        --stdout             Print CASR report to stdout
+        --stdin <FILE>       Stdin file for program
+    -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                            timeout is disabled [default: 0]
+        --ignore <FILE>      File with regular expressions for functions and file paths that
+                            should be ignored
+    -h, --help               Print help
+    -V, --version            Print version
 
 Run casr-csharp:
 

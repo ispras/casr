@@ -63,9 +63,6 @@ impl<'a> CrashInfo {
         if tool_name.eq("casr-python") {
             args.push("python3".to_string());
         }
-        if tool_name.eq("casr-csharp") {
-            // Maybe push some additional args here.
-        }
         let offset = args.len();
         args.extend_from_slice(&self.target_args);
         if let Some(at_index) = self.at_index {
