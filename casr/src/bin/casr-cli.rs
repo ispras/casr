@@ -824,12 +824,16 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             .map(|res| res.unwrap().path())
             .any(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
     {
-        clusters.push((dir.to_path_buf(), 0));
+        clusters.push((dir.canonicalize().unwrap().to_path_buf(), 0));
     }
 
     for (clpath, _) in clusters {
         let cluster = clpath.as_path();
-        let filename = cluster.file_name().unwrap().to_str().unwrap();
+        let filename = if let Some(cl_filename) = cluster.file_name() {
+            cl_filename.to_str().unwrap()
+        } else {
+            cluster.to_str().unwrap()
+        };
 
         // Ubsan indicator for minimize logging
         let mut ubsan = true;
