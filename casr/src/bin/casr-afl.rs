@@ -126,7 +126,7 @@ fn main() -> Result<()> {
     };
 
     // Get tool.
-    let tool = if let Some(_) = argv.iter().position(|x| x.ends_with(".dll")) {
+    let tool = if argv[0].ends_with("dotnet") || argv[0].ends_with("mono") {
         "casr-csharp"
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
