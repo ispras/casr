@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-afl")
         .version(clap::crate_version!())
-        .about("Triage crashes found by AFL++)")
+        .about("Triage crashes found by AFL++ (Sharpfuzz)")
         .term_width(90)
         .arg(
             Arg::new("log-level")
@@ -105,7 +105,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .num_args(1..)
                 .last(true)
-                .help("Add \"-- fuzz_target <arguments> (for C#)\""),
+                .help("Add \"-- fuzz_target <arguments>\""),
         )
         .get_matches();
 
@@ -126,7 +126,7 @@ fn main() -> Result<()> {
     };
 
     // Get tool.
-    let tool = if !argv.is_empty() && argv[0].ends_with(".dll") {
+    let tool = if let Some(_) = argv.iter().position(|x| x.ends_with(".dll")) {
         "casr-csharp"
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
@@ -139,13 +139,13 @@ fn main() -> Result<()> {
     let tool_path = util::get_path(tool)?;
 
     // Get gdb args.
-    let argv = matches.get_one::<String>("casr-gdb-args");
-    let gdb_args = if (tool != "casr-gdb" && tool != "casr-san" && argv.is_none())
+    let gdb_argv = matches.get_one::<String>("casr-gdb-args");
+    let gdb_args = if (tool != "casr-gdb" && tool != "casr-san" && gdb_argv.is_none())
         || matches.get_flag("ignore-cmdline")
     {
         Vec::new()
     } else {
-        shell_words::split(argv.unwrap())?
+        shell_words::split(gdb_argv.unwrap())?
     };
 
     // Get all crashes.

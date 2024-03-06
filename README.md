@@ -46,12 +46,13 @@ stored in JSON format. `casr-cli` is meant to provide TUI for viewing reports
 and converting them into SARIF report.
 Reports triage (deduplication, clustering) is done by `casr-cluster`.
 Triage is based on stack trace comparison from [gdb-command](https://github.com/anfedotoff/gdb-command).
-`casr-afl` is used to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
+`casr-afl` is used to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus)
+and AFL-based fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)
 /[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz))/[Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)).
 `casr-dojo` allows to upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) (available with
 `dojo` feature).

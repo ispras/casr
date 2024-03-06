@@ -165,9 +165,8 @@ fn main() -> Result<()> {
         })
         .collect();
 
-    let gdb_args: Vec<String>;
     let argv = matches.get_one::<String>("casr-gdb-args");
-    gdb_args = if tool != "casr-gdb" && tool != "casr-san" && argv.is_none() {
+    let gdb_args = if tool != "casr-gdb" && tool != "casr-san" && argv.is_none() {
         Vec::new()
     } else {
         shell_words::split(argv.unwrap())?

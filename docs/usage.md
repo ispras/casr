@@ -9,8 +9,10 @@ java reports and get report from
 [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). Use `casr-js`
 to analyze JavaScript reports and get report from
 [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz). `casr-afl` is used
-to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz).
+Use `casr-csharp` to analyze C# reports and get report from
+[Sharpfuzz](https://github.com/Metalnem/sharpfuzz). `casr-afl` can triage crashes
+found by [AFL++](https://github.com/AFLplusplus/AFLplusplus) (Sharpfuzz).
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,
 Atheris, Jazzer, Jazzer.js, jsfuzz). `casr-dojo` allows to upload new and
@@ -201,6 +203,31 @@ Create CASR reports (.casrep) from JavaScript crash reports
 Run casr-js:
 
     $ casr-js -o js.casrep -- node casr/tests/casr_tests/js/test_casr_js.js
+
+## casr-csharp
+
+Create CASR reports (.casrep) from C# reports
+
+Usage: casr-csharp [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+
+Arguments:
+  [ARGS]...  Add "-- <path> <arguments>" to run
+
+Options:
+  -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                           is generated
+      --stdout             Print CASR report to stdout
+      --stdin <FILE>       Stdin file for program
+  -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                           timeout is disabled [default: 0]
+      --ignore <FILE>      File with regular expressions for functions and file paths that
+                           should be ignored
+  -h, --help               Print help
+  -V, --version            Print version
+
+Run casr-csharp:
+
+    $ casr-csharp -o csharp.casrep -- dotnet casr/tests/casr_tests/csharp/test_casr_csharp.dll
 
 ## casr-core
 
@@ -408,7 +435,7 @@ Convert reports to SARIF report:
 
 ## casr-afl
 
-Triage crashes found by AFL++
+Triage crashes found by AFL++ (Sharpfuzz)
 
     Usage: casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR> [-- <ARGS>...]
 
@@ -417,31 +444,46 @@ Triage crashes found by AFL++
                  with casr-gdb (e.g., test whether program crashes without sanitizers)
 
     Options:
-      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
-                                   debug]
-      -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
-                                   [default: half of cpu cores]
-      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, 0 value means
-                                   that timeout is disabled [default: 0]
-      -i, --input <INPUT_DIR>      AFL++ work directory
-      -o, --output <OUTPUT_DIR>    Output directory with triaged reports
-      -f, --force-remove           Remove output project directory if it exists
-          --ignore-cmdline         Force <ARGS> usage to run target instead of searching for
-                                   cmdline files in AFL fuzzing directory
-          --no-cluster             Do not cluster CASR reports
-      -h, --help                   Print help
-      -V, --version                Print version
+    -l, --log-level <log-level>
+            Logging level [default: info] [possible values: info, debug]
+    -j, --jobs <jobs>
+            Number of parallel jobs for generating CASR reports [default: half of cpu cores]
+    -t, --timeout <SECONDS>
+            Timeout (in seconds) for target execution, 0 value means that timeout is
+            disabled [default: 0]
+    -i, --input <INPUT_DIR>
+            AFL++ work directory
+    -o, --output <OUTPUT_DIR>
+            Output directory with triaged reports
+    -f, --force-remove
+            Remove output project directory if it exists
+        --ignore-cmdline
+            Force <casr-gdb-args> usage to run target instead of searching for cmdline files
+            in AFL fuzzing directory
+        --no-cluster
+            Do not cluster CASR reports
+        --casr-gdb-args <casr-gdb-args>
+            Add "--casr-gdb-args './gdb_fuzz_target <arguments>'" to generate additional
+            crash reports with casr-gdb (e.g., test whether program crashes without
+            sanitizers)
+    -h, --help
+            Print help
+    -V, --version
+            Print version
 
 `casr-afl` provides a straightforward CASR integration with AFL++. While walking through afl
 instances, `casr-afl` generates crash reports depending on target binary. For
 binary with ASAN `casr-san` is used, otherwise `casr-gdb`. On the next step report
 deduplication is done by `casr-cluster`. Finally, reports are traiged into
-clusters. Crash reports contain many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable)), OS and package versions, command line, stack trace, register values,
-disassembly, and even source code fragment where crash appeared.
+clusters. Crash reports contain many useful information: severity
+(like [exploitable](https://github.com/jfoote/exploitable)), OS and package
+versions, command line, stack trace, register values, disassembly, and even
+source code fragment where crash appeared. `casr-afl` also provides integration with AFL-based
+fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 
 **NOTE:** `casr-gdb` and `casr-san` should be in PATH to make `casr-afl` work.
 
-Example (Ubuntu 20.04+):
+AFL++ Example (Ubuntu 20.04+):
 
     $ cp casr/tests/casr_tests/bin/load_afl /tmp/load_afl
     $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
@@ -515,6 +557,11 @@ you can estimate crash severity for program built without sanitizers.
 
 You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-afl`. This
 variable may be used by [casr-san](#casr-san).
+
+Sharpfuzz example:
+
+    $ ...
+    $ ...
 
 ## casr-libfuzzer
 

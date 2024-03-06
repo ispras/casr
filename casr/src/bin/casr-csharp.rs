@@ -104,7 +104,7 @@ fn main() -> Result<()> {
     let mut report = CrashReport::new();
     // Set executable path (for C# .dll file)
     if let Some(pos) = argv.iter().position(|x| x.ends_with(".dll")) {
-        let Some(classes) = argv.get(pos + 1) else {
+        let Some(classes) = argv.get(pos) else {
             bail!("dotnet target is not specified by .dll executable.");
         };
         report.executable_path = classes.to_string();
@@ -116,7 +116,8 @@ fn main() -> Result<()> {
     // Get C# report.
     let csharp_stderr_list: Vec<String> =
         csharp_stderr.split('\n').map(|l| l.to_string()).collect();
-    let re = Regex::new(r"(?m)^Unhandled [Ee]xception(?::\n|\. )(?:.|\n)*?((?:[ \n\t]*(?:at [\S ]+|--- End of inner exception stack trace ---))+)$").unwrap();
+    //let re = Regex::new(r"(?m)^Unhandled [Ee]xception(?::\n|\. )(?:.|\n)*?((?:[ \n\t]*(?:at [\S ]+|--- End of inner exception stack trace ---))+)$").unwrap();
+    let re = Regex::new(r"(?m)^Unhandled [Ee]xception(?::\n|\. )(?:.|\n)*?((?:[ \n\t]*)+)$").unwrap();
     if let Some(start) = csharp_stderr_list.iter().position(|x| re.is_match(x)) {
         report.csharp_report = csharp_stderr_list[start..].to_vec();
         let report_str = report.csharp_report.join("\n");
