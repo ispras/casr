@@ -272,21 +272,44 @@ impl CrashReport {
     /// Add information about operation system
     pub fn add_os_info(&mut self) -> error::Result<()> {
         // Get os and os release.
-        let mut os_cmd = Command::new("uname");
-        os_cmd.arg("-s");
-        let os_out = os_cmd.output()?;
-        if os_out.status.success() {
-            if let Ok(os) = String::from_utf8(os_out.stdout) {
-                self.os = os.trim().to_string();
+        #[cfg(target_os = "linux")]
+        {
+            let mut info_cmd = Command::new("sh");
+            info_cmd.arg("-c").arg("lsb_release -sir");
+            let info_out = info_cmd.output()?;
+            if info_out.status.success() {
+                if let Ok(info) = String::from_utf8(info_out.stdout) {
+                    info.split('\n').enumerate().for_each(|(i, s)| match i {
+                        0 => {
+                            self.os = s.trim().to_string();
+                        }
+                        1 => {
+                            self.os_release = s.trim().to_string();
+                        }
+                        _ => {}
+                    });
+                }
             }
         }
+        #[cfg(target_os = "macos")]
+        {
+            // Use sw_vers
+            let mut os_cmd = Command::new("sw_vers");
+            os_cmd.arg("--productName");
+            let os_out = os_cmd.output()?;
+            if os_out.status.success() {
+                if let Ok(os) = String::from_utf8(os_out.stdout) {
+                    self.os = os.trim().to_string();
+                }
+            }
 
-        let mut release_cmd = Command::new("uname");
-        release_cmd.arg("-r");
-        let release_out = release_cmd.output()?;
-        if release_out.status.success() {
-            if let Ok(release) = String::from_utf8(release_out.stdout) {
-                self.os_release = release.trim().to_string();
+            let mut release_cmd = Command::new("sw_vers");
+            release_cmd.arg("-productVersion");
+            let release_out = release_cmd.output()?;
+            if release_out.status.success() {
+                if let Ok(release) = String::from_utf8(release_out.stdout) {
+                    self.os_release = release.trim().to_string();
+                }
             }
         }
         // Get uname -a.
