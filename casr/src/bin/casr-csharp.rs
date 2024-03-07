@@ -103,7 +103,10 @@ fn main() -> Result<()> {
     // Create report.
     let mut report = CrashReport::new();
     // Set executable path (for C# .dll (dotnet) or .exe (mono) file)
-    if let Some(pos) = argv.iter().position(|x| {x.ends_with(".dll") || x.ends_with(".exe")}) {
+    if let Some(pos) = argv
+        .iter()
+        .position(|x| x.ends_with(".dll") || x.ends_with(".exe"))
+    {
         let Some(classes) = argv.get(pos) else {
             bail!("dotnet target is not specified by .dll executable.");
         };

@@ -129,24 +129,18 @@ fn main() -> Result<()> {
     let tool = if argv[0].ends_with("dotnet") || argv[0].ends_with("mono") {
         "casr-csharp"
     } else {
-        let sym_list = util::symbols_list(Path::new(argv[0]))?;
-        if sym_list.contains("__asan") {
-            "casr-san"
-        } else {
-            "casr-gdb"
-        }
+        "casr-gdb"
     };
     let tool_path = util::get_path(tool)?;
 
     // Get gdb args.
     let gdb_argv = matches.get_one::<String>("casr-gdb-args");
-    let gdb_args = if (tool != "casr-gdb" && tool != "casr-san" && gdb_argv.is_none())
-        || matches.get_flag("ignore-cmdline")
-    {
-        Vec::new()
-    } else {
-        shell_words::split(gdb_argv.unwrap())?
-    };
+    let gdb_args =
+        if gdb_argv.is_none() || matches.get_flag("ignore-cmdline") {
+            Vec::new()
+        } else {
+            shell_words::split(gdb_argv.unwrap())?
+        };
 
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
@@ -201,9 +195,16 @@ fn main() -> Result<()> {
                 .map(|x| x + 1);
 
             if let Some(target) = crash_info.target_args.first() {
-                if let Err(e) = util::symbols_list(Path::new(target)) {
-                    error!("{e}");
-                    continue;
+                match util::symbols_list(Path::new(target)) {
+                    Ok(list) => {
+                        if list.contains("__asan") {
+                            crash_info.casr_tool = util::get_path("casr-san")?.clone();
+                        }
+                    }
+                    Err(e) => {
+                        error!("{e}");
+                        continue;
+                    }
                 }
             } else {
                 error!("Cmdline is empty. Path: {:?}", path.join("cmdline"));
