@@ -7,6 +7,7 @@ use clap::{
     Arg, ArgAction,
 };
 use log::error;
+use anyhow::bail;
 
 use std::collections::HashMap;
 use std::fs;
@@ -112,35 +113,48 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
+    // Get gdb args.
+    let mut gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
+        shell_words::split(argv)?
+    } else {
+        Vec::new()
+    };
+
+    if gdb_args.is_empty() && matches.get_flag("ignore-cmdline") {
+        bail!("casr-gdb-args is empty, but \"ignore-cmdline\" option is provided.");
+    }
+
     // Get fuzz target args (for C#).
     let mut argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
         argvs.map(|v| v.as_str()).collect()
     } else {
         Vec::new()
     };
-    let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
-        idx + 1
+
+    let at_index = if gdb_args.is_empty() {
+        print!("here {:?}\n", argv);
+        if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
+            Some(idx + 1)
+        } else {
+            argv.push("@@");
+            Some(argv.len() - 1)
+        }
     } else {
-        argv.push("@@");
-        argv.len() - 1
+        if !argv.is_empty() && argv[0] == "@@" {
+            gdb_args.push("@@".to_string());
+            Some(gdb_args.len() - 1)
+        } else {
+            None
+        }
     };
 
     // Get tool.
-    let tool = if argv[0].ends_with("dotnet") || argv[0].ends_with("mono") {
+    let tool = if !argv.is_empty() && (argv[0].ends_with("dotnet") || argv[0].ends_with("mono")) {
         "casr-csharp"
     } else {
         "casr-gdb"
     };
     let tool_path = util::get_path(tool)?;
-
-    // Get gdb args.
-    let gdb_argv = matches.get_one::<String>("casr-gdb-args");
-    let gdb_args =
-        if gdb_argv.is_none() || matches.get_flag("ignore-cmdline") {
-            Vec::new()
-        } else {
-            shell_words::split(gdb_argv.unwrap())?
-        };
 
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
@@ -179,7 +193,7 @@ fn main() -> Result<()> {
                 ]
                 .into_iter()
                 .collect(),
-                at_index: Some(at_index),
+                at_index: at_index,
                 ..Default::default()
             }
         };
@@ -226,6 +240,10 @@ fn main() -> Result<()> {
             info.path = crash.path();
             crashes.insert(crash.file_name().into_string().unwrap(), info);
         }
+    }
+
+    if matches.get_flag("ignore-cmdline") || tool != "casr-gdb" {
+        gdb_args = Vec::new();
     }
 
     // Generate reports
