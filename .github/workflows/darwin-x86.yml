@@ -1,4 +1,4 @@
-name: darwin-i386
+name: darwin-x86
 
 on:
   push:
