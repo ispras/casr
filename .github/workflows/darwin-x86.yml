@@ -14,12 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Brew packages
-        # Initial unlik due to https://github.com/pypa/pipenv/issues/3831
         run: |
-          arch -x86_64 /bin/zsh --login
-          brew update & brew install gdb curl python llvm \
+          arch -x86_64 brew update & brew install gdb curl python llvm \
               openjdk ca-certificates gnupg --overwrite
-          brew update && brew install nodejs
+          arch -x86_64 brew update && brew install nodejs
       - name: Build
         run: cargo build --all-features --verbose
       - name: NPM packages
