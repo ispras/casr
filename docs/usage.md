@@ -369,15 +369,17 @@ all reports, and converts CASR reports to SARIF format.
       <REPORT|DIR>  CASR report file to view or directory with reports
 
     Options:
-      -v, --view <MODE>         View mode [default: tree] [possible values: tree, slider,
-                                stdout]
-      -u, --unique              Print only unique crash lines in joint statistics
-          --sarif <OUTPUT>      Generate SARIF report from CASR reports
-          --source-root <PATH>  Source root path in CASR reports for SARIF report generation
-          --tool <NAME>         Tool name that detected crashes/errors for SARIF report
-                                [default: CASR]
-      -h, --help                Print help
-      -V, --version             Print version
+      -v, --view <MODE>          View mode [default: tree] [possible values: tree, slider,
+                                 stdout]
+      -u, --unique               Print only unique crash lines in joint statistics
+          --sarif <OUTPUT>       Generate SARIF report from CASR reports
+          --source-root <PATH>   Source root path in CASR reports for SARIF report generation
+          --tool <NAME>          Tool name that detected crashes/errors for SARIF report
+                                 [default: CASR]
+          --strip-path <PREFIX>  Path prefix to strip from crash path in joint report
+                                 statistics [env: CASR_STRIP_PATH=]
+      -h, --help                 Print help
+      -V, --version              Print version
 
 There are three view modes: tree, slider (list), and stdout. In stdout mode
 `casr-cli` prints text-based CASR report to stdout.

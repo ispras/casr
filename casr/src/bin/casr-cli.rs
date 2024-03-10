@@ -91,6 +91,14 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .help("Tool name that detected crashes/errors for SARIF report"),
         )
+        .arg(
+            Arg::new("strip-path")
+                .long("strip-path")
+                .env("CASR_STRIP_PATH")
+                .action(ArgAction::Set)
+                .value_name("PREFIX")
+                .help("Path prefix to strip from crash path in joint report statistics"),
+        )
         .get_matches();
 
     let report_path = matches.get_one::<PathBuf>("target").unwrap();
@@ -120,7 +128,11 @@ fn main() -> Result<()> {
     }
 
     if report_path.is_dir() {
-        print_summary(report_path, matches.get_flag("unique"));
+        print_summary(
+            report_path,
+            matches.get_flag("unique"),
+            matches.get_one::<String>("strip-path"),
+        );
         return Ok(());
     }
 
@@ -779,7 +791,9 @@ fn change_text_view(layout1: &mut LinearLayout, act: Action) -> Option<EventResu
 ///
 /// * 'unique_crash_line' - print summary only for unique crash lines
 ///
-fn print_summary(dir: &Path, unique_crash_line: bool) {
+/// * 'strip_path' - strip prefix from crash paths
+///
+fn print_summary(dir: &Path, unique_crash_line: bool, strip_path: Option<&String>) {
     // Hash each class in whole casr directory
     let mut casr_classes: BTreeMap<String, i32> = BTreeMap::new();
 
@@ -886,7 +900,7 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             report.push_str(".casrep");
 
             let (san_desc, san_line) = if let Some((report_sum, san_desc, san_line, ubsan_flag)) =
-                process_report(&report, "casrep")
+                process_report(&report, "casrep", strip_path)
             {
                 if !ubsan_flag {
                     ubsan = false;
@@ -903,7 +917,7 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             let report = report.replace(".casrep", ".gdb.casrep");
             let (casr_gdb_desc, casr_gdb_line) =
                 if let Some((report_sum, casr_gdb_desc, casr_gdb_line, _)) =
-                    process_report(&report, "gdb.casrep")
+                    process_report(&report, "gdb.casrep", strip_path)
                 {
                     ubsan = false;
                     if san_line.is_empty() && skip_crash(&casr_gdb_line) {
@@ -951,13 +965,19 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
 
         println!("==> <{}>", filename.magenta());
         for info in cluster_hash.values() {
+            let mut path = info.0.last().unwrap().clone();
+            if let Some(prefix) = strip_path {
+                if let Ok(stripped) = Path::new(&path).strip_prefix(prefix) {
+                    path = stripped.display().to_string();
+                }
+            }
             if ubsan {
                 // /path/to/report.casrep: Description: crashline (path:line:column)
-                println!("{}: {}", info.0.last().unwrap(), info.0[0]);
+                println!("{}: {}", path, info.0[0]);
                 continue;
             }
             // Crash: /path/to/input or /path/to/report.casrep
-            println!("{}: {}", "Crash".green(), info.0.last().unwrap());
+            println!("{}: {}", "Crash".green(), path);
             // casrep: SeverityType: Description: crashline (path:line:column) or /path/to/report.casrep
             println!("  {}", info.0[0]);
             if info.0.len() == 3 {
@@ -998,16 +1018,28 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
 ///
 /// * 'extension' - casrep extension
 ///
+/// * 'strip_path' - strip prefix from report paths
+///
 /// # Return value
 ///
 /// 1 String - summary of one report in cluster
 /// 2 String - crash description
 /// 3 String - crashline (path:line:column)
 /// bool - ubsan report indicator
-fn process_report(report: &str, extension: &str) -> Option<(String, String, String, bool)> {
+fn process_report(
+    report: &str,
+    extension: &str,
+    strip_path: Option<&String>,
+) -> Option<(String, String, String, bool)> {
     let Ok(file) = fs::File::open(report) else {
         return None;
     };
+    let mut report = report.to_string();
+    if let Some(prefix) = strip_path {
+        if let Ok(stripped) = Path::new(&report).strip_prefix(prefix) {
+            report = stripped.display().to_string();
+        }
+    }
     let Ok(jreport): Result<Value, _> = serde_json::from_reader(BufReader::new(file)) else {
         return None;
     };
@@ -1043,7 +1075,7 @@ fn process_report(report: &str, extension: &str) -> Option<(String, String, Stri
             "{}: {}",
             desc.red(),
             if crashline.is_empty() {
-                report
+                &report
             } else {
                 &crashline
             }
@@ -1060,7 +1092,7 @@ fn process_report(report: &str, extension: &str) -> Option<(String, String, Stri
             },
             desc,
             if crashline.is_empty() {
-                report
+                &report
             } else {
                 &crashline
             }
