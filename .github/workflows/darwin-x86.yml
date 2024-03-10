@@ -5,11 +5,6 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
-
-defaults:
-  run:
-    shell: arch -x86_64
-
 env:
   CARGO_TERM_COLOR: always
 jobs:
@@ -21,6 +16,7 @@ jobs:
       - name: Brew packages
         # Initial unlik due to https://github.com/pypa/pipenv/issues/3831
         run: |
+          arch -x86_64 /bin/zsh --login
           brew update & brew install gdb curl python llvm \
               openjdk ca-certificates gnupg --overwrite
           brew update && brew install nodejs
