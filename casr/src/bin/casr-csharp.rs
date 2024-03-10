@@ -105,10 +105,10 @@ fn main() -> Result<()> {
     // Set executable path (for C# .dll (dotnet) or .exe (mono) file)
     if let Some(pos) = argv
         .iter()
-        .position(|x| x.ends_with(".dll") || x.ends_with(".exe"))
+        .position(|x| x.ends_with(".dll") || x.ends_with(".exe") || x.ends_with(".csproj"))
     {
         let Some(classes) = argv.get(pos) else {
-            bail!("dotnet target is not specified by .dll executable.");
+            bail!("dotnet target is not specified by .dll, .exe or .csproj executable.");
         };
         report.executable_path = classes.to_string();
     }

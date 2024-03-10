@@ -1,13 +1,13 @@
 use casr::triage::{fuzzing_crash_triage_pipeline, CrashInfo};
 use casr::util;
 
+use anyhow::bail;
 use anyhow::Result;
 use clap::{
     error::{ContextKind, ContextValue, ErrorKind},
     Arg, ArgAction,
 };
 use log::error;
-use anyhow::bail;
 
 use std::collections::HashMap;
 use std::fs;
@@ -132,20 +132,17 @@ fn main() -> Result<()> {
     };
 
     let at_index = if gdb_args.is_empty() {
-        print!("here {:?}\n", argv);
         if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
             Some(idx + 1)
         } else {
             argv.push("@@");
             Some(argv.len() - 1)
         }
+    } else if !argv.is_empty() && argv[0] == "@@" {
+        gdb_args.push("@@".to_string());
+        Some(gdb_args.len() - 1)
     } else {
-        if !argv.is_empty() && argv[0] == "@@" {
-            gdb_args.push("@@".to_string());
-            Some(gdb_args.len() - 1)
-        } else {
-            None
-        }
+        None
     };
 
     // Get tool.
@@ -193,7 +190,7 @@ fn main() -> Result<()> {
                 ]
                 .into_iter()
                 .collect(),
-                at_index: at_index,
+                at_index,
                 ..Default::default()
             }
         };
