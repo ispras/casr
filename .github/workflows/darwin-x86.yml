@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+defaults:
+  run:
+    shell: arch -x86_64
+
 env:
   CARGO_TERM_COLOR: always
 jobs:
