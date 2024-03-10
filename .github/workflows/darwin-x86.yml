@@ -9,7 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  darwin-i386-latest:
+  macos-latest:
     runs-on: macos-latest
 
     steps:
@@ -36,8 +36,7 @@ jobs:
           rm '/usr/local/Frameworks/Python.framework/Resources'
           rm '/usr/local/Frameworks/Python.framework/Versions/Current'
           brew install gdb curl python llvm \
-              openjdk ca-certificates gnupg
-          brew update && brew install nodejs
+              openjdk ca-certificates
       - name: Build
         run: cargo build --all-features --verbose
       - name: NPM packages
