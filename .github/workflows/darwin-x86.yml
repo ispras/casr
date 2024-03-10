@@ -17,26 +17,9 @@ jobs:
       - name: Brew packages
         # Initial unlik due to https://github.com/pypa/pipenv/issues/3831
         run: |
-          brew update
-          rm '/usr/local/bin/2to3'
-          rm '/usr/local/bin/2to3-3.12'
-          rm '/usr/local/bin/idle3'
-          rm '/usr/local/bin/idle3.12'
-          rm '/usr/local/bin/pydoc3'
-          rm '/usr/local/bin/pydoc3.12'
-          rm '/usr/local/bin/python3'
-          rm '/usr/local/bin/python3-config'
-          rm '/usr/local/bin/python3.12'
-          rm '/usr/local/bin/python3.12-config'
-          rm '/usr/local/share/man/man1/python3.1'
-          rm '/usr/local/lib/pkgconfig/python3-embed.pc'
-          rm '/usr/local/lib/pkgconfig/python3.pc'
-          rm '/usr/local/Frameworks/Python.framework/Headers'
-          rm '/usr/local/Frameworks/Python.framework/Python'
-          rm '/usr/local/Frameworks/Python.framework/Resources'
-          rm '/usr/local/Frameworks/Python.framework/Versions/Current'
-          brew install gdb curl python llvm \
-              openjdk ca-certificates
+          brew update & brew install gdb curl python llvm \
+              openjdk ca-certificates gnupg --force
+          brew update && brew install nodejs
       - name: Build
         run: cargo build --all-features --verbose
       - name: NPM packages
