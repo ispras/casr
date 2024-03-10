@@ -824,12 +824,23 @@ fn print_summary(dir: &Path, unique_crash_line: bool) {
             .map(|res| res.unwrap().path())
             .any(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
     {
-        clusters.push((dir.to_path_buf(), 0));
+        // Try to canonocalize directory path to avoid paths with empty file_name.
+        if let Ok(canon_dir) = dir.canonicalize() {
+            clusters.push((canon_dir.to_path_buf(), 0));
+        } else {
+            clusters.push((dir.to_path_buf(), 0));
+        }
     }
 
     for (clpath, _) in clusters {
         let cluster = clpath.as_path();
-        let filename = cluster.file_name().unwrap().to_str().unwrap();
+        // file_name may be empty if path ends with '.', '..', or '/'.
+        // Take the whole path as filename then.
+        let filename = if let Some(cl_filename) = cluster.file_name() {
+            cl_filename.to_str().unwrap()
+        } else {
+            cluster.to_str().unwrap()
+        };
 
         // Ubsan indicator for minimize logging
         let mut ubsan = true;
