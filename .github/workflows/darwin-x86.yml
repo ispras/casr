@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Install x86 Brew
+        run: arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
       - name: Brew packages
         run: |
           arch -x86_64 brew update & brew install gdb curl python llvm \
