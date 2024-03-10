@@ -17,9 +17,9 @@ jobs:
         run: arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
       - name: Brew packages
         run: |
-          arch -x86_64 brew update & brew install gdb curl python llvm \
-              openjdk ca-certificates gnupg --overwrite
-          arch -x86_64 brew update && brew install nodejs
+          arch -x86_64 /usr/local/bin/brew update
+          arch -x86_64 /usr/local/bin/brew install gdb curl python llvm \
+              openjdk ca-certificates gnupg nodejs --overwrite
       - name: Build
         run: cargo build --all-features --verbose
       - name: NPM packages
