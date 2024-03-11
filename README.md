@@ -107,6 +107,7 @@ or build from source as explained below.
 Build from Git repository:
 
     $ git clone https://github.com/ispras/casr
+    $ cargo update
     $ cargo build --release
 
 Or you may just install Casr from [crates.io](https://crates.io/crates/casr):
