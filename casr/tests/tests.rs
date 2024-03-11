@@ -31,7 +31,13 @@ fn abs_path(rpath: &str) -> String {
     let rpath = match std::env::consts::ARCH {
         "aarch64" => rpath.replace("bin", "arm_bin"),
         "riscv64" => rpath.replace("bin", "riscv_bin"),
-        _ => rpath.to_string(),
+        _ => {
+            if std::env::consts::OS == "macos" {
+                rpath.replace("bin", "mac_bin")
+            } else {
+                rpath.to_string()
+            }
+        }
     };
     let project_dir = PathBuf::from(*PROJECT_DIR.read().unwrap());
     let mut path = PathBuf::new();
