@@ -99,7 +99,6 @@ fn main() -> Result<()> {
             Arg::new("casr-gdb-args")
                 .long("casr-gdb-args")
                 .action(ArgAction::Set)
-                .num_args(1..)
                 .help("Add \"--casr-gdb-args \'./gdb_fuzz_target <arguments>\'\" to generate additional crash reports with casr-gdb (e.g., test whether program crashes without sanitizers)"),
         )
         .arg(
@@ -122,8 +121,8 @@ fn main() -> Result<()> {
     };
 
     // Get gdb args.
-    let mut gdb_args = if let Some(argv) = matches.get_many::<String>("casr-gdb-args") {
-        argv.cloned().collect()
+    let mut gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
+        shell_words::split(argv)?
     } else {
         Vec::new()
     };

@@ -3700,8 +3700,7 @@ fn test_casr_afl() {
             "-o",
             &paths[1],
             "--casr-gdb-args",
-            "/tmp/load_sydr",
-            "@@",
+            "/tmp/load_sydr @@",
         ])
         .env(
             "PATH",
