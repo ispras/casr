@@ -32,9 +32,6 @@ jobs:
           export PATH=$PATH:/dotnet
           export DOTNET_CLI_TELEMETRY_OPTOUT=1
           export DOTNET_UPGRADEASSISTANT_TELEMETRY_OPTOUT=1
-          dotnet tool install SharpFuzz.CommandLine --global
-          dotnet tool install minicover --global
-          export PATH=$PATH:/root/.dotnet/tools
           curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
           ./rustup.sh -y && rm rustup.sh
         run: |

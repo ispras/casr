@@ -227,7 +227,7 @@ Create CASR reports (.casrep) from C# reports
 
 Run casr-csharp:
 
-    $ casr-csharp -o csharp.casrep -- dotnet casr/tests/casr_tests/csharp/test_casr_csharp.dll
+    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp.csproj
 
 ## casr-core
 
@@ -440,8 +440,7 @@ Triage crashes found by AFL++ (Sharpfuzz)
     Usage: casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR> [-- <ARGS>...]
 
     Arguments:
-      [ARGS]...  Add "-- ./gdb_fuzz_target <arguments>" to generate additional crash reports
-                 with casr-gdb (e.g., test whether program crashes without sanitizers)
+      [ARGS]...  Add "-- fuzz_target <arguments>"
 
     Options:
     -l, --log-level <log-level>
@@ -550,7 +549,7 @@ AFL++ Example (Ubuntu 20.04+):
 You may also run `casr-afl` with additional report generation for uninstrumented
 binary with `casr-gdb`:
 
-    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out -- /tmp/load_sydr @@
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out --casr-gdb-args /tmp/load_sydr @@
 
 Thus, `casr-afl` will generate GDB crash report for each unique ASAN crash. So,
 you can estimate crash severity for program built without sanitizers.
@@ -558,10 +557,11 @@ you can estimate crash severity for program built without sanitizers.
 You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-afl`. This
 variable may be used by [casr-san](#casr-san).
 
-Sharpfuzz example:
+`casr-afl` example for AFL++-based fuzzer `Sharpfuzz`:
 
-    $ ...
-    $ ...
+    $ $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
+    $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
 
 ## casr-libfuzzer
 

@@ -99,6 +99,7 @@ fn main() -> Result<()> {
             Arg::new("casr-gdb-args")
                 .long("casr-gdb-args")
                 .action(ArgAction::Set)
+                .num_args(1..)
                 .help("Add \"--casr-gdb-args \'./gdb_fuzz_target <arguments>\'\" to generate additional crash reports with casr-gdb (e.g., test whether program crashes without sanitizers)"),
         )
         .arg(
@@ -113,37 +114,22 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
-    // Get gdb args.
-    let mut gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
-        shell_words::split(argv)?
-    } else {
-        Vec::new()
-    };
-
-    if gdb_args.is_empty() && matches.get_flag("ignore-cmdline") {
-        bail!("casr-gdb-args is empty, but \"ignore-cmdline\" option is provided.");
-    }
-
-    // Get fuzz target args (for C#).
-    let mut argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
+    // Get fuzz target args.
+    let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
         argvs.map(|v| v.as_str()).collect()
     } else {
         Vec::new()
     };
 
-    let at_index = if gdb_args.is_empty() {
-        if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
-            Some(idx + 1)
-        } else {
-            argv.push("@@");
-            Some(argv.len() - 1)
-        }
-    } else if !argv.is_empty() && argv[0] == "@@" {
-        gdb_args.push("@@".to_string());
-        Some(gdb_args.len() - 1)
+    // Get gdb args.
+    let mut gdb_args = if let Some(argv) = matches.get_many::<String>("casr-gdb-args") {
+        argv.cloned().collect()
     } else {
-        None
+        Vec::new()
     };
+    if gdb_args.is_empty() && matches.get_flag("ignore-cmdline") {
+        bail!("casr-gdb-args is empty, but \"ignore-cmdline\" option is provided.");
+    }
 
     // Get tool.
     let tool = if !argv.is_empty() && (argv[0].ends_with("dotnet") || argv[0].ends_with("mono")) {
@@ -152,6 +138,24 @@ fn main() -> Result<()> {
         "casr-gdb"
     };
     let tool_path = util::get_path(tool)?;
+
+    if !gdb_args.is_empty() && tool != "casr-gdb" {
+        bail!("casr-gdb-args is provided with other tool (casr-csharp).");
+    }
+
+    // Get input file argument index.
+    let at_index = if gdb_args.is_empty() {
+        argv.iter()
+            .skip(1)
+            .position(|s| s.contains("@@"))
+            .map(|x| x + 1)
+    } else {
+        gdb_args
+            .iter()
+            .skip(1)
+            .position(|s| s.contains("@@"))
+            .map(|x| x + 1)
+    };
 
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
@@ -239,7 +243,7 @@ fn main() -> Result<()> {
         }
     }
 
-    if matches.get_flag("ignore-cmdline") || tool != "casr-gdb" {
+    if matches.get_flag("ignore-cmdline") {
         gdb_args = Vec::new();
     }
 

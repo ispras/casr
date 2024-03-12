@@ -167,7 +167,7 @@ Create report from JavaScript:
 
 Create report from C#:
 
-    $ casr-csharp -o csharp.casrep -- dotnet casr/tests/casr_tests/csharp/test_casr_csharp.dll
+    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/bin/test_casr_csharp.csproj
 
 View report:
 
@@ -200,6 +200,12 @@ Triage crashes after AFL++ fuzzing with casr-afl:
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
     $ # You may also additionally generate crash reports for uninstrumented binary with casr-gdb
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out -- /tmp/load_sydr @@
+
+Triage crashes after Sharpfuzz fuzzing with casr-afl:
+
+    $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
+    $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
 
 Triage libFuzzer crashes with casr-libfuzzer:
 
