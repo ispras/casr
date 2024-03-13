@@ -143,18 +143,11 @@ fn main() -> Result<()> {
     }
 
     // Get input file argument index.
-    let at_index = if gdb_args.is_empty() {
-        argv.iter()
-            .skip(1)
-            .position(|s| s.contains("@@"))
-            .map(|x| x + 1)
-    } else {
-        gdb_args
-            .iter()
-            .skip(1)
-            .position(|s| s.contains("@@"))
-            .map(|x| x + 1)
-    };
+    let at_index = argv
+        .iter()
+        .skip(1)
+        .position(|s| s.contains("@@"))
+        .map(|x| x + 1);
 
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();

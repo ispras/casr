@@ -5786,7 +5786,7 @@ fn test_casr_csharp() {
         assert!(report["CrashLine"]
             .as_str()
             .unwrap()
-            .contains("test_casr_csharp.cs:15"));
+            .contains("test_casr_csharp.cs:14"));
     } else {
         panic!("Couldn't parse json report file.");
     }
