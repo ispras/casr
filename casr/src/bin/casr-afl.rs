@@ -142,13 +142,6 @@ fn main() -> Result<()> {
         bail!("casr-gdb-args is provided with other tool (casr-csharp).");
     }
 
-    // Get input file argument index.
-    let at_index = argv
-        .iter()
-        .skip(1)
-        .position(|s| s.contains("@@"))
-        .map(|x| x + 1);
-
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
     for node_dir in fs::read_dir(matches.get_one::<PathBuf>("input").unwrap())? {
@@ -186,21 +179,19 @@ fn main() -> Result<()> {
                 ]
                 .into_iter()
                 .collect(),
-                at_index,
                 ..Default::default()
             }
         };
         crash_info.casr_tool = tool_path.clone();
+        crash_info.at_index = crash_info
+            .target_args
+            .iter()
+            .skip(1)
+            .position(|s| s.contains("@@"))
+            .map(|x| x + 1);
 
         // When we triage crashes for binaries, use casr-san.
         if tool == "casr-gdb" {
-            crash_info.at_index = crash_info
-                .target_args
-                .iter()
-                .skip(1)
-                .position(|s| s.contains("@@"))
-                .map(|x| x + 1);
-
             if let Some(target) = crash_info.target_args.first() {
                 match util::symbols_list(Path::new(target)) {
                     Ok(list) => {
