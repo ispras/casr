@@ -213,16 +213,16 @@ Create CASR reports (.casrep) from C# reports
     [ARGS]...  Add "-- <path> <arguments>" to run
 
     Options:
-    -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                            is generated
-        --stdout             Print CASR report to stdout
-        --stdin <FILE>       Stdin file for program
-    -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                            timeout is disabled [default: 0]
-        --ignore <FILE>      File with regular expressions for functions and file paths that
-                            should be ignored
-    -h, --help               Print help
-    -V, --version            Print version
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                              is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                              timeout is disabled [default: 0]
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                              should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
 
 Run casr-csharp:
 
@@ -442,32 +442,32 @@ Triage crashes found by AFL++ (Sharpfuzz)
       [ARGS]...  Add "-- fuzz_target <arguments>"
 
     Options:
-    -l, --log-level <log-level>
-            Logging level [default: info] [possible values: info, debug]
-    -j, --jobs <jobs>
-            Number of parallel jobs for generating CASR reports [default: half of cpu cores]
-    -t, --timeout <SECONDS>
-            Timeout (in seconds) for target execution, 0 value means that timeout is
-            disabled [default: 0]
-    -i, --input <INPUT_DIR>
-            AFL++ work directory
-    -o, --output <OUTPUT_DIR>
-            Output directory with triaged reports
-    -f, --force-remove
-            Remove output project directory if it exists
-        --ignore-cmdline
-            Force <casr-gdb-args> usage to run target instead of searching for cmdline files
-            in AFL fuzzing directory
-        --no-cluster
-            Do not cluster CASR reports
-        --casr-gdb-args <casr-gdb-args>
-            Add "--casr-gdb-args './gdb_fuzz_target <arguments>'" to generate additional
-            crash reports with casr-gdb (e.g., test whether program crashes without
-            sanitizers)
-    -h, --help
-            Print help
-    -V, --version
-            Print version
+      -l, --log-level <log-level>
+              Logging level [default: info] [possible values: info, debug]
+      -j, --jobs <jobs>
+              Number of parallel jobs for generating CASR reports [default: half of cpu cores]
+      -t, --timeout <SECONDS>
+              Timeout (in seconds) for target execution, 0 value means that timeout is
+              disabled [default: 0]
+      -i, --input <INPUT_DIR>
+              AFL++ work directory
+      -o, --output <OUTPUT_DIR>
+              Output directory with triaged reports
+      -f, --force-remove
+              Remove output project directory if it exists
+          --ignore-cmdline
+              Force <casr-gdb-args> usage to run target instead of searching for cmdline files
+              in AFL fuzzing directory
+          --no-cluster
+              Do not cluster CASR reports
+          --casr-gdb-args <casr-gdb-args>
+              Add "--casr-gdb-args './gdb_fuzz_target <arguments>'" to generate additional
+              crash reports with casr-gdb (e.g., test whether program crashes without
+              sanitizers)
+      -h, --help
+              Print help
+      -V, --version
+              Print version
 
 `casr-afl` provides a straightforward CASR integration with AFL++. While walking through afl
 instances, `casr-afl` generates crash reports depending on target binary. For
@@ -556,7 +556,7 @@ you can estimate crash severity for program built without sanitizers.
 You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-afl`. This
 variable may be used by [casr-san](#casr-san).
 
-Example for AFL++-based fuzzer `Sharpfuzz`:
+Sharpfuzz example:
 
     $ $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
     $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
