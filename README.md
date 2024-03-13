@@ -6,7 +6,7 @@
 [![amd64](https://github.com/ispras/casr/actions/workflows/amd64.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/amd64.yml)
 [![aarch64](https://github.com/ispras/casr/actions/workflows/aarch64.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/aarch64.yml)
 [![riscv64](https://github.com/ispras/casr/actions/workflows/riscv64.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/riscv64.yml)
-[![darwin](https://github.com/ispras/casr/actions/workflows/darwin.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/darwin.yml)
+[![darwin-arm64](https://github.com/ispras/casr/actions/workflows/darwin-arm64.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/darwin-arm64.yml)
 [![fuzzing](https://github.com/ispras/casr/actions/workflows/fuzzing.yml/badge.svg?branch=master)](https://github.com/ispras/casr/actions/workflows/fuzzing.yml)
 
 # CASR: Crash Analysis and Severity Report
