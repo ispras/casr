@@ -1,4 +1,4 @@
-name: darwin
+name: darwin-arm64
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  macos-latest:
+  darwin-arm64:
     runs-on: macos-14
 
     steps:
