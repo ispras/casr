@@ -10,8 +10,7 @@ java reports and get report from
 to analyze JavaScript reports and get report from
 [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
 [jsfuzz](https://github.com/fuzzitdev/jsfuzz).
-Use `casr-csharp` to analyze C# reports and get report from
-[Sharpfuzz](https://github.com/Metalnem/sharpfuzz). `casr-afl` can triage crashes
+Use `casr-csharp` to analyze C# reports. `casr-afl` can triage crashes
 found by [AFL++](https://github.com/AFLplusplus/AFLplusplus) (Sharpfuzz).
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,

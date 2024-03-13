@@ -165,7 +165,7 @@ fn main() -> Result<()> {
         }
 
         // Get crashes from one node.
-        let mut crash_info = if !gdb_args.is_empty() {
+        let mut crash_info = if tool == "casr-gdb" {
             CrashInfo {
                 target_args: if matches.get_flag("ignore-cmdline") {
                     gdb_args.clone()
@@ -200,7 +200,7 @@ fn main() -> Result<()> {
         crash_info.casr_tool = tool_path.clone();
 
         // When we triage crashes for binaries, use casr-san.
-        if !gdb_args.is_empty() {
+        if tool == "casr-gdb" {
             crash_info.at_index = crash_info
                 .target_args
                 .iter()

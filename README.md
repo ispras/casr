@@ -35,8 +35,7 @@ java reports and get report from
 to analyze JavaScript reports and get report from
 [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
 [jsfuzz](https://github.com/fuzzitdev/jsfuzz).
-Use `casr-csharp` to analyze C# reports and get report from
-[Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
+Use `casr-csharp` to analyze C# reports.
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable))
 for x86, x86\_64, arm32, aarch64, rv32g, rv64g architectures,
@@ -167,7 +166,7 @@ Create report from JavaScript:
 
 Create report from C#:
 
-    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/bin/test_casr_csharp.csproj
+    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp.csproj
 
 View report:
 
@@ -199,7 +198,7 @@ Triage crashes after AFL++ fuzzing with casr-afl:
     $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
     $ # You may also additionally generate crash reports for uninstrumented binary with casr-gdb
-    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out -- /tmp/load_sydr @@
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out --casr-gdb-args /tmp/load_sydr @@
 
 Triage crashes after Sharpfuzz fuzzing with casr-afl:
 
@@ -249,7 +248,8 @@ When you have crashes from fuzzing you may do the following steps:
    [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) with
    `casr-dojo`.
 
-If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus), the pipeline
+If you use [AFL++](https://github.com/AFLplusplus/AFLplusplus) or AFL-based
+fuzzer [Sharpfuzz](https://www.llvm.org/docs/LibFuzzer.html), the pipeline
 (without `casr-ubsan` and `casr-dojo`) could be done automatically by
 `casr-afl`.
 
@@ -258,8 +258,6 @@ If you use [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 /[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
 [jsfuzz](https://github.com/fuzzitdev/jsfuzz)), the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically
 by `casr-libfuzzer`.
-
-If you use [Sharpfuzz](https://www.llvm.org/docs/LibFuzzer.html), the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically by `casr-afl`.
 
 ## Contributing
 
