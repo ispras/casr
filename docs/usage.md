@@ -556,7 +556,7 @@ you can estimate crash severity for program built without sanitizers.
 You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-afl`. This
 variable may be used by [casr-san](#casr-san).
 
-`casr-afl` example for AFL++-based fuzzer `Sharpfuzz`:
+Example for AFL++-based fuzzer `Sharpfuzz`:
 
     $ $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
     $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
