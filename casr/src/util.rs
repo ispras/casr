@@ -560,7 +560,7 @@ pub fn save_reports(reports: &Vec<PathBuf>, dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Strip paths for stacktrace and crash line in CrashReport
+/// Strip paths for stacktrace, crash line, and cmd line in CrashReport
 ///
 /// # Arguments
 ///
@@ -581,10 +581,29 @@ pub fn strip_paths(report: &mut CrashReport, stacktrace: &Stacktrace, prefix: &s
             report.stacktrace[idx] =
                 report.stacktrace[idx].replace(&entry.debug.file, &stripped.debug.file);
         }
-    }
-    if !report.crashline.is_empty() {
-        if let Ok(stripped) = Path::new(&report.crashline).strip_prefix(prefix) {
-            report.crashline = stripped.display().to_string();
+        if !stripped.module.is_empty() {
+            report.stacktrace[idx] =
+                report.stacktrace[idx].replace(&entry.module, &stripped.module);
         }
+    }
+
+    let strip_path = |path: &str| {
+        if let Ok(stripped) = Path::new(path).strip_prefix(prefix) {
+            stripped.display().to_string()
+        } else {
+            path.to_string()
+        }
+    };
+
+    if !report.crashline.is_empty() {
+        report.crashline = strip_path(&report.crashline);
+    }
+    if !report.proc_cmdline.is_empty() {
+        report.proc_cmdline = report
+            .proc_cmdline
+            .split(' ')
+            .map(strip_path)
+            .collect::<Vec<_>>()
+            .join(" ");
     }
 }
