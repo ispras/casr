@@ -23,7 +23,7 @@ SARIF report. Reports triage (deduplication, clustering) is done by `casr-cluste
 
 Create CASR reports (.casrep) from gdb execution
 
-    Usage: casr-gdb [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-gdb [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
       [ARGS]...  Add "-- ./binary <arguments>" to run executable
@@ -50,7 +50,7 @@ Example:
 
 Create CASR reports (.casrep) from AddressSanitizer reports
 
-    Usage: casr-san [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-san [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
       [ARGS]...  Add "-- ./binary <arguments>" to run executable
@@ -88,7 +88,7 @@ ASAN stacktrace or Rust backtrace to analyze. If environment variable
 
 Triage errors found by UndefinedBehaviorSanitizer and create CASR reports (.casrep)
 
-    Usage: casr-ubsan [OPTIONS] --input <INPUT_DIRS>... --output <OUTPUT_DIR> [-- <ARGS>...]
+    Usage: casr-ubsan [OPTIONS] --input <INPUT_DIRS>... --output <OUTPUT_DIR> -- <ARGS>...
 
     Arguments:
       [ARGS]...  Add "-- <path> <arguments>" to run
@@ -125,7 +125,7 @@ deduplication to remove equal ubsan errors, then run report generation.
 
 Create CASR reports (.casrep) from python reports
 
-    Usage: casr-python [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-python [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
       [ARGS]...  Add "-- <path> <arguments>" to run
@@ -151,7 +151,7 @@ Example:
 
 Create CASR reports (.casrep) from java reports
 
-    Usage: casr-java [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-java [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
       [ARGS]...  Add "-- <path> <arguments>" to run
@@ -180,7 +180,7 @@ Run casr-java:
 
 Create CASR reports (.casrep) from JavaScript crash reports
 
-    Usage: casr-js [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-js [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
       [ARGS]...  Add "-- <path> <arguments>" to run
@@ -207,7 +207,7 @@ Run casr-js:
 
 Create CASR reports (.casrep) from C# reports
 
-    Usage: casr-csharp [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-csharp [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
     [ARGS]...  Add "-- <path> <arguments>" to run
@@ -567,7 +567,7 @@ variable may be used by [casr-san](#casr-san).
 Triage crashes found by libFuzzer based fuzzer
 (C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz)
 
-    Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> [-- <ARGS>...]
+    Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> -- <ARGS>...
 
     Arguments:
       [ARGS]...  Add "-- ./fuzz_target <arguments>"

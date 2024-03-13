@@ -5898,6 +5898,12 @@ fn test_casr_afl_csharp() {
     }
 
     assert!(storage.values().all(|x| *x > 1));
-    let _ = fs::remove_file(&paths[4]);
-    let _ = fs::remove_file(&paths[5]);
+    let _ = Command::new("rm")
+        .args(["-rf", &paths[4]])
+        .output()
+        .expect("failed to remove dir");
+    let _ = Command::new("rm")
+        .args(["-rf", &paths[5]])
+        .output()
+        .expect("failed to remove dir");
 }

@@ -287,6 +287,7 @@ fn main() -> Result<()> {
                 .required(false)
                 .num_args(1..)
                 .last(true)
+                .required(true)
                 .help("Add \"-- <path> <arguments>\" to run"),
         )
         .get_matches();

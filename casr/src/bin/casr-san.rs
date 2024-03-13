@@ -95,6 +95,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .num_args(1..)
                 .last(true)
+                .required(true)
                 .help("Add \"-- ./binary <arguments>\" to run executable"),
         )
         .get_matches();
