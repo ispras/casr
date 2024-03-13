@@ -37,18 +37,18 @@ impl ParseStacktrace for CSharpStacktrace {
             )));
         };
 
-        let get_group_by_name_as_str = |name| cap.name(name).map(|m| m.as_str());
+        let group_as_str = |name| cap.name(name).map(|m| m.as_str());
 
         let mut stentry = StacktraceEntry::default();
 
-        if let Some(function) = get_group_by_name_as_str("function") {
+        if let Some(function) = group_as_str("function") {
             let mut function = function.to_string();
 
-            if let Some(params) = get_group_by_name_as_str("params") {
+            if let Some(params) = group_as_str("params") {
                 function.push_str(params)
             }
 
-            if let Some(service_info) = get_group_by_name_as_str("service_info") {
+            if let Some(service_info) = group_as_str("service_info") {
                 function.insert_str(0, service_info);
             }
 
@@ -62,41 +62,39 @@ impl ParseStacktrace for CSharpStacktrace {
                 .and_then(|c| u64::from_str_radix(c.get(1).unwrap().as_str(), 16).ok())
         };
 
-        if let Some(base) = get_group_by_name_as_str("base") {
-            if let Some(parsed_base) = parse_hex(base) {
-                if let Some(offset) = get_group_by_name_as_str("offset") {
-                    if let Some(address) = parse_hex(offset)
-                        .and_then(|parsed_offset| parsed_base.checked_add(parsed_offset))
-                    {
-                        stentry.address = address;
-                    } else {
-                        return Err(Error::Casr(format!(
-                            "Couldn't parse address: {base} + {offset}"
-                        )));
-                    }
-                } else {
-                    stentry.address = parsed_base;
-                }
-            } else {
+        if let Some(base) = group_as_str("base") {
+            let Some(parsed_base) = parse_hex(base) else {
                 return Err(Error::Casr(format!("Couldn't parse address: {base}")));
-            }
-        } else if let Some(il_offset) = get_group_by_name_as_str("il_offset") {
-            if let Some(parsed_il_offset) = parse_hex(il_offset) {
-                stentry.address = parsed_il_offset;
+            };
+
+            if let Some(offset) = group_as_str("offset") {
+                let Some(address) = parse_hex(offset)
+                    .and_then(|parsed_offset| parsed_base.checked_add(parsed_offset))
+                else {
+                    return Err(Error::Casr(format!(
+                        "Couldn't parse address: {base} + {offset}"
+                    )));
+                };
+
+                stentry.address = address;
             } else {
+                stentry.address = parsed_base;
+            }
+        } else if let Some(il_offset) = group_as_str("il_offset") {
+            let Some(parsed_il_offset) = parse_hex(il_offset) else {
                 return Err(Error::Casr(format!(
                     "Couldn't parse IL offset: {il_offset}"
                 )));
-            }
+            };
+
+            stentry.address = parsed_il_offset;
         }
 
-        if let Some(file) =
-            get_group_by_name_as_str("file").or_else(|| get_group_by_name_as_str("mvid"))
-        {
+        if let Some(file) = group_as_str("file").or_else(|| group_as_str("mvid")) {
             stentry.debug.file = file.to_string();
         }
 
-        if let Some(line) = get_group_by_name_as_str("line") {
+        if let Some(line) = group_as_str("line") {
             let Ok(parsed_line) = line.parse::<u64>() else {
                 return Err(Error::Casr(format!(
                     "Couldn't parse stacktrace line num: {line}"
