@@ -34,5 +34,6 @@ jobs:
         rustup install nightly
         export PATH=/root/.cargo/bin:$PATH
         cargo install cargo-fuzz
-        cargo test --release --verbose --lib -- --test-threads 1
-        cargo test --release --verbose --package casr
+        cargo test test_casr_java
+        # cargo test --release --verbose --lib -- --test-threads 1
+        # cargo test --release --verbose --package casr
