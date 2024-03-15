@@ -4187,7 +4187,12 @@ fn test_casr_java() {
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
     // Test only java
     let output = Command::new(*EXE_CASR_JAVA.read().unwrap())
-        .args(["--stdout", "--", "java", &paths[0]])
+        .args([
+            "--stdout",
+            "--",
+            "/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+            &paths[0],
+        ])
         .output()
         .expect("failed to start casr-java");
 
