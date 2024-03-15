@@ -4273,6 +4273,7 @@ fn test_casr_java() {
         .env("PATH", format!("{}:{}", env!("PATH"), cargo_target_dir))
         .output()
         .expect("failed to start casr-java");
+    println!("Test java with native lib: casr-san run done");
 
     assert!(
         output.status.success(),
