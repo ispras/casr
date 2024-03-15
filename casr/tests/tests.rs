@@ -4186,6 +4186,7 @@ fn test_casr_java() {
 
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
     // Test only java
+    println!("Test only java");
     let output = Command::new(*EXE_CASR_JAVA.read().unwrap())
         .args([
             "--stdout",
@@ -4223,6 +4224,7 @@ fn test_casr_java() {
     }
 
     // Test java with native lib
+    println!("Test java with native lib");
     let clang = Command::new("bash")
         .arg("-c")
         .arg(format!(
@@ -4242,6 +4244,7 @@ fn test_casr_java() {
         String::from_utf8_lossy(&clang.stderr)
     );
 
+    println!("Test java with native lib: clang++ -print-file-name");
     let output = Command::new("bash")
         .arg("-c")
         .arg("clang++ -print-file-name=libclang_rt.asan-x86_64.so")
@@ -4262,6 +4265,7 @@ fn test_casr_java() {
         .to_str()
         .unwrap()
         .to_string();
+    println!("Test java with native lib: casr-san run");
     let output = Command::new(*EXE_CASR_JAVA.read().unwrap())
         .args(["--stdout", "--", "java", &paths[1]])
         .env("LD_PRELOAD", clang_rt.trim())
@@ -4298,6 +4302,7 @@ fn test_casr_java() {
     } else {
         panic!("Couldn't parse json report file.");
     }
+    println!("done");
 }
 
 #[test]
