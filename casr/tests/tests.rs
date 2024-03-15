@@ -4267,7 +4267,12 @@ fn test_casr_java() {
         .to_string();
     println!("Test java with native lib: casr-san run");
     let output = Command::new(*EXE_CASR_JAVA.read().unwrap())
-        .args(["--stdout", "--", "java", &paths[1]])
+        .args([
+            "--stdout",
+            "--",
+            "/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+            &paths[1],
+        ])
         .env("LD_PRELOAD", clang_rt.trim())
         .env("LD_LIBRARY_PATH", &paths[4])
         .env("PATH", format!("{}:{}", env!("PATH"), cargo_target_dir))
