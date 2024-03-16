@@ -11,6 +11,7 @@ use std::process::Command;
 use walkdir::WalkDir;
 
 fn main() -> Result<()> {
+    println!("casr-java main");
     let matches = clap::Command::new("casr-java")
         .version(clap::crate_version!())
         .about("Create CASR reports (.casrep) from java reports")
