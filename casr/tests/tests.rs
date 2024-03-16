@@ -4259,6 +4259,7 @@ fn test_casr_java() {
     );
 
     let clang_rt = String::from_utf8_lossy(&output.stdout);
+    println!("clang_rt={clang_rt}");
     let cargo_target_dir = PathBuf::from(env!("CARGO_BIN_EXE_casr-san"))
         .parent()
         .unwrap()
