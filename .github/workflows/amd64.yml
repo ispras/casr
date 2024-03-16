@@ -19,7 +19,7 @@ jobs:
       run: cargo build --all-features --verbose
     - name: Run tests
       run: |
-        sudo apt update && sudo apt install -y gdb pip curl python3.10-dev llvm \
+        sudo apt update && sudo apt install -y gdb pip curl python3.9-dev llvm \
             openjdk-17-jdk ca-certificates gnupg
         pip3 install atheris
         sudo mkdir -p /etc/apt/keyrings
