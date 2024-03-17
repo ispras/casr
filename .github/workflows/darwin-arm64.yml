@@ -1,0 +1,40 @@
+name: darwin-arm64
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  darwin-arm64:
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install x86 Brew
+        run: arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+      - name: Brew packages
+        continue-on-error: true
+        run: |
+          arch -x86_64 /usr/local/bin/brew update
+          arch -x86_64 /usr/local/bin/brew install gdb curl python llvm \
+              openjdk ca-certificates gnupg nodejs --overwrite
+      - name: Build
+        run: cargo build --all-features --verbose
+      - name: NPM packages
+        run: |
+          sudo npm install -g jsfuzz
+          sudo npm install --save-dev @jazzer.js/core
+      - name: Rust packages
+        run: |
+          curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
+          ./rustup.sh -y && rm rustup.sh
+          rustup install nightly
+          export PATH=/root/.cargo/bin:$PATH
+          cargo install cargo-fuzz
+      - name: Run tests
+        run: |
+          cargo test --release --verbose --lib -- --test-threads 1
+          cargo test --release --verbose --package casr

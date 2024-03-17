@@ -1,0 +1,9 @@
+---
+triple:          'x86_64-apple-darwin'
+binary-path:     './mac_bin/test_callAv'
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _func1, symObjAddr: 0x0, symBinAddr: 0x100003F20, symSize: 0x10 }
+  - { offsetInCU: 0x33, offset: 0x33, size: 0x8, addend: 0x0, symName: _func1, symObjAddr: 0x0, symBinAddr: 0x100003F20, symSize: 0x10 }
+  - { offsetInCU: 0x48, offset: 0x48, size: 0x8, addend: 0x0, symName: _func2, symObjAddr: 0x10, symBinAddr: 0x100003F30, symSize: 0x10 }
+  - { offsetInCU: 0x5D, offset: 0x5D, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x20, symBinAddr: 0x100003F40, symSize: 0x50 }
+...

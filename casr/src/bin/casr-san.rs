@@ -22,7 +22,6 @@ use clap::{Arg, ArgAction, ArgGroup};
 use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::stacktrace::StacktraceExt;
 use gdb_command::*;
-use linux_personality::personality;
 use regex::Regex;
 
 use std::env;
@@ -141,15 +140,24 @@ fn main() -> Result<()> {
     if argv.len() > 1 {
         sanitizers_cmd.args(&argv[1..]);
     }
-    let sanitizers_cmd = unsafe {
-        sanitizers_cmd.pre_exec(|| {
-            if personality(linux_personality::ADDR_NO_RANDOMIZE).is_err() {
-                panic!("Cannot set personality");
-            }
-            Ok(())
-        })
-    };
-    let sanitizers_result = util::get_output(sanitizers_cmd, timeout, true)?;
+    #[cfg(target_os = "macos")]
+    {
+        sanitizers_cmd.env("DYLD_NO_PIE", "1");
+    }
+    #[cfg(target_os = "linux")]
+    {
+        use linux_personality::{personality, ADDR_NO_RANDOMIZE};
+
+        unsafe {
+            sanitizers_cmd.pre_exec(|| {
+                if personality(ADDR_NO_RANDOMIZE).is_err() {
+                    panic!("Cannot set personality");
+                }
+                Ok(())
+            })
+        };
+    }
+    let sanitizers_result = util::get_output(&mut sanitizers_cmd, timeout, true)?;
     let sanitizers_stderr = String::from_utf8_lossy(&sanitizers_result.stderr);
 
     if sanitizers_stderr.contains("Cannot set personality") {

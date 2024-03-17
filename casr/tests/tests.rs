@@ -31,7 +31,13 @@ fn abs_path(rpath: &str) -> String {
     let rpath = match std::env::consts::ARCH {
         "aarch64" => rpath.replace("bin", "arm_bin"),
         "riscv64" => rpath.replace("bin", "riscv_bin"),
-        _ => rpath.to_string(),
+        _ => {
+            if std::env::consts::OS == "macos" {
+                rpath.replace("bin", "mac_bin")
+            } else {
+                rpath.to_string()
+            }
+        }
     };
     let project_dir = PathBuf::from(*PROJECT_DIR.read().unwrap());
     let mut path = PathBuf::new();
@@ -42,6 +48,7 @@ fn abs_path(rpath: &str) -> String {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_segfault_on_pc() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_segFaultOnPc"),
@@ -78,6 +85,7 @@ fn test_segfault_on_pc() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_dest_av() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_destAv"),
@@ -114,6 +122,7 @@ fn test_dest_av() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_dest_av_near_null() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_destAvNearNull"),
@@ -223,6 +232,7 @@ fn test_call_av() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_call_av_tainted() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_callAvTainted"),
@@ -259,6 +269,7 @@ fn test_call_av_tainted() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_source_av() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_sourceAv"),
@@ -295,6 +306,7 @@ fn test_source_av() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_source_av_near_null() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_sourceAvNearNull"),
@@ -331,6 +343,7 @@ fn test_source_av_near_null() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_abort() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_abort"),
@@ -440,6 +453,7 @@ fn test_safe_func() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_bad_instruction() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_badInstruction"),
@@ -513,6 +527,7 @@ fn test_stack_overflow() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_dest_av_tainted() {
     let paths = [
         abs_path("tests/casr_tests/bin/core.test_destAvTainted"),
@@ -3417,6 +3432,7 @@ fn test_casr_san_segf() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn test_casr_san_exception() {
     let paths = [
         abs_path("tests/casr_tests/test_exception.cpp"),
