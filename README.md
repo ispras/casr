@@ -105,6 +105,11 @@ Download latest Linux 64-bit
 [release](https://github.com/ispras/casr/releases/latest/download/casr-x86_64-unknown-linux-gnu.tar.xz)
 or build from source as explained below.
 
+N.B. Current MacOS support is experimental. Some Linux-based code like
+[exploitable](https://github.com/ispras/casr/blob/master/libcasr/src/gdb/exploitable.rs)
+and `casr-gdb` may not properly work. Further contributions are very much
+welcomed here.
+
 Build from Git repository:
 
     $ git clone https://github.com/ispras/casr
