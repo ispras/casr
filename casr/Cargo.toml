@@ -52,3 +52,4 @@ required-features = ["dojo"]
 
 [dev-dependencies]
 lazy_static = "1.4"
+lsb_release = "0.1"
