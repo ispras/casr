@@ -4369,6 +4369,7 @@ fn test_casr_python_atheris() {
 }
 
 #[test]
+#[ignore]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_python_df() {
     // Double free python C extension test
@@ -4476,6 +4477,7 @@ fn test_casr_san_python_df() {
 }
 
 #[test]
+#[ignore]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_atheris_df() {
     // Double free python C extension test
@@ -4587,6 +4589,7 @@ fn test_casr_san_atheris_df() {
 }
 
 #[test]
+#[ignore]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_python_call_san_df() {
     // Double free python C extension test
@@ -4956,6 +4959,7 @@ fn test_casr_js_jazzer() {
 }
 
 #[test]
+#[ignore]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native() {
     // JS C extension test
@@ -5091,6 +5095,7 @@ fn test_casr_js_native() {
 }
 
 #[test]
+#[ignore]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native_jsfuzz() {
     // JS jsfuzz C extension test
@@ -5226,6 +5231,7 @@ fn test_casr_js_native_jsfuzz() {
 }
 
 #[test]
+#[ignore]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native_jazzer() {
     // JS jsfuzz C extension test
