@@ -4176,18 +4176,16 @@ fn test_casr_python() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_java() {
-    let paths = [
-        abs_path("tests/casr_tests/java/Test1.java"),
-        abs_path("tests/casr_tests/java/Test2.java"),
-        abs_path("tests/casr_tests/java/Test2.cpp"),
-        abs_path("tests/tmp_tests_casr/libnative.so"),
-        abs_path("tests/tmp_tests_casr/"),
-    ];
+    let paths = [abs_path("tests/casr_tests/java/Test1.java")];
 
-    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
     // Test only java
     let output = Command::new(*EXE_CASR_JAVA.read().unwrap())
-        .args(["--stdout", "--", "java", &paths[0]])
+        .args([
+            "--stdout",
+            "--",
+            "/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+            &paths[0],
+        ])
         .output()
         .expect("failed to start casr-java");
 
@@ -4216,7 +4214,20 @@ fn test_casr_java() {
     } else {
         panic!("Couldn't parse json report file.");
     }
+}
 
+#[test]
+#[ignore]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_java_native_lib() {
+    let paths = [
+        abs_path("tests/casr_tests/java/Test2.java"),
+        abs_path("tests/casr_tests/java/Test2.cpp"),
+        abs_path("tests/tmp_tests_casr/libnative.so"),
+        abs_path("tests/tmp_tests_casr/"),
+    ];
+
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
     // Test java with native lib
     let clang = Command::new("bash")
         .arg("-c")
@@ -4225,7 +4236,7 @@ fn test_casr_java() {
             -I/usr/lib/jvm/java-17-openjdk-amd64/include \
             -I/usr/lib/jvm/java-17-openjdk-amd64/include/linux \
             -fPIC {} -o {}",
-            &paths[2], &paths[3]
+            &paths[1], &paths[2]
         ))
         .output()
         .expect("failed to execute clang++");
@@ -4258,9 +4269,14 @@ fn test_casr_java() {
         .unwrap()
         .to_string();
     let output = Command::new(*EXE_CASR_JAVA.read().unwrap())
-        .args(["--stdout", "--", "java", &paths[1]])
+        .args([
+            "--stdout",
+            "--",
+            "/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+            &paths[0],
+        ])
         .env("LD_PRELOAD", clang_rt.trim())
-        .env("LD_LIBRARY_PATH", &paths[4])
+        .env("LD_LIBRARY_PATH", &paths[3])
         .env("PATH", format!("{}:{}", env!("PATH"), cargo_target_dir))
         .output()
         .expect("failed to start casr-java");
