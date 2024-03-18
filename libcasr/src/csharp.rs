@@ -24,7 +24,7 @@ impl ParseStacktrace for CSharpStacktrace {
             .as_str()
             .split('\n')
             .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
+            .filter(|s| !s.is_empty() && s != "--- End of inner exception stack trace ---")
             .collect::<Vec<String>>())
     }
 
@@ -110,10 +110,7 @@ impl ParseStacktrace for CSharpStacktrace {
     fn parse_stacktrace(entries: &[String]) -> Result<Stacktrace> {
         entries
             .iter()
-            .filter_map(|s| {
-                (s != "--- End of inner exception stack trace ---")
-                    .then_some(Self::parse_stacktrace_entry(s))
-            })
+            .map(|s| Self::parse_stacktrace_entry(s))
             .collect()
     }
 }
@@ -243,15 +240,10 @@ Unhandled exception. System.ArgumentException: 1111 ---> System.IO.IOException: 
 ";
 
         let trace = [
-            "--- End of inner exception stack trace ---",
-            "--- End of inner exception stack trace ---",
-            "--- End of inner exception stack trace ---",
             "at C.qwe()",
             "at B..ctor() in /home/user/dotnet/2/A.cs:line 37",
             "at A`1.<>c.<set_Q>b__1_1() in /home/user/dotnet/2/A.cs:line 15",
             "at A`1.h[Z](Func`1 a)",
-            "--- End of inner exception stack trace ---",
-            "--- End of inner exception stack trace ---",
             "at A`1[T].<set_Q>g__g|1_0 (System.Int32[] arr) <0x40b745f0 + 0x00122> in /home/user/mono/2/src/2.cs:13",
             "at System.Threading._ThreadPoolWaitCallback.PerformWaitCallback () [0x00000] in <c79446e93efd45a0b7bc2f9631593aff>:0",
             "at A`1[T].set_Q (System.Int32 value) <0x40275140 + 0x00082> in <f6b2b0ea894844dc83a96f9504d8f570#610bc057486c618efb3936233b088988>:0",
