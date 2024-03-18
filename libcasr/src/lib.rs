@@ -25,6 +25,7 @@ pub mod asan;
 pub mod cluster;
 pub mod constants;
 pub mod cpp;
+pub mod csharp;
 pub mod error;
 pub mod exception;
 pub mod execution_class;

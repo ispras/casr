@@ -10,6 +10,7 @@ use libcasr::{
     java::JavaStacktrace,
     python::PythonStacktrace,
     js::JsStacktrace,
+    csharp::CSharpStacktrace,
     stacktrace::{CrashLineExt, Filter, ParseStacktrace, Stacktrace},
 };
 
@@ -18,8 +19,8 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
     let s = String::from_utf8_lossy(&data[1..]);
-    init_ignored_frames!("cpp", "rust", "python", "go", "java", "js");
-    match data[0] % 6 {
+    init_ignored_frames!("cpp", "rust", "python", "go", "java", "js", "csharp");
+    match data[0] % 7 {
         0 => {
             // Asan
             if let Ok(raw) = AsanStacktrace::extract_stacktrace(&s) {
@@ -56,6 +57,14 @@ fuzz_target!(|data: &[u8]| {
             // JS
             if let Ok(raw) = JsStacktrace::extract_stacktrace(&s) {
                 if let Ok(st) = JsStacktrace::parse_stacktrace(&raw) {
+                    let _ = st.crash_line();
+                }
+            }
+        }
+        5 => {
+            // C#
+            if let Ok(raw) = CSharpStacktrace::extract_stacktrace(&s) {
+                if let Ok(st) = CSharpStacktrace::parse_stacktrace(&raw) {
                     let _ = st.crash_line();
                 }
             }

@@ -3,10 +3,11 @@ extern crate kodama;
 extern crate lazy_static;
 
 use crate::constants::{
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO,
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA, STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS,
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON, STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
-    STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP, STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO, STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS, STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST, STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP,
+    STACK_FRAME_FUNCTION_IGNORE_REGEXES_CSHARP, STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO,
     STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA, STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS,
     STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
 };
@@ -346,6 +347,10 @@ pub trait Filter {
                     STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS,
                     STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS,
                 ),
+                "csharp" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_CSHARP,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP,
+                ),
                 &_ => (["^[^.]$"].as_slice(), ["^[^.]$"].as_slice()),
             })
             .unzip();
@@ -469,7 +474,7 @@ pub mod tests {
         let mut is_inited = INITED_STACKFRAMES_FILTER.write().unwrap();
         if !*is_inited {
             *is_inited = true;
-            init_ignored_frames!("cpp", "rust", "python", "go", "java", "js");
+            init_ignored_frames!("cpp", "rust", "python", "go", "java", "js", "csharp");
         }
     }
 
