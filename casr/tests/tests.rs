@@ -5820,6 +5820,14 @@ fn test_casr_afl_csharp() {
         panic!("No dotnet is found.");
     };
 
+    let _ = Command::new(dotnet_path.to_str().unwrap())
+        .args([
+            "build",
+            &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
+        ])
+        .output()
+        .expect("dotnet build crashed");
+
     let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
     let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
     output
@@ -5833,6 +5841,7 @@ fn test_casr_afl_csharp() {
             "run",
             "--project",
             &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
+            "--no-build",
             "@@",
         ])
         .env(
@@ -5841,7 +5850,7 @@ fn test_casr_afl_csharp() {
         );
 
     print!("{:?}", output);
-    let output = output.output().expect("asfs");
+    let output = output.output().expect("casr-afl crashed");
 
     assert!(
         output.status.success(),

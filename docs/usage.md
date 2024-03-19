@@ -560,7 +560,10 @@ Sharpfuzz example:
 
     $ $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
     $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
-    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
+    $ dotnet build /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --no-build --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
+
+**NOTE:** if you run `casr-afl` for Sharpfuzz pipeline using `dotnet`, build your project before run (via `dotnet build` or `dotnet publish`) and specify `--no-build` option for `dotnet run`.
 
 ## casr-libfuzzer
 
