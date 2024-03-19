@@ -113,7 +113,7 @@ fn main() -> Result<()> {
     let mut argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
         argvs.map(|v| v.as_str()).collect()
     } else {
-        Vec::new()
+        bail!("Invalid fuzz target arguments");
     };
 
     // Get gdb args.

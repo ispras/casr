@@ -214,13 +214,13 @@ Create CASR reports (.casrep) from C# reports
 
     Options:
       -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                              is generated
+                               is generated
           --stdout             Print CASR report to stdout
           --stdin <FILE>       Stdin file for program
       -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                              timeout is disabled [default: 0]
+                               timeout is disabled [default: 0]
           --ignore <FILE>      File with regular expressions for functions and file paths that
-                              should be ignored
+                               should be ignored
       -h, --help               Print help
       -V, --version            Print version
 
@@ -440,33 +440,24 @@ Triage crashes found by AFL++ (Sharpfuzz)
 
     Arguments:
       [ARGS]...  Add "-- ./gdb_fuzz_target <arguments>" to generate additional crash reports
-            with casr-gdb (for compiled binaries, e.g., test whether program crashes
-            without sanitizers), "-- dotnet <arguments>" or "-- mono <arguments>" to
-            triage C# crashes with additional options
+                 with casr-gdb (for compiled binaries, e.g., test whether program crashes
+                 without sanitizers), "-- dotnet <arguments>" or "-- mono <arguments>" to
+                 triage C# crashes with additional options
 
     Options:
-      -l, --log-level <log-level>
-              Logging level [default: info] [possible values: info, debug]
-      -j, --jobs <jobs>
-              Number of parallel jobs for generating CASR reports [default: half of cpu cores]
-      -t, --timeout <SECONDS>
-              Timeout (in seconds) for target execution, 0 value means that timeout is
-              disabled [default: 0]
-      -i, --input <INPUT_DIR>
-              AFL++ work directory
-      -o, --output <OUTPUT_DIR>
-              Output directory with triaged reports
-      -f, --force-remove
-              Remove output project directory if it exists
-          --ignore-cmdline
-              Force <casr-gdb-args> usage to run target instead of searching for cmdline files
-              in AFL fuzzing directory
-          --no-cluster
-              Do not cluster CASR reports
-      -h, --help
-              Print help
-      -V, --version
-              Print version
+      -l, --log-level <log-level>  Logging level [default: info] [possible values: info, debug]
+      -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
+                                   [default: half of cpu cores]
+      -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, 0 value means
+                                   that timeout is disabled [default: 0]
+      -i, --input <INPUT_DIR>      AFL++ work directory
+      -o, --output <OUTPUT_DIR>    Output directory with triaged reports
+      -f, --force-remove           Remove output project directory if it exists
+          --ignore-cmdline         Force <casr-gdb-args> usage to run target instead of searching for cmdline files
+                                   in AFL fuzzing directory
+          --no-cluster             Do not cluster CASR reports
+      -h, --help                   Print help
+      -V, --version                Print version
 
 `casr-afl` provides a straightforward CASR integration with AFL++. While walking through afl
 instances, `casr-afl` generates crash reports depending on target binary. For
@@ -547,7 +538,7 @@ AFL++ Example (Ubuntu 20.04+):
 You may also run `casr-afl` with additional report generation for uninstrumented
 binary with `casr-gdb`:
 
-    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out --casr-gdb-args /tmp/load_sydr @@
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out -- /tmp/load_sydr @@
 
 Thus, `casr-afl` will generate GDB crash report for each unique ASAN crash. So,
 you can estimate crash severity for program built without sanitizers.
