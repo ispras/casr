@@ -439,7 +439,10 @@ Triage crashes found by AFL++ (Sharpfuzz)
     Usage: casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR> [-- <ARGS>...]
 
     Arguments:
-      [ARGS]...  Add "-- fuzz_target <arguments>"
+      [ARGS]...  Add "-- ./gdb_fuzz_target <arguments>" to generate additional crash reports
+            with casr-gdb (for compiled binaries, e.g., test whether program crashes
+            without sanitizers), "-- dotnet <arguments>" or "-- mono <arguments>" to
+            triage C# crashes with additional options
 
     Options:
       -l, --log-level <log-level>
@@ -460,10 +463,6 @@ Triage crashes found by AFL++ (Sharpfuzz)
               in AFL fuzzing directory
           --no-cluster
               Do not cluster CASR reports
-          --casr-gdb-args <casr-gdb-args>
-              Add "--casr-gdb-args './gdb_fuzz_target <arguments>'" to generate additional
-              crash reports with casr-gdb (e.g., test whether program crashes without
-              sanitizers)
       -h, --help
               Print help
       -V, --version
@@ -483,8 +482,8 @@ fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 
 AFL++ Example (Ubuntu 20.04+):
 
-    $ cp casr/tests/casr_tests/bin/load_afl /tmp/load_afl
-    $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
+    $ cp -r casr/tests/casr_tests/bin/load_afl /tmp/load_afl
+    $ cp -r casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
 
     $ tree tests/tmp_tests_casr/casr_afl_out
@@ -558,12 +557,20 @@ variable may be used by [casr-san](#casr-san).
 
 Sharpfuzz example:
 
-    $ $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
-    $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
-    $ dotnet build /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj
-    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --no-build --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
+    $ dotnet publish -o /tmp/test_casr_afl_csharp/bin
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out
 
-**NOTE:** if you run `casr-afl` for Sharpfuzz pipeline using `dotnet`, build your project before run (via `dotnet build` or `dotnet publish`) and specify `--no-build` option for `dotnet run`.
+Sharpfuzz example (with --ignore-cmdline):
+
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
+    $ dotnet build /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj
+    $ casr-afl --ignore-cmdline -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --no-build --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
+
+**NOTE:** if you run `casr-afl` for Sharpfuzz pipeline using `--ignore-cmdline` with `dotnet run`, build
+your project before (via `dotnet build` or `dotnet publish`) and specify `--no-build` option for `dotnet run`.
 
 ## casr-libfuzzer
 

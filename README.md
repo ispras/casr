@@ -194,17 +194,20 @@ Cluster reports:
 
 Triage crashes after AFL++ fuzzing with casr-afl:
 
-    $ cp casr/tests/casr_tests/bin/load_afl /tmp/load_afl
-    $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
+    $ cp -r casr/tests/casr_tests/bin/load_afl /tmp/load_afl
+    $ cp -r casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
     $ # You may also additionally generate crash reports for uninstrumented binary with casr-gdb
-    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out --casr-gdb-args /tmp/load_sydr @@
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out -- /tmp/load_sydr @@
 
 Triage crashes after Sharpfuzz fuzzing with casr-afl:
 
-    $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
-    $ cp casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
-    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
+    $ dotnet publish -o /tmp/test_casr_afl_csharp/bin
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out
+    $ # You may force your own run arguments using --ignore-cmdline
+    $ casr-afl --ignore-cmdline -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --no-build --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
 
 Triage libFuzzer crashes with casr-libfuzzer:
 

@@ -3699,8 +3699,9 @@ fn test_casr_afl() {
             &paths[0],
             "-o",
             &paths[1],
-            "--casr-gdb-args",
-            "/tmp/load_sydr @@",
+            "--",
+            "/tmp/load_sydr",
+            "@@",
         ])
         .env(
             "PATH",
@@ -3793,7 +3794,7 @@ fn test_casr_afl_ignore_cmd() {
             &paths[0],
             "-o",
             &paths[1],
-            "--casr-gdb-args",
+            "--",
             &load_afl,
         ])
         .output()
@@ -5822,32 +5823,20 @@ fn test_casr_afl_csharp() {
 
     let _ = Command::new(dotnet_path.to_str().unwrap())
         .args([
-            "build",
+            "publish",
+            "-o",
+            &format!("{}/bin", &paths[4]),
             &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
         ])
         .output()
-        .expect("dotnet build crashed");
+        .expect("dotnet publish crashed");
 
     let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
     let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
-    output
-        .args([
-            "-i",
-            &paths[0],
-            "-o",
-            &paths[1],
-            "--",
-            &dotnet_path.to_str().unwrap(),
-            "run",
-            "--project",
-            &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
-            "--no-build",
-            "@@",
-        ])
-        .env(
-            "PATH",
-            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
-        );
+    output.args(["-i", &paths[0], "-o", &paths[1]]).env(
+        "PATH",
+        format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+    );
 
     print!("{:?}", output);
     let output = output.output().expect("casr-afl crashed");

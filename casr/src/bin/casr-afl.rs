@@ -1,8 +1,7 @@
 use casr::triage::{fuzzing_crash_triage_pipeline, CrashInfo};
 use casr::util;
 
-use anyhow::bail;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{
     error::{ContextKind, ContextValue, ErrorKind},
     Arg, ArgAction,
@@ -87,7 +86,7 @@ fn main() -> Result<()> {
             Arg::new("ignore-cmdline")
                 .action(ArgAction::SetTrue)
                 .long("ignore-cmdline")
-                .help("Force <casr-gdb-args> usage to run target instead of searching for cmdline files in AFL fuzzing directory")
+                .help("Force <ARGS> usage to run target instead of searching for cmdline files in AFL fuzzing directory")
         )
         .arg(
             Arg::new("no-cluster")
@@ -96,51 +95,39 @@ fn main() -> Result<()> {
                 .help("Do not cluster CASR reports")
         )
         .arg(
-            Arg::new("casr-gdb-args")
-                .long("casr-gdb-args")
-                .action(ArgAction::Set)
-                .help("Add \"--casr-gdb-args \'./gdb_fuzz_target <arguments>\'\" to generate additional crash reports with casr-gdb (e.g., test whether program crashes without sanitizers)"),
-        )
-        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
+                .required(false)
                 .num_args(1..)
                 .last(true)
-                .help("Add \"-- fuzz_target <arguments>\""),
+                .help("Add \"-- ./gdb_fuzz_target <arguments>\" to generate additional crash reports with casr-gdb \
+                      (for compiled binaries, e.g., test whether program crashes without sanitizers), \"-- dotnet <arguments>\" \
+                      or \"-- mono <arguments>\" to triage C# crashes with additional options")
         )
         .get_matches();
 
     // Init log.
     util::initialize_logging(&matches);
 
-    // Get fuzz target args.
-    let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
-        argvs.map(|v| v.as_str()).collect()
+    let mut args = if let Some(argv) = matches.get_many::<String>("ARGS") {
+        argv.cloned().collect()
     } else {
         Vec::new()
     };
 
-    // Get gdb args.
-    let mut gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
-        shell_words::split(argv)?
-    } else {
-        Vec::new()
-    };
-    if gdb_args.is_empty() && matches.get_flag("ignore-cmdline") {
-        bail!("casr-gdb-args is empty, but \"ignore-cmdline\" option is provided.");
+    if args.is_empty() && matches.get_flag("ignore-cmdline") {
+        bail!("ARGS is empty, but \"ignore-cmdline\" option is provided.");
     }
 
     // Get tool.
-    let tool = if !argv.is_empty() && (argv[0].ends_with("dotnet") || argv[0].ends_with("mono")) {
+    let mut tool = if matches.get_flag("ignore-cmdline")
+        && (args[0].ends_with("dotnet") || args[0].ends_with("mono"))
+    {
         "casr-csharp"
     } else {
         "casr-gdb"
     };
     let tool_path = util::get_path(tool)?;
-
-    if !gdb_args.is_empty() && tool != "casr-gdb" {
-        bail!("casr-gdb-args is provided with other tool (casr-csharp).");
-    }
 
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
@@ -151,38 +138,30 @@ fn main() -> Result<()> {
         }
 
         // Get crashes from one node.
-        let mut crash_info = if tool == "casr-gdb" {
-            CrashInfo {
-                target_args: if matches.get_flag("ignore-cmdline") {
-                    gdb_args.clone()
-                } else {
-                    let cmdline_path = path.join("cmdline");
-                    if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
-                        cmdline.split_whitespace().map(|s| s.to_string()).collect()
-                    } else {
-                        error!("Couldn't read {}.", cmdline_path.display());
-                        continue;
-                    }
-                },
-                envs: HashMap::new(),
-                ..Default::default()
-            }
+        let mut crash_info = casr::triage::CrashInfo {
+            ..Default::default()
+        };
+        if matches.get_flag("ignore-cmdline") {
+            crash_info.casr_tool = tool_path.clone();
+            crash_info.target_args = args.clone()
         } else {
-            CrashInfo {
-                target_args: argv.iter().map(|x| x.to_string()).collect(),
-                envs: vec![
-                    ("AFL_SKIP_BIN_CHECK".to_string(), "1".to_string()),
-                    (
-                        "AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES".to_string(),
-                        "1".to_string(),
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-                ..Default::default()
+            let cmdline_path = path.join("cmdline");
+            if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
+                let cmd_args: Vec<String> =
+                    cmdline.split_whitespace().map(|s| s.to_string()).collect();
+                if cmd_args[0].ends_with("dotnet") || cmd_args[0].ends_with("mono") {
+                    tool = "casr-csharp";
+                    crash_info.casr_tool = util::get_path("casr-csharp")?.clone()
+                } else {
+                    tool = "casr-gdb";
+                    crash_info.casr_tool = util::get_path("casr-gdb")?.clone()
+                }
+                crash_info.target_args = cmd_args;
+            } else {
+                error!("Couldn't read {}.", cmdline_path.display());
+                continue;
             }
         };
-        crash_info.casr_tool = tool_path.clone();
         crash_info.at_index = crash_info
             .target_args
             .iter()
@@ -196,7 +175,7 @@ fn main() -> Result<()> {
                 match util::symbols_list(Path::new(target)) {
                     Ok(list) => {
                         if list.contains("__asan") {
-                            crash_info.casr_tool = util::get_path("casr-san")?.clone();
+                            crash_info.casr_tool = util::get_path("casr-san")?.clone()
                         }
                     }
                     Err(e) => {
@@ -226,10 +205,10 @@ fn main() -> Result<()> {
         }
     }
 
-    if matches.get_flag("ignore-cmdline") {
-        gdb_args = Vec::new();
+    if matches.get_flag("ignore-cmdline") || tool != "casr-gdb" {
+        args = Vec::new();
     }
 
     // Generate reports
-    fuzzing_crash_triage_pipeline(&matches, &crashes, &gdb_args)
+    fuzzing_crash_triage_pipeline(&matches, &crashes, &args)
 }
