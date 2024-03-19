@@ -5905,3 +5905,129 @@ fn test_casr_afl_csharp() {
         .output()
         .expect("failed to remove dir");
 }
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_afl_csharp_ignore_cmd() {
+    use std::collections::HashMap;
+
+    let paths = [
+        abs_path("tests/casr_tests/casrep/afl-out-sharpfuzz"),
+        abs_path("tests/tmp_tests_casr/casr_afl_csharp_ignore_cmd_out"),
+        abs_path("tests/casr_tests/csharp/test_casr_afl_csharp"),
+        abs_path("tests/casr_tests/csharp/test_casr_afl_csharp_module"),
+        abs_path("tests/tmp_tests_casr/test_casr_afl_csharp"),
+        abs_path("tests/tmp_tests_casr/test_casr_afl_csharp_module"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    let _ = Command::new("cp")
+        .args(["-r", &paths[2], &paths[4]])
+        .output()
+        .expect("failed to copy dir");
+    let _ = Command::new("cp")
+        .args(["-r", &paths[3], &paths[5]])
+        .output()
+        .expect("failed to copy dir");
+    let Ok(dotnet_path) = which::which("dotnet") else {
+        panic!("No dotnet is found.");
+    };
+
+    let _ = Command::new(dotnet_path.to_str().unwrap())
+        .args([
+            "build",
+            &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
+        ])
+        .output()
+        .expect("dotnet publish crashed");
+
+    let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
+    let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
+    output
+        .args([
+            "--ignore-cmdline",
+            "-i",
+            &paths[0],
+            "-o",
+            &paths[1],
+            "--",
+            &dotnet_path.to_str().unwrap(),
+            "run",
+            "--no-build",
+            "--project",
+            &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
+            "@@",
+        ])
+        .env(
+            "PATH",
+            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+        );
+
+    print!("{:?}", output);
+    let output = output.output().expect("casr-afl crashed");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let res = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 3, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 3, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
+    let _ = Command::new("rm")
+        .args(["-rf", &paths[4]])
+        .output()
+        .expect("failed to remove dir");
+    let _ = Command::new("rm")
+        .args(["-rf", &paths[5]])
+        .output()
+        .expect("failed to remove dir");
+}
