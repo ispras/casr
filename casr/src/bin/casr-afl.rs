@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-afl")
         .version(clap::crate_version!())
-        .about("Triage crashes found by AFL++ (Sharpfuzz)")
+        .about("Triage crashes found by AFL++/Sharpfuzz")
         .term_width(90)
         .arg(
             Arg::new("log-level")
@@ -151,10 +151,10 @@ fn main() -> Result<()> {
                     cmdline.split_whitespace().map(|s| s.to_string()).collect();
                 if cmd_args[0].ends_with("dotnet") || cmd_args[0].ends_with("mono") {
                     tool = "casr-csharp";
-                    crash_info.casr_tool = util::get_path("casr-csharp")?.clone()
+                    crash_info.casr_tool = util::get_path("casr-csharp")?;
                 } else {
                     tool = "casr-gdb";
-                    crash_info.casr_tool = util::get_path("casr-gdb")?.clone()
+                    crash_info.casr_tool = util::get_path("casr-gdb")?;
                 }
                 crash_info.target_args = cmd_args;
             } else {
@@ -209,6 +209,6 @@ fn main() -> Result<()> {
         args = Vec::new();
     }
 
-    // Generate reports
+    // Generate reports.
     fuzzing_crash_triage_pipeline(&matches, &crashes, &args)
 }

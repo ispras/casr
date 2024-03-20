@@ -10,8 +10,10 @@ java reports and get report from
 to analyze JavaScript reports and get report from
 [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
 [jsfuzz](https://github.com/fuzzitdev/jsfuzz).
-Use `casr-csharp` to analyze C# reports. `casr-afl` can triage crashes
-found by [AFL++](https://github.com/AFLplusplus/AFLplusplus) (Sharpfuzz).
+Use `casr-csharp` to analyze C# reports and get report from
+[Sharpfuzz](https://github.com/Metalnem/sharpfuzz). `casr-afl` can triage
+crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus) and
+AFL-based fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,
 Atheris, Jazzer, Jazzer.js, jsfuzz). `casr-dojo` allows to upload new and
@@ -473,8 +475,8 @@ fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 
 AFL++ Example (Ubuntu 20.04+):
 
-    $ cp -r casr/tests/casr_tests/bin/load_afl /tmp/load_afl
-    $ cp -r casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
+    $ cp casr/tests/casr_tests/bin/load_afl /tmp/load_afl
+    $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-xlnt -o casr/tests/tmp_tests_casr/casr_afl_out
 
     $ tree tests/tmp_tests_casr/casr_afl_out

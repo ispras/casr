@@ -5838,7 +5838,6 @@ fn test_casr_afl_csharp() {
         format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
     );
 
-    print!("{:?}", output);
     let output = output.output().expect("casr-afl crashed");
 
     assert!(
@@ -5896,14 +5895,8 @@ fn test_casr_afl_csharp() {
     }
 
     assert!(storage.values().all(|x| *x > 1));
-    let _ = Command::new("rm")
-        .args(["-rf", &paths[4]])
-        .output()
-        .expect("failed to remove dir");
-    let _ = Command::new("rm")
-        .args(["-rf", &paths[5]])
-        .output()
-        .expect("failed to remove dir");
+    let _ = fs::remove_dir_all(&paths[4]);
+    let _ = fs::remove_dir_all(&paths[5]);
 }
 
 #[test]
@@ -6022,12 +6015,6 @@ fn test_casr_afl_csharp_ignore_cmd() {
     }
 
     assert!(storage.values().all(|x| *x > 1));
-    let _ = Command::new("rm")
-        .args(["-rf", &paths[4]])
-        .output()
-        .expect("failed to remove dir");
-    let _ = Command::new("rm")
-        .args(["-rf", &paths[5]])
-        .output()
-        .expect("failed to remove dir");
+    let _ = fs::remove_dir_all(&paths[4]);
+    let _ = fs::remove_dir_all(&paths[5]);
 }

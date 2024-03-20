@@ -83,10 +83,18 @@ fn main() -> Result<()> {
         bail!("Wrong arguments for starting program");
     };
 
+    // Check that args are valid.
+    let Some(pos) = argv
+        .iter()
+        .position(|x| x.ends_with(".dll") || x.ends_with(".exe") || x.ends_with(".csproj"))
+    else {
+        bail!("dotnet/mono target is not specified by .dll, .exe or .csproj executable.");
+    };
+
     // Get stdin for target program.
     let stdin_file = util::stdin_from_matches(&matches)?;
 
-    // Get timeout
+    // Get timeout.
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
     // Run program.
@@ -103,16 +111,8 @@ fn main() -> Result<()> {
 
     // Create report.
     let mut report = CrashReport::new();
-    // Set executable path (for C# .dll (dotnet) or .exe (mono) file)
-    if let Some(pos) = argv
-        .iter()
-        .position(|x| x.ends_with(".dll") || x.ends_with(".exe") || x.ends_with(".csproj"))
-    {
-        let Some(classes) = argv.get(pos) else {
-            bail!("dotnet target is not specified by .dll, .exe or .csproj executable.");
-        };
-        report.executable_path = classes.to_string();
-    }
+    // Set executable path (for C# .dll, .csproj (dotnet) or .exe (mono) file).
+    report.executable_path = argv.get(pos).unwrap().to_string();
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
@@ -139,6 +139,6 @@ fn main() -> Result<()> {
         }
     }
 
-    //Output report
+    //Output report.
     util::output_report(&report, &matches, &argv)
 }
