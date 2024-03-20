@@ -11,8 +11,7 @@ env:
 jobs:
   ubuntu-latest:
 
-    # Tests that use LD_PRELOAD are run only on Ubuntu 20.04, see #208
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
