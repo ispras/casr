@@ -4049,10 +4049,6 @@ fn test_casr_libfuzzer() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_libfuzzer_atheris() {
-    if lsb_release::info().unwrap().version == "22.04" {
-        // LD_PRELOAD hangs, see #208
-        return;
-    }
     use std::collections::HashMap;
 
     let paths = [
@@ -4239,10 +4235,6 @@ fn test_casr_java() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_java_native_lib() {
-    if lsb_release::info().unwrap().version == "22.04" {
-        // LD_PRELOAD hangs, see #208
-        return;
-    }
     let paths = [
         abs_path("tests/casr_tests/java/Test2.java"),
         abs_path("tests/casr_tests/java/Test2.cpp"),
@@ -4378,10 +4370,6 @@ fn test_casr_python_atheris() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_python_df() {
-    if lsb_release::info().unwrap().version == "22.04" {
-        // LD_PRELOAD hangs, see #208
-        return;
-    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -4489,10 +4477,6 @@ fn test_casr_san_python_df() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_atheris_df() {
-    if lsb_release::info().unwrap().version == "22.04" {
-        // LD_PRELOAD hangs, see #208
-        return;
-    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -4604,10 +4588,6 @@ fn test_casr_san_atheris_df() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_python_call_san_df() {
-    if lsb_release::info().unwrap().version == "22.04" {
-        // LD_PRELOAD hangs, see #208
-        return;
-    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -4977,10 +4957,6 @@ fn test_casr_js_jazzer() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native() {
-    if lsb_release::info().unwrap().version == "22.04" {
-        // LD_PRELOAD hangs, see #208
-        return;
-    }
     // JS C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
@@ -5116,10 +5092,6 @@ fn test_casr_js_native() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native_jsfuzz() {
-    if lsb_release::info().unwrap().version == "22.04" {
-        // LD_PRELOAD hangs, see #208
-        return;
-    }
     // JS jsfuzz C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
@@ -5255,10 +5227,6 @@ fn test_casr_js_native_jsfuzz() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js_native_jazzer() {
-    if lsb_release::info().unwrap().version == "22.04" {
-        // LD_PRELOAD hangs, see #208
-        return;
-    }
     // JS jsfuzz C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");

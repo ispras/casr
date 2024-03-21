@@ -11,14 +11,13 @@ env:
 jobs:
   ubuntu-latest:
 
-    # Tests that use LD_PRELOAD are run only on Ubuntu 20.04, see #208
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependences
       run: |
-        sudo apt update && sudo apt install -y gdb pip curl python3.9-dev llvm \
+        sudo apt update && sudo apt install -y gdb pip curl python3.10-dev llvm \
             openjdk-17-jdk ca-certificates gnupg
         pip3 install atheris
         sudo mkdir -p /etc/apt/keyrings
