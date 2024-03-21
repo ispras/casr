@@ -1,11 +1,13 @@
 extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
+extern crate copy_dir;
 
 use regex::Regex;
 use serde_json::Value;
 use std::env;
 use std::fs;
+use copy_dir::copy_dir;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -5809,14 +5811,8 @@ fn test_casr_afl_csharp() {
 
     let _ = fs::remove_dir_all(&paths[1]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
-    let _ = Command::new("cp")
-        .args(["-r", &paths[2], &paths[4]])
-        .output()
-        .expect("failed to copy dir");
-    let _ = Command::new("cp")
-        .args(["-r", &paths[3], &paths[5]])
-        .output()
-        .expect("failed to copy dir");
+    let _ = copy_dir(&paths[2], &paths[4]);
+    let _ = copy_dir(&paths[3], &paths[5]);
     let Ok(dotnet_path) = which::which("dotnet") else {
         panic!("No dotnet is found.");
     };
@@ -5915,14 +5911,8 @@ fn test_casr_afl_csharp_ignore_cmd() {
 
     let _ = fs::remove_dir_all(&paths[1]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
-    let _ = Command::new("cp")
-        .args(["-r", &paths[2], &paths[4]])
-        .output()
-        .expect("failed to copy dir");
-    let _ = Command::new("cp")
-        .args(["-r", &paths[3], &paths[5]])
-        .output()
-        .expect("failed to copy dir");
+    let _ = copy_dir(&paths[2], &paths[4]);
+    let _ = copy_dir(&paths[3], &paths[5]);
     let Ok(dotnet_path) = which::which("dotnet") else {
         panic!("No dotnet is found.");
     };
