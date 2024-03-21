@@ -1,13 +1,13 @@
+extern crate copy_dir;
 extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
-extern crate copy_dir;
 
+use copy_dir::copy_dir;
 use regex::Regex;
 use serde_json::Value;
 use std::env;
 use std::fs;
-use copy_dir::copy_dir;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -3867,18 +3867,7 @@ fn test_casr_ubsan() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_ubsan");
 
     let _ = fs::remove_dir_all(&test_dir);
-
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir);
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp"),
@@ -4378,17 +4367,7 @@ fn test_casr_san_python_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_python_df");
 
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir);
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_san_python_df/cpp_module.cpp"),
@@ -4485,17 +4464,7 @@ fn test_casr_san_atheris_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df");
 
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir);
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df/cpp_module.cpp"),
@@ -4596,17 +4565,7 @@ fn test_casr_python_call_san_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df");
 
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir);
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df/cpp_module.cpp"),
@@ -4964,19 +4923,9 @@ fn test_casr_js_native() {
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native");
+
     let _ = std::fs::remove_dir_all(&test_dir);
-
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir);
 
     let paths = [
         abs_path("tests"),
@@ -5099,19 +5048,9 @@ fn test_casr_js_native_jsfuzz() {
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jsfuzz");
+
     let _ = std::fs::remove_dir_all(&test_dir);
-
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir);
 
     let paths = [
         abs_path("tests"),
@@ -5234,19 +5173,9 @@ fn test_casr_js_native_jazzer() {
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer");
+
     let _ = std::fs::remove_dir_all(&test_dir);
-
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir);
 
     let paths = [
         abs_path("tests"),
@@ -5923,7 +5852,7 @@ fn test_casr_afl_csharp_ignore_cmd() {
             &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
         ])
         .output()
-        .expect("dotnet publish crashed");
+        .expect("dotnet build crashed");
 
     let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
     let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
@@ -5947,7 +5876,6 @@ fn test_casr_afl_csharp_ignore_cmd() {
             format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
         );
 
-    print!("{:?}", output);
     let output = output.output().expect("casr-afl crashed");
 
     assert!(

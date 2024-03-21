@@ -436,7 +436,7 @@ Convert reports to SARIF report:
 
 ## casr-afl
 
-Triage crashes found by AFL++ (Sharpfuzz)
+Triage crashes found by AFL++/Sharpfuzz
 
     Usage: casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR> [-- <ARGS>...]
 
@@ -455,7 +455,7 @@ Triage crashes found by AFL++ (Sharpfuzz)
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
       -f, --force-remove           Remove output project directory if it exists
-          --ignore-cmdline         Force <casr-gdb-args> usage to run target instead of searching for cmdline files
+          --ignore-cmdline         Force <ARGS> usage to run target instead of searching for cmdline files
                                    in AFL fuzzing directory
           --no-cluster             Do not cluster CASR reports
       -h, --help                   Print help
