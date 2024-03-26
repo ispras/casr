@@ -227,7 +227,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub js_report: Vec<String>,
+    /// C# report.
+    #[cfg_attr(
+        feature = "serde",
         serde(rename(serialize = "CSharpReport", deserialize = "CSharpReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub csharp_report: Vec<String>,
     /// Crash line from stack trace: source:line or binary+offset.
     #[cfg_attr(
         feature = "serde",
