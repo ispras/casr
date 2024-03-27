@@ -204,7 +204,7 @@ impl Default for ExecutionClass {
             severity: "UNDEFINED".to_string(),
             short_description: "Undefined".to_string(),
             description: "Undefined class".to_string(),
-            explanation: "The is no execution class for this type of exception".to_string(),
+            explanation: "There is no execution class for this type of exception".to_string(),
         }
     }
 }

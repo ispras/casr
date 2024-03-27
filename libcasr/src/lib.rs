@@ -17,6 +17,7 @@
 //! * Python
 //! * Java
 //! * JavaScript
+//! * C#
 //!
 //! It could be built with `exploitable` feature for severity estimation crashes
 //! collected from gdb. To save crash reports as json (.casrep/.sarif) use `serde` feature.

@@ -1,0 +1,3 @@
+/usr/bin/dotnet
+/tmp/test_casr_afl_csharp/bin/test_casr_afl_csharp.dll
+@@
