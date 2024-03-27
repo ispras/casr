@@ -3867,7 +3867,7 @@ fn test_casr_ubsan() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_ubsan");
 
     let _ = fs::remove_dir_all(&test_dir);
-    let _ = copy_dir(work_dir, &test_dir);
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp"),
@@ -4367,7 +4367,7 @@ fn test_casr_san_python_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_python_df");
 
-    let _ = copy_dir(work_dir, &test_dir);
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_san_python_df/cpp_module.cpp"),
@@ -4464,7 +4464,7 @@ fn test_casr_san_atheris_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df");
 
-    let _ = copy_dir(work_dir, &test_dir);
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df/cpp_module.cpp"),
@@ -4565,7 +4565,7 @@ fn test_casr_python_call_san_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df");
 
-    let _ = copy_dir(work_dir, &test_dir);
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df/cpp_module.cpp"),
@@ -4925,7 +4925,7 @@ fn test_casr_js_native() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native");
 
     let _ = std::fs::remove_dir_all(&test_dir);
-    let _ = copy_dir(work_dir, &test_dir);
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests"),
@@ -5050,7 +5050,7 @@ fn test_casr_js_native_jsfuzz() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jsfuzz");
 
     let _ = std::fs::remove_dir_all(&test_dir);
-    let _ = copy_dir(work_dir, &test_dir);
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests"),
@@ -5175,7 +5175,7 @@ fn test_casr_js_native_jazzer() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer");
 
     let _ = std::fs::remove_dir_all(&test_dir);
-    let _ = copy_dir(work_dir, &test_dir);
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests"),
@@ -5740,8 +5740,8 @@ fn test_casr_afl_csharp() {
 
     let _ = fs::remove_dir_all(&paths[1]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
-    let _ = copy_dir(&paths[2], &paths[4]);
-    let _ = copy_dir(&paths[3], &paths[5]);
+    let _ = copy_dir(&paths[2], &paths[4]).unwrap();
+    let _ = copy_dir(&paths[3], &paths[5]).unwrap();
     let Ok(dotnet_path) = which::which("dotnet") else {
         panic!("No dotnet is found.");
     };
@@ -5840,8 +5840,8 @@ fn test_casr_afl_csharp_ignore_cmd() {
 
     let _ = fs::remove_dir_all(&paths[1]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
-    let _ = copy_dir(&paths[2], &paths[4]);
-    let _ = copy_dir(&paths[3], &paths[5]);
+    let _ = copy_dir(&paths[2], &paths[4]).unwrap();
+    let _ = copy_dir(&paths[3], &paths[5]).unwrap();
     let Ok(dotnet_path) = which::which("dotnet") else {
         panic!("No dotnet is found.");
     };

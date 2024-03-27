@@ -39,7 +39,7 @@ fn main() -> Result<()> {
                 .default_value("0")
                 .value_name("SECONDS")
                 .help("Timeout (in seconds) for target execution, 0 means that timeout is disabled")
-                .value_parser(clap::value_parser!(u64).range(0..))
+                .value_parser(clap::value_parser!(u64))
         )
         .arg(
             Arg::new("input")

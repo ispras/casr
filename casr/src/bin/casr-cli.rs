@@ -669,10 +669,6 @@ fn build_slider_report(
         select.add_item("CSharpReport", report.csharp_report.join("\n"));
     }
 
-    if !report.csharp_report.is_empty() {
-        select.add_item("CSharpReport", report.csharp_report.join("\n"));
-    }
-
     if !report.source.is_empty() {
         select.add_item("Source", report.source.join("\n"));
     }
