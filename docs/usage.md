@@ -28,7 +28,7 @@ Create CASR reports (.casrep) from gdb execution
     Usage: casr-gdb [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- ./binary <arguments>" to run executable
+      <ARGS>...  Add "-- ./binary <arguments>" to run executable
 
     Options:
       -o, --output <REPORT>      Path to save report. Path can be a directory, then report
@@ -55,7 +55,7 @@ Create CASR reports (.casrep) from AddressSanitizer reports
     Usage: casr-san [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- ./binary <arguments>" to run executable
+      <ARGS>...  Add "-- ./binary <arguments>" to run executable
 
     Options:
       -o, --output <REPORT>      Path to save report. Path can be a directory, then report
@@ -93,7 +93,7 @@ Triage errors found by UndefinedBehaviorSanitizer and create CASR reports (.casr
     Usage: casr-ubsan [OPTIONS] --input <INPUT_DIRS>... --output <OUTPUT_DIR> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
@@ -130,7 +130,7 @@ Create CASR reports (.casrep) from python reports
     Usage: casr-python [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -o, --output <REPORT>      Path to save report. Path can be a directory, then report
@@ -156,7 +156,7 @@ Create CASR reports (.casrep) from java reports
     Usage: casr-java [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -o, --output <REPORT>       Path to save report. Path can be a directory, then report
@@ -185,7 +185,7 @@ Create CASR reports (.casrep) from JavaScript crash reports
     Usage: casr-js [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -o, --output <REPORT>      Path to save report. Path can be a directory, then report
@@ -212,7 +212,7 @@ Create CASR reports (.casrep) from C# reports
     Usage: casr-csharp [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-    [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
@@ -228,7 +228,7 @@ Create CASR reports (.casrep) from C# reports
 
 Run casr-csharp:
 
-    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp.csproj
+    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.csproj
 
 ## casr-core
 
@@ -552,7 +552,7 @@ Sharpfuzz example:
 
     $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
     $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
-    $ dotnet publish -o /tmp/test_casr_afl_csharp/bin
+    $ dotnet publish /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj -o /tmp/test_casr_afl_csharp/bin
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out
 
 Sharpfuzz example (with --ignore-cmdline):
@@ -573,7 +573,7 @@ Triage crashes found by libFuzzer based fuzzer
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- ./fuzz_target <arguments>"
+      <ARGS>...  Add "-- ./fuzz_target <arguments>"
 
     Options:
       -l, --log-level <log-level>

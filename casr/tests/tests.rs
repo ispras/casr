@@ -5672,8 +5672,8 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
 #[cfg(target_arch = "x86_64")]
 fn test_casr_csharp() {
     let paths = [
-        abs_path("tests/casr_tests/csharp/test_casr_csharp.cs"),
-        abs_path("tests/casr_tests/csharp/test_casr_csharp.csproj"),
+        abs_path("tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.cs"),
+        abs_path("tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.csproj"),
         abs_path("tests/tmp_tests_casr/test_casr_csharp"),
         abs_path("tests/tmp_tests_casr/test_casr_csharp/test_casr_csharp.cs"),
         abs_path("tests/tmp_tests_casr/test_casr_csharp/test_casr_csharp.csproj"),

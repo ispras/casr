@@ -167,7 +167,7 @@ Create report from JavaScript:
 
 Create report from C#:
 
-    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp.csproj
+    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.csproj
 
 View report:
 
@@ -205,7 +205,7 @@ Triage crashes after Sharpfuzz fuzzing with casr-afl:
 
     $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
     $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
-    $ dotnet publish -o /tmp/test_casr_afl_csharp/bin
+    $ dotnet publish /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj -o /tmp/test_casr_afl_csharp/bin
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out
     $ # You may force your own run arguments using --ignore-cmdline
     $ casr-afl --ignore-cmdline -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --no-build --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
