@@ -109,6 +109,7 @@ fn main() -> Result<()> {
     // Init log.
     util::initialize_logging(&matches);
 
+    let mut is_casr_gdb = true;
     let mut args = if let Some(argv) = matches.get_many::<String>("ARGS") {
         argv.cloned().collect()
     } else {
@@ -118,16 +119,6 @@ fn main() -> Result<()> {
     if args.is_empty() && matches.get_flag("ignore-cmdline") {
         bail!("ARGS is empty, but \"ignore-cmdline\" option is provided.");
     }
-
-    // Get tool.
-    let mut tool = if matches.get_flag("ignore-cmdline")
-        && (args[0].ends_with("dotnet") || args[0].ends_with("mono"))
-    {
-        "casr-csharp"
-    } else {
-        "casr-gdb"
-    };
-    let tool_path = util::get_path(tool)?;
 
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
@@ -141,26 +132,25 @@ fn main() -> Result<()> {
         let mut crash_info = casr::triage::CrashInfo {
             ..Default::default()
         };
-        if matches.get_flag("ignore-cmdline") {
-            crash_info.casr_tool = tool_path.clone();
-            crash_info.target_args = args.clone()
+        crash_info.target_args = if matches.get_flag("ignore-cmdline") {
+            args.clone()
         } else {
             let cmdline_path = path.join("cmdline");
             if let Ok(cmdline) = fs::read_to_string(&cmdline_path) {
-                let cmd_args: Vec<String> =
-                    cmdline.split_whitespace().map(|s| s.to_string()).collect();
-                if cmd_args[0].ends_with("dotnet") || cmd_args[0].ends_with("mono") {
-                    tool = "casr-csharp";
-                    crash_info.casr_tool = util::get_path("casr-csharp")?;
-                } else {
-                    tool = "casr-gdb";
-                    crash_info.casr_tool = util::get_path("casr-gdb")?;
-                }
-                crash_info.target_args = cmd_args;
+                cmdline.split_whitespace().map(|s| s.to_string()).collect()
             } else {
                 error!("Couldn't read {}.", cmdline_path.display());
                 continue;
             }
+        };
+        crash_info.casr_tool = if !crash_info.target_args.is_empty()
+            && (crash_info.target_args[0].ends_with("dotnet")
+                || crash_info.target_args[0].ends_with("mono"))
+        {
+            is_casr_gdb = false;
+            util::get_path("casr-csharp")?
+        } else {
+            util::get_path("casr-gdb")?
         };
         crash_info.at_index = crash_info
             .target_args
@@ -170,7 +160,7 @@ fn main() -> Result<()> {
             .map(|x| x + 1);
 
         // When we triage crashes for binaries, use casr-san.
-        if tool == "casr-gdb" {
+        if is_casr_gdb {
             if let Some(target) = crash_info.target_args.first() {
                 match util::symbols_list(Path::new(target)) {
                     Ok(list) => {
@@ -205,7 +195,7 @@ fn main() -> Result<()> {
         }
     }
 
-    if matches.get_flag("ignore-cmdline") || tool != "casr-gdb" {
+    if matches.get_flag("ignore-cmdline") || !is_casr_gdb {
         args = Vec::new();
     }
 

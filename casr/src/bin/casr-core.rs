@@ -302,6 +302,7 @@ fn main() -> Result<()> {
     // Save report.
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
+        .truncate(true)
         .write(true)
         .open(&report_path)
     {
@@ -319,6 +320,7 @@ fn check_lock() -> Result<File> {
     project_dir.push("Casr.lock");
     let file = OpenOptions::new()
         .create(true)
+        .truncate(true)
         .write(true)
         .open(project_dir)?;
     let fd = file.as_raw_fd();

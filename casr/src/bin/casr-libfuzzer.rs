@@ -147,7 +147,7 @@ fn main() -> Result<()> {
     let tool_path = util::get_path(tool)?;
 
     if !gdb_args.is_empty() && tool != "casr-gdb" && tool != "casr-san" {
-        bail!("casr-gdb-args option is provided with incompatible tool (casr-python, casr-java or casr-js).");
+        bail!("casr-gdb-args option is provided with incompatible tool. This option can be used with casr-san or casr-gdb.");
     }
 
     // Get input file argument index.

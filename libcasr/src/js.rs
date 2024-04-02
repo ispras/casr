@@ -12,9 +12,7 @@ pub struct JsException;
 impl Exception for JsException {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
         let rexception = Regex::new(r"(?m)^.*?(\S*Error):(?:\s+(.*))?$").unwrap();
-        let Some(captures) = rexception.captures(stderr) else {
-            return None;
-        };
+        let captures = rexception.captures(stderr)?;
         let error_type = captures.get(1).unwrap().as_str();
         let message = if let Some(message) = captures.get(2) {
             message.as_str()

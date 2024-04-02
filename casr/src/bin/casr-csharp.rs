@@ -72,7 +72,7 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    init_ignored_frames!("csharp", "cpp"); //TODO
+    init_ignored_frames!("csharp", "cpp");
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;
     }

@@ -15,12 +15,9 @@ impl Exception for CppException {
             .collect();
         let rexception =
             Regex::new(r"terminate called after throwing an instance of (.+)").unwrap();
-        let Some(pos) = stderr_list
+        let pos = stderr_list
             .iter()
-            .position(|line| rexception.is_match(line))
-        else {
-            return None;
-        };
+            .position(|line| rexception.is_match(line))?;
         let instance = rexception
             .captures(&stderr_list[pos])
             .unwrap()
