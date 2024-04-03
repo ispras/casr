@@ -5713,7 +5713,7 @@ fn test_casr_csharp() {
             .to_string();
 
         assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
-        assert_eq!(severity_type, "UNDEFINED");
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "System.ArgumentException");
         assert!(report["CrashLine"]
             .as_str()
