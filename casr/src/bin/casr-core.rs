@@ -320,8 +320,7 @@ fn check_lock() -> Result<File> {
     project_dir.push("Casr.lock");
     let file = OpenOptions::new()
         .create(true)
-        .truncate(true)
-        .write(true)
+        .append(true)
         .open(project_dir)?;
     let fd = file.as_raw_fd();
     flock(fd, FlockArg::LockExclusive).unwrap();
