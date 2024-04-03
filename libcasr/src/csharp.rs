@@ -137,9 +137,10 @@ impl Exception for CSharpException {
             .split_once(": ")?;
 
         Some(ExecutionClass {
+            severity: "NOT_EXPLOITABLE".to_string(),
             short_description: exception.to_string(),
             description: message.to_string(),
-            ..ExecutionClass::default()
+            explanation: "".to_string(),
         })
     }
 }

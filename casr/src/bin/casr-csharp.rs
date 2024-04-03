@@ -122,7 +122,12 @@ fn main() -> Result<()> {
         csharp_stderr.split('\n').map(|l| l.to_string()).collect();
     let re = Regex::new(r"^Unhandled [Ee]xception(?::\n|\. ).*").unwrap();
     if let Some(start) = csharp_stderr_list.iter().position(|x| re.is_match(x)) {
-        report.csharp_report = csharp_stderr_list[start..].to_vec();
+        let end = csharp_stderr_list[start..]
+            .iter()
+            .rposition(|x| !x.is_empty())
+            .unwrap()
+            + 1;
+        report.csharp_report = csharp_stderr_list[start..end].to_vec();
         let report_str = report.csharp_report.join("\n");
         report.stacktrace = CSharpStacktrace::extract_stacktrace(&report_str)?;
         if let Some(exception) = CSharpException::parse_exception(&report_str) {
