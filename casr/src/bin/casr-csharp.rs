@@ -1,18 +1,18 @@
 use casr::util;
 use libcasr::{
-    exception::Exception, init_ignored_frames, js::*, report::CrashReport, stacktrace::*,
+    csharp::*, exception::Exception, init_ignored_frames, report::CrashReport, stacktrace::*,
 };
 
 use anyhow::{bail, Result};
 use clap::{Arg, ArgAction, ArgGroup};
 use regex::Regex;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 fn main() -> Result<()> {
-    let matches = clap::Command::new("casr-js")
+    let matches = clap::Command::new("casr-csharp")
         .version(clap::crate_version!())
-        .about("Create CASR reports (.casrep) from JavaScript crash reports")
+        .about("Create CASR reports (.casrep) from C# reports")
         .term_width(90)
         .arg(
             Arg::new("output")
@@ -80,7 +80,7 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    init_ignored_frames!("js", "cpp");
+    init_ignored_frames!("csharp", "cpp");
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;
     }
@@ -91,80 +91,59 @@ fn main() -> Result<()> {
         bail!("Wrong arguments for starting program");
     };
 
+    // Check that args are valid.
+    let Some(pos) = argv
+        .iter()
+        .position(|x| x.ends_with(".dll") || x.ends_with(".exe") || x.ends_with(".csproj"))
+    else {
+        bail!("dotnet/mono target is not specified by .dll, .exe or .csproj executable.");
+    };
+
     // Get stdin for target program.
     let stdin_file = util::stdin_from_matches(&matches)?;
 
-    // Get timeout
+    // Get timeout.
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
     // Run program.
-    let mut js_cmd = Command::new(argv[0]);
+    let mut csharp_cmd = Command::new(argv[0]);
     if let Some(ref file) = stdin_file {
-        js_cmd.stdin(std::fs::File::open(file)?);
+        csharp_cmd.stdin(std::fs::File::open(file)?);
     }
     if argv.len() > 1 {
-        js_cmd.args(&argv[1..]);
+        csharp_cmd.args(&argv[1..]);
     }
-    let js_result = util::get_output(&mut js_cmd, timeout, true)?;
+    let csharp_result = util::get_output(&mut csharp_cmd, timeout, true)?;
 
-    let js_stderr = String::from_utf8_lossy(&js_result.stderr);
+    let csharp_stderr = String::from_utf8_lossy(&csharp_result.stderr);
 
     // Create report.
     let mut report = CrashReport::new();
-    // Set executable path.
-    report.executable_path = argv[0].to_string();
-    let mut path_to_tool = PathBuf::new();
-    path_to_tool.push(argv[0]);
-    if argv.len() > 1 {
-        let fpath = Path::new(argv[0]);
-        if let Some(fname) = fpath.file_name() {
-            path_to_tool = if fname == fpath.as_os_str() {
-                let Ok(full_path_to_tool) = which::which(fname) else {
-                    bail!("{} is not found in PATH", argv[0]);
-                };
-                full_path_to_tool
-            } else {
-                fpath.to_path_buf()
-            };
-            if !path_to_tool.exists() {
-                bail!("Could not find the tool in the specified path {}", argv[0]);
-            }
-            let fname = fname.to_string_lossy();
-            if (fname == "node" || fname == "jsfuzz") && argv[1].ends_with(".js") {
-                report.executable_path = argv[1].to_string();
-            } else if argv.len() > 2
-                && fname == "npx"
-                && argv[1] == "jazzer"
-                && argv[2].ends_with(".js")
-            {
-                report.executable_path = argv[2].to_string();
-            }
-        }
-    }
+    // Set executable path (for C# .dll, .csproj (dotnet) or .exe (mono) file).
+    report.executable_path = argv.get(pos).unwrap().to_string();
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
 
-    // Get JS report.
-    let js_stderr_list: Vec<String> = js_stderr.split('\n').map(|l| l.to_string()).collect();
-    let re = Regex::new(r"^(?:.*Error:(?:\s+.*)?|Thrown at:)$").unwrap();
-    if let Some(start) = js_stderr_list.iter().position(|x| re.is_match(x)) {
-        report.js_report = js_stderr_list[start..].to_vec();
-        report
-            .js_report
-            .retain(|x| !x.is_empty() && (x.trim().starts_with("at") || x.contains("Error:")));
-        let report_str = report.js_report.join("\n");
-        report.stacktrace = JsStacktrace::extract_stacktrace(&report_str)?;
-        if let Some(exception) = JsException::parse_exception(&report.js_report[0]) {
+    // Get C# report.
+    let csharp_stderr_list: Vec<String> =
+        csharp_stderr.split('\n').map(|l| l.to_string()).collect();
+    let re = Regex::new(r"^Unhandled [Ee]xception(?::\n|\. ).*").unwrap();
+    if let Some(start) = csharp_stderr_list.iter().position(|x| re.is_match(x)) {
+        let end = csharp_stderr_list[start..]
+            .iter()
+            .rposition(|x| !x.is_empty())
+            .unwrap()
+            + 1;
+        report.csharp_report = csharp_stderr_list[start..end].to_vec();
+        let report_str = report.csharp_report.join("\n");
+        report.stacktrace = CSharpStacktrace::extract_stacktrace(&report_str)?;
+        if let Some(exception) = CSharpException::parse_exception(&report_str) {
             report.execution_class = exception;
         }
-    } else {
-        // Call casr-san with absolute path to interpreter/fuzzer
-        let mut modified_argv = argv.clone();
-        modified_argv[0] = path_to_tool.to_str().unwrap_or(argv[0]);
-        return util::call_casr_san(&matches, &modified_argv, "casr-js");
     }
-    let stacktrace = JsStacktrace::parse_stacktrace(&report.stacktrace)?;
+
+    let stacktrace = CSharpStacktrace::parse_stacktrace(&report.stacktrace)?;
     if let Ok(crash_line) = stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
         if let CrashLine::Source(debug) = crash_line {
@@ -178,6 +157,6 @@ fn main() -> Result<()> {
         util::strip_paths(&mut report, &stacktrace, path);
     }
 
-    //Output report
+    //Output report.
     util::output_report(&report, &matches, &argv)
 }

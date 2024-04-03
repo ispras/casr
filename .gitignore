@@ -3,6 +3,8 @@ Cargo.lock
 */target
 */Cargo.lock
 */tests/tmp_tests_casr
+*/tests/casr_tests/csharp/*/bin
+*/tests/casr_tests/csharp/*/obj
 *.swp
 node_modules
 */node_modules/*

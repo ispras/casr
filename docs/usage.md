@@ -9,8 +9,11 @@ java reports and get report from
 [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). Use `casr-js`
 to analyze JavaScript reports and get report from
 [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz). `casr-afl` is used
-to triage crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus).
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz).
+Use `casr-csharp` to analyze C# reports and get report from
+[Sharpfuzz](https://github.com/Metalnem/sharpfuzz). `casr-afl` can triage
+crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus) and
+AFL-based fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,
 Atheris, Jazzer, Jazzer.js, jsfuzz). `casr-dojo` allows to upload new and
@@ -22,10 +25,10 @@ SARIF report. Reports triage (deduplication, clustering) is done by `casr-cluste
 
 Create CASR reports (.casrep) from gdb execution
 
-    Usage: casr-gdb [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-gdb [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- ./binary <arguments>" to run executable
+      <ARGS>...  Add "-- ./binary <arguments>" to run executable
 
     Options:
       -o, --output <REPORT>      Path to save report. Path can be a directory, then report
@@ -49,10 +52,10 @@ Example:
 
 Create CASR reports (.casrep) from AddressSanitizer reports
 
-    Usage: casr-san [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-san [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- ./binary <arguments>" to run executable
+      <ARGS>...  Add "-- ./binary <arguments>" to run executable
 
     Options:
       -o, --output <REPORT>      Path to save report. Path can be a directory, then report
@@ -87,10 +90,10 @@ ASAN stacktrace or Rust backtrace to analyze. If environment variable
 
 Triage errors found by UndefinedBehaviorSanitizer and create CASR reports (.casrep)
 
-    Usage: casr-ubsan [OPTIONS] --input <INPUT_DIRS>... --output <OUTPUT_DIR> [-- <ARGS>...]
+    Usage: casr-ubsan [OPTIONS] --input <INPUT_DIRS>... --output <OUTPUT_DIR> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
@@ -124,10 +127,10 @@ deduplication to remove equal ubsan errors, then run report generation.
 
 Create CASR reports (.casrep) from python reports
 
-    Usage: casr-python [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-python [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -o, --output <REPORT>      Path to save report. Path can be a directory, then report
@@ -150,10 +153,10 @@ Example:
 
 Create CASR reports (.casrep) from java reports
 
-    Usage: casr-java [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-java [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -o, --output <REPORT>       Path to save report. Path can be a directory, then report
@@ -179,10 +182,10 @@ Run casr-java:
 
 Create CASR reports (.casrep) from JavaScript crash reports
 
-    Usage: casr-js [OPTIONS] <--stdout|--output <REPORT>> [-- <ARGS>...]
+    Usage: casr-js [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- <path> <arguments>" to run
+      <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
       -o, --output <REPORT>      Path to save report. Path can be a directory, then report
@@ -201,6 +204,31 @@ Create CASR reports (.casrep) from JavaScript crash reports
 Run casr-js:
 
     $ casr-js -o js.casrep -- node casr/tests/casr_tests/js/test_casr_js.js
+
+## casr-csharp
+
+Create CASR reports (.casrep) from C# reports
+
+    Usage: casr-csharp [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
+
+    Arguments:
+      <ARGS>...  Add "-- <path> <arguments>" to run
+
+    Options:
+      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
+                               is generated
+          --stdout             Print CASR report to stdout
+          --stdin <FILE>       Stdin file for program
+      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
+                               timeout is disabled [default: 0]
+          --ignore <FILE>      File with regular expressions for functions and file paths that
+                               should be ignored
+      -h, --help               Print help
+      -V, --version            Print version
+
+Run casr-csharp:
+
+    $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.csproj
 
 ## casr-core
 
@@ -408,17 +436,18 @@ Convert reports to SARIF report:
 
 ## casr-afl
 
-Triage crashes found by AFL++
+Triage crashes found by AFL++/Sharpfuzz
 
     Usage: casr-afl [OPTIONS] --input <INPUT_DIR> --output <OUTPUT_DIR> [-- <ARGS>...]
 
     Arguments:
       [ARGS]...  Add "-- ./gdb_fuzz_target <arguments>" to generate additional crash reports
-                 with casr-gdb (e.g., test whether program crashes without sanitizers)
+                 with casr-gdb (for compiled binaries, e.g., test whether program crashes
+                 without sanitizers), "-- dotnet <arguments>" or "-- mono <arguments>" to
+                 triage C# crashes with additional options
 
     Options:
-      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
-                                   debug]
+      -l, --log-level <log-level>  Logging level [default: info] [possible values: info, debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
       -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, 0 value means
@@ -426,8 +455,8 @@ Triage crashes found by AFL++
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
       -f, --force-remove           Remove output project directory if it exists
-          --ignore-cmdline         Force <ARGS> usage to run target instead of searching for
-                                   cmdline files in AFL fuzzing directory
+          --ignore-cmdline         Force <ARGS> usage to run target instead of searching for cmdline files
+                                   in AFL fuzzing directory
           --no-cluster             Do not cluster CASR reports
       -h, --help                   Print help
       -V, --version                Print version
@@ -436,12 +465,15 @@ Triage crashes found by AFL++
 instances, `casr-afl` generates crash reports depending on target binary. For
 binary with ASAN `casr-san` is used, otherwise `casr-gdb`. On the next step report
 deduplication is done by `casr-cluster`. Finally, reports are traiged into
-clusters. Crash reports contain many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable)), OS and package versions, command line, stack trace, register values,
-disassembly, and even source code fragment where crash appeared.
+clusters. Crash reports contain many useful information: severity
+(like [exploitable](https://github.com/jfoote/exploitable)), OS and package
+versions, command line, stack trace, register values, disassembly, and even
+source code fragment where crash appeared. `casr-afl` also provides integration with AFL-based
+fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 
 **NOTE:** `casr-gdb` and `casr-san` should be in PATH to make `casr-afl` work.
 
-Example (Ubuntu 20.04+):
+AFL++ Example (Ubuntu 20.04+):
 
     $ cp casr/tests/casr_tests/bin/load_afl /tmp/load_afl
     $ cp casr/tests/casr_tests/bin/load_sydr /tmp/load_sydr
@@ -516,15 +548,32 @@ you can estimate crash severity for program built without sanitizers.
 You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-afl`. This
 variable may be used by [casr-san](#casr-san).
 
+Sharpfuzz example:
+
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
+    $ dotnet publish /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj -c Debug -o /tmp/test_casr_afl_csharp/bin
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out
+
+Sharpfuzz example (with --ignore-cmdline):
+
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp /tmp/test_casr_afl_csharp
+    $ cp -r casr/tests/casr_tests/csharp/test_casr_afl_csharp_module /tmp/test_casr_afl_csharp_module
+    $ dotnet publish /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj -c Debug -o /tmp/test_casr_afl_csharp/bin
+    $ casr-afl --ignore-cmdline -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --no-build --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
+
+**NOTE:** if you run `casr-afl` for Sharpfuzz pipeline using `--ignore-cmdline` with `dotnet run`, build
+your project before (via `dotnet build` or `dotnet publish`) and specify `--no-build` option for `dotnet run`.
+
 ## casr-libfuzzer
 
 Triage crashes found by libFuzzer based fuzzer
 (C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz)
 
-    Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> [-- <ARGS>...]
+    Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> -- <ARGS>...
 
     Arguments:
-      [ARGS]...  Add "-- ./fuzz_target <arguments>"
+      <ARGS>...  Add "-- ./fuzz_target <arguments>"
 
     Options:
       -l, --log-level <log-level>

@@ -39,7 +39,7 @@ fn main() -> Result<()> {
                 .default_value("0")
                 .value_name("SECONDS")
                 .help("Timeout (in seconds) for target execution, 0 means that timeout is disabled")
-                .value_parser(clap::value_parser!(u64).range(0..))
+                .value_parser(clap::value_parser!(u64))
         )
         .arg(
             Arg::new("input")
@@ -98,6 +98,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .num_args(1..)
                 .last(true)
+                .required(true)
                 .help("Add \"-- ./fuzz_target <arguments>\""),
         )
         .get_matches();
@@ -114,15 +115,16 @@ fn main() -> Result<()> {
     } else {
         bail!("Invalid fuzz target arguments");
     };
-    let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
-        idx + 1
+
+    // Get gdb args.
+    let gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
+        shell_words::split(argv)?
     } else {
-        argv.push("@@");
-        argv.len() - 1
+        Vec::new()
     };
 
+    // Get tool.
     let mut envs = HashMap::new();
-
     let tool = if argv[0].ends_with(".py") {
         envs.insert("LD_PRELOAD".to_string(), util::get_atheris_lib()?);
         "casr-python"
@@ -142,7 +144,19 @@ fn main() -> Result<()> {
             "casr-gdb"
         }
     };
-    let tool = util::get_path(tool)?;
+    let tool_path = util::get_path(tool)?;
+
+    if !gdb_args.is_empty() && tool != "casr-gdb" && tool != "casr-san" {
+        bail!("casr-gdb-args option is provided with incompatible tool. This option can be used with casr-san or casr-gdb.");
+    }
+
+    // Get input file argument index.
+    let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
+        idx + 1
+    } else {
+        argv.push("@@");
+        argv.len() - 1
+    };
 
     // Get all crashes.
     let crashes: HashMap<String, CrashInfo> = fs::read_dir(input_dir)?
@@ -159,17 +173,11 @@ fn main() -> Result<()> {
                     target_args: argv.iter().map(|x| x.to_string()).collect(),
                     envs: envs.clone(),
                     at_index: Some(at_index),
-                    casr_tool: tool.clone(),
+                    casr_tool: tool_path.clone(),
                 },
             )
         })
         .collect();
-
-    let gdb_args = if let Some(argv) = matches.get_one::<String>("casr-gdb-args") {
-        shell_words::split(argv)?
-    } else {
-        Vec::new()
-    };
 
     // Generate reports
     fuzzing_crash_triage_pipeline(&matches, &crashes, &gdb_args)

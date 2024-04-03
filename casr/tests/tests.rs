@@ -1,7 +1,9 @@
+extern crate copy_dir;
 extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
 
+use copy_dir::copy_dir;
 use regex::Regex;
 use serde_json::Value;
 use std::env;
@@ -22,6 +24,7 @@ lazy_static::lazy_static! {
     static ref EXE_CASR_PYTHON: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-python"));
     static ref EXE_CASR_JAVA: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-java"));
     static ref EXE_CASR_JS: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-js"));
+    static ref EXE_CASR_CSHARP: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-csharp"));
     static ref EXE_CASR_GDB: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-gdb"));
     static ref PROJECT_DIR: RwLock<&'static str> = RwLock::new(env!("CARGO_MANIFEST_DIR"));
 }
@@ -3864,18 +3867,7 @@ fn test_casr_ubsan() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_ubsan");
 
     let _ = fs::remove_dir_all(&test_dir);
-
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp"),
@@ -4375,17 +4367,7 @@ fn test_casr_san_python_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_python_df");
 
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_san_python_df/cpp_module.cpp"),
@@ -4482,17 +4464,7 @@ fn test_casr_san_atheris_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df");
 
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df/cpp_module.cpp"),
@@ -4593,17 +4565,7 @@ fn test_casr_python_call_san_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df");
 
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests/tmp_tests_casr/test_casr_python_call_san_df/cpp_module.cpp"),
@@ -4961,19 +4923,9 @@ fn test_casr_js_native() {
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native");
+
     let _ = std::fs::remove_dir_all(&test_dir);
-
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests"),
@@ -5096,19 +5048,9 @@ fn test_casr_js_native_jsfuzz() {
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jsfuzz");
+
     let _ = std::fs::remove_dir_all(&test_dir);
-
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests"),
@@ -5231,19 +5173,9 @@ fn test_casr_js_native_jazzer() {
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/js");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js_native_jazzer");
+
     let _ = std::fs::remove_dir_all(&test_dir);
-
-    let output = Command::new("cp")
-        .args(["-r", &work_dir, &test_dir])
-        .output()
-        .expect("failed to copy dir");
-
-    assert!(
-        output.status.success(),
-        "Stdout {}.\n Stderr: {}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
+    let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
         abs_path("tests"),
@@ -5734,4 +5666,273 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
     }
 
     assert!(storage.values().all(|x| *x > 1));
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_csharp() {
+    let paths = [
+        abs_path("tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.cs"),
+        abs_path("tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.csproj"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp/test_casr_csharp.cs"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp/test_casr_csharp.csproj"),
+    ];
+    let _ = std::fs::create_dir_all(&paths[2]);
+    let _ = fs::copy(&paths[0], &paths[3]);
+    let _ = fs::copy(&paths[1], &paths[4]);
+    let Ok(dotnet_path) = which::which("dotnet") else {
+        panic!("No dotnet is found.");
+    };
+
+    let output = Command::new(*EXE_CASR_CSHARP.read().unwrap())
+        .args([
+            "--stdout",
+            "--",
+            &dotnet_path.to_str().unwrap(),
+            "run",
+            "--project",
+            &paths[4],
+        ])
+        .output()
+        .expect("failed to start casr-csharp");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "System.ArgumentException");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_casr_csharp.cs:14"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_afl_csharp() {
+    use std::collections::HashMap;
+
+    let paths = [
+        abs_path("tests/casr_tests/casrep/afl-out-sharpfuzz"),
+        abs_path("tests/tmp_tests_casr/casr_afl_csharp_out"),
+        abs_path("tests/casr_tests/csharp/test_casr_afl_csharp"),
+        abs_path("tests/casr_tests/csharp/test_casr_afl_csharp_module"),
+        abs_path("/tmp/test_casr_afl_csharp"),
+        abs_path("/tmp/test_casr_afl_csharp_module"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    let _ = copy_dir(&paths[2], &paths[4]).unwrap();
+    let _ = copy_dir(&paths[3], &paths[5]).unwrap();
+    let Ok(dotnet_path) = which::which("dotnet") else {
+        panic!("No dotnet is found.");
+    };
+
+    let _ = Command::new(dotnet_path.to_str().unwrap())
+        .args([
+            "publish",
+            "-o",
+            &format!("{}/bin", &paths[4]),
+            &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
+        ])
+        .output()
+        .expect("dotnet publish crashed");
+
+    let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
+    let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
+    output.args(["-i", &paths[0], "-o", &paths[1]]).env(
+        "PATH",
+        format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+    );
+
+    let output = output.output().expect("casr-afl crashed");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let res = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 3, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 3, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
+    let _ = fs::remove_dir_all(&paths[4]);
+    let _ = fs::remove_dir_all(&paths[5]);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_afl_csharp_ignore_cmd() {
+    use std::collections::HashMap;
+
+    let paths = [
+        abs_path("tests/casr_tests/casrep/afl-out-sharpfuzz"),
+        abs_path("tests/tmp_tests_casr/casr_afl_csharp_ignore_cmd_out"),
+        abs_path("tests/casr_tests/csharp/test_casr_afl_csharp"),
+        abs_path("tests/casr_tests/csharp/test_casr_afl_csharp_module"),
+        abs_path("tests/tmp_tests_casr/test_casr_afl_csharp"),
+        abs_path("tests/tmp_tests_casr/test_casr_afl_csharp_module"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    let _ = copy_dir(&paths[2], &paths[4]).unwrap();
+    let _ = copy_dir(&paths[3], &paths[5]).unwrap();
+    let Ok(dotnet_path) = which::which("dotnet") else {
+        panic!("No dotnet is found.");
+    };
+
+    let _ = Command::new(dotnet_path.to_str().unwrap())
+        .args([
+            "build",
+            &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
+        ])
+        .output()
+        .expect("dotnet build crashed");
+
+    let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
+    let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
+    output
+        .args([
+            "--ignore-cmdline",
+            "-i",
+            &paths[0],
+            "-o",
+            &paths[1],
+            "--",
+            &dotnet_path.to_str().unwrap(),
+            "run",
+            "--no-build",
+            "--project",
+            &format!("{}/test_casr_afl_csharp.csproj", &paths[4]),
+            "@@",
+        ])
+        .env(
+            "PATH",
+            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+        );
+
+    let output = output.output().expect("casr-afl crashed");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let res = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 3, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 3, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
+    let _ = fs::remove_dir_all(&paths[4]);
+    let _ = fs::remove_dir_all(&paths[5]);
 }

@@ -56,7 +56,7 @@ fn main() -> Result<()> {
                 .default_value("0")
                 .value_name("SECONDS")
                 .help("Timeout (in seconds) for target execution, 0 value means that timeout is disabled")
-                .value_parser(clap::value_parser!(u64).range(0..))
+                .value_parser(clap::value_parser!(u64))
         )
         .arg(
             Arg::new("ignore")
@@ -79,6 +79,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .num_args(1..)
                 .last(true)
+                .required(true)
                 .help("Add \"-- <path> <arguments>\" to run"),
         )
         .get_matches();

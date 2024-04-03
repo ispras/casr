@@ -29,6 +29,9 @@ jobs:
         sudo apt update && sudo apt install -y nodejs
         sudo npm install -g jsfuzz
         sudo npm install --save-dev @jazzer.js/core
+        wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+        dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb
+        sudo apt update && sudo apt install -y --no-install-recommends dotnet-sdk-8.0
         curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
         ./rustup.sh -y && rm rustup.sh
         rustup install nightly
