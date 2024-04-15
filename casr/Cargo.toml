@@ -13,17 +13,17 @@ exclude = ["/tests"]
 [dependencies]
 shell-words = "1.1"
 anyhow = "1.0"
-clap = { version = "4.2", features = ["wrap_help", "cargo", "env"] }
+clap = { version = "4.5", features = ["wrap_help", "cargo", "env"] }
 chrono =  "0.4"
-goblin = "0.6"
+goblin = "0.8"
 log = "0.4"
 simplelog = "0.12"
 cursive = { version = "0.20", default-features = false, features = ["termion-backend"] }
 cursive_tree_view = "0.8"
 gdb-command = "0.7"
 nix = "0.26"
-rayon = "1.7"
-num_cpus = "1.15"
+rayon = "1.10"
+num_cpus = "1.16"
 is_executable = "1.0"
 linux-personality = "1.0"
 colored = "2.0"
@@ -32,11 +32,11 @@ serde_json = "1.0"
 regex = "1"
 libc = "0"
 walkdir = "2"
-reqwest = { version = "0.11", features = ["json", "multipart", "rustls-tls"], default_features = false, optional = true }
+reqwest = { version = "0.12", features = ["json", "multipart", "rustls-tls"], default_features = false, optional = true }
 tokio = { version = "1", features = ["rt", "macros"], optional = true }
-toml = { version = "0.7", optional = true }
+toml = { version = "0.8", optional = true }
 wait-timeout = "0.2"
-which = "4.4"
+which = "6.0"
 
 libcasr = { path = "../libcasr", version = "2.11.1", features = ["serde", "exploitable"] }
 
