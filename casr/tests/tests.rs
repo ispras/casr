@@ -4748,7 +4748,7 @@ fn test_casr_js() {
     };
 
     let output = Command::new(*EXE_CASR_JS.read().unwrap())
-        .args(["--stdout", "--", &node_path.to_str().unwrap(), &test_path])
+        .args(["--stdout", "--", (node_path.to_str().unwrap()), &test_path])
         .output()
         .expect("failed to start casr-js");
 
@@ -4813,7 +4813,7 @@ fn test_casr_js_jsfuzz() {
         .args([
             "--stdout",
             "--",
-            &jsfuzz_path.to_str().unwrap(),
+            (jsfuzz_path.to_str().unwrap()),
             &paths[0],
             &paths[1],
         ])
@@ -4881,7 +4881,7 @@ fn test_casr_js_jazzer() {
         .args([
             "--stdout",
             "--",
-            &npx_path.to_str().unwrap(),
+            (npx_path.to_str().unwrap()),
             "jazzer",
             &paths[0],
             &paths[1],
@@ -5689,7 +5689,7 @@ fn test_casr_csharp() {
         .args([
             "--stdout",
             "--",
-            &dotnet_path.to_str().unwrap(),
+            (dotnet_path.to_str().unwrap()),
             "run",
             "--project",
             &paths[4],
@@ -5864,7 +5864,7 @@ fn test_casr_afl_csharp_ignore_cmd() {
             "-o",
             &paths[1],
             "--",
-            &dotnet_path.to_str().unwrap(),
+            (dotnet_path.to_str().unwrap()),
             "run",
             "--no-build",
             "--project",

@@ -431,7 +431,7 @@ fn analyze_coredump(
             };
 
             if report.proc_cmdline.is_empty() {
-                report.proc_cmdline = run_line.clone();
+                report.proc_cmdline.clone_from(&run_line);
             }
         }
     }
