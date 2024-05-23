@@ -165,7 +165,9 @@ fn main() -> Result<()> {
                 match util::symbols_list(Path::new(target)) {
                     Ok(list) => {
                         if list.contains("__asan") {
-                            crash_info.casr_tool = util::get_path("casr-san")?.clone()
+                            crash_info
+                                .casr_tool
+                                .clone_from(&(util::get_path("casr-san")?))
                         }
                     }
                     Err(e) => {
