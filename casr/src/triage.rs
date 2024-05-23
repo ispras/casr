@@ -223,7 +223,10 @@ pub fn fuzzing_crash_triage_pipeline(
                 .join(". ")
         );
     } else {
-        bail!("{}", String::from_utf8_lossy(&casr_cluster_d.stderr));
+        bail!(
+            "{}",
+            String::from_utf8_lossy(&casr_cluster_d.stderr).trim_end()
+        );
     }
 
     if !matches.get_flag("no-cluster") {
@@ -251,7 +254,10 @@ pub fn fuzzing_crash_triage_pipeline(
                 String::from_utf8_lossy(&casr_cluster_c.stdout).trim_end()
             );
         } else {
-            error!("{}", String::from_utf8_lossy(&casr_cluster_c.stderr));
+            error!(
+                "{}",
+                String::from_utf8_lossy(&casr_cluster_c.stderr).trim_end()
+            );
         }
 
         // Remove reports from deduplication phase. They are in clusters now.
