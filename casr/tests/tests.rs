@@ -5726,6 +5726,73 @@ fn test_casr_csharp() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
+fn test_casr_csharp_native() {
+    let paths = [
+        abs_path("tests/casr_tests/csharp/test_casr_csharp_native/test_casr_csharp_native.cs"),
+        abs_path("tests/casr_tests/csharp/test_casr_csharp_native/test_casr_csharp_native.csproj"),
+        abs_path("tests/casr_tests/csharp/test_casr_csharp_native/native.cpp"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp_native"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp_native/test_casr_csharp_native.cs"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp_native/test_casr_csharp_native.csproj"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp_native/native.so"),
+    ];
+    let _ = std::fs::create_dir_all(&paths[3]);
+    let _ = fs::copy(&paths[0], &paths[4]);
+    let _ = fs::copy(&paths[1], &paths[5]);
+    let Ok(dotnet_path) = which::which("dotnet") else {
+        panic!("No dotnet is found.");
+    };
+
+    let _ = Command::new("clang++")
+        .args([&paths[2], "-g", "-fPIC", "-shared", "-o", &paths[6]])
+        .output()
+        .expect("failed to compile .so library");
+
+    let _ = Command::new("dotnet")
+        .args(["build", &paths[5]])
+        .output()
+        .expect("failed to build test");
+
+    let output = Command::new(*EXE_CASR_CSHARP.read().unwrap())
+        .args([
+            "--stdout",
+            "--",
+            (dotnet_path.to_str().unwrap()),
+            format!("{}/bin/Debug/net8.0/test_casr_csharp_native.dll", &paths[3]).as_str(),
+        ])
+        .env("LD_LIBRARY_PATH", &paths[3])
+        .output()
+        .expect("failed to start casr-csharp");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(19, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "AccessViolation");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("native.cpp:6"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
 fn test_casr_afl_csharp() {
     use std::collections::HashMap;
 
