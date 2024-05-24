@@ -141,6 +141,9 @@ fn main() -> Result<()> {
         if let Some(exception) = CSharpException::parse_exception(&report_str) {
             report.execution_class = exception;
         }
+    } else {
+        // Call casr-san
+        return util::call_casr_san(&matches, &argv, "casr-csharp");
     }
 
     let stacktrace = CSharpStacktrace::parse_stacktrace(&report.stacktrace)?;
