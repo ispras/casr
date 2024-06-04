@@ -333,10 +333,8 @@ pub fn initialize_dirs(matches: &clap::ArgMatches) -> Result<&PathBuf> {
         if !casrep_dir.exists() && fs::create_dir_all(&casrep_dir).is_err() {
             bail!("Failed to create dir {}", &casrep_dir.to_str().unwrap());
         }
-    } else {
-        fs::create_dir_all(output_dir).with_context(|| {
-            format!("Couldn't create output directory {}", output_dir.display())
-        })?;
+    } else if !output_dir.exists() && fs::create_dir_all(output_dir).is_err() {
+        format!("Couldn't create output directory {}", output_dir.display());
     }
 
     // Get oom dir
