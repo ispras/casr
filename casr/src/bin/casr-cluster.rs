@@ -762,11 +762,11 @@ fn main() -> Result<()> {
             println!("Number of new clusters: {result}");
         }
         // Print crashline dedup summary
-        if before != 0 {
+        if dedup_crashlines {
             println!("Number of reports before crashline deduplication in new clusters: {before}");
-        }
-        if before != after {
             println!("Number of reports after crashline deduplication in new clusters: {after}");
+        } else {
+            println!("Number of reports in new clusters: {after}");
         }
         let sil = calc_avg_sil(paths[1], jobs)?;
         println!("Cluster silhouette score: {sil}");

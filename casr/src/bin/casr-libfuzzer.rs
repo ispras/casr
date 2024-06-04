@@ -75,6 +75,15 @@ fn main() -> Result<()> {
                 .help("Output directory with triaged reports")
         )
         .arg(
+            Arg::new("seed")
+                .short('s')
+                .long("seed")
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
+                .value_name("SEED_DIR")
+                .help("Seed directory with previously triaged reports")
+        )
+        .arg(
             Arg::new("force-remove")
                 .short('f')
                 .long("force-remove")

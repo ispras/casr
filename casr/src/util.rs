@@ -9,6 +9,7 @@ use libcasr::stacktrace::{
 
 use anyhow::{bail, Context, Result};
 use clap::ArgMatches;
+use copy_dir::copy_dir;
 use gdb_command::stacktrace::StacktraceExt;
 use is_executable::IsExecutable;
 use log::{info, warn};
@@ -316,28 +317,36 @@ pub fn get_atheris_lib() -> Result<String> {
 pub fn initialize_dirs(matches: &clap::ArgMatches) -> Result<&PathBuf> {
     // Get output dir
     let output_dir = matches.get_one::<PathBuf>("output").unwrap();
-    if !output_dir.exists() {
-        fs::create_dir_all(output_dir).with_context(|| {
-            format!("Couldn't create output directory {}", output_dir.display())
-        })?;
-    } else if output_dir.read_dir()?.next().is_some() {
+    if output_dir.exists() && output_dir.read_dir()?.next().is_some() {
         if matches.get_flag("force-remove") {
             fs::remove_dir_all(output_dir)?;
-            fs::create_dir_all(output_dir).with_context(|| {
-                format!("Couldn't create output directory {}", output_dir.display())
-            })?;
         } else {
             bail!("Output directory is not empty.");
         }
     }
+
+    if let Some(seed_dir) = matches.get_one::<PathBuf>("seed") {
+        copy_dir(seed_dir, output_dir)
+            .with_context(|| format!("Couldn't copy seed directory {}", seed_dir.display()))?;
+        // Get casrep dir
+        let casrep_dir = output_dir.join("casrep");
+        if !casrep_dir.exists() && fs::create_dir_all(&casrep_dir).is_err() {
+            bail!("Failed to create dir {}", &casrep_dir.to_str().unwrap());
+        }
+    } else {
+        fs::create_dir_all(output_dir).with_context(|| {
+            format!("Couldn't create output directory {}", output_dir.display())
+        })?;
+    }
+
     // Get oom dir
     let oom_dir = output_dir.join("oom");
-    if fs::create_dir_all(&oom_dir).is_err() {
+    if !oom_dir.exists() && fs::create_dir_all(&oom_dir).is_err() {
         bail!("Failed to create dir {}", &oom_dir.to_str().unwrap());
     }
     // Get timeout dir
     let timeout_dir = output_dir.join("timeout");
-    if fs::create_dir_all(&timeout_dir).is_err() {
+    if !timeout_dir.exists() && fs::create_dir_all(&timeout_dir).is_err() {
         bail!("Failed to create dir {}", &timeout_dir.to_str().unwrap());
     }
 
