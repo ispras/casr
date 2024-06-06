@@ -68,6 +68,7 @@ fn main() -> Result<()> {
             Arg::new("output")
                 .short('o')
                 .long("output")
+                .env("CASR_SEED_DIR")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(PathBuf))
                 .required(true)
