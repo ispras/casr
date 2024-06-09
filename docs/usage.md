@@ -215,16 +215,18 @@ Create CASR reports (.casrep) from C# reports
       <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>    Path to save report. Path can be a directory, then report name
-                               is generated
-          --stdout             Print CASR report to stdout
-          --stdin <FILE>       Stdin file for program
-      -t, --timeout <SECONDS>  Timeout (in seconds) for target execution, 0 value means that
-                               timeout is disabled [default: 0]
-          --ignore <FILE>      File with regular expressions for functions and file paths that
-                               should be ignored
-      -h, --help               Print help
-      -V, --version            Print version
+      -o, --output <REPORT>      Path to save report. Path can be a directory, then report
+                                 name is generated
+          --stdout               Print CASR report to stdout
+          --stdin <FILE>         Stdin file for program
+      -t, --timeout <SECONDS>    Timeout (in seconds) for target execution, 0 value means that
+                                 timeout is disabled [default: 0]
+          --ignore <FILE>        File with regular expressions for functions and file paths
+                                 that should be ignored
+          --strip-path <PREFIX>  Path prefix to strip from stacktrace and crash line [env:
+                                 CASR_STRIP_PATH=]
+      -h, --help                 Print help
+      -V, --version              Print version
 
 Run casr-csharp:
 
@@ -447,16 +449,19 @@ Triage crashes found by AFL++/Sharpfuzz
                  triage C# crashes with additional options
 
     Options:
-      -l, --log-level <log-level>  Logging level [default: info] [possible values: info, debug]
+      -l, --log-level <log-level>  Logging level [default: info] [possible values: info,
+                                   debug]
       -j, --jobs <jobs>            Number of parallel jobs for generating CASR reports
                                    [default: half of cpu cores]
       -t, --timeout <SECONDS>      Timeout (in seconds) for target execution, 0 value means
                                    that timeout is disabled [default: 0]
       -i, --input <INPUT_DIR>      AFL++ work directory
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
+      -s, --seed <SEED_DIR>        Seed directory with previously triaged reports [env:
+                                   CASR_SEED_DIR=]
       -f, --force-remove           Remove output project directory if it exists
-          --ignore-cmdline         Force <ARGS> usage to run target instead of searching for cmdline files
-                                   in AFL fuzzing directory
+          --ignore-cmdline         Force <ARGS> usage to run target instead of searching for
+                                   cmdline files in AFL fuzzing directory
           --no-cluster             Do not cluster CASR reports
       -h, --help                   Print help
       -V, --version                Print version
@@ -586,7 +591,9 @@ Triage crashes found by libFuzzer based fuzzer
       -i, --input <INPUT_DIR>
               Directory containing crashes found by libFuzzer [default: .]
       -o, --output <OUTPUT_DIR>
-              Output directory with triaged reports
+              Output directory with triaged reports [env: CASR_SEED_DIR=]
+      -s, --seed <SEED_DIR>
+              Seed directory with previously triaged reports
       -f, --force-remove
               Remove output project directory if it exists
           --no-cluster
