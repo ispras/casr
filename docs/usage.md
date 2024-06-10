@@ -591,9 +591,9 @@ Triage crashes found by libFuzzer based fuzzer
       -i, --input <INPUT_DIR>
               Directory containing crashes found by libFuzzer [default: .]
       -o, --output <OUTPUT_DIR>
-              Output directory with triaged reports [env: CASR_SEED_DIR=]
+              Output directory with triaged reports
       -s, --seed <SEED_DIR>
-              Seed directory with previously triaged reports
+              Seed directory with previously triaged reports [env: CASR_SEED_DIR=]
       -f, --force-remove
               Remove output project directory if it exists
           --no-cluster
