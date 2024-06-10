@@ -4117,6 +4117,21 @@ fn test_casr_libfuzzer() {
 
     assert_eq!(reports_cnt, 17, "Invalid number of reports in new clusters");
 
+    let re = Regex::new(r"Cluster silhouette score: (?P<score>(0|1)\.\d+)").unwrap();
+    let sil_score = re
+        .captures(&err)
+        .unwrap()
+        .name("score")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<f64>()
+        .unwrap();
+
+    assert_eq!(
+        sil_score, 0.3831644389715882,
+        "Invalid cluster silhouette score"
+    );
+
     let mut storage: HashMap<String, u32> = HashMap::new();
     for entry in fs::read_dir(&paths[1]).unwrap() {
         let e = entry.unwrap().path();
