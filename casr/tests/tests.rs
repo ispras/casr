@@ -3951,7 +3951,7 @@ fn test_casr_libfuzzer() {
 
     let paths = [
         abs_path("tests/casr_tests/casrep/libfuzzer_crashes_xlnt"),
-        abs_path("tests/tmp_tests_casr/casr_libfuzzer_seed"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_base"),
         abs_path("tests/tmp_tests_casr/casr_libfuzzer_out"),
         abs_path("tests/casr_tests/bin/load_fuzzer"),
     ];
@@ -4039,11 +4039,11 @@ fn test_casr_libfuzzer() {
 
     // Remove several clusters
     let cluster_paths = [
-        abs_path("tests/tmp_tests_casr/casr_libfuzzer_seed/cl2"),
-        abs_path("tests/tmp_tests_casr/casr_libfuzzer_seed/cl20"),
-        abs_path("tests/tmp_tests_casr/casr_libfuzzer_seed/cl21"),
-        abs_path("tests/tmp_tests_casr/casr_libfuzzer_seed/cl22"),
-        abs_path("tests/tmp_tests_casr/casr_libfuzzer_seed/cl23"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_base/cl2"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_base/cl20"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_base/cl21"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_base/cl22"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_base/cl23"),
     ];
     for path in cluster_paths {
         let _ = fs::remove_dir_all(path);
@@ -4051,7 +4051,7 @@ fn test_casr_libfuzzer() {
 
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
     cmd.args([
-        "-i", &paths[0], "-s", &paths[1], "-o", &paths[2], "-f", "--", &paths[3],
+        "-i", &paths[0], "-b", &paths[1], "-o", &paths[2], "-f", "--", &paths[3],
     ])
     .env(
         "PATH",

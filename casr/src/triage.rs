@@ -159,11 +159,11 @@ pub fn fuzzing_crash_triage_pipeline(
         bail!("No crashes found");
     }
 
-    let seed_mode = matches.contains_id("seed");
+    let base_mode = matches.contains_id("base");
 
     let output_dir = initialize_dirs(matches)?;
 
-    let casrep_dir = if seed_mode {
+    let casrep_dir = if base_mode {
         output_dir.join("casrep")
     } else {
         output_dir.to_path_buf()
@@ -238,7 +238,7 @@ pub fn fuzzing_crash_triage_pipeline(
     }
 
     if !matches.get_flag("no-cluster") {
-        if seed_mode {
+        if base_mode {
             info!("Accumulating CASR reports...");
             let casr_cluster_u = Command::new(&casr_cluster)
                 .arg("-u")
