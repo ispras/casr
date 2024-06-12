@@ -457,8 +457,8 @@ Triage crashes found by AFL++/Sharpfuzz
                                       that timeout is disabled [default: 0]
       -i, --input <INPUT_DIR>         AFL++ work directory
       -o, --output <OUTPUT_DIR>       Output directory with triaged reports
-          --join <PREV_CLSUTERS_DIR>  Use directory with previously triaged reports for new
-                                      reports accumulation [env: CASR_PREV_CLSUTERS_DIR=]
+          --join <PREV_CLUSTERS_DIR>  Use directory with previously triaged reports for new
+                                      reports accumulation [env: CASR_PREV_CLUSTERS_DIR=]
       -f, --force-remove              Remove output project directory if it exists
           --ignore-cmdline            Force <ARGS> usage to run target instead of searching
                                       for cmdline files in AFL fuzzing directory
@@ -592,9 +592,9 @@ Triage crashes found by libFuzzer based fuzzer
               Directory containing crashes found by libFuzzer [default: .]
       -o, --output <OUTPUT_DIR>
               Output directory with triaged reports
-          --join <PREV_CLSUTERS_DIR>
+          --join <PREV_CLUSTERS_DIR>
               Use directory with previously triaged reports for new reports accumulation [env:
-              CASR_PREV_CLSUTERS_DIR=]
+              CASR_PREV_CLUSTERS_DIR=]
       -f, --force-remove
               Remove output project directory if it exists
           --no-cluster

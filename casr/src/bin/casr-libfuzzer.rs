@@ -77,10 +77,10 @@ fn main() -> Result<()> {
         .arg(
             Arg::new("join")
                 .long("join")
-                .env("CASR_PREV_CLSUTERS_DIR")
+                .env("CASR_PREV_CLUSTERS_DIR")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(PathBuf))
-                .value_name("PREV_CLSUTERS_DIR")
+                .value_name("PREV_CLUSTERS_DIR")
                 .help("Use directory with previously triaged reports for new reports accumulation")
         )
         .arg(
