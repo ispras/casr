@@ -325,9 +325,9 @@ pub fn initialize_dirs(matches: &clap::ArgMatches) -> Result<&PathBuf> {
         }
     }
 
-    if let Some(base_dir) = matches.get_one::<PathBuf>("base") {
-        copy_dir(base_dir, output_dir)
-            .with_context(|| format!("Couldn't copy base directory {}", base_dir.display()))?;
+    if let Some(join_dir) = matches.get_one::<PathBuf>("join") {
+        copy_dir(join_dir, output_dir)
+            .with_context(|| format!("Couldn't copy join directory {}", join_dir.display()))?;
         // Get casrep dir
         let casrep_dir = output_dir.join("casrep");
         if !casrep_dir.exists() && fs::create_dir_all(&casrep_dir).is_err() {
