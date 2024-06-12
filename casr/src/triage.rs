@@ -159,7 +159,15 @@ pub fn fuzzing_crash_triage_pipeline(
         bail!("No crashes found");
     }
 
+    let accum_mode = matches.contains_id("join");
+
     let output_dir = initialize_dirs(matches)?;
+
+    let casrep_dir = if accum_mode {
+        output_dir.join("casrep")
+    } else {
+        output_dir.to_path_buf()
+    };
 
     // Get timeout
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
@@ -189,7 +197,7 @@ pub fn fuzzing_crash_triage_pipeline(
         .join(
             || {
                 crashes.par_iter().try_for_each(|(_, crash)| {
-                    if let Err(e) = crash.run_casr(output_dir.as_path(), timeout) {
+                    if let Err(e) = crash.run_casr(casrep_dir.as_path(), timeout) {
                         // Disable util::log_progress
                         *counter.write().unwrap() = total;
                         bail!(e);
@@ -210,7 +218,7 @@ pub fn fuzzing_crash_triage_pipeline(
     info!("Deduplicating CASR reports...");
     let casr_cluster_d = Command::new(&casr_cluster)
         .arg("-d")
-        .arg(output_dir.clone().into_os_string())
+        .arg(casrep_dir.clone().into_os_string())
         .output()
         .with_context(|| format!("Couldn't launch {casr_cluster:?}"))?;
 
@@ -230,41 +238,66 @@ pub fn fuzzing_crash_triage_pipeline(
     }
 
     if !matches.get_flag("no-cluster") {
-        if output_dir
-            .read_dir()?
-            .flatten()
-            .map(|e| e.path())
-            .filter(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
-            .count()
-            < 2
-        {
-            info!("There are less than 2 CASR reports, nothing to cluster.");
-            return summarize_results(matches, crashes, gdb_args);
-        }
-        info!("Clustering CASR reports...");
-        let casr_cluster_c = Command::new(&casr_cluster)
-            .arg("-c")
-            .arg(output_dir.clone().into_os_string())
-            .output()
-            .with_context(|| format!("Couldn't launch {casr_cluster:?}"))?;
+        if accum_mode {
+            info!("Accumulating CASR reports...");
+            let casr_cluster_u = Command::new(&casr_cluster)
+                .arg("-u")
+                .arg(casrep_dir.clone().into_os_string())
+                .arg(output_dir.clone().into_os_string())
+                .output()
+                .with_context(|| format!("Couldn't launch {casr_cluster:?}"))?;
 
-        if casr_cluster_c.status.success() {
-            info!(
-                "{}",
-                String::from_utf8_lossy(&casr_cluster_c.stdout).trim_end()
-            );
+            if casr_cluster_u.status.success() {
+                info!(
+                    "{}",
+                    String::from_utf8_lossy(&casr_cluster_u.stdout).trim_end()
+                );
+            } else {
+                error!(
+                    "{}",
+                    String::from_utf8_lossy(&casr_cluster_u.stderr).trim_end()
+                );
+            }
+
+            // Remove reports from deduplication phase. They are in clusters now.
+            fs::remove_dir_all(casrep_dir)?;
         } else {
-            error!(
-                "{}",
-                String::from_utf8_lossy(&casr_cluster_c.stderr).trim_end()
-            );
-        }
+            if casrep_dir
+                .read_dir()?
+                .flatten()
+                .map(|e| e.path())
+                .filter(|e| e.extension().is_some() && e.extension().unwrap() == "casrep")
+                .count()
+                < 2
+            {
+                info!("There are less than 2 CASR reports, nothing to cluster.");
+                return summarize_results(matches, crashes, gdb_args);
+            }
+            info!("Clustering CASR reports...");
+            let casr_cluster_c = Command::new(&casr_cluster)
+                .arg("-c")
+                .arg(output_dir.clone().into_os_string())
+                .output()
+                .with_context(|| format!("Couldn't launch {casr_cluster:?}"))?;
 
-        // Remove reports from deduplication phase. They are in clusters now.
-        for casrep in fs::read_dir(output_dir)?.flatten().map(|e| e.path()) {
-            if let Some(ext) = casrep.extension() {
-                if ext == "casrep" {
-                    let _ = fs::remove_file(casrep);
+            if casr_cluster_c.status.success() {
+                info!(
+                    "{}",
+                    String::from_utf8_lossy(&casr_cluster_c.stdout).trim_end()
+                );
+            } else {
+                error!(
+                    "{}",
+                    String::from_utf8_lossy(&casr_cluster_c.stderr).trim_end()
+                );
+            }
+
+            // Remove reports from deduplication phase. They are in clusters now.
+            for casrep in fs::read_dir(casrep_dir)?.flatten().map(|e| e.path()) {
+                if let Some(ext) = casrep.extension() {
+                    if ext == "casrep" {
+                        let _ = fs::remove_file(casrep);
+                    }
                 }
             }
         }

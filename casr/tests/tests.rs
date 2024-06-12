@@ -3951,32 +3951,32 @@ fn test_casr_libfuzzer() {
 
     let paths = [
         abs_path("tests/casr_tests/casrep/libfuzzer_crashes_xlnt"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_join"),
         abs_path("tests/tmp_tests_casr/casr_libfuzzer_out"),
         abs_path("tests/casr_tests/bin/load_fuzzer"),
     ];
 
-    let _ = fs::remove_dir_all(&paths[1]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
 
     let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
         .parent()
         .unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
-    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2]])
+    cmd.args(["-i", &paths[0], "-o", &paths[1], "-f", "--", &paths[3]])
         .env(
             "PATH",
             format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
         );
-    let output = cmd.output().expect("failed to start casr-libfuzzer");
 
+    let output = cmd.output().expect("failed to start casr-libfuzzer");
     assert!(
         output.status.success(),
         "Stdout {}.\n Stderr: {}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let err = String::from_utf8_lossy(&output.stderr);
 
+    let err = String::from_utf8_lossy(&output.stderr);
     assert!(!err.is_empty());
 
     assert!(err.contains("casr-san: No crash on input"));
@@ -4014,6 +4014,123 @@ fn test_casr_libfuzzer() {
         .unwrap();
 
     assert_eq!(clusters_cnt, 23, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
+
+    // Remove several clusters
+    let cluster_paths = [
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_join/cl2"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_join/cl20"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_join/cl21"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_join/cl22"),
+        abs_path("tests/tmp_tests_casr/casr_libfuzzer_join/cl23"),
+    ];
+    for path in cluster_paths {
+        let _ = fs::remove_dir_all(path);
+    }
+
+    let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
+    cmd.args([
+        "-i", &paths[0], "--join", &paths[1], "-o", &paths[2], "-f", "--", &paths[3],
+    ])
+    .env(
+        "PATH",
+        format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+    );
+
+    let output = cmd.output().expect("failed to start casr-libfuzzer");
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let err = String::from_utf8_lossy(&output.stderr);
+    assert!(!err.is_empty());
+
+    assert!(err.contains("casr-san: No crash on input"));
+    assert!(err.contains("1 out of memory seeds are saved to"));
+    assert!(err.contains("EXPLOITABLE"));
+    assert!(err.contains("NOT_EXPLOITABLE"));
+    assert!(err.contains("PROBABLY_EXPLOITABLE"));
+    assert!(err.contains("heap-buffer-overflow(read)"));
+    assert!(err.contains("heap-buffer-overflow(write)"));
+    assert!(err.contains("DestAvNearNull"));
+    assert!(err.contains("xml::serialization"));
+    assert!(err.contains("AbortSignal"));
+    assert!(err.contains("compound_document.hpp:83"));
+
+    let re = Regex::new(r"Number of duplicates: (?P<unique>\d+)").unwrap();
+    let duplicates_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(duplicates_cnt, 28, "Invalid number of duplicates");
+
+    let re = Regex::new(r"Number of new clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 5, "Invalid number of new clusters");
+
+    let re = Regex::new(r"Number of reports in new clusters: (?P<clusters>\d+)").unwrap();
+    let reports_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(reports_cnt, 17, "Invalid number of reports in new clusters");
+
+    let re = Regex::new(r"Cluster silhouette score: (?P<score>(0|1)\.\d+)").unwrap();
+    let sil_score = re
+        .captures(&err)
+        .unwrap()
+        .name("score")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<f64>()
+        .unwrap();
+
+    assert_eq!(
+        sil_score, 0.3831644389715882,
+        "Invalid cluster silhouette score"
+    );
 
     let mut storage: HashMap<String, u32> = HashMap::new();
     for entry in fs::read_dir(&paths[1]).unwrap() {

@@ -75,6 +75,15 @@ fn main() -> Result<()> {
                 .help("Output directory with triaged reports")
         )
         .arg(
+            Arg::new("join")
+                .long("join")
+                .env("CASR_PREV_CLUSTERS_DIR")
+                .action(ArgAction::Set)
+                .value_parser(clap::value_parser!(PathBuf))
+                .value_name("PREV_CLUSTERS_DIR")
+                .help("Use directory with previously triaged reports for new reports accumulation")
+        )
+        .arg(
             Arg::new("force-remove")
                 .short('f')
                 .long("force-remove")
