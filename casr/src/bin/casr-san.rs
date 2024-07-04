@@ -220,7 +220,12 @@ fn main() -> Result<()> {
             let report_end = san_stderr_list.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
             report.asan_report = Vec::from(&san_stderr_list[report_start..report_end]);
             let context = AsanContext(report.asan_report.clone());
-            report.execution_class = context.severity()?;
+            let severity = context.severity();
+            if let Ok(severity) = severity {
+                report.execution_class = severity;
+            } else {
+                eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
+            }
             report.stacktrace = AsanStacktrace::extract_stacktrace(&report.asan_report.join("\n"))?;
         } else {
             // Get termination signal.

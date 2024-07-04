@@ -2,7 +2,6 @@
 use crate::error::*;
 use crate::stacktrace::*;
 
-use core::f64::MAX;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -272,7 +271,7 @@ fn sil_subcoef_a(num: usize, stacktraces: &[Stacktrace]) -> f64 {
 ///
 /// "b" subcoefficient silhouette coefficient
 fn sil_subcoef_b(num: usize, i: usize, clusters: &[Vec<Stacktrace>]) -> f64 {
-    let mut min = MAX;
+    let mut min = f64::MAX;
     for (j, cluster) in clusters.iter().enumerate() {
         if j == i {
             continue;

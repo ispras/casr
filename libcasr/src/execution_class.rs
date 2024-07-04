@@ -40,7 +40,7 @@ pub struct ExecutionClass {
 /// Instances of `ExecutionClass` structure.
 /// Add new classes to the end of array.
 /// TODO: Think about adding some ID for array element.
-pub const CLASSES: &[(&str, &str, &str, &str); 71] = &[
+pub const CLASSES: &[(&str, &str, &str, &str); 74] = &[
     ("EXPLOITABLE", "SegFaultOnPc", "Segmentation fault on program counter", "The target tried to access data at an address that matches the program counter. This likely indicates that the program counter contents are tainted and can be controlled by an attacker."),
     ("EXPLOITABLE", "ReturnAv", "Access violation during return instruction", "The target crashed on a return instruction, which likely indicates stack corruption."),
     ("EXPLOITABLE", "BranchAv", "Access violation during branch instruction", "The target crashed on a branch instruction, which may indicate that the control flow is tainted."),
@@ -72,6 +72,9 @@ pub const CLASSES: &[(&str, &str, &str, &str); 71] = &[
     ("NOT_EXPLOITABLE", "heap-buffer-overflow(read)", "Heap buffer overflow", "The target reads data past the end, or before the beginning, of the intended heap buffer."),
     ("PROBABLY_EXPLOITABLE", "heap-buffer-overflow", "Heap buffer overflow", "The target attempts to read or write data past the end, or before the beginning, of the intended heap buffer."),
     ("EXPLOITABLE", "heap-buffer-overflow(write)", "Heap buffer overflow", "The target writes data past the end, or before the beginning, of the intended heap buffer."),
+    ("NOT_EXPLOITABLE", "dynamic-stack-buffer-overflow(read)", "Dynamic stack buffer overflow", "The target reads data past the end, or before the beginning, of the variable-length array (VLA)."),
+    ("PROBABLY_EXPLOITABLE", "dynamic-stack-buffer-overflow", "Dynamic stack buffer overflow", "The target attempts to read or write data past the end, or before the beginning, of the variable-length array (VLA)."),
+    ("EXPLOITABLE", "dynamic-stack-buffer-overflow(write)", "Dynamic stack buffer overflow", "The target writes data past the end, or before the beginning, of the variable-length array (VLA)."),
     ("NOT_EXPLOITABLE", "global-buffer-overflow(read)", "Global buffer overflow", "The target reads data past the end, or before the beginning, of the intended global buffer."),
     ("PROBABLY_EXPLOITABLE", "global-buffer-overflow", "Global buffer overflow", "The target attempts to read or write data past the end, or before the beginning, of the intended global buffer."),
     ("EXPLOITABLE", "global-buffer-overflow(write)", "Global buffer overflow", "The target writes data past the end, or before the beginning, of the intended global buffer."),
