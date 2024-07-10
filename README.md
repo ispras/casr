@@ -20,7 +20,7 @@ CASR is maintained by:
 * [Andrey Fedotov](https://github.com/anfedotoff) \<splashgitar@gmail.com\>
 * [Alexey Vishnyakov](https://github.com/SweetVishnya) \<pmvishnya@gmail.com\>
 * [Georgy Savidov](https://github.com/Avgor46) \<avgor46@ispras.ru\>
-* [Ilya Yegorov](https://github.com/hkctkuy) \<Yegorov_Ilya@ispras.ru\>
+* [Ilya Yegorov](https://github.com/hkctkuy) \<hkctkuy@gmail.com\>
 * [Darya Parygina](https://github.com/PaDarochek) \<pa_darochek@ispras.ru\>
 
 ## Overview
