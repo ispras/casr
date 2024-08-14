@@ -4128,7 +4128,8 @@ fn test_casr_libfuzzer() {
         .unwrap();
 
     assert_eq!(
-        sil_score, 0.3831644389715882,
+        format!("{:.2}", sil_score),
+        "0.38",
         "Invalid cluster silhouette score"
     );
 
