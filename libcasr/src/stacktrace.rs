@@ -279,7 +279,7 @@ pub fn cluster_stacktraces(stacktraces: &[Stacktrace]) -> Result<Vec<usize>> {
 /// * `crashlines` - slice of crashlines as String
 ///
 /// * 'clusters' - A vector of the same length as `crashlines`.
-/// Vec\[i\] is the flat cluster number to which original casrep i belongs.
+///   Vec\[i\] is the flat cluster number to which original casrep i belongs.
 ///
 /// # Return value
 ///
