@@ -26,7 +26,7 @@ jobs:
           export CARGO_TERM_COLOR=always
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
           apt-get update \
-            && apt-get install software-properties-common \
+            && apt-get install -y software-properties-common \
             && add-apt-repository ppa:deadsnakes/ppa \
             && apt-get update \
             && apt-get install -y gdb pip curl python3.10-dev clang llvm build-essential
