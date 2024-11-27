@@ -38,7 +38,7 @@ jobs:
     - name: Build and Run Tests
       env:
         CARGO_INCREMENTAL: 0
-        RUSTFLAGS: '-Cinstrument-coverage -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort'
+        RUSTFLAGS: '-Cinstrument-coverage -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort'
         RUSTDOCFLAGS: '-Cpanic=abort'
         LLVM_PROFILE_FILE: 'casr-%p-%m.profraw'
       run: |
