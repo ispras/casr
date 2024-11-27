@@ -463,6 +463,8 @@ Triage crashes found by AFL++/Sharpfuzz
           --ignore-cmdline            Force <ARGS> usage to run target instead of searching
                                       for cmdline files in AFL fuzzing directory
           --no-cluster                Do not cluster CASR reports
+          --hint <HINT>               Hint to force analysis tool [default: auto] [possible
+                                      values: auto, gdb, san, csharp]
       -h, --help                      Print help
       -V, --version                   Print version
 
@@ -603,6 +605,9 @@ Triage crashes found by libFuzzer based fuzzer
               Add "--casr-gdb-args './gdb_fuzz_target <arguments>'" to generate additional
               crash reports with casr-gdb (e.g., test whether program crashes without
               sanitizers)
+          --hint <HINT>
+              Hint to force analysis tool [default: auto] [possible values: auto, gdb, java,
+              js, python, san]
       -h, --help
               Print help
       -V, --version

@@ -104,6 +104,15 @@ fn main() -> Result<()> {
                 .help("Do not cluster CASR reports")
         )
         .arg(
+            Arg::new("hint")
+                .long("hint")
+                .value_name("HINT")
+                .action(ArgAction::Set)
+                .default_value("auto")
+                .value_parser(["auto", "gdb", "san", "csharp"])
+                .help("Hint to force analysis tool")
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .required(false)
@@ -129,6 +138,8 @@ fn main() -> Result<()> {
         bail!("ARGS is empty, but \"ignore-cmdline\" option is provided.");
     }
 
+    let hint = matches.get_one::<String>("hint").unwrap();
+
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
     for node_dir in fs::read_dir(matches.get_one::<PathBuf>("input").unwrap())? {
@@ -152,9 +163,11 @@ fn main() -> Result<()> {
                 continue;
             }
         };
-        crash_info.casr_tool = if !crash_info.target_args.is_empty()
-            && (crash_info.target_args[0].ends_with("dotnet")
-                || crash_info.target_args[0].ends_with("mono"))
+        crash_info.casr_tool = if hint == "csharp"
+            || hint == "auto"
+                && !crash_info.target_args.is_empty()
+                && (crash_info.target_args[0].ends_with("dotnet")
+                    || crash_info.target_args[0].ends_with("mono"))
         {
             is_casr_gdb = false;
             util::get_path("casr-csharp")?
@@ -169,7 +182,7 @@ fn main() -> Result<()> {
             .map(|x| x + 1);
 
         // When we triage crashes for binaries, use casr-san.
-        if is_casr_gdb {
+        if hint == "san" || hint == "auto" && is_casr_gdb {
             if let Some(target) = crash_info.target_args.first() {
                 match util::symbols_list(Path::new(target)) {
                     Ok(list) => {
