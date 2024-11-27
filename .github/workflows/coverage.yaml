@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v4
     - name: Install Dependences
       run: |
         sudo apt update && sudo apt install -y gdb pip curl python3.10-dev llvm \
@@ -61,6 +61,6 @@ jobs:
             --excl-stop  '^}$' \
             -t lcov
     - name: Upload Coverage Reports to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
