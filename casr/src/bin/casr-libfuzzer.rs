@@ -109,7 +109,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .default_value("auto")
                 .value_parser(["auto", "gdb", "java", "js", "python", "san"])
-                .help("Hint to force analysis tool")
+                .help("Hint to force run casr-HINT tool to analyze crashes")
         )
         .arg(
             Arg::new("ARGS")
@@ -154,10 +154,11 @@ fn main() -> Result<()> {
     {
         "casr-java"
     } else if hint == "js"
-        || hint == "auto" && argv[0].ends_with(".js")
-        || argv[0].ends_with("node")
-        || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
-        || argv[0].ends_with("jsfuzz")
+        || hint == "auto"
+            && (argv[0].ends_with(".js")
+                || argv[0].ends_with("node")
+                || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
+                || argv[0].ends_with("jsfuzz"))
     {
         "casr-js"
     } else {

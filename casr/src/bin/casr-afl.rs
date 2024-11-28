@@ -110,7 +110,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .default_value("auto")
                 .value_parser(["auto", "gdb", "san", "csharp"])
-                .help("Hint to force analysis tool")
+                .help("Hint to force run casr-HINT tool to analyze crashes")
         )
         .arg(
             Arg::new("ARGS")
