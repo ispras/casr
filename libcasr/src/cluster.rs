@@ -197,16 +197,12 @@ impl Cluster {
     /// NOTE: Result also can be interpreted as diameter of cluster merge result
     pub fn dist_rep(cluster: &Cluster, report: &ReportInfo) -> f64 {
         let (_, (trace, _)) = report;
-        if let Some(max) = cluster
+        cluster
             .stacktraces()
             .iter()
             .map(|s| 1.0 - similarity(s, trace))
             .max_by(|a, b| a.total_cmp(b))
-        {
-            max
-        } else {
-            0f64
-        }
+            .unwrap_or(0f64)
     }
 }
 

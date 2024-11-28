@@ -103,6 +103,15 @@ fn main() -> Result<()> {
                 .help("Add \"--casr-gdb-args \'./gdb_fuzz_target <arguments>\'\" to generate additional crash reports with casr-gdb (e.g., test whether program crashes without sanitizers)"),
         )
         .arg(
+            Arg::new("hint")
+                .long("hint")
+                .value_name("HINT")
+                .action(ArgAction::Set)
+                .default_value("auto")
+                .value_parser(["auto", "gdb", "java", "js", "python", "san"])
+                .help("Hint to force run casr-HINT tool to analyze crashes")
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .num_args(1..)
@@ -132,22 +141,31 @@ fn main() -> Result<()> {
         Vec::new()
     };
 
+    // Get hint
+    let hint = matches.get_one::<String>("hint").unwrap();
+
     // Get tool.
     let mut envs = HashMap::new();
-    let tool = if argv[0].ends_with(".py") {
+    let tool = if hint == "python" || hint == "auto" && argv[0].ends_with(".py") {
         envs.insert("LD_PRELOAD".to_string(), util::get_atheris_lib()?);
         "casr-python"
-    } else if argv[0].ends_with("jazzer") || argv[0].ends_with("java") {
+    } else if hint == "java"
+        || hint == "auto" && (argv[0].ends_with("jazzer") || argv[0].ends_with("java"))
+    {
         "casr-java"
-    } else if argv[0].ends_with(".js")
-        || argv[0].ends_with("node")
-        || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
-        || argv[0].ends_with("jsfuzz")
+    } else if hint == "js"
+        || hint == "auto"
+            && (argv[0].ends_with(".js")
+                || argv[0].ends_with("node")
+                || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
+                || argv[0].ends_with("jsfuzz"))
     {
         "casr-js"
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
-        if sym_list.contains("__asan") || sym_list.contains("runtime.go") {
+        if hint == "san"
+            || hint == "auto" && (sym_list.contains("__asan") || sym_list.contains("runtime.go"))
+        {
             "casr-san"
         } else {
             "casr-gdb"

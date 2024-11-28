@@ -153,7 +153,7 @@ fn main() -> Result<()> {
     ));
 
     if !report.package.is_empty() && !report.package_version.is_empty() {
-        header_string.append(&format!(
+        header_string.append(format!(
             " from {} {}",
             report.package, report.package_version
         ));
