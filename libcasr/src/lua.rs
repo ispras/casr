@@ -7,7 +7,6 @@ use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
 
 use regex::Regex;
 
-// TODO: Adjust terms: Error? Exception? Warnings? Etc?
 /// Structure provides an interface for save parsing lua exception.
 #[derive(Clone, Debug)]
 pub struct LuaException {
@@ -17,9 +16,11 @@ pub struct LuaException {
 impl LuaException {
     /// Create new `LuaException` instance from stream
     pub fn new(stream: &str) -> Option<Self> {
-        let re = Regex::new(r#"\S+:.+\n(\s+)stack traceback:\n(?:.*\n)*(\s+)\[C\]: (?:in|at) .+"#)
+        let re = Regex::new(r#"\S+: .+\n\s*stack traceback:\n(?:.*\n)*\s+\[C\]: (?:in|at) .+"#)
             .unwrap();
-        let mat = re.find(stream).unwrap();
+        let Some(mat) = re.find(stream) else {
+            return None;
+        };
         Some(LuaException {
             message: mat.as_str().to_string(),
         })
