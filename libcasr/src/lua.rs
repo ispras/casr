@@ -37,7 +37,7 @@ impl LuaException {
     pub fn lua_report(&self) -> Vec<String> {
         self.message
             .split('\n')
-            .map(|s| s.trim().to_string())
+            .map(|s| s.trim_end().to_string())
             .collect()
     }
 }
