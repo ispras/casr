@@ -129,25 +129,27 @@ impl CrashLineExt for LuaException {
         if cap.is_none() {
             let re = Regex::new(r#"(.+):(\d+):"#).unwrap();
             for line in &lines[2..] {
-                cap = re.captures(&line);
+                cap = re.captures(line);
                 if cap.is_some() {
                     break;
                 }
             }
         }
-        if let Some(cap) = cap {
-            let file = cap.get(1).unwrap().as_str().to_string();
-            let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() else {
-                return Err(Error::Casr(format!("Couldn't crashline line number")));
-            };
-            Ok(CrashLine::Source(DebugInfo {
-                file,
-                line,
-                column: 0,
-            }))
-        } else {
-            Err(Error::Casr(format!("Crashline is not found")))
-        }
+        let Some(cap) = cap else {
+            return Err(Error::Casr(format!("Crashline is not found: {:?}", lines)));
+        };
+        let file = cap.get(1).unwrap().as_str().to_string();
+        let line = cap.get(2).unwrap().as_str();
+        let Ok(line) = line.parse::<u64>() else {
+            return Err(Error::Casr(format!(
+                "Couldn't crashline line number: {line}"
+            )));
+        };
+        Ok(CrashLine::Source(DebugInfo {
+            file,
+            line,
+            column: 0,
+        }))
     }
 }
 
