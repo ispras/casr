@@ -17,25 +17,23 @@ pub struct LuaException {
 impl LuaException {
     /// Create new `LuaException` instance from stream
     pub fn new(stream: &str) -> Option<Self> {
-        let re = Regex::new(
-            r#"(?:lua|luajit):.+\n(\s+)stack traceback:\n(?:.*\n)*(\s+)\[C\]: (?:in|at) .+"#,
-        )
-        .unwrap();
+        let re = Regex::new(r#"\S+:.+\n(\s+)stack traceback:\n(?:.*\n)*(\s+)\[C\]: (?:in|at) .+"#)
+            .unwrap();
         let mat = re.find(stream).unwrap();
         Some(LuaException {
             message: mat.as_str().to_string(),
         })
     }
-    /// Extract stack trace from lua message.
+    /// Extract stack trace from lua exception.
     pub fn extract_stacktrace(&self) -> Result<Vec<String>> {
         LuaStacktrace::extract_stacktrace(&self.message)
     }
-    /// Get lua runtime error message as a vector of lines.
+    /// Transform lua exception into `Stacktrace` type.
     pub fn parse_stacktrace(&self) -> Result<Stacktrace> {
         LuaStacktrace::parse_stacktrace(&self.extract_stacktrace()?)
     }
-    /// Get lua runtime error message as a vector of lines.
-    pub fn lines(&self) -> Vec<String> {
+    /// Get lua exception as a vector of lines.
+    pub fn lua_report(&self) -> Vec<String> {
         self.message
             .split('\n')
             .map(|s| s.trim().to_string())
@@ -123,8 +121,8 @@ impl ParseStacktrace for LuaStacktrace {
 
 impl CrashLineExt for LuaException {
     fn crash_line(&self) -> Result<CrashLine> {
-        let lines = self.lines();
-        let re = Regex::new(r#"(?:lua|luajit): (.+):(\d+):"#).unwrap();
+        let lines = self.lua_report();
+        let re = Regex::new(r#"\S+: (.+):(\d+):"#).unwrap();
         let mut cap = re.captures(&lines[0]);
         if cap.is_none() {
             let re = Regex::new(r#"(.+):(\d+):"#).unwrap();
@@ -155,8 +153,8 @@ impl CrashLineExt for LuaException {
 
 impl Severity for LuaException {
     fn severity(&self) -> Result<ExecutionClass> {
-        let re = Regex::new(r#"(?:lua|luajit):(?: .+:)? (.+)"#).unwrap();
-        let lines = self.lines();
+        let re = Regex::new(r#"\S+:(?: .+:)? (.+)"#).unwrap();
+        let lines = self.lua_report();
         let description = lines.first().unwrap();
         let Some(cap) = re.captures(description) else {
             return Err(Error::Casr(format!(
@@ -265,7 +263,7 @@ mod tests {
             panic!("{:?}", exception);
         };
 
-        let lines = exception.lines();
+        let lines = exception.lua_report();
         assert_eq!(lines.len(), 5);
 
         let sttr = exception.extract_stacktrace();

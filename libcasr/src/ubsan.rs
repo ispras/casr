@@ -1,11 +1,11 @@
 //! UndefinedBehaviorSanitizer module implements `Severity` and `CrashLineExt` traits for UndefinedBehaviorSanitizer warnings.
 use crate::asan::AsanStacktrace;
+use crate::error::{Error, Result};
+use crate::execution_class::ExecutionClass;
 use crate::severity::Severity;
 use crate::stacktrace::{CrashLine, CrashLineExt, DebugInfo};
 use crate::stacktrace::{ParseStacktrace, StacktraceEntry};
 
-use crate::error::*;
-use crate::execution_class::ExecutionClass;
 use regex::Regex;
 
 /// Structure provides an interface for parsing ubsan runtime error message.

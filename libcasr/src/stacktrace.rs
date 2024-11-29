@@ -5,12 +5,14 @@ extern crate lazy_static;
 use crate::constants::{
     STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP,
     STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO, STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA,
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS, STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON,
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST, STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP,
-    STACK_FRAME_FUNCTION_IGNORE_REGEXES_CSHARP, STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO,
-    STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA, STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS, STACK_FRAME_FILEPATH_IGNORE_REGEXES_LUA,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON, STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
+    STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP, STACK_FRAME_FUNCTION_IGNORE_REGEXES_CSHARP,
+    STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO, STACK_FRAME_FUNCTION_IGNORE_REGEXES_JAVA,
+    STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS, STACK_FRAME_FUNCTION_IGNORE_REGEXES_LUA,
     STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
 };
+
 use crate::error::*;
 use kodama::{linkage, Method};
 use regex::Regex;
@@ -323,17 +325,13 @@ pub trait Filter {
         let (funcs, files): (Vec<_>, Vec<_>) = languages
             .iter()
             .map(|&x| match x {
-                "python" => (
-                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON,
-                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON,
-                ),
-                "rust" => (
-                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
-                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
-                ),
                 "cpp" => (
                     STACK_FRAME_FUNCTION_IGNORE_REGEXES_CPP,
                     STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP,
+                ),
+                "csharp" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_CSHARP,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP,
                 ),
                 "go" => (
                     STACK_FRAME_FUNCTION_IGNORE_REGEXES_GO,
@@ -347,9 +345,17 @@ pub trait Filter {
                     STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS,
                     STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS,
                 ),
-                "csharp" => (
-                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_CSHARP,
-                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP,
+                "lua" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_LUA,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_LUA,
+                ),
+                "python" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_PYTHON,
+                ),
+                "rust" => (
+                    STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
+                    STACK_FRAME_FILEPATH_IGNORE_REGEXES_RUST,
                 ),
                 &_ => (["^[^.]$"].as_slice(), ["^[^.]$"].as_slice()),
             })
@@ -474,7 +480,7 @@ pub mod tests {
         let mut is_inited = INITED_STACKFRAMES_FILTER.write().unwrap();
         if !*is_inited {
             *is_inited = true;
-            init_ignored_frames!("cpp", "rust", "python", "go", "java", "js", "csharp");
+            init_ignored_frames!("cpp", "csharp", "go", "java", "js", "lua", "python", "rust");
         }
     }
 
