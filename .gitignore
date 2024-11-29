@@ -6,6 +6,7 @@ Cargo.lock
 */tests/casr_tests/csharp/*/bin
 */tests/casr_tests/csharp/*/obj
 *.swp
+*.swo
 node_modules
 */node_modules/*
 .vscode

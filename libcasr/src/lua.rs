@@ -1,12 +1,47 @@
-//! Lua module implements `ParseStacktrace`, `Exception` traits for Lua reports.
+//! Lua module implements `ParseStacktrace`, `CrashLineExt` and `Severity` traits for Lua reports.
 use crate::error::*;
-use crate::exception::Exception;
 use crate::execution_class::ExecutionClass;
 use crate::severity::Severity;
 use crate::stacktrace::{CrashLine, CrashLineExt, DebugInfo};
 use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
 
 use regex::Regex;
+
+// TODO: Adjust terms: Error? Exception? Warnings? Etc?
+/// Structure provides an interface for save parsing lua exception.
+#[derive(Clone, Debug)]
+pub struct LuaException {
+    message: String,
+}
+
+impl LuaException {
+    /// Create new `LuaException` instance from stream
+    pub fn new(stream: &str) -> Option<Self> {
+        let re = Regex::new(
+            r#"(?:lua|luajit):.+\n(\s+)stack traceback:\n(?:.*\n)*(\s+)\[C\]: (?:in|at) .+"#,
+        )
+        .unwrap();
+        let mat = re.find(stream).unwrap();
+        Some(LuaException {
+            message: mat.as_str().to_string(),
+        })
+    }
+    /// Extract stack trace from lua message.
+    pub fn extract_stacktrace(&self) -> Result<Vec<String>> {
+        LuaStacktrace::extract_stacktrace(&self.message)
+    }
+    /// Get lua runtime error message as a vector of lines.
+    pub fn parse_stacktrace(&self) -> Result<Stacktrace> {
+        LuaStacktrace::parse_stacktrace(&self.extract_stacktrace()?)
+    }
+    /// Get lua runtime error message as a vector of lines.
+    pub fn lines(&self) -> Vec<String> {
+        self.message
+            .split('\n')
+            .map(|s| s.trim().to_string())
+            .collect()
+    }
+}
 
 /// Structure provides an interface for processing the stack trace.
 pub struct LuaStacktrace;
@@ -26,7 +61,7 @@ impl ParseStacktrace for LuaStacktrace {
             ));
         };
 
-        let re = Regex::new(r#"\S+:(?:|\d+:) in .+"#).unwrap();
+        let re = Regex::new(r#".+:(?:|\d+:) in .+"#).unwrap();
         Ok(stacktrace[first..]
             .iter()
             .map(|s| s.trim().to_string())
@@ -36,7 +71,7 @@ impl ParseStacktrace for LuaStacktrace {
 
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {
         let mut stentry = StacktraceEntry::default();
-        let re = Regex::new(r#"(\S+):(\d+): in (\S+ )(\S+)"#).unwrap();
+        let re = Regex::new(r#"(.+):(\d+): in (\S+ )(\S+)"#).unwrap();
         let Some(cap) = re.captures(entry) else {
             return Err(Error::Casr(format!(
                 "Couldn't parse stacktrace line: {entry}"
@@ -86,11 +121,39 @@ impl ParseStacktrace for LuaStacktrace {
     }
 }
 
-/// Structure provides an interface for parsing lua exception message.
-pub struct LuaException;
-impl Exception for LuaException {
-    fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
-        None
+impl CrashLineExt for LuaException {
+    fn crash_line(&self) -> Result<CrashLine> {
+        let lines = self.lines();
+        let re = Regex::new(r#"(?:lua|luajit): (.+):(\d+):"#).unwrap();
+        let mut cap = re.captures(&lines[0]);
+        if cap.is_none() {
+            let re = Regex::new(r#"(.+):(\d+):"#).unwrap();
+            for line in &lines[2..] {
+                cap = re.captures(&line);
+                if cap.is_some() {
+                    break;
+                }
+            }
+        }
+        if let Some(cap) = cap {
+            let file = cap.get(1).unwrap().as_str().to_string();
+            let Ok(line) = cap.get(2).unwrap().as_str().parse::<u64>() else {
+                return Err(Error::Casr(format!("Couldn't crashline line number")));
+            };
+            Ok(CrashLine::Source(DebugInfo {
+                file,
+                line,
+                column: 0,
+            }))
+        } else {
+            Err(Error::Casr(format!("Crashline is not found")))
+        }
+    }
+}
+
+impl Severity for LuaException {
+    fn severity(&self) -> Result<ExecutionClass> {
+        Err(Error::Casr(format!("WRITE ME!")))
     }
 }
 
@@ -171,5 +234,43 @@ mod tests {
         assert_eq!(sttr[7].debug.file, "luacheck_parser_parse.lua".to_string());
         assert_eq!(sttr[7].debug.line, 18);
         assert_eq!(sttr[7].function, "main chunk".to_string());
+    }
+    #[test]
+    fn test_lua_exception() {
+        let stream = "
+            luajit: (command line):1: crash
+            stack traceback:
+                [C]: in function 'error'
+                (command line):1: in main chunk
+                [C]: at 0x607f3df872e0
+        ";
+        let exception = LuaException::new(stream);
+        let Some(exception) = exception else {
+            panic!("{:?}", exception);
+        };
+
+        let lines = exception.lines();
+        assert_eq!(lines.len(), 5);
+
+        let sttr = exception.extract_stacktrace();
+        let Ok(sttr) = sttr else {
+            panic!("{}", sttr.err().unwrap());
+        };
+        assert_eq!(sttr.len(), 2);
+
+        let sttr = exception.parse_stacktrace();
+        let Ok(sttr) = sttr else {
+            panic!("{}", sttr.err().unwrap());
+        };
+        assert_eq!(sttr.len(), 1);
+        assert_eq!(sttr[0].debug.file, "(command line)".to_string());
+        assert_eq!(sttr[0].debug.line, 1);
+        assert_eq!(sttr[0].function, "main chunk".to_string());
+
+        let crashline = exception.crash_line();
+        let Ok(crashline) = crashline else {
+            panic!("{}", crashline.err().unwrap());
+        };
+        assert_eq!(crashline.to_string(), "(command line):1");
     }
 }
