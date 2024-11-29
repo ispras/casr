@@ -1,0 +1,13 @@
+lua: /usr/local/share/lua/5.4/luacheck/parser.lua:28: error
+stack traceback:
+  [C]: in function 'error'
+  /usr/local/share/lua/5.4/luacheck/parser.lua:28: in function 'luacheck.parser.syntax_error'
+  /usr/local/share/lua/5.4/luacheck/parser.lua:96: in upvalue 'parse_error'
+  /usr/local/share/lua/5.4/luacheck/parser.lua:535: in upvalue 'parse_simple_expression'
+  /usr/local/share/lua/5.4/luacheck/parser.lua:894: in function </usr/local/share/lua/5.4/luacheck/parser.lua:886>
+  (...tail calls...)
+  /usr/local/share/lua/5.4/luacheck/parser.lua:974: in upvalue 'parse_block'
+  /usr/local/share/lua/5.4/luacheck/parser.lua:1020: in function 'luacheck.parser.parse'
+  luacheck_parser_parse.lua:6: in local 'TestOneInput'
+  luacheck_parser_parse.lua:18: in main chunk
+  [C]: in ?

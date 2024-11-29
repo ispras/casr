@@ -20,7 +20,7 @@ jobs:
     - name: Run tests
       run: |
         sudo apt update && sudo apt install -y gdb pip curl python3-dev llvm \
-            openjdk-17-jdk ca-certificates gnupg
+            openjdk-17-jdk ca-certificates gnupg lua5.4
         # Atheris fails to install on Ubuntu 24.04, see https://github.com/google/atheris/issues/82
         # pip3 install atheris
         sudo mkdir -p /etc/apt/keyrings

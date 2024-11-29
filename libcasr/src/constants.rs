@@ -37,6 +37,12 @@ pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS: &[&str] = &[
     r"^<anonymous>$",
 ];
 
+/// Regular expressions for lua functions to be ignored.
+pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_LUA: &[&str] = &[
+    // TODO
+    r"^[^.]$",
+];
+
 /// Regular expressions for python functions to be ignored.
 pub const STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON: &[&str] = &[
     // TODO
@@ -254,6 +260,12 @@ pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_JS: &[&str] = &[
     r"node_modules/@jazzer.js",
     // jsfuzz internal modules
     r"node_modules/jsfuzz",
+];
+
+/// Regular expressions for paths to lua files that should be ignored.
+pub const STACK_FRAME_FILEPATH_IGNORE_REGEXES_LUA: &[&str] = &[
+    // TODO
+    r"^[^.]$",
 ];
 
 /// Regular expressions for paths to python files that should be ignored.

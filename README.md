@@ -31,12 +31,12 @@ ASAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
 reports from gdb. Use `casr-python` to analyze python reports and get report
 from [Atheris](https://github.com/google/atheris). Use `casr-java` to analyze
 java reports and get report from
-[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). Use `casr-js`
-to analyze JavaScript reports and get report from
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). Use `casr-js` to
+analyze JavaScript reports and get report from
 [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz).
-Use `casr-csharp` to analyze C# reports and get report from
-[Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz). Use `casr-csharp` to analyze C#
+reports and get report from [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
+Use `casr-lua` to analyze Lua reports.
 
 Crash report contains many useful information: severity (like [exploitable](https://github.com/jfoote/exploitable))
 for x86, x86\_64, arm32, aarch64, rv32g, rv64g architectures,
@@ -80,12 +80,13 @@ It can analyze crashes from different sources:
 and program languages:
 
 * C/C++
-* Rust
+* C#
 * Go
-* Python
 * Java
 * JavaScript
-* C#
+* Lua
+* Python
+* Rust
 
 It could be built with `exploitable` feature for severity estimation crashes
 collected from gdb. To save crash reports as json use `serde` feature.
@@ -169,6 +170,10 @@ Create report from JavaScript:
 Create report from C#:
 
     $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.csproj
+
+Create report from Lua:
+
+    $ casr-lua -o lua.casrep -- casr/tests/casr_tests/lua/test_casr_lua.lua
 
 View report:
 

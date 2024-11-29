@@ -1,4 +1,4 @@
-     #0  0x00000000005e3099 in xlnt::detail::compound_document::read_directory (this=0x7fffffffcee0) at /xlnt/source/detail/cryptography/compound_document.cpp:975
+     #0  0x00000000005e3099 in xlnt::detail::compound_document::read_directory (this=0x7fffffffcee0) at /xlnt/source/detail/cryptography/compound_document.cpp:975
      #1  0x00000000005e2956 in xlnt::detail::compound_document::compound_document (this=0x7fffffffcee0, in=...) at /xlnt/source/detail/cryptography/compound_document.cpp:517
      #2  0x000000000048a45c in (anonymous namespace)::decrypt_xlsx (bytes=std::vector of length 18655, capacity 32768 = {...}, password=u\"VelvetSweatshop\") at /xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp:320
      #3  0x000000000048a2d9 in xlnt::detail::decrypt_xlsx (data=std::vector of length 18655, capacity 32768 = {...}, password=) at /xlnt/source/detail/cryptography/xlsx_crypto_consumer.cpp:339
