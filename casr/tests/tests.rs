@@ -4896,7 +4896,6 @@ fn test_casr_lua() {
     }
 }
 
-
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_js() {

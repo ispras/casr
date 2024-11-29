@@ -16,11 +16,9 @@ pub struct LuaException {
 impl LuaException {
     /// Create new `LuaException` instance from stream
     pub fn new(stream: &str) -> Option<Self> {
-        let re = Regex::new(r#"\S+: .+\n\s*stack traceback:\n(?:.*\n)*\s+\[C\]: (?:in|at) .+"#)
-            .unwrap();
-        let Some(mat) = re.find(stream) else {
-            return None;
-        };
+        let re =
+            Regex::new(r#"\S+: .+\n\s*stack traceback:\n(?:.*\n)*\s+\[C\]: (?:in|at) .+"#).unwrap();
+        let mat = re.find(stream)?;
         Some(LuaException {
             message: mat.as_str().to_string(),
         })
