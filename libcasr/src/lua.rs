@@ -153,7 +153,21 @@ impl CrashLineExt for LuaException {
 
 impl Severity for LuaException {
     fn severity(&self) -> Result<ExecutionClass> {
-        Err(Error::Casr(format!("WRITE ME!")))
+        let re = Regex::new(r#"(?:lua|luajit):(?: .+:)? (.+)"#).unwrap();
+        let lines = self.lines();
+        let description = lines.first().unwrap();
+        let Some(cap) = re.captures(description) else {
+            return Err(Error::Casr(format!(
+                "Couldn't parse exception description: {description}"
+            )));
+        };
+        let description = cap.get(1).unwrap().as_str().to_string();
+        Ok(ExecutionClass::new((
+            "NOT_EXPLOITABLE",
+            &description,
+            &description,
+            "",
+        )))
     }
 }
 
@@ -272,5 +286,14 @@ mod tests {
             panic!("{}", crashline.err().unwrap());
         };
         assert_eq!(crashline.to_string(), "(command line):1");
+
+        let execution_class = exception.severity();
+        let Ok(execution_class) = execution_class else {
+            panic!("{}", execution_class.err().unwrap());
+        };
+        assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
+        assert_eq!(execution_class.short_description, "crash");
+        assert_eq!(execution_class.description, "crash");
+        assert_eq!(execution_class.explanation, "");
     }
 }
