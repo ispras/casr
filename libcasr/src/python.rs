@@ -59,7 +59,7 @@ impl ParseStacktrace for PythonStacktrace {
             stentry.debug.line = line;
         } else {
             return Err(Error::Casr(format!(
-                "Couldn't parse stacktrace line num: {entry}"
+                "Couldn't parse stacktrace line number: {entry}"
             )));
         };
         stentry.function = cap.get(3).unwrap().as_str().to_string();
