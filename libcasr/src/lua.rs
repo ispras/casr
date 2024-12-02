@@ -34,7 +34,7 @@ impl LuaException {
     pub fn lua_report(&self) -> Vec<String> {
         self.message
             .split('\n')
-            .map(|s| s.trim_end().to_string())
+            .map(|s| s.trim().to_string())
             .collect()
     }
 }
@@ -123,17 +123,16 @@ impl CrashLineExt for LuaException {
         let re = Regex::new(r#"\S+: (.+):(\d+):"#).unwrap();
         let mut cap = re.captures(&lines[0]);
         if cap.is_none() {
-            let re = Regex::new(r#"(.+):(\d+):"#).unwrap();
             let Some(index) = lines
                 .iter()
-                .rev()
-                .position(|line| line.trim().ends_with("stack traceback:"))
+                .rposition(|line| line.ends_with("stack traceback:"))
             else {
                 return Err(Error::Casr(
                     "Couldn't find traceback in lua report".to_string(),
                 ));
             };
-            for line in &lines[index..] {
+            let re = Regex::new(r#"(.+):(\d+):"#).unwrap();
+            for line in &lines[index + 1..] {
                 cap = re.captures(line);
                 if cap.is_some() {
                     break;
@@ -183,8 +182,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_lua_stacktrace() {
-        let raw_stacktrace = "
+    fn test_lua_exception() {
+        let stream = "
             lua: (error object is a table value)
             stack traceback:
               [C]: in function 'error'
@@ -199,13 +198,21 @@ mod tests {
               luacheck_parser_parse.lua:18: in main chunk
               [C]: in ?
         ";
-        let sttr = LuaStacktrace::extract_stacktrace(raw_stacktrace);
+        let exception = LuaException::new(stream);
+        let Some(exception) = exception else {
+            panic!("{:?}", exception);
+        };
+
+        let lines = exception.lua_report();
+        assert_eq!(lines.len(), 13);
+
+        let sttr = exception.extract_stacktrace();
         let Ok(sttr) = sttr else {
             panic!("{}", sttr.err().unwrap());
         };
         assert_eq!(sttr.len(), 10);
 
-        let sttr = LuaStacktrace::parse_stacktrace(&sttr);
+        let sttr = exception.parse_stacktrace();
         let Ok(sttr) = sttr else {
             panic!("{}", sttr.err().unwrap());
         };
@@ -255,9 +262,31 @@ mod tests {
         assert_eq!(sttr[7].debug.file, "luacheck_parser_parse.lua".to_string());
         assert_eq!(sttr[7].debug.line, 18);
         assert_eq!(sttr[7].function, "main chunk".to_string());
-    }
-    #[test]
-    fn test_lua_exception() {
+
+        let crashline = exception.crash_line();
+        let Ok(crashline) = crashline else {
+            panic!("{}", crashline.err().unwrap());
+        };
+        assert_eq!(
+            crashline.to_string(),
+            "/usr/local/share/lua/5.4/luacheck/parser.lua:28"
+        );
+
+        let execution_class = exception.severity();
+        let Ok(execution_class) = execution_class else {
+            panic!("{}", execution_class.err().unwrap());
+        };
+        assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
+        assert_eq!(
+            execution_class.short_description,
+            "(error object is a table value)"
+        );
+        assert_eq!(
+            execution_class.description,
+            "(error object is a table value)"
+        );
+        assert_eq!(execution_class.explanation, "");
+
         let stream = "
             custom-lua-interpreter: (command line):1: crash
             stack traceback:
