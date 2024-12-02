@@ -16,8 +16,7 @@ pub struct LuaException {
 impl LuaException {
     /// Create new `LuaException` instance from stream
     pub fn new(stream: &str) -> Option<Self> {
-        let re =
-            Regex::new(r#"\S+: .+\n\s*stack traceback:\n(?:.*\n)*\s+\[C\]: (?:in|at) .+"#).unwrap();
+        let re = Regex::new(r#"\S+: .+\n\s*stack traceback:\s*\n(?:.*\n)*.+: .+"#).unwrap();
         let mat = re.find(stream)?;
         Some(LuaException {
             message: mat.as_str().to_string(),
@@ -51,7 +50,7 @@ impl ParseStacktrace for LuaStacktrace {
             .collect::<Vec<String>>();
         let Some(first) = stacktrace
             .iter()
-            .position(|line| line.trim().starts_with("stack traceback:"))
+            .position(|line| line.trim().ends_with("stack traceback:"))
         else {
             return Err(Error::Casr(
                 "Couldn't find traceback in lua report".to_string(),
@@ -125,7 +124,16 @@ impl CrashLineExt for LuaException {
         let mut cap = re.captures(&lines[0]);
         if cap.is_none() {
             let re = Regex::new(r#"(.+):(\d+):"#).unwrap();
-            for line in &lines[2..] {
+            let Some(index) = lines
+                .iter()
+                .rev()
+                .position(|line| line.trim().ends_with("stack traceback:"))
+            else {
+                return Err(Error::Casr(
+                    "Couldn't find traceback in lua report".to_string(),
+                ));
+            };
+            for line in &lines[index..] {
                 cap = re.captures(line);
                 if cap.is_some() {
                     break;
@@ -251,8 +259,10 @@ mod tests {
     #[test]
     fn test_lua_exception() {
         let stream = "
-            luajit: (command line):1: crash
+            custom-lua-interpreter: (command line):1: crash
             stack traceback:
+                some custom error message
+            stack traceback: 
                 [C]: in function 'error'
                 (command line):1: in main chunk
                 [C]: at 0x607f3df872e0
@@ -263,7 +273,7 @@ mod tests {
         };
 
         let lines = exception.lua_report();
-        assert_eq!(lines.len(), 5);
+        assert_eq!(lines.len(), 7);
 
         let sttr = exception.extract_stacktrace();
         let Ok(sttr) = sttr else {
