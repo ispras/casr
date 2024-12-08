@@ -46,21 +46,21 @@ impl ParseStacktrace for LuaStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let stacktrace = stream
             .split('\n')
-            .map(|l| l.to_string())
+            .map(|l| l.trim().to_string())
             .collect::<Vec<String>>();
         let Some(first) = stacktrace
             .iter()
-            .position(|line| line.trim().ends_with("stack traceback:"))
+            .position(|line| line.ends_with("stack traceback:"))
         else {
             return Err(Error::Casr(
                 "Couldn't find traceback in lua report".to_string(),
             ));
         };
 
-        let re = Regex::new(r#".+:(?:|\d+:) in .+"#).unwrap();
+        let re = Regex::new(r#".+: in .+"#).unwrap();
         Ok(stacktrace[first..]
             .iter()
-            .map(|s| s.trim().to_string())
+            .map(|s| s.to_string())
             .filter(|s| re.is_match(s))
             .collect::<Vec<String>>())
     }
@@ -95,10 +95,7 @@ impl ParseStacktrace for LuaStacktrace {
         };
         if let Some(appendix) = cap.get(3) {
             let appendix = appendix.as_str().to_string();
-            if !appendix.starts_with("function")
-                && !appendix.starts_with("upvalue")
-                && !appendix.starts_with("local")
-            {
+            if appendix.starts_with("main") {
                 stentry.function = appendix + &stentry.function;
             }
         }
