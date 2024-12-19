@@ -11,16 +11,15 @@ env:
 jobs:
   ubuntu-latest:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
     - name: Install Dependences
       run: |
-        sudo add-apt-repository ppa:deadsnakes/ppa
         sudo apt update && sudo apt install -y gdb pip curl python3.10-dev llvm \
             openjdk-17-jdk ca-certificates gnupg
-        python3.10 -m pip install atheris
+        pip3 install atheris
         sudo mkdir -p /etc/apt/keyrings
         curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
         export NODE_MAJOR=20
