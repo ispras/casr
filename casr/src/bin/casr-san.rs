@@ -147,11 +147,11 @@ fn main() -> Result<()> {
     }
     #[cfg(target_os = "linux")]
     {
-        use linux_personality::{personality, ADDR_NO_RANDOMIZE};
+        use linux_personality::{personality, Personality};
 
         unsafe {
             sanitizers_cmd.pre_exec(|| {
-                if personality(ADDR_NO_RANDOMIZE).is_err() {
+                if personality(Personality::ADDR_NO_RANDOMIZE).is_err() {
                     panic!("Cannot set personality");
                 }
                 Ok(())

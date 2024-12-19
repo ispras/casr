@@ -385,7 +385,7 @@ fn build_tree_report(
         }
 
         for line in report.disassembly.iter() {
-            tree.insert_item(line.clone(), Placement::LastChild, row);
+            tree.insert_item(line.replace('\t', "    "), Placement::LastChild, row);
         }
     }
 
@@ -627,7 +627,10 @@ fn build_slider_report(
         });
 
     if !report.disassembly.is_empty() {
-        state.push_str(&format!("\n{}", &report.disassembly.join("\n")));
+        state.push_str(&format!(
+            "\n{}",
+            &report.disassembly.join("\n").replace('\t', "    ")
+        ));
     }
     if !state.is_empty() {
         select.add_item("CrashState", state);
