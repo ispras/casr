@@ -11,6 +11,7 @@ env:
 jobs:
   ubuntu-latest:
 
+    # Atheris fails to install on Ubuntu 24.04, see https://github.com/google/atheris/issues/82
     runs-on: ubuntu-22.04
 
     steps:
