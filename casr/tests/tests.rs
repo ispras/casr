@@ -6163,3 +6163,102 @@ fn test_casr_afl_csharp_ignore_cmd() {
     let _ = fs::remove_dir_all(&paths[4]);
     let _ = fs::remove_dir_all(&paths[5]);
 }
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_libfuzzer_libafl() {
+    use std::collections::HashMap;
+
+    let paths = [
+        abs_path("tests/casr_tests/casrep/test_libafl_crashes"),
+        abs_path("tests/tmp_tests_casr/casr_libafl_out"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    let _ = fs::copy(
+        abs_path("tests/casr_tests/bin/test_libafl_fuzzer"),
+        "/tmp/test_libafl_fuzzer",
+    );
+
+    let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
+        .parent()
+        .unwrap();
+    let output = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap())
+        .args([
+            "-i",
+            &paths[0],
+            "-o",
+            &paths[1],
+            "--",
+            "/tmp/test_libafl_fuzzer",
+            "@@",
+        ])
+        .env(
+            "PATH",
+            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+        )
+        .output()
+        .expect("failed to start casr-libfuzzer");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let res = String::from_utf8_lossy(&output.stderr);
+
+    assert!(!res.is_empty());
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 5, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&res)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 5, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                    if e.extension().is_some() && e.extension().unwrap() == "gdb" {
+                        e = e.with_extension("");
+                    }
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x == 2));
+    let _ = fs::remove_file("/tmp/test_libafl_fuzzer");
+    let _ = fs::remove_dir_all(&paths[1]);
+}
