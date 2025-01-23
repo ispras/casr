@@ -1325,7 +1325,7 @@ fn test_return_av_gdb() {
         );
 
         // Disassembly test
-        assert!(disasm[0].contains("ret "), "Bad disassembly");
+        assert!(disasm[0].contains("ret"), "Bad disassembly");
         assert!(
             disasm[1].contains("nop") && disasm[1].contains("[rax+rax*1+0x0]"),
             "Bad disassembly"
@@ -3055,7 +3055,9 @@ fn test_casr_san() {
             .to_string();
 
         assert_eq!(
-            3 + 2 * (std::env::consts::ARCH == "aarch64") as usize,
+            3 + 2
+                * (std::env::consts::ARCH == "aarch64"
+                    || lsb_release::info().unwrap().version == "24.04") as usize,
             report["Stacktrace"].as_array().unwrap().iter().count()
         );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
@@ -4488,6 +4490,10 @@ fn test_casr_python_atheris() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_python_df() {
+    if lsb_release::info().unwrap().version == "24.04" {
+        // Atheris fails to install, see https://github.com/google/atheris/issues/82
+        return;
+    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -5914,7 +5920,11 @@ fn test_casr_csharp_native() {
             .unwrap()
             .to_string();
 
-        assert_eq!(19, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            19 + (lsb_release::info().unwrap().version == "22.04"
+                || lsb_release::info().unwrap().version == "24.04") as usize,
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AccessViolation");
         assert!(report["CrashLine"]
