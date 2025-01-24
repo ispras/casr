@@ -1,0 +1,42 @@
+name: amd64-ubuntu2204
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  ubuntu-latest:
+
+    # Atheris fails to install on Ubuntu 24.04, thus, this pipeline can test Atheris on 22.04
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --all-features --verbose
+    - name: Run tests
+      run: |
+        sudo apt update && sudo apt install -y gdb pip curl python3-dev llvm \
+            openjdk-17-jdk ca-certificates gnupg
+        pip3 install atheris
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+        export NODE_MAJOR=20
+        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+        sudo apt update && sudo apt install -y nodejs
+        sudo npm install -g jsfuzz
+        sudo npm install --save-dev @jazzer.js/core
+        wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+        dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb
+        sudo apt update && sudo apt install -y --no-install-recommends dotnet-sdk-8.0
+        curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
+        ./rustup.sh -y && rm rustup.sh
+        rustup install nightly
+        export PATH=/root/.cargo/bin:$PATH
+        cargo install cargo-fuzz
+        cargo test --release --verbose --lib -- --test-threads 1
+        cargo test --release --verbose --package casr
