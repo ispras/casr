@@ -1,4 +1,4 @@
-name: amd64
+name: amd64-ubuntu-22.04
 
 on:
   push:
@@ -9,9 +9,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  ubuntu-latest:
+  ubuntu-22.04:
 
-    runs-on: ubuntu-latest
+    # Atheris fails to install on Ubuntu 24.04, thus, this pipeline can test Atheris on 22.04
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
@@ -21,8 +22,7 @@ jobs:
       run: |
         sudo apt update && sudo apt install -y gdb pip curl python3-dev llvm \
             openjdk-17-jdk ca-certificates gnupg
-        # Atheris fails to install on Ubuntu 24.04, see https://github.com/google/atheris/issues/82
-        # pip3 install atheris
+        pip3 install atheris
         sudo mkdir -p /etc/apt/keyrings
         curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
         export NODE_MAJOR=20
