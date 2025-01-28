@@ -3498,9 +3498,21 @@ fn test_casr_san_rust_panic() {
         ),
     ];
 
+    let rustup_output = Command::new("rustup")
+        .args(["toolchain", "list"])
+        .output()
+        .expect("failed to execute rustup");
+    let rustup_stdout = String::from_utf8_lossy(&rustup_output.stdout).to_string();
+    let re = Regex::new(r"(?P<toolchain>nightly-\d{4}-\d{2}-\d{2})").unwrap();
+    let toolchain = if let Some(tc) = re.captures(rustup_stdout.as_str()) {
+        tc.name("toolchain").map(|x| x.as_str()).unwrap()
+    } else {
+        "nightly"
+    };
+
     let cargo = Command::new("cargo")
         .args([
-            "+nightly",
+            ("+".to_owned() + toolchain).as_str(),
             "fuzz",
             "build",
             "--target",
@@ -5921,8 +5933,7 @@ fn test_casr_csharp_native() {
             .to_string();
 
         assert_eq!(
-            19 + (lsb_release::info().unwrap().version == "22.04"
-                || lsb_release::info().unwrap().version == "24.04") as usize,
+            19 + (lsb_release::info().unwrap().version == "24.04") as usize,
             report["Stacktrace"].as_array().unwrap().iter().count()
         );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
