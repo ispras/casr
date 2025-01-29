@@ -40,7 +40,7 @@ pub struct ExecutionClass {
 /// Instances of `ExecutionClass` structure.
 /// Add new classes to the end of array.
 /// TODO: Think about adding some ID for array element.
-pub const CLASSES: &[(&str, &str, &str, &str); 74] = &[
+pub const CLASSES: &[(&str, &str, &str, &str); 75] = &[
     (
         "EXPLOITABLE",
         "SegFaultOnPc",
@@ -484,6 +484,12 @@ pub const CLASSES: &[(&str, &str, &str, &str); 74] = &[
         "overwrites-const-input",
         "Attempt to overwrite constant input",
         "Fuzz target overwrites its constant input.",
+    ),
+    (
+        "NOT_EXPLOITABLE",
+        "use-of-uninitialized-value",
+        "Use of uninitialized value",
+        "The target attempted to access memory that was not initialized."
     ),
 ];
 

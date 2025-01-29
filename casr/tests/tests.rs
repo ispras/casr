@@ -20,6 +20,7 @@ lazy_static::lazy_static! {
     static ref EXE_CASR_LIBFUZZER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-libfuzzer"));
     static ref EXE_CASR_CLUSTER: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-cluster"));
     static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
+    static ref EXE_CASR_MSAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-msan"));
     static ref EXE_CASR_UBSAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-ubsan"));
     static ref EXE_CASR_PYTHON: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-python"));
     static ref EXE_CASR_LUA: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-lua"));
@@ -3626,6 +3627,79 @@ fn test_casr_san_sigbus() {
 
     let _ = std::fs::remove_file(&paths[1]);
 }
+
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_msan() {
+    // Double free test
+    let paths = [
+        abs_path("tests/casr_tests/test_msan.cpp"),
+        abs_path("tests/tmp_tests_casr/test_msan"),
+    ];
+
+    let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=memory -O0 {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_MSAN.read().unwrap())
+        .args(["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(
+        output.status.success(),
+        "Stdout: {}\n. Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+
+        assert!(stacktrace.len() == 3);
+        assert!(stacktrace[0].contains("in main"));
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "use-of-uninitialized-value");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .eq("tests/casr_tests/test_msan.cpp:12:9")
+                // We build a test on ubuntu18 and run it on ubuntu20.
+                // Debug information is broken.
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_msan+0x499fd8") // We can't hardcode the offset because we rebuild tests every time.
+            );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_file(&paths[1]);
+
+}
+
 
 #[test]
 fn test_casr_ignore_frames() {

@@ -27,7 +27,8 @@ CASR is maintained by:
 
 CASR is a set of tools that allows you to collect crash reports in different
 ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze
-ASAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
+ASAN reports or `casr-msan` to analyze
+MSAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
 reports from gdb. Use `casr-python` to analyze python reports and get report
 from [Atheris](https://github.com/google/atheris). Use `casr-java` to analyze
 java reports and get report from
@@ -74,6 +75,7 @@ crashes.
 It can analyze crashes from different sources:
 
 * AddressSanitizer
+* MemorySanitizer
 * UndefinedBehaviorSanitizer
 * Gdb output
 
@@ -144,6 +146,11 @@ Create report from AddressSanitizer output:
 
     $ clang++ -fsanitize=address -O0 -g casr/tests/casr_tests/test_asan_df.cpp -o test_asan_df
     $ casr-san -o asan.casrep -- ./test_asan_df
+
+Create report from MemorySanitizer output:
+
+    $ clang++ -fsanitize=memory -O0 casr/tests/casr_tests/test_msan.cpp -o test_msan
+    $ casr-msan -o msan.casrep -- ./test_msan
 
 Create report from UndefinedBehaviorSanitizer output:
 
