@@ -1325,7 +1325,7 @@ fn test_return_av_gdb() {
         );
 
         // Disassembly test
-        assert!(disasm[0].contains("ret "), "Bad disassembly");
+        assert!(disasm[0].contains("ret"), "Bad disassembly");
         assert!(
             disasm[1].contains("nop") && disasm[1].contains("[rax+rax*1+0x0]"),
             "Bad disassembly"
@@ -3055,7 +3055,9 @@ fn test_casr_san() {
             .to_string();
 
         assert_eq!(
-            3 + 2 * (std::env::consts::ARCH == "aarch64") as usize,
+            3 + 2
+                * (std::env::consts::ARCH == "aarch64"
+                    || lsb_release::info().unwrap().version == "24.04") as usize,
             report["Stacktrace"].as_array().unwrap().iter().count()
         );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
@@ -3496,9 +3498,21 @@ fn test_casr_san_rust_panic() {
         ),
     ];
 
+    let rustup_output = Command::new("rustup")
+        .args(["toolchain", "list"])
+        .output()
+        .expect("failed to execute rustup");
+    let rustup_stdout = String::from_utf8_lossy(&rustup_output.stdout).to_string();
+    let re = Regex::new(r"(?P<toolchain>nightly-\d{4}-\d{2}-\d{2})").unwrap();
+    let toolchain = if let Some(tc) = re.captures(rustup_stdout.as_str()) {
+        tc.name("toolchain").map(|x| x.as_str()).unwrap()
+    } else {
+        "nightly"
+    };
+
     let cargo = Command::new("cargo")
         .args([
-            "+nightly",
+            ("+".to_owned() + toolchain).as_str(),
             "fuzz",
             "build",
             "--target",
@@ -4159,6 +4173,10 @@ fn test_casr_libfuzzer() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_libfuzzer_atheris() {
+    if lsb_release::info().unwrap().version == "24.04" {
+        // Atheris fails to install, see https://github.com/google/atheris/issues/82
+        return;
+    }
     use std::collections::HashMap;
 
     let paths = [
@@ -4439,6 +4457,10 @@ fn test_casr_java_native_lib() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_python_atheris() {
+    if lsb_release::info().unwrap().version == "24.04" {
+        // Atheris fails to install, see https://github.com/google/atheris/issues/82
+        return;
+    }
     // Division by zero atheris test
     let paths = [
         abs_path("tests/casr_tests/python/test_casr_python_atheris.py"),
@@ -4480,6 +4502,10 @@ fn test_casr_python_atheris() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_python_df() {
+    if lsb_release::info().unwrap().version == "24.04" {
+        // Atheris fails to install, see https://github.com/google/atheris/issues/82
+        return;
+    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -4577,6 +4603,10 @@ fn test_casr_san_python_df() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_atheris_df() {
+    if lsb_release::info().unwrap().version == "24.04" {
+        // Atheris fails to install, see https://github.com/google/atheris/issues/82
+        return;
+    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -4678,6 +4708,10 @@ fn test_casr_san_atheris_df() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_python_call_san_df() {
+    if lsb_release::info().unwrap().version == "24.04" {
+        // Atheris fails to install, see https://github.com/google/atheris/issues/82
+        return;
+    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -5898,7 +5932,10 @@ fn test_casr_csharp_native() {
             .unwrap()
             .to_string();
 
-        assert_eq!(19, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(
+            19 + (lsb_release::info().unwrap().version == "24.04") as usize,
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AccessViolation");
         assert!(report["CrashLine"]
