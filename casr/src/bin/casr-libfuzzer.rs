@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
         .version(clap::crate_version!())
-        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz)")
+        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz) or LibAFL based fuzzer")
         .term_width(90)
         .arg(
             Arg::new("log-level")
@@ -48,7 +48,7 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .default_value(".")
                 .value_name("INPUT_DIR")
-                .help("Directory containing crashes found by libFuzzer")
+                .help("Directory containing crashes found by libFuzzer or LibAFL")
                 .value_parser(move |arg: &str| {
                     let i_dir = Path::new(arg);
                     if !i_dir.exists() {
@@ -185,18 +185,34 @@ fn main() -> Result<()> {
         argv.len() - 1
     };
 
-    // Get all crashes.
-    let crashes: HashMap<String, CrashInfo> = fs::read_dir(input_dir)?
+    let crash_files: HashMap<String, PathBuf> = fs::read_dir(input_dir)?
         .flatten()
         .map(|p| p.path())
         .filter(|p| p.is_file())
         .map(|p| (p.file_name().unwrap().to_str().unwrap().to_string(), p))
-        .filter(|(fname, _)| fname.starts_with("crash-") || fname.starts_with("leak-"))
+        .collect();
+
+    // Determine crash directory format for libfuzzer or LibAFL.
+    let crash_filter = if crash_files
+        .iter()
+        .any(|(fname, _)| fname.starts_with("crash-") || fname.starts_with("leak-"))
+    {
+        |arg: &(&std::string::String, &PathBuf)| {
+            arg.0.starts_with("crash-") || arg.0.starts_with("leak-")
+        }
+    } else {
+        |arg: &(&std::string::String, &PathBuf)| !arg.0.starts_with(".")
+    };
+
+    // Get all crashes.
+    let crashes: HashMap<String, CrashInfo> = crash_files
+        .iter()
+        .filter(crash_filter)
         .map(|(fname, p)| {
             (
-                fname,
+                fname.clone(),
                 CrashInfo {
-                    path: p,
+                    path: p.to_path_buf(),
                     target_args: argv.iter().map(|x| x.to_string()).collect(),
                     envs: envs.clone(),
                     at_index: Some(at_index),

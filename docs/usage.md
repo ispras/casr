@@ -16,8 +16,9 @@ crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus) and
 AFL-based fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 `casr-libfuzzer` can triage crashes found by
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,
-Atheris, Jazzer, Jazzer.js, jsfuzz). `casr-dojo` allows to upload new and
-unique CASR reports to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo).
+Atheris, Jazzer, Jazzer.js, jsfuzz) or by [LibAFL](https://github.com/AFLplusplus/LibAFL) based
+[fuzzers](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers).
+`casr-dojo` allows to upload new and unique CASR reports to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo).
 `casr-cli` is meant to provide TUI for viewing reports and converting them into
 SARIF report. Reports triage (deduplication, clustering) is done by `casr-cluster`.
 
@@ -576,7 +577,7 @@ your project before (via `dotnet build` or `dotnet publish`) and specify `--no-b
 ## casr-libfuzzer
 
 Triage crashes found by libFuzzer based fuzzer
-(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz)
+(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz) or LibAFL based fuzzer
 
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> -- <ARGS>...
 
@@ -592,7 +593,7 @@ Triage crashes found by libFuzzer based fuzzer
               Timeout (in seconds) for target execution, 0 means that timeout is disabled
               [default: 0]
       -i, --input <INPUT_DIR>
-              Directory containing crashes found by libFuzzer [default: .]
+              Directory containing crashes found by libFuzzer or LibAFL [default: .]
       -o, --output <OUTPUT_DIR>
               Output directory with triaged reports
           --join <PREV_CLUSTERS_DIR>
@@ -618,7 +619,8 @@ Triage crashes found by libFuzzer based fuzzer
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)/
 [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz)).
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)) or [LibAFL](https://github.com/AFLplusplus/LibAFL) based
+[fuzzers](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers).
 It is pretty much like `casr-afl`.
 
 libFuzzer example:
@@ -643,6 +645,10 @@ Jazzer.js example (Jazzer.js installation [guide](https://github.com/CodeIntelli
     $ sudo npm install xml2js
     $ sudo npm install --save-dev @jazzer.js/core
     $ casr-libfuzzer -i ./xml2js -o casr/tests/tmp_tests_casr/xml2js_fuzzer_out/out -- npx jazzer casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
+
+LibAFL example:
+
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/test_libafl_crashes -o casr/tests/tmp_tests_casr/casr_libafl_out -- casr/tests/casr_tests/bin/test_libafl_fuzzer @@
 
 You can set environment variable `RUST_BACKTRACE=(1|full)` for `casr-libfuzzer`. This
 variable may be used by [casr-san](#casr-san).

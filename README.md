@@ -52,7 +52,8 @@ and AFL-based fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)
 /[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz)).
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)) or [LibAFL](https://github.com/AFLplusplus/LibAFL)
+based [fuzzers](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers).
 `casr-dojo` allows to upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) (available with
 `dojo` feature).
@@ -228,6 +229,10 @@ Triage Jazzer.js crashes with casr-libfuzzer (Jazzer.js installation [guide](htt
     $ sudo npm install --save-dev @jazzer.js/core
     $ casr-libfuzzer -i ./xml2js -o casr/tests/tmp_tests_casr/xml2js_fuzzer_out/out -- npx jazzer casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
 
+Triage LibAFL crashes with casr-libfuzzer:
+
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/test_libafl_crashes -o casr/tests/tmp_tests_casr/casr_libafl_out -- casr/tests/casr_tests/bin/test_libafl_fuzzer @@
+
 Upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo):
 
@@ -260,8 +265,8 @@ fuzzer [Sharpfuzz](https://www.llvm.org/docs/LibFuzzer.html), the pipeline
 If you use [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)
 /[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz)), the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically
-by `casr-libfuzzer`.
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)) or [LibAFL](https://github.com/AFLplusplus/LibAFL) based fuzzer,
+the pipeline (without `casr-ubsan` and `casr-dojo`) could be done automatically by `casr-libfuzzer`.
 
 ## Contributing
 
