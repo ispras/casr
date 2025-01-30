@@ -32,6 +32,8 @@ jobs:
           export PATH=/root/.cargo/bin:$PATH
           export CARGO_TERM_COLOR=always
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
-          cargo build -j 1 --release --verbose
+          export CARGO_BUILD_JOBS=1
+          cargo build --release --verbose -p libcasr
+          cargo build --release --verbose -p casr
           cargo test --release --verbose --lib -- --test-threads 1
           cargo test --release --verbose --package casr
