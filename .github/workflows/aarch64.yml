@@ -2,7 +2,7 @@ name: aarch64
 
 on:
   workflow_run:
-    workflows: ["amd64", "coverage"]
+    workflows: [amd64, coverage]
     types: [completed] #requested
 
 env:
