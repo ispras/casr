@@ -5,6 +5,7 @@ on:
     workflows: [amd64, coverage]
     types:
       - completed
+    branches: [fix-aarch64]
 
 env:
   CARGO_TERM_COLOR: always
