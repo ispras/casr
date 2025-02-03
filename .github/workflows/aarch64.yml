@@ -3,7 +3,8 @@ name: aarch64
 on:
   workflow_run:
     workflows: [amd64, coverage]
-    types: [completed] #requested
+    types:
+      - completed
 
 env:
   CARGO_TERM_COLOR: always
