@@ -1,7 +1,9 @@
 name: aarch64
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows: [amd64, coverage]
+    types: [completed] #requested
 
 env:
   CARGO_TERM_COLOR: always
