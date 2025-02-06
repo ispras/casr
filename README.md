@@ -210,6 +210,8 @@ Triage crashes after Sharpfuzz fuzzing with casr-afl:
     $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out
     $ # You may force your own run arguments using --ignore-cmdline
     $ casr-afl --ignore-cmdline -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --no-build --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
+    $ # If you use vanilla AFL for fuzzing with Sharpfuzz, force your own run arguments via -- <ARGS>
+    $ casr-afl -i casr/tests/casr_tests/casrep/afl-out-sharpfuzz/afl_main-worker -o casr/tests/tmp_tests_casr/casr_afl_csharp_out -- dotnet run --no-build --project /tmp/test_casr_afl_csharp/test_casr_afl_csharp.csproj @@
 
 Triage libFuzzer crashes with casr-libfuzzer:
 
