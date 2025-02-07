@@ -6059,14 +6059,13 @@ fn test_casr_afl_csharp_ignore_cmd() {
         abs_path("tests/tmp_tests_casr/casr_afl_csharp_ignore_cmd_out"),
         abs_path("tests/casr_tests/csharp/test_casr_afl_csharp"),
         abs_path("tests/casr_tests/csharp/test_casr_afl_csharp_module"),
-        abs_path("tests/tmp_tests_casr/test_casr_afl_csharp"),
-        abs_path("tests/tmp_tests_casr/test_casr_afl_csharp_module"),
+        abs_path("/tmp/casr_afl_csharp_ignore_cmd/test_casr_afl_csharp"),
+        abs_path("/tmp/casr_afl_csharp_ignore_cmd/test_casr_afl_csharp_module"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
-    let _ = fs::remove_dir_all(&paths[4]);
-    let _ = fs::remove_dir_all(&paths[5]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    let _ = fs::create_dir_all("/tmp/casr_afl_csharp_ignore_cmd");
     let _ = copy_dir(&paths[2], &paths[4]).unwrap();
     let _ = copy_dir(&paths[3], &paths[5]).unwrap();
     let Ok(dotnet_path) = which::which("dotnet") else {
@@ -6160,8 +6159,7 @@ fn test_casr_afl_csharp_ignore_cmd() {
     }
 
     assert!(storage.values().all(|x| *x > 1));
-    let _ = fs::remove_dir_all(&paths[4]);
-    let _ = fs::remove_dir_all(&paths[5]);
+    let _ = fs::remove_dir_all("/tmp/casr_afl_csharp_ignore_cmd");
 }
 
 #[test]
@@ -6171,17 +6169,16 @@ fn test_casr_afl_csharp_vanilla_afl() {
 
     let paths = [
         abs_path("tests/casr_tests/casrep/afl-out-sharpfuzz/afl_main-worker"),
-        abs_path("tests/tmp_tests_casr/casr_afl_csharp_afl_dir_out"),
+        abs_path("tests/tmp_tests_casr/casr_afl_csharp_vanilla_afl_out"),
         abs_path("tests/casr_tests/csharp/test_casr_afl_csharp"),
         abs_path("tests/casr_tests/csharp/test_casr_afl_csharp_module"),
-        abs_path("tests/tmp_tests_casr/test_casr_afl_csharp"),
-        abs_path("tests/tmp_tests_casr/test_casr_afl_csharp_module"),
+        abs_path("/tmp/casr_afl_chsarp_vanilla/test_casr_afl_csharp"),
+        abs_path("/tmp/casr_afl_chsarp_vanilla/test_casr_afl_csharp_module"),
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
-    let _ = fs::remove_dir_all(&paths[4]);
-    let _ = fs::remove_dir_all(&paths[5]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
+    let _ = fs::create_dir_all("/tmp/casr_afl_chsarp_vanilla");
     let _ = copy_dir(&paths[2], &paths[4]).unwrap();
     let _ = copy_dir(&paths[3], &paths[5]).unwrap();
     let Ok(dotnet_path) = which::which("dotnet") else {
@@ -6274,8 +6271,7 @@ fn test_casr_afl_csharp_vanilla_afl() {
     }
 
     assert!(storage.values().all(|x| *x > 1));
-    let _ = fs::remove_dir_all(&paths[4]);
-    let _ = fs::remove_dir_all(&paths[5]);
+    let _ = fs::remove_dir_all("/tmp/casr_afl_chsarp_vanilla");
 }
 
 #[test]
