@@ -227,6 +227,11 @@ fn main() -> Result<()> {
             info.path = crash.path();
             crashes.insert(crash.file_name().into_string().unwrap(), info);
         }
+
+        // We don't need to continue cycle for vanilla AFL directory
+        if afl_dir {
+            break;
+        }
     }
 
     if ignore_cmdline || !is_casr_gdb {
