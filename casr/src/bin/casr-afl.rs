@@ -134,16 +134,26 @@ fn main() -> Result<()> {
         Vec::new()
     };
 
-    if args.is_empty() && matches.get_flag("ignore-cmdline") {
-        bail!("ARGS is empty, but \"ignore-cmdline\" option is provided.");
-    }
-
     let hint = matches.get_one::<String>("hint").unwrap();
+    let input = matches.get_one::<PathBuf>("input").unwrap();
+    let afl_dir = input.join("crashes").is_dir();
+    let ignore_cmdline = matches.get_flag("ignore-cmdline") || afl_dir;
+
+    if args.is_empty() && ignore_cmdline {
+        if afl_dir {
+            bail!("ARGS is empty, but vanilla AFL directory is given as input.");
+        } else {
+            bail!("ARGS is empty, but \"ignore-cmdline\" option is provided.");
+        }
+    }
 
     // Get all crashes.
     let mut crashes: HashMap<String, CrashInfo> = HashMap::new();
-    for node_dir in fs::read_dir(matches.get_one::<PathBuf>("input").unwrap())? {
-        let path = node_dir?.path();
+    for node_dir in fs::read_dir(input)? {
+        let mut path = node_dir?.path();
+        if afl_dir {
+            path.pop();
+        }
         if !path.is_dir() {
             continue;
         }
@@ -152,7 +162,7 @@ fn main() -> Result<()> {
         let mut crash_info = casr::triage::CrashInfo {
             ..Default::default()
         };
-        crash_info.target_args = if matches.get_flag("ignore-cmdline") {
+        crash_info.target_args = if ignore_cmdline {
             args.clone()
         } else {
             let cmdline_path = path.join("cmdline");
@@ -217,9 +227,14 @@ fn main() -> Result<()> {
             info.path = crash.path();
             crashes.insert(crash.file_name().into_string().unwrap(), info);
         }
+
+        // We don't need to continue cycle for vanilla AFL directory
+        if afl_dir {
+            break;
+        }
     }
 
-    if matches.get_flag("ignore-cmdline") || !is_casr_gdb {
+    if ignore_cmdline || !is_casr_gdb {
         args = Vec::new();
     }
 
