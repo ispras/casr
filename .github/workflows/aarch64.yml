@@ -33,7 +33,7 @@ jobs:
           export CARGO_TERM_COLOR=always
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
           export RUSTFLAGS="-C link-arg=-fuse-ld=lld"
-          cargo install capstone@~0.12 --verbose
+          cargo build --release --verbose --package capstone
           cargo build --release --verbose
           cargo test --release --verbose --lib -- --test-threads 1
           cargo test --release --verbose --package casr
