@@ -20,7 +20,7 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
     let s = String::from_utf8_lossy(&data[1..]);
-    init_ignored_frames!("cpp", "csharp", "go", "java", "js", "python", "rust");
+    init_ignored_frames!("cpp", "csharp", "go", "java", "js", "lua", "python", "rust");
     match data[0] % 8 {
         0 => {
             // Asan
