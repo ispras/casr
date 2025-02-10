@@ -35,6 +35,7 @@ jobs:
           export CARGO_BUILD_JOBS=1
           export RUSTFLAGS="-C link-arg=-fuse-ld=lld"
           cargo build --release --verbose --package capstone
+          cargo build --release --verbose --package rayon
           cargo build --release --verbose --package libcasr
           cargo build --release --verbose --package casr
           cargo test --release --verbose --lib -- --test-threads 1
