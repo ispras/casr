@@ -19,7 +19,7 @@ jobs:
     - name: Install Dependences
       run: |
         sudo apt update && sudo apt install -y gdb pip curl python3-dev llvm \
-            openjdk-17-jdk ca-certificates gnupg
+            openjdk-17-jdk ca-certificates gnupg lua5.4
         pip3 install atheris
         sudo mkdir -p /etc/apt/keyrings
         curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg

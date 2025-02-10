@@ -22,6 +22,7 @@ lazy_static::lazy_static! {
     static ref EXE_CASR_SAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-san"));
     static ref EXE_CASR_UBSAN: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-ubsan"));
     static ref EXE_CASR_PYTHON: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-python"));
+    static ref EXE_CASR_LUA: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-lua"));
     static ref EXE_CASR_JAVA: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-java"));
     static ref EXE_CASR_JS: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-js"));
     static ref EXE_CASR_CSHARP: RwLock<&'static str> = RwLock::new(env!("CARGO_BIN_EXE_casr-csharp"));
@@ -4888,6 +4889,45 @@ fn test_casr_cluster_d_python() {
     }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_lua() {
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr_lua");
+    let test_path = abs_path("tests/casr_tests/lua/test_casr_lua.lua");
+    let _ = std::fs::remove_dir_all(test_dir);
+
+    let output = Command::new(*EXE_CASR_LUA.read().unwrap())
+        .args(["--stdout", "--", &test_path])
+        .output()
+        .expect("failed to start casr-lua");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(6, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "attempt to div a 'string' with a 'number'");
+        assert!(report["CrashLine"]
+            .as_str()
+            .unwrap()
+            .contains("test_casr_lua.lua:6"));
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
 }
 
 #[test]

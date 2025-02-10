@@ -6,21 +6,22 @@ ASAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
 reports from gdb. Use `casr-python` to analyze python reports and get report
 from [Atheris](https://github.com/google/atheris). Use `casr-java` to analyze
 java reports and get report from
-[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). Use `casr-js`
-to analyze JavaScript reports and get report from
+[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer). Use `casr-js` to
+analyze JavaScript reports and get report from
 [Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js) or
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz).
-Use `casr-csharp` to analyze C# reports and get report from
-[Sharpfuzz](https://github.com/Metalnem/sharpfuzz). `casr-afl` can triage
-crashes found by [AFL++](https://github.com/AFLplusplus/AFLplusplus) and
-AFL-based fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
-`casr-libfuzzer` can triage crashes found by
-[libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) (libFuzzer, go-fuzz,
-Atheris, Jazzer, Jazzer.js, jsfuzz) or by [LibAFL](https://github.com/AFLplusplus/LibAFL) based
-[fuzzers](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers).
-`casr-dojo` allows to upload new and unique CASR reports to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo).
-`casr-cli` is meant to provide TUI for viewing reports and converting them into
-SARIF report. Reports triage (deduplication, clustering) is done by `casr-cluster`.
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz). Use `casr-csharp` to analyze C#
+reports and get report from [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
+Use `casr-lua` to analyze Lua reports. `casr-afl` can triage crashes found by
+[AFL++](https://github.com/AFLplusplus/AFLplusplus) and AFL-based fuzzer
+[Sharpfuzz](https://github.com/Metalnem/sharpfuzz). `casr-libfuzzer` can triage
+crashes found by [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html)
+(libFuzzer, go-fuzz, Atheris, Jazzer, Jazzer.js, jsfuzz) or by
+[LibAFL](https://github.com/AFLplusplus/LibAFL) based
+[fuzzers](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers). `casr-dojo`
+allows to upload new and unique CASR reports to
+[DefectDojo](https://github.com/DefectDojo/django-DefectDojo). `casr-cli` is
+meant to provide TUI for viewing reports and converting them into SARIF report.
+Reports triage (deduplication, clustering) is done by `casr-cluster`.
 
 ## casr-gdb
 
@@ -232,6 +233,32 @@ Create CASR reports (.casrep) from C# reports
 Run casr-csharp:
 
     $ casr-csharp -o csharp.casrep -- dotnet run --project casr/tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.csproj
+
+## casr-lua
+
+Create CASR reports (.casrep) from Lua reports
+
+    Usage: casr-lua [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
+
+    Arguments:
+      <ARGS>...  Add "-- <path> <arguments>" to run
+
+    Options:
+      -o, --output <REPORT>      Path to save report. Path can be a directory, then report
+                                 name is generated
+          --stdout               Print CASR report to stdout
+          --stdin <FILE>         Stdin file for program
+      -t, --timeout <SECONDS>    Timeout (in seconds) for target execution, 0 value means that
+                                 timeout is disabled [default: 0]
+          --ignore <FILE>        File with regular expressions for functions and file paths
+                                 that should be ignored
+          --strip-path <PREFIX>  Path prefix to strip from stacktrace [env: CASR_STRIP_PATH=]
+      -h, --help                 Print help
+      -V, --version              Print version
+
+Run casr-lua:
+
+    $ casr-lua -o lua.casrep -- casr/tests/casr_tests/lua/test_casr_lua.lua
 
 ## casr-core
 

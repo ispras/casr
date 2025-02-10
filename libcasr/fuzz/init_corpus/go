@@ -1,4 +1,4 @@
-runtime stack:
+runtime stack:
 runtime.throw({0x565860?, 0x400000?})
 	runtime/panic.go:1047 +0x5f fp=0x7fffffffdb40 sp=0x7fffffffdb10 pc=0x49745f
 runtime.sysMapOS(0xc000400000, 0x1b82b8000000?)

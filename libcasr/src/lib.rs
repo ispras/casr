@@ -12,12 +12,13 @@
 //! and program languages:
 //!
 //! * C/C++
-//! * Rust
+//! * C#
 //! * Go
-//! * Python
 //! * Java
 //! * JavaScript
-//! * C#
+//! * Lua
+//! * Python
+//! * Rust
 //!
 //! It could be built with `exploitable` feature for severity estimation crashes
 //! collected from gdb. To save crash reports as json (.casrep/.sarif) use `serde` feature.
@@ -34,6 +35,7 @@ pub mod gdb;
 pub mod go;
 pub mod java;
 pub mod js;
+pub mod lua;
 pub mod python;
 pub mod report;
 pub mod rust;

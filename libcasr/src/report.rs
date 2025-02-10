@@ -8,6 +8,7 @@ use crate::gdb::GdbStacktrace;
 use crate::go::GoStacktrace;
 use crate::java::JavaStacktrace;
 use crate::js::JsStacktrace;
+use crate::lua::LuaStacktrace;
 use crate::python::PythonStacktrace;
 use crate::rust::RustStacktrace;
 use crate::stacktrace::*;
@@ -192,6 +193,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub ubsan_report: Vec<String>,
+    /// Lua report.
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "LuaReport", deserialize = "LuaReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub lua_report: Vec<String>,
     /// Python report.
     #[cfg_attr(
         feature = "serde",
@@ -590,6 +598,8 @@ impl CrashReport {
             JsStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.csharp_report.is_empty() {
             CSharpStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.lua_report.is_empty() {
+            LuaStacktrace::parse_stacktrace(&self.stacktrace)?
         } else {
             GdbStacktrace::parse_stacktrace(&self.stacktrace)?
         };
@@ -739,6 +749,14 @@ impl fmt::Display for CrashReport {
             report += &(self.ubsan_report.join("\n") + "\n");
         }
 
+        // LuaReport
+        if !self.lua_report.is_empty() {
+            report += "\n===LuaReport===\n";
+            for e in self.lua_report.iter() {
+                report += &format!("{e}\n");
+            }
+        }
+
         // PythonReport
         if !self.python_report.is_empty() {
             report += "\n===PythonReport===\n";
@@ -878,6 +896,13 @@ mod tests {
                 "/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29: runtime error: signed integer overflow: 65535 * 32769 cannot be represented in type 'int'".to_string(),
                 "SUMMARY: UndefinedBehaviorSanitizer: signed-integer-overflow /home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29 in".to_string(),
             ];
+        report.lua_report = vec![
+            "luajit: (command line):1: crash".to_string(),
+            "stack traceback:".to_string(),
+            "[C]: in function 'error'".to_string(),
+            "(command line):1: in main chunk".to_string(),
+            "[C]: at 0x607f3df872e0".to_string(),
+        ];
         report.python_report = vec![
             " === Uncaught Python exception: ===".to_string(),
             "TypeError: unhashable type: 'list'".to_string(),
@@ -964,6 +989,13 @@ mod tests {
             "===UbsanReport===".to_string(),
             "/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29: runtime error: signed integer overflow: 65535 * 32769 cannot be represented in type 'int'".to_string(),
             "SUMMARY: UndefinedBehaviorSanitizer: signed-integer-overflow /home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29 in".to_string(),
+            "".to_string(),
+            "===LuaReport===".to_string(),
+            "luajit: (command line):1: crash".to_string(),
+            "stack traceback:".to_string(),
+            "[C]: in function 'error'".to_string(),
+            "(command line):1: in main chunk".to_string(),
+            "[C]: at 0x607f3df872e0".to_string(),
             "".to_string(),
             "===PythonReport===".to_string(),
             " === Uncaught Python exception: ===".to_string(),
