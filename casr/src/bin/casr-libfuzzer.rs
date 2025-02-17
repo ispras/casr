@@ -161,6 +161,14 @@ fn main() -> Result<()> {
                 || argv[0].ends_with("jsfuzz"))
     {
         "casr-js"
+    } else if hint == "lua"
+        || hint == "auto"
+            && (argv[0].ends_with(".lua")
+                || argv[0] == "lua"
+                || argv[0] == "luajit"
+                || argv.len() > 1 && argv[1].ends_with(".lua"))
+    {
+        "casr-lua"
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
         if hint == "san"
