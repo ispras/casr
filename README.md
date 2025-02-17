@@ -52,7 +52,8 @@ and AFL-based fuzzer [Sharpfuzz](https://github.com/Metalnem/sharpfuzz).
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzer
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)
 /[Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz)) or [LibAFL](https://github.com/AFLplusplus/LibAFL)
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)/[luzer](https://github.com/ligurio/luzer))
+or [LibAFL](https://github.com/AFLplusplus/LibAFL)
 based [fuzzers](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers).
 `casr-dojo` allows to upload new and unique CASR reports to
 [DefectDojo](https://github.com/DefectDojo/django-DefectDojo) (available with
@@ -241,6 +242,14 @@ Triage Jazzer.js crashes with casr-libfuzzer (Jazzer.js installation [guide](htt
     $ sudo npm install xml2js
     $ sudo npm install --save-dev @jazzer.js/core
     $ casr-libfuzzer -i ./xml2js -o casr/tests/tmp_tests_casr/xml2js_fuzzer_out/out -- npx jazzer casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
+
+Triage luzer crashes with casr-libfuzzer:
+
+    $ unzip casr/tests/casr_tests/lua/xml2lua.zip && cd xml2lua && luarocks --local build && cd .. && rm -rf xml2lua
+    $ git clone https://github.com/azanegin/luzer.git && \
+            cd luzer && git checkout 77642ba37430eded66d171a68d7e9c3f6347d625 && luarocks --local build && cd .. && rm -rf luzer
+    $ mkdir -p casr/tests/tmp_tests_casr/casr_libfuzzer_luzer_out
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/luzer_crashes_xml2lua -o casr/tests/tmp_tests_casr/casr_libfuzzer_luzer_out -- casr/tests/casr_tests/lua/stdin_parse_xml.lua
 
 Triage LibAFL crashes with casr-libfuzzer:
 
