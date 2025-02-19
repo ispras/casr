@@ -200,12 +200,12 @@ fn main() -> Result<()> {
 
     // Get input file argument index.
     let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
-        idx + 1
+        Some(idx + 1)
     } else if is_libafl_based {
-        0
+        None
     } else {
         argv.push("@@");
-        argv.len() - 1
+        Some(argv.len() - 1)
     };
 
     // Get all crashes.
@@ -219,7 +219,7 @@ fn main() -> Result<()> {
                     path: p.to_path_buf(),
                     target_args: argv.iter().map(|x| x.to_string()).collect(),
                     envs: envs.clone(),
-                    at_index: Some(at_index),
+                    at_index,
                     casr_tool: tool_path.clone(),
                 },
             )
