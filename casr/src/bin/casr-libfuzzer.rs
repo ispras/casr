@@ -177,14 +177,6 @@ fn main() -> Result<()> {
         bail!("casr-gdb-args option is provided with incompatible tool. This option can be used with casr-san or casr-gdb.");
     }
 
-    // Get input file argument index.
-    let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
-        idx + 1
-    } else {
-        argv.push("@@");
-        argv.len() - 1
-    };
-
     let crash_files: HashMap<String, PathBuf> = fs::read_dir(input_dir)?
         .flatten()
         .map(|p| p.path())
@@ -193,6 +185,7 @@ fn main() -> Result<()> {
         .collect();
 
     // Determine crash directory format for libfuzzer or LibAFL.
+    let mut is_libafl_based = false;
     let crash_filter = if crash_files
         .iter()
         .any(|(fname, _)| fname.starts_with("crash-") || fname.starts_with("leak-"))
@@ -201,7 +194,19 @@ fn main() -> Result<()> {
             arg.0.starts_with("crash-") || arg.0.starts_with("leak-")
         }
     } else {
+        is_libafl_based = true;
         |arg: &(&std::string::String, &PathBuf)| !arg.0.starts_with(".")
+    };
+
+    // Get input file argument index.
+    let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
+        idx + 1
+    } else {
+        if is_libafl_based {
+            argv.push("<");
+        }
+        argv.push("@@");
+        argv.len() - 1
     };
 
     // Get all crashes.
