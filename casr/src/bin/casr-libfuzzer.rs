@@ -201,10 +201,9 @@ fn main() -> Result<()> {
     // Get input file argument index.
     let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
         idx + 1
+    } else if is_libafl_based {
+        0
     } else {
-        if is_libafl_based {
-            argv.push("<");
-        }
         argv.push("@@");
         argv.len() - 1
     };
