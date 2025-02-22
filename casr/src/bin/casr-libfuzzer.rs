@@ -1,10 +1,10 @@
-use casr::triage::{fuzzing_crash_triage_pipeline, CrashInfo};
+use casr::triage::{CrashInfo, fuzzing_crash_triage_pipeline};
 use casr::util;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::{
-    error::{ContextKind, ContextValue, ErrorKind},
     Arg, ArgAction,
+    error::{ContextKind, ContextValue, ErrorKind},
 };
 
 use std::collections::HashMap;
@@ -174,7 +174,9 @@ fn main() -> Result<()> {
     let tool_path = util::get_path(tool)?;
 
     if !gdb_args.is_empty() && tool != "casr-gdb" && tool != "casr-san" {
-        bail!("casr-gdb-args option is provided with incompatible tool. This option can be used with casr-san or casr-gdb.");
+        bail!(
+            "casr-gdb-args option is provided with incompatible tool. This option can be used with casr-san or casr-gdb."
+        );
     }
 
     let crash_files: HashMap<String, PathBuf> = fs::read_dir(input_dir)?

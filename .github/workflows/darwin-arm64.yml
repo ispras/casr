@@ -21,6 +21,8 @@ jobs:
           arch -x86_64 /usr/local/bin/brew update
           arch -x86_64 /usr/local/bin/brew install gdb curl python llvm \
               openjdk ca-certificates gnupg nodejs lua5.4 --overwrite
+      - name: Update Rust
+        run: rustup update
       - name: Build
         run: cargo build --all-features --verbose
       - name: NPM packages

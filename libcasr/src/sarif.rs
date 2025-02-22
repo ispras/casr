@@ -3,7 +3,7 @@
 
 use crate::{
     error::{Error, Result},
-    execution_class::{ExecutionClass, CLASSES},
+    execution_class::{CLASSES, ExecutionClass},
     init_ignored_frames,
     report::CrashReport,
     stacktrace::{Filter, Stacktrace},

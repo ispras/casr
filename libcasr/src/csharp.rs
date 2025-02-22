@@ -148,7 +148,7 @@ impl Exception for CSharpException {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stacktrace::{tests::safe_init_ignore_stack_frames, Filter};
+    use crate::stacktrace::{Filter, tests::safe_init_ignore_stack_frames};
 
     #[test]
     fn test_csharp_parse_exception() {

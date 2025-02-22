@@ -20,8 +20,8 @@ use regex::Regex;
 use std::fmt;
 use std::fs;
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process::Command;
 

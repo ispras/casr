@@ -17,7 +17,7 @@ use libcasr::{
     stacktrace::*,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{Arg, ArgAction, ArgGroup};
 use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::stacktrace::StacktraceExt;
@@ -128,9 +128,13 @@ fn main() -> Result<()> {
             asan_options.remove(0);
         }
         asan_options = asan_options.replace("symbolize=0", "symbolize=1");
-        std::env::set_var("ASAN_OPTIONS", asan_options);
+        unsafe {
+            std::env::set_var("ASAN_OPTIONS", asan_options);
+        }
     } else {
-        std::env::set_var("ASAN_OPTIONS", "hard_rss_limit_mb=2048");
+        unsafe {
+            std::env::set_var("ASAN_OPTIONS", "hard_rss_limit_mb=2048");
+        }
     }
 
     // Run program with sanitizers.
@@ -147,7 +151,7 @@ fn main() -> Result<()> {
     }
     #[cfg(target_os = "linux")]
     {
-        use linux_personality::{personality, Personality};
+        use linux_personality::{Personality, personality};
 
         unsafe {
             sanitizers_cmd.pre_exec(|| {
@@ -162,7 +166,9 @@ fn main() -> Result<()> {
     let sanitizers_stderr = String::from_utf8_lossy(&sanitizers_result.stderr);
 
     if sanitizers_stderr.contains("Cannot set personality") {
-        bail!("Cannot set personality (if you are running docker, allow personality syscall in your seccomp profile)");
+        bail!(
+            "Cannot set personality (if you are running docker, allow personality syscall in your seccomp profile)"
+        );
     }
 
     // Detect OOMs.
@@ -242,8 +248,10 @@ fn main() -> Result<()> {
                         report.execution_class = ExecutionClass::find("AbortSignal").unwrap();
                     }
                     SIGINFO_SIGBUS | SIGINFO_SIGSEGV => {
-                        eprintln!("Segmentation fault occurred, but there is not enough information available to determine \
-                        exploitability. Try using casr-gdb instead.");
+                        eprintln!(
+                            "Segmentation fault occurred, but there is not enough information available to determine \
+                        exploitability. Try using casr-gdb instead."
+                        );
                         report.execution_class = ExecutionClass::find("AccessViolation").unwrap();
                     }
                     _ => {

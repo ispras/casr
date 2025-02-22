@@ -1,8 +1,8 @@
 use casr::util;
 use libcasr::{cluster::*, init_ignored_frames, stacktrace::*};
 
-use anyhow::{bail, Context, Result};
-use clap::{builder::FalseyValueParser, Arg, ArgAction};
+use anyhow::{Context, Result, bail};
+use clap::{Arg, ArgAction, builder::FalseyValueParser};
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use std::collections::{HashMap, HashSet};

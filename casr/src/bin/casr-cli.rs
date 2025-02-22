@@ -1,7 +1,7 @@
 use clap::{Arg, ArgAction};
 use colored::Colorize;
-use cursive::event::EventTrigger;
 use cursive::View;
+use cursive::event::EventTrigger;
 use regex::Regex;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashSet};
@@ -12,7 +12,8 @@ use std::io::prelude::*;
 use std::io::{BufReader, Write as BufWrite};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
+use cursive::CursiveRunnable;
 use cursive::align::Align;
 use cursive::event::EventResult;
 use cursive::theme::BaseColor;
@@ -26,7 +27,6 @@ use cursive::view::{Resizable, SizeConstraint};
 use cursive::views::{
     LinearLayout, OnEventView, Panel, ResizedView, ScrollView, SelectView, TextContent, TextView,
 };
-use cursive::CursiveRunnable;
 use cursive_tree_view::*;
 use walkdir::WalkDir;
 

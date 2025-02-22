@@ -5,10 +5,10 @@ use libcasr::stacktrace::{CrashLine, CrashLineExt};
 use libcasr::ubsan;
 use libcasr::ubsan::UbsanWarning;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{
-    error::{ContextKind, ContextValue, ErrorKind},
     Arg, ArgAction,
+    error::{ContextKind, ContextValue, ErrorKind},
 };
 use log::{debug, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -372,12 +372,16 @@ fn main() -> Result<()> {
         } else {
             ubsan_options.push_str(",symbolize=1");
         }
-        env::set_var("UBSAN_OPTIONS", ubsan_options);
+        unsafe {
+            env::set_var("UBSAN_OPTIONS", ubsan_options);
+        }
     } else {
-        env::set_var(
-            "UBSAN_OPTIONS",
-            "print_stacktrace=1,report_error_type=1,symbolize=1",
-        );
+        unsafe {
+            env::set_var(
+                "UBSAN_OPTIONS",
+                "print_stacktrace=1,report_error_type=1,symbolize=1",
+            );
+        }
     }
 
     // Extract ubsan warnings
