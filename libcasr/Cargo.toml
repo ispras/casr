@@ -7,7 +7,7 @@ keywords = ["gdb", "crash", "stacktrace", "triage", "coredump"]
 readme = "../README.md"
 repository = "https://github.com/ispras/casr.git"
 documentation = "https://docs.rs/libcasr"
-edition = "2021"
+edition = "2024"
 license = "Apache-2.0"
 exclude = ["/fuzz"]
 
