@@ -2,8 +2,8 @@ use casr::util;
 use libcasr::{
     cpp::CppException,
     exception::Exception,
-    gdb::exploitable::{GdbContext, MachineInfo},
     gdb::GdbStacktrace,
+    gdb::exploitable::{GdbContext, MachineInfo},
     init_ignored_frames,
     report::CrashReport,
     rust::RustPanic,
@@ -11,7 +11,7 @@ use libcasr::{
     stacktrace::*,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{Arg, ArgAction, ArgGroup};
 use gdb_command::mappings::*;
 use gdb_command::memory::*;
@@ -20,7 +20,7 @@ use gdb_command::siginfo::Siginfo;
 use gdb_command::stacktrace::StacktraceExt;
 use gdb_command::*;
 use goblin::container::Endian;
-use goblin::elf::{header, Elf};
+use goblin::elf::{Elf, header};
 use regex::Regex;
 use std::fs::File;
 use std::io::prelude::*;

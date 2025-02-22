@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{Arg, ArgAction, ArgGroup};
 use gdb_command::mappings::{MappedFiles, MappedFilesExt};
 use gdb_command::memory::*;
@@ -6,9 +6,9 @@ use gdb_command::registers::{Registers, RegistersExt};
 use gdb_command::siginfo::Siginfo;
 use gdb_command::{ExecType, GdbCommand};
 use goblin::container::Endian;
-use goblin::elf::{header, note, Elf};
+use goblin::elf::{Elf, header, note};
 use log::{error, warn};
-use nix::fcntl::{flock, FlockArg};
+use nix::fcntl::{FlockArg, flock};
 use simplelog::*;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
@@ -255,9 +255,15 @@ fn main() -> Result<()> {
     }
 
     if culimit == 0 {
-        error!("Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}", &casr_cmd);
+        error!(
+            "Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}",
+            &casr_cmd
+        );
         drop(lockfile.unwrap());
-        bail!("Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}", &casr_cmd);
+        bail!(
+            "Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}",
+            &casr_cmd
+        );
     }
 
     let core = if culimit < 0 {
@@ -370,7 +376,7 @@ fn analyze_coredump(
             return Err(Error::Casr(format!(
                 "Couldn't determine byte_width: {}",
                 elf.header.e_ident[4]
-            )))
+            )));
         }
     }
 
@@ -390,7 +396,7 @@ fn analyze_coredump(
             return Err(Error::Casr(format!(
                 "Unsupported architecture: {}",
                 elf.header.e_machine
-            )))
+            )));
         }
     }
 

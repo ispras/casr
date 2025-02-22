@@ -3,7 +3,7 @@ use libcasr::{
     exception::Exception, init_ignored_frames, js::*, report::CrashReport, stacktrace::*,
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::{Arg, ArgAction, ArgGroup};
 use regex::Regex;
 use std::path::{Path, PathBuf};

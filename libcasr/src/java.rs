@@ -138,19 +138,19 @@ mod tests {
     #[test]
     fn test_java_stacktrace() {
         let raw_stacktrace = &[
-           "at java.base/jdk.internal.loader.NativeLibraries.load(Native Method)",
-           "at java.base/jdk.internal.loader.NativeLibraries$NativeLibraryImpl.open(NativeLibraries.java:388)",
-           "at java.base/jdk.internal.loader.NativeLibraries.loadLibrary(NativeLibraries.java:232)",
-           "at java.base/jdk.internal.loader.NativeLibraries.loadLibrary(NativeLibraries.java:174)",
-           "at java.base/jdk.internal.loader.NativeLibraries.findFromPaths(NativeLibraries.java:315)",
-           "at java.base/jdk.internal.loader.NativeLibraries.loadLibrary(NativeLibraries.java:287)",
-           "at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2422)",
-           "at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:818)",
-           "at java.base/java.lang.System.loadLibrary(System.java:1989)",
-           "at ExampleFuzzerNative.<clinit>(ExampleFuzzerNative.java:20)",
-           "at java.base/java.lang.Class.forName0(Native Method)",
-           "at java.base/java.lang.Class.forName(Class.java)",
-           "at Reproducer.main(Reproducer.java:24)",
+            "at java.base/jdk.internal.loader.NativeLibraries.load(Native Method)",
+            "at java.base/jdk.internal.loader.NativeLibraries$NativeLibraryImpl.open(NativeLibraries.java:388)",
+            "at java.base/jdk.internal.loader.NativeLibraries.loadLibrary(NativeLibraries.java:232)",
+            "at java.base/jdk.internal.loader.NativeLibraries.loadLibrary(NativeLibraries.java:174)",
+            "at java.base/jdk.internal.loader.NativeLibraries.findFromPaths(NativeLibraries.java:315)",
+            "at java.base/jdk.internal.loader.NativeLibraries.loadLibrary(NativeLibraries.java:287)",
+            "at java.base/java.lang.ClassLoader.loadLibrary(ClassLoader.java:2422)",
+            "at java.base/java.lang.Runtime.loadLibrary0(Runtime.java:818)",
+            "at java.base/java.lang.System.loadLibrary(System.java:1989)",
+            "at ExampleFuzzerNative.<clinit>(ExampleFuzzerNative.java:20)",
+            "at java.base/java.lang.Class.forName0(Native Method)",
+            "at java.base/java.lang.Class.forName(Class.java)",
+            "at Reproducer.main(Reproducer.java:24)",
         ];
         let trace = raw_stacktrace
             .iter()

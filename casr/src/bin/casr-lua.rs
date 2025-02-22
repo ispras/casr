@@ -9,7 +9,7 @@ use libcasr::{
     stacktrace::{CrashLine, CrashLineExt},
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::{Arg, ArgAction, ArgGroup};
 use std::path::{Path, PathBuf};
 use std::process::Command;

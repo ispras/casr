@@ -1,10 +1,10 @@
-use casr::triage::{fuzzing_crash_triage_pipeline, CrashInfo};
+use casr::triage::{CrashInfo, fuzzing_crash_triage_pipeline};
 use casr::util;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::{
-    error::{ContextKind, ContextValue, ErrorKind},
     Arg, ArgAction,
+    error::{ContextKind, ContextValue, ErrorKind},
 };
 use log::error;
 

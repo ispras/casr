@@ -14,7 +14,7 @@ use crate::constants::{
 };
 
 use crate::error::*;
-use kodama::{linkage, Method};
+use kodama::{Method, linkage};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write};

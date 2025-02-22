@@ -231,7 +231,7 @@ impl ParseStacktrace for JsStacktrace {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stacktrace::{tests::safe_init_ignore_stack_frames, CrashLineExt, Filter};
+    use crate::stacktrace::{CrashLineExt, Filter, tests::safe_init_ignore_stack_frames};
 
     #[test]
     fn test_js_stacktrace() {

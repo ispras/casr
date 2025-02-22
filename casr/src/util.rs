@@ -4,10 +4,10 @@ extern crate libcasr;
 use libcasr::cluster::{Cluster, ReportInfo};
 use libcasr::report::CrashReport;
 use libcasr::stacktrace::{
-    Stacktrace, STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES,
+    STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES, Stacktrace,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::ArgMatches;
 use copy_dir::copy_dir;
 use gdb_command::stacktrace::StacktraceExt;

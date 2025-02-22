@@ -3287,10 +3287,12 @@ fn test_casr_san_segf_near_null() {
 
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAvNearNull");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_asan_segf.cpp:12"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_asan_segf.cpp:12")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -3323,10 +3325,12 @@ fn test_casr_san_segf_near_null() {
 
         assert!(stacktrace.len() > 2);
         assert!(stacktrace[0].contains("main"));
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_asan_segf.cpp:14"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_asan_segf.cpp:14")
+        );
 
         assert_eq!(severity_type, "PROBABLY_EXPLOITABLE");
         assert_eq!(severity_desc, "DestAvNearNull");
@@ -3384,10 +3388,12 @@ fn test_casr_san_segf() {
 
         assert!(stacktrace.len() > 2);
         assert!(stacktrace[0].contains("main"));
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_asan_segf.cpp:16"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_asan_segf.cpp:16")
+        );
 
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "SourceAv");
@@ -3423,10 +3429,12 @@ fn test_casr_san_segf() {
 
         assert!(stacktrace.len() > 2);
         assert!(stacktrace[0].contains("main"));
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_asan_segf.cpp:18"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_asan_segf.cpp:18")
+        );
 
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "DestAv");
@@ -3641,10 +3649,12 @@ fn test_casr_ignore_frames() {
 
     let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
     if let Ok(report) = report {
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("size-too-big.cpp:13:25"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("size-too-big.cpp:13:25")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -3663,10 +3673,12 @@ fn test_casr_ignore_frames() {
 
     let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
     if let Ok(report) = report {
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("size-too-big.cpp:16:5"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("size-too-big.cpp:16:5")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -3685,10 +3697,12 @@ fn test_casr_ignore_frames() {
 
     let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
     if let Ok(report) = report {
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("size-too-big.cpp:12:25"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("size-too-big.cpp:12:25")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4309,10 +4323,12 @@ fn test_casr_python() {
         assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "ZeroDivisionError");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_casr_python.py:4"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_python.py:4")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4352,10 +4368,12 @@ fn test_casr_java() {
         assert_eq!(14, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "LowLevelException");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("Test1.java:33"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("Test1.java:33")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4440,16 +4458,20 @@ fn test_casr_java_native_lib() {
             .unwrap()
             .to_string();
 
-        assert!(report["Stacktrace"].as_array().unwrap()[0]
-            .as_str()
-            .unwrap()
-            .contains("Java_Test2_heapbufferoverflow"));
+        assert!(
+            report["Stacktrace"].as_array().unwrap()[0]
+                .as_str()
+                .unwrap()
+                .contains("Java_Test2_heapbufferoverflow")
+        );
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("Test2.cpp:5"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("Test2.cpp:5")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4491,10 +4513,12 @@ fn test_casr_python_atheris() {
         assert_eq!(2, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "ZeroDivisionError");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_casr_python_atheris.py:10"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_python_atheris.py:10")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4591,10 +4615,12 @@ fn test_casr_san_python_df() {
         assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 19);
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("cpp_module.cpp:8:5"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("cpp_module.cpp:8:5")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4696,10 +4722,12 @@ fn test_casr_san_atheris_df() {
         assert!(report["Stacktrace"].as_array().unwrap().iter().count() > 50);
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("cpp_module.cpp:8:5"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("cpp_module.cpp:8:5")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4805,10 +4833,12 @@ fn test_casr_python_call_san_df() {
         assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 19);
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("cpp_module.cpp:8:5"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("cpp_module.cpp:8:5")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4921,10 +4951,12 @@ fn test_casr_lua() {
         assert_eq!(6, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "attempt to div a 'string' with a 'number'");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_casr_lua.lua:6"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_lua.lua:6")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -4963,10 +4995,12 @@ fn test_casr_js() {
         assert_eq!(10, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "Error");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_casr_js.js:3:15"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_js.js:3:15")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -5031,10 +5065,12 @@ fn test_casr_js_jsfuzz() {
         assert_eq!(10, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "Error");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_casr_js_jsfuzz.js:2:15"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_js_jsfuzz.js:2:15")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -5100,10 +5136,12 @@ fn test_casr_js_jazzer() {
         assert_eq!(5, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "Error");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_casr_js_jazzer.js:3:15"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_js_jazzer.js:3:15")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -5225,10 +5263,12 @@ fn test_casr_js_native() {
         assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 4);
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("native.cpp:9:13"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("native.cpp:9:13")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -5350,10 +5390,12 @@ fn test_casr_js_native_jsfuzz() {
         assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 4);
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("native.cpp:9:13"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("native.cpp:9:13")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -5481,10 +5523,12 @@ fn test_casr_js_native_jazzer() {
         assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 4);
         assert_eq!(severity_type, "EXPLOITABLE");
         assert_eq!(severity_desc, "stack-buffer-overflow(write)");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("native.cpp:9:13"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("native.cpp:9:13")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -5908,10 +5952,12 @@ fn test_casr_csharp() {
         assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "System.ArgumentException");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("test_casr_csharp.cs:14"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_csharp.cs:14")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }
@@ -5978,10 +6024,12 @@ fn test_casr_csharp_native() {
         );
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "AccessViolation");
-        assert!(report["CrashLine"]
-            .as_str()
-            .unwrap()
-            .contains("native.cpp:6"));
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("native.cpp:6")
+        );
     } else {
         panic!("Couldn't parse json report file.");
     }

@@ -105,7 +105,7 @@ impl ParseStacktrace for RustStacktrace {
 mod tests {
 
     use super::*;
-    use crate::stacktrace::{tests::safe_init_ignore_stack_frames, Filter};
+    use crate::stacktrace::{Filter, tests::safe_init_ignore_stack_frames};
 
     #[test]
     fn test_rust_parse_stacktrace() {
@@ -251,7 +251,8 @@ SUMMARY: libFuzzer: deadly signal"#;
             "32: 0x7ffbc33c6d90 - __libc_start_call_main at ./csu/../sysdeps/nptl/libc_start_call_main.h:58:16",
             "33: 0x7ffbc33c6e40 - __libc_start_main_impl at ./csu/../csu/libc-start.c:392:3",
             "34: 0x557e25886205 - _start",
-            "35: 0x0 - <unknown>"];
+            "35: 0x0 - <unknown>",
+        ];
 
         let trace = raw_stacktrace
             .iter()

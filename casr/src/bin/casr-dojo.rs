@@ -1,17 +1,17 @@
 use casr::util;
 use libcasr::{init_ignored_frames, report::CrashReport, stacktrace::*};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Arg, ArgAction};
 use log::{debug, error, info, warn};
 use regex::Regex;
-use reqwest::header::{HeaderMap, AUTHORIZATION};
+use reqwest::header::{AUTHORIZATION, HeaderMap};
 use reqwest::{Client, Method, RequestBuilder, Response, Url};
 use walkdir::WalkDir;
 
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};

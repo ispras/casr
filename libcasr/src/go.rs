@@ -143,7 +143,8 @@ mod tests {
 
     #[test]
     fn test_go_parse_stacktrace() {
-        let raw_stacktrace = &[ "runtime.systemstack_switch() in /root/.go/src/runtime/asm_amd64.s:459 fp=0xc00009ac48 sp=0xc00009ac40 pc=0x45bee0",
+        let raw_stacktrace = &[
+            "runtime.systemstack_switch() in /root/.go/src/runtime/asm_amd64.s:459 fp=0xc00009ac48 sp=0xc00009ac40 pc=0x45bee0",
             "runtime.(*mheap).alloc(0x462ec5?, 0x5a2860?, 0x1?) in /root/.go/src/runtime/mheap.go:904 +0x65 fp=0xc00009ac90 sp=0xc00009ac48 pc=0x425025",
             "runtime.(*mcache).allocLarge(0x511f98?, 0x16a0d1447626, 0x1) in /root/.go/src/runtime/mcache.go:233 +0x85 fp=0xc00009ace0 sp=0xc00009ac90 pc=0x414565",
             "runtime.mallocgc(0x16a0d1447626, 0x4d0ea0, 0x1) in /root/.go/src/runtime/malloc.go:1029 +0x57e fp=0xc00009ad58 sp=0xc00009ace0 pc=0x40bd5e",
@@ -334,7 +335,8 @@ runtime.goexit()\n\
 created by runtime.init.6\n\
 	/root/.go/src/runtime/proc.go:290 +0x25";
 
-        let raw_stacktrace = &["runtime.systemstack_switch() in /root/.go/src/runtime/asm_amd64.s:459 fp=0xc00009ac48 sp=0xc00009ac40 pc=0x45bee0",
+        let raw_stacktrace = &[
+            "runtime.systemstack_switch() in /root/.go/src/runtime/asm_amd64.s:459 fp=0xc00009ac48 sp=0xc00009ac40 pc=0x45bee0",
             "runtime.(*mheap).alloc(0x462ec5?, 0x5a2860?, 0x1?) in /root/.go/src/runtime/mheap.go:904 +0x65 fp=0xc00009ac90 sp=0xc00009ac48 pc=0x425025",
             "runtime.(*mcache).allocLarge(0x511f98?, 0x16a0d1447626, 0x1) in /root/.go/src/runtime/mcache.go:233 +0x85 fp=0xc00009ace0 sp=0xc00009ac90 pc=0x414565",
             "runtime.mallocgc(0x16a0d1447626, 0x4d0ea0, 0x1) in /root/.go/src/runtime/malloc.go:1029 +0x57e fp=0xc00009ad58 sp=0xc00009ace0 pc=0x40bd5e",
@@ -394,7 +396,8 @@ runtime.goexit()\n\
 created by _rt0_go\n\
         /usr/local/go/src/pkg/runtime/asm_amd64.s:97 +0x120";
 
-        let raw_stacktrace = &["runtime.cgocall(0x401550, 0xc213ca98e8) in /usr/local/go/src/pkg/runtime/cgocall.c:143 +0xe5 fp=0xc213ca98d0 sp=0xc213ca9888",
+        let raw_stacktrace = &[
+            "runtime.cgocall(0x401550, 0xc213ca98e8) in /usr/local/go/src/pkg/runtime/cgocall.c:143 +0xe5 fp=0xc213ca98d0 sp=0xc213ca9888",
             "private/leptonica._Cfunc_pixClipRectangle(0x7fed8788ff00, 0x7fed8788ffd0, 0x0, 0x8c2a28) in private/leptonica/_obj/_cgo_defun.c:80 +0x31 fp=0xc213ca98e8 sp=0xc213ca98d0",
             "private/leptonica.(*goPix).Crop(0xc20af90000, 0x900, 0x90, 0x4d8, 0x9a8, 0x4202c1, 0x0, 0x0) in /home/go/src/private/leptonica/leptonica.go:154 +0xd8 fp=0xc213ca9960 sp=0xc213ca98e8",
             "main.(*pageStruct).transformOriginal(0xc20805ae10, 0xc224772000, 0x69, 0x1) in /home/root/go/frankenstein.go:1353 +0x30d fp=0xc213ca99c8 sp=0xc213ca9960",
@@ -403,7 +406,7 @@ created by _rt0_go\n\
             "main.main() in /home/root/go/frankenstein.go:1970 +0x3f5 fp=0xc213ca9f50 sp=0xc213ca9e48",
             "runtime.main() in /usr/local/go/src/pkg/runtime/proc.c:247 +0x11a fp=0xc213ca9fa8 sp=0xc213ca9f50",
             "runtime.goexit() in /usr/local/go/src/pkg/runtime/proc.c:1445 fp=0xc213ca9fb0 sp=0xc213ca9fa8",
-            "created by _rt0_go in /usr/local/go/src/pkg/runtime/asm_amd64.s:97 +0x120"
+            "created by _rt0_go in /usr/local/go/src/pkg/runtime/asm_amd64.s:97 +0x120",
         ];
         let trace = raw_stacktrace
             .iter()
@@ -433,9 +436,10 @@ created by golang.org/x/sync/errgroup.(*Group).Go in goroutine 17\n\
     #3 0x7f9dfc64251f  (/lib/x86_64-linux-gnu/libc.so.6+0x4251f) (BuildId: c289da5071a3399de893d2af81d6a30c62646e1e)\n\
     #4 0x55ddb872e760 in runtime.raise.abi0 /usr/local/go/src/runtime/sys_linux_amd64.s:153";
 
-        let raw_stacktrace = &["func1() in /home/user/project/stats.go:60 +0x125",
+        let raw_stacktrace = &[
+            "func1() in /home/user/project/stats.go:60 +0x125",
             "golang.org/x/sync/errgroup.(*Group).Go.func1() in /home/user/project/go/vendor/golang.org/x/sync/errgroup/errgroup.go:75 +0x77",
-            "created by golang.org/x/sync/errgroup.(*Group).Go in goroutine 17 in /home/user/project/go/vendor/golang.org/x/sync/errgroup/errgroup.go:72 +0xf5"
+            "created by golang.org/x/sync/errgroup.(*Group).Go in goroutine 17 in /home/user/project/go/vendor/golang.org/x/sync/errgroup/errgroup.go:72 +0xf5",
         ];
 
         let trace = raw_stacktrace
