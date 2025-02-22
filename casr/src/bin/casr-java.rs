@@ -148,7 +148,10 @@ fn main() -> Result<()> {
     let java_stderr_list: Vec<String> = java_stderr.split('\n').map(|l| l.to_string()).collect();
     let re = Regex::new(r"Exception in thread .*? |== Java Exception: ").unwrap();
     if let Some(start) = java_stderr_list.iter().position(|x| re.is_match(x)) {
-        report.java_report = java_stderr_list[start..].to_vec();
+        report.java_report = java_stderr_list[start..]
+            .iter()
+            .map(|line| line.replace('\t', "    "))
+            .collect();
         if let Some(end) = report
             .java_report
             .iter()
