@@ -33,6 +33,7 @@ jobs:
         sudo apt update && sudo apt install -y --no-install-recommends dotnet-sdk-8.0
         curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
         ./rustup.sh -y && rm rustup.sh
+        rustup update
         rustup install nightly-2024-09-05
         export PATH=/root/.cargo/bin:$PATH
         cargo install cargo-fuzz grcov
