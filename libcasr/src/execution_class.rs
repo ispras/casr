@@ -559,6 +559,11 @@ impl ExecutionClass {
 }
 impl fmt::Display for ExecutionClass {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let description = if !self.description.is_empty() {
+            format!("\nDescription: {}", self.description)
+        } else {
+            "".to_string()
+        };
         let explanation = if !self.explanation.is_empty() {
             format!("\nExplanation: {}", self.explanation)
         } else {
@@ -566,8 +571,8 @@ impl fmt::Display for ExecutionClass {
         };
         write!(
             f,
-            "Severity: {}\nShort description: {}\nDescription: {}{}",
-            self.severity, self.short_description, self.description, explanation
+            "Severity: {}\nShort description: {}{}{}",
+            self.severity, self.short_description, description, explanation
         )
     }
 }
