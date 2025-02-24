@@ -1,6 +1,5 @@
 //! Provides API's for parsing, filtering, deduplication and clustering.
 extern crate kodama;
-extern crate lazy_static;
 
 use crate::constants::{
     STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP,
@@ -18,7 +17,7 @@ use kodama::{Method, linkage};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write};
-use std::sync::RwLock;
+use std::sync::{LazyLock, RwLock};
 
 // Re-export types from gdb_command for convenient use from Casr library
 /// Represents the information about stack trace.
@@ -28,14 +27,12 @@ pub type DebugInfo = gdb_command::stacktrace::DebugInfo;
 /// Represents the information about one line of the stack trace.
 pub type StacktraceEntry = gdb_command::stacktrace::StacktraceEntry;
 
-lazy_static::lazy_static! {
-    /// Regular expressions for functions to be ignored.
-    pub static ref STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
-        Vec::new());
-    /// Regular expressions for file paths to be ignored.
-    pub static ref STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(
-        Vec::new());
-}
+/// Regular expressions for functions to be ignored.
+pub static STACK_FRAME_FUNCTION_IGNORE_REGEXES: LazyLock<RwLock<Vec<String>>> =
+    LazyLock::new(|| RwLock::new(Vec::new()));
+/// Regular expressions for file paths to be ignored.
+pub static STACK_FRAME_FILEPATH_IGNORE_REGEXES: LazyLock<RwLock<Vec<String>>> =
+    LazyLock::new(|| RwLock::new(Vec::new()));
 
 /// Threshold for clusters diameter
 pub const THRESHOLD: f64 = 0.3;
@@ -471,9 +468,7 @@ pub mod tests {
 
     use crate::stacktrace::*;
 
-    lazy_static::lazy_static! {
-        static ref INITED_STACKFRAMES_FILTER: RwLock<bool> = RwLock::new(false);
-    }
+    static INITED_STACKFRAMES_FILTER: LazyLock<RwLock<bool>> = LazyLock::new(|| RwLock::new(false));
 
     /// Thread-safe initialization of all stackframe filters
     pub fn safe_init_ignore_stack_frames() {
