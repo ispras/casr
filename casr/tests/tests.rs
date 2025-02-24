@@ -1,5 +1,4 @@
 extern crate copy_dir;
-extern crate lazy_static;
 extern crate regex;
 extern crate serde_json;
 
@@ -12,19 +11,25 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::{LazyLock};
+use std::sync::LazyLock;
 
-static EXE_CASR_CORE: LazyLock<&'static str> =        LazyLock::new(|| env!("CARGO_BIN_EXE_casr-core"));
-static EXE_CASR_AFL: LazyLock<&'static str> =         LazyLock::new(|| env!("CARGO_BIN_EXE_casr-afl"));
-static EXE_CASR_LIBFUZZER: LazyLock<&'static str> =   LazyLock::new(|| env!("CARGO_BIN_EXE_casr-libfuzzer"));
-static EXE_CASR_CLUSTER: LazyLock<&'static str> =     LazyLock::new(|| env!("CARGO_BIN_EXE_casr-cluster"));
-static EXE_CASR_SAN: LazyLock<&'static str> =         LazyLock::new(|| env!("CARGO_BIN_EXE_casr-san"));
-static EXE_CASR_UBSAN: LazyLock<&'static str> =       LazyLock::new(|| env!("CARGO_BIN_EXE_casr-ubsan"));
-static EXE_CASR_PYTHON: LazyLock<&'static str> =      LazyLock::new(|| env!("CARGO_BIN_EXE_casr-python"));
-static EXE_CASR_JAVA: LazyLock<&'static str> =        LazyLock::new(|| env!("CARGO_BIN_EXE_casr-java"));
-static EXE_CASR_JS: LazyLock<&'static str> =          LazyLock::new(|| env!("CARGO_BIN_EXE_casr-js"));
-static EXE_CASR_GDB: LazyLock<&'static str> =         LazyLock::new(|| env!("CARGO_BIN_EXE_casr-gdb"));
-static PROJECT_DIR: LazyLock<&'static str> =          LazyLock::new(|| env!("CARGO_MANIFEST_DIR"));
+static EXE_CASR_CORE: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_BIN_EXE_casr-core"));
+static EXE_CASR_AFL: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_BIN_EXE_casr-afl"));
+static EXE_CASR_LIBFUZZER: LazyLock<&'static str> =
+    LazyLock::new(|| env!("CARGO_BIN_EXE_casr-libfuzzer"));
+static EXE_CASR_CLUSTER: LazyLock<&'static str> =
+    LazyLock::new(|| env!("CARGO_BIN_EXE_casr-cluster"));
+static EXE_CASR_SAN: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_BIN_EXE_casr-san"));
+static EXE_CASR_UBSAN: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_BIN_EXE_casr-ubsan"));
+static EXE_CASR_PYTHON: LazyLock<&'static str> =
+    LazyLock::new(|| env!("CARGO_BIN_EXE_casr-python"));
+static EXE_CASR_LUA: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_BIN_EXE_casr-lua"));
+static EXE_CASR_JAVA: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_BIN_EXE_casr-java"));
+static EXE_CASR_JS: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_BIN_EXE_casr-js"));
+static EXE_CASR_CSHARP: LazyLock<&'static str> =
+    LazyLock::new(|| env!("CARGO_BIN_EXE_casr-csharp"));
+static EXE_CASR_GDB: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_BIN_EXE_casr-gdb"));
+static PROJECT_DIR: LazyLock<&'static str> = LazyLock::new(|| env!("CARGO_MANIFEST_DIR"));
 
 fn abs_path(rpath: &str) -> String {
     // Define paths.
@@ -2675,7 +2680,7 @@ fn test_casr_cluster_d_and_m() {
     };
     let casrep = dirvec.next().unwrap().unwrap().path();
     let _ = std::fs::remove_file(casrep);
-    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+    let output = Command::new(*EXE_CASR_CLUSTER)
         .args(["--diff", &paths[0], &paths[1], &paths[2]])
         .output()
         .expect("failed to start casr-cluster");
@@ -2699,7 +2704,7 @@ fn test_casr_cluster_u() {
 
     let _ = fs::remove_dir_all(&paths[1]);
 
-    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+    let output = Command::new(*EXE_CASR_CLUSTER)
         .args(["-c", &paths[0], &paths[1]])
         .env("CASR_CLUSTER_UNIQUE_CRASHLINE", "1")
         .output()
@@ -2733,7 +2738,7 @@ fn test_casr_cluster_u() {
     let _ = std::fs::remove_dir_all(&paths[3]);
     let _ = std::fs::rename(&paths[4], &paths[3]);
 
-    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+    let output = Command::new(*EXE_CASR_CLUSTER)
         .args(["-u", &paths[0], &paths[1]])
         .env("CASR_CLUSTER_UNIQUE_CRASHLINE", "1")
         .output()
@@ -2814,7 +2819,7 @@ fn test_casr_cluster_u() {
     assert_eq!(sil, 0.15436556855344655, "Silhouette score mismatch.");
 
     // Test estimation
-    let output = Command::new(*EXE_CASR_CLUSTER.read().unwrap())
+    let output = Command::new(*EXE_CASR_CLUSTER)
         .args(["-e", &paths[1]])
         .output()
         .expect("failed to start casr-cluster");
@@ -3983,9 +3988,7 @@ fn test_casr_libfuzzer() {
 
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
 
-    let bins = Path::new(*EXE_CASR_LIBFUZZER)
-        .parent()
-        .unwrap();
+    let bins = Path::new(*EXE_CASR_LIBFUZZER).parent().unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER);
     cmd.args(["-i", &paths[0], "-o", &paths[1], "-f", "--", &paths[3]])
         .env(
@@ -4215,10 +4218,8 @@ fn test_casr_libfuzzer_atheris() {
         .status()
         .expect("failed to unzip ruamel.zip");
 
-    let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
-        .parent()
-        .unwrap();
-    let mut cmd = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap());
+    let bins = Path::new(*EXE_CASR_LIBFUZZER).parent().unwrap();
+    let mut cmd = Command::new(*EXE_CASR_LIBFUZZER);
     cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2]])
         .env(
             "PATH",
@@ -4797,9 +4798,7 @@ fn test_casr_python_call_san_df() {
 
     assert!(Path::new(&lib_path.to_string()).exists());
 
-    let bins = Path::new(*EXE_CASR_PYTHON)
-        .parent()
-        .unwrap();
+    let bins = Path::new(*EXE_CASR_PYTHON).parent().unwrap();
     let output = Command::new(*EXE_CASR_PYTHON)
         .env("ASAN_OPTIONS", "detect_leaks=0,symolize=1")
         .env("LD_PRELOAD", lib_path.to_string())
@@ -4968,7 +4967,7 @@ fn test_casr_js() {
         panic!("No node is found.");
     };
 
-    let output = Command::new(*EXE_CASR_JS.read().unwrap())
+    let output = Command::new(*EXE_CASR_JS)
         .args(["--stdout", "--", (node_path.to_str().unwrap()), &test_path])
         .output()
         .expect("failed to start casr-js");
@@ -5572,9 +5571,7 @@ fn test_casr_libfuzzer_jsfuzz() {
         .status()
         .expect("failed to unzip crashes.zip");
 
-    let bins = Path::new(*EXE_CASR_LIBFUZZER)
-        .parent()
-        .unwrap();
+    let bins = Path::new(*EXE_CASR_LIBFUZZER).parent().unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER);
     cmd.args([
         "-i",
@@ -5659,9 +5656,7 @@ fn test_casr_libfuzzer_jazzer_js() {
         .status()
         .expect("failed to unzip crashes.zip");
 
-    let bins = Path::new(*EXE_CASR_LIBFUZZER)
-        .parent()
-        .unwrap();
+    let bins = Path::new(*EXE_CASR_LIBFUZZER).parent().unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER);
     cmd.args([
         "-i",
@@ -5818,9 +5813,7 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
         panic!("No npx is found.");
     };
 
-    let bins = Path::new(*EXE_CASR_LIBFUZZER)
-        .parent()
-        .unwrap();
+    let bins = Path::new(*EXE_CASR_LIBFUZZER).parent().unwrap();
     let mut cmd = Command::new(*EXE_CASR_LIBFUZZER);
     cmd.args([
         "-i",
@@ -5918,7 +5911,7 @@ fn test_casr_csharp() {
         panic!("No dotnet is found.");
     };
 
-    let output = Command::new(*EXE_CASR_CSHARP.read().unwrap())
+    let output = Command::new(*EXE_CASR_CSHARP)
         .args([
             "--stdout",
             "--",
@@ -5988,7 +5981,7 @@ fn test_casr_csharp_native() {
         .output()
         .expect("failed to build test");
 
-    let output = Command::new(*EXE_CASR_CSHARP.read().unwrap())
+    let output = Command::new(*EXE_CASR_CSHARP)
         .args([
             "--stdout",
             "--",
@@ -6065,8 +6058,8 @@ fn test_casr_afl_csharp() {
         .output()
         .expect("dotnet publish crashed");
 
-    let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
-    let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
+    let bins = Path::new(*EXE_CASR_AFL).parent().unwrap();
+    let mut output = Command::new(*EXE_CASR_AFL);
     output.args(["-i", &paths[0], "-o", &paths[1]]).env(
         "PATH",
         format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
@@ -6164,8 +6157,8 @@ fn test_casr_afl_csharp_ignore_cmd() {
         .output()
         .expect("dotnet build crashed");
 
-    let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
-    let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
+    let bins = Path::new(*EXE_CASR_AFL).parent().unwrap();
+    let mut output = Command::new(*EXE_CASR_AFL);
     output
         .args([
             "--ignore-cmdline",
@@ -6277,8 +6270,8 @@ fn test_casr_afl_csharp_vanilla_afl() {
         .output()
         .expect("dotnet build crashed");
 
-    let bins = Path::new(*EXE_CASR_AFL.read().unwrap()).parent().unwrap();
-    let mut output = Command::new(*EXE_CASR_AFL.read().unwrap());
+    let bins = Path::new(*EXE_CASR_AFL).parent().unwrap();
+    let mut output = Command::new(*EXE_CASR_AFL);
     output
         .args([
             "-i",
@@ -6375,10 +6368,8 @@ fn test_casr_libfuzzer_libafl() {
         "/tmp/test_libafl_fuzzer",
     );
 
-    let bins = Path::new(*EXE_CASR_LIBFUZZER.read().unwrap())
-        .parent()
-        .unwrap();
-    let output = Command::new(*EXE_CASR_LIBFUZZER.read().unwrap())
+    let bins = Path::new(*EXE_CASR_LIBFUZZER).parent().unwrap();
+    let output = Command::new(*EXE_CASR_LIBFUZZER)
         .args([
             "-i",
             &paths[0],
