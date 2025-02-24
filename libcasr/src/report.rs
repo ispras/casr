@@ -1,5 +1,6 @@
 //! Report contains the main struct `CrashReport` with all information about crash.
 use crate::asan::AsanStacktrace;
+use crate::msan::MsanStacktrace;
 use crate::csharp::CSharpStacktrace;
 use crate::error;
 use crate::error::*;
@@ -186,6 +187,13 @@ pub struct CrashReport {
     )]
     #[cfg_attr(feature = "serde", serde(default))]
     pub asan_report: Vec<String>,
+    /// Msan report.
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename(serialize = "MsanReport", deserialize = "MsanReport"))
+    )]
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub msan_report: Vec<String>,
     /// Ubsan report.
     #[cfg_attr(
         feature = "serde",
@@ -586,6 +594,8 @@ impl CrashReport {
     pub fn filtered_stacktrace(&self) -> Result<Stacktrace> {
         let mut rawtrace = if !self.asan_report.is_empty() {
             AsanStacktrace::parse_stacktrace(&self.stacktrace)?
+        } else if !self.msan_report.is_empty() {
+            MsanStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.python_report.is_empty() {
             PythonStacktrace::parse_stacktrace(&self.stacktrace)?
         } else if !self.java_report.is_empty() {
@@ -743,6 +753,11 @@ impl fmt::Display for CrashReport {
             report += &(self.asan_report.join("\n") + "\n");
         }
 
+        if !self.msan_report.is_empty() {
+            report += "\n===MsanReport===\n";
+            report += &(self.msan_report.join("\n") + "\n");
+        }
+
         // UBSANreport
         if !self.ubsan_report.is_empty() {
             report += "\n===UbsanReport===\n";
@@ -892,6 +907,9 @@ mod tests {
                 "==363912==ERROR: AddressSanitizer: SEGV on unknown address 0xffffffffffffffe0 (pc 0x0000004ca0e0 bp 0x7fffffff9980 sp 0x7fffffff9928 T0)".to_string(),
                 "==363912==The signal is caused by a READ memory access.".to_string(),
             ];
+        report.msan_report = vec![
+                "==26629==WARNING: MemorySanitizer: use-of-uninitialized-value".to_string(),
+            ];
         report.ubsan_report = vec![
                 "/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29: runtime error: signed integer overflow: 65535 * 32769 cannot be represented in type 'int'".to_string(),
                 "SUMMARY: UndefinedBehaviorSanitizer: signed-integer-overflow /home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29 in".to_string(),
@@ -985,6 +1003,9 @@ mod tests {
             "===AsanReport===".to_string(),
             "==363912==ERROR: AddressSanitizer: SEGV on unknown address 0xffffffffffffffe0 (pc 0x0000004ca0e0 bp 0x7fffffff9980 sp 0x7fffffff9928 T0)".to_string(),
             "==363912==The signal is caused by a READ memory access.".to_string(),
+            "".to_string(),
+            "===MsanReport===".to_string(),
+            "==26629==WARNING: MemorySanitizer: use-of-uninitialized-value".to_string(),
             "".to_string(),
             "===UbsanReport===".to_string(),
             "/home/hkctkuy/github/casr/casr/tests/tmp_tests_casr/test_casr_ubsan/test_ubsan.cpp:4:29: runtime error: signed integer overflow: 65535 * 32769 cannot be represented in type 'int'".to_string(),

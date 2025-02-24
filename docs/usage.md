@@ -1,8 +1,9 @@
 # Usage
 
 CASR is a set of tools that allows you to collect crash reports in different
-ways. Use `casr-core` binary to deal with coredumps. Use `casr-san` to analyze
-ASAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
+ways. Use `casr-core` binary to deal with coredumps. e `casr-san` to analyze
+ASAN reports or `casr-msan` to analyze
+MSAN reports or `casr-ubsan` to analyze UBSAN reports. Try `casr-gdb` to get
 reports from gdb. Use `casr-python` to analyze python reports and get report
 from [Atheris](https://github.com/google/atheris). Use `casr-java` to analyze
 java reports and get report from
@@ -87,6 +88,37 @@ personality syscall (details can be found [here](https://docs.docker.com/engine/
 If you are using casr-san to get CASR report for Rust fuzz target, you can choose between
 ASAN stacktrace or Rust backtrace to analyze. If environment variable
 `RUST_BACKTRACE=(1|full)` is specified, then Rust backtrace is considered.
+
+## casr-man
+
+Create CASR reports (.casrep) from MemorySanitizer reports
+
+Usage: casr-msan [OPTIONS] <--stdout|--output <REPORT>> -- <ARGS>...
+
+Arguments:
+  <ARGS>...  Add "-- ./binary <arguments>" to run executable
+
+Options:
+  -o, --output <REPORT>      Path to save report. Path can be a directory, then report
+                             name is generated
+      --stdout               Print CASR report to stdout
+      --stdin <FILE>         Stdin file for program
+  -t, --timeout <SECONDS>    Timeout (in seconds) for target execution, 0 value means that
+                             timeout is disabled [default: 0]
+      --ignore <FILE>        File with regular expressions for functions and file paths
+                             that should be ignored
+      --strip-path <PREFIX>  Path prefix to strip from stacktrace and crash line [env:
+                             CASR_STRIP_PATH=]
+  -h, --help                 Print help
+  -V, --version              Print version
+
+Compile binary with ASAN:
+
+    $ clang++ -fsanitize=memory -O0 casr/tests/casr_tests/test_msan.cpp -o test_msan
+    
+Run casr-msan:
+
+    $ casr-msan -o msan.casrep -- ./test_msan
 
 ## casr-ubsan
 
