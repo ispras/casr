@@ -62,7 +62,10 @@ impl ParseStacktrace for JavaStacktrace {
             return Err(Error::Casr("Empty stacktrace.".to_string()));
         }
 
-        Ok(forward_stacktrace.iter().map(|x| x.to_string()).collect())
+        Ok(forward_stacktrace
+            .iter()
+            .map(|x| x.trim().to_string())
+            .collect())
     }
 
     fn parse_stacktrace_entry(entry: &str) -> Result<StacktraceEntry> {

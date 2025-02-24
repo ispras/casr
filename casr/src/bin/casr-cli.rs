@@ -325,11 +325,13 @@ fn build_tree_report(
         Placement::LastChild,
         row,
     );
-    tree.insert_item(
-        report.execution_class.description.to_string(),
-        Placement::LastChild,
-        row,
-    );
+    if !report.execution_class.description.is_empty() {
+        tree.insert_item(
+            report.execution_class.description.to_string(),
+            Placement::LastChild,
+            row,
+        );
+    }
     if !report.execution_class.explanation.is_empty() {
         tree.insert_item(
             report.execution_class.explanation.to_string(),

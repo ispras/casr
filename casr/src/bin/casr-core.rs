@@ -8,12 +8,11 @@ use gdb_command::{ExecType, GdbCommand};
 use goblin::container::Endian;
 use goblin::elf::{Elf, header, note};
 use log::{error, warn};
-use nix::fcntl::{FlockArg, flock};
+use nix::fcntl::{Flock, FlockArg};
 use simplelog::*;
 use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, Read};
-use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 
 use libcasr::error::Error;
@@ -259,7 +258,7 @@ fn main() -> Result<()> {
             "Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}",
             &casr_cmd
         );
-        drop(lockfile.unwrap());
+        let _ = lockfile.unwrap().unlock();
         bail!(
             "Ulimit is set to 0. Set ulimit greater than zero to analyze coredumps. Casr command line: {}",
             &casr_cmd
@@ -297,7 +296,7 @@ fn main() -> Result<()> {
             result.as_ref().err().unwrap(),
             &casr_cmd
         );
-        drop(lockfile.unwrap());
+        let _ = lockfile.unwrap().unlock();
         bail!(
             "Coredump analysis error: {}. Casr command line: {}",
             result.as_ref().err().unwrap(),
@@ -316,21 +315,22 @@ fn main() -> Result<()> {
     } else {
         error!("Couldn't write report file: {}", report_path.display());
     }
-    drop(lockfile.unwrap());
+    let _ = lockfile.unwrap().unlock();
     Ok(())
 }
 
 /// Method checks mutex.
-fn check_lock() -> Result<File> {
+fn check_lock() -> Result<Flock<File>> {
     let mut project_dir = PathBuf::from("/var/crash/");
     project_dir.push("Casr.lock");
     let file = OpenOptions::new()
         .create(true)
         .append(true)
         .open(project_dir)?;
-    let fd = file.as_raw_fd();
-    flock(fd, FlockArg::LockExclusive).unwrap();
-    Ok(file)
+    match Flock::lock(file, FlockArg::LockExclusive) {
+        Ok(l) => Ok(l),
+        Err((_, errno)) => Err(errno.into()),
+    }
 }
 
 /// Analyze coredump and put information to report.
