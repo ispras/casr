@@ -52,5 +52,4 @@ name = "casr-dojo"
 required-features = ["dojo"]
 
 [dev-dependencies]
-lazy_static = "1.5"
 lsb_release = "0.1"
