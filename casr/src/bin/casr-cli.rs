@@ -411,6 +411,16 @@ fn build_tree_report(
         tree.expand_item(row);
     }
 
+    if !report.msan_report.is_empty() {
+        row = tree
+            .insert_container_item("MsanReport".to_string(), Placement::After, row)
+            .unwrap();
+        report.msan_report.iter().for_each(|e| {
+            tree.insert_item(e.clone(), Placement::LastChild, row);
+        });
+        tree.expand_item(row);
+    }
+
     if !report.ubsan_report.is_empty() {
         row = tree
             .insert_container_item("UbsanReport".to_string(), Placement::After, row)
@@ -654,6 +664,10 @@ fn build_slider_report(
 
     if !report.asan_report.is_empty() {
         select.add_item("AsanReport", report.asan_report.join("\n"));
+    }
+
+    if !report.msan_report.is_empty() {
+        select.add_item("MsanReport", report.msan_report.join("\n"));
     }
 
     if !report.ubsan_report.is_empty() {

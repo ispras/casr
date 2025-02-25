@@ -218,6 +218,7 @@ fn main() -> Result<()> {
             .collect();
         let rasan_start =
             Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
+        let rmsan_start = Regex::new(r"==\d+==\s*WARNING: MemorySanitizer:").unwrap();
         if let Some(report_start) = san_stderr_list
             .iter()
             .position(|line| rasan_start.is_match(line))
@@ -233,6 +234,21 @@ fn main() -> Result<()> {
                 eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
             }
             report.stacktrace = AsanStacktrace::extract_stacktrace(&report.asan_report.join("\n"))?;
+        } else if let Some(report_start) = san_stderr_list
+            .iter()
+            .position(|line| rmsan_start.is_match(line))
+        {
+            // Set MSAN report in casr report.
+            let report_end = san_stderr_list.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
+            report.msan_report = Vec::from(&san_stderr_list[report_start..report_end]);
+            let context = AsanContext(report.msan_report.clone());
+            let severity = context.severity();
+            if let Ok(severity) = severity {
+                report.execution_class = severity;
+            } else {
+                eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
+            }
+            report.stacktrace = AsanStacktrace::extract_stacktrace(&report.msan_report.join("\n"))?;
         } else {
             // Get termination signal.
             if let Some(signal) = sanitizers_result.status.signal() {
@@ -287,7 +303,7 @@ fn main() -> Result<()> {
         }
 
         // Get stacktrace to find crash line.
-        stacktrace = if !report.asan_report.is_empty() {
+        stacktrace = if !report.asan_report.is_empty() || !report.msan_report.is_empty() {
             AsanStacktrace::parse_stacktrace(&report.stacktrace)?
         } else {
             let mut parsed_stacktrace = GdbStacktrace::parse_stacktrace(&report.stacktrace)?;

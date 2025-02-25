@@ -3080,6 +3080,66 @@ fn test_casr_san() {
         panic!("Couldn't parse json report file.");
     }
 
+    // Msan test
+    let paths = [
+        abs_path("tests/casr_tests/test_msan.cpp"),
+        abs_path("tests/tmp_tests_casr/test_msan"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=memory -O0 {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(*EXE_CASR_SAN)
+        .args(["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(
+        output.status.success(),
+        "Stdout: {}\n. Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+
+        assert!(stacktrace.len() == 3);
+        assert!(stacktrace[0].contains("in main"));
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "use-of-uninitialized-value");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .eq("tests/casr_tests/test_msan.cpp:12:9")
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_msan+0x499fd8")
+        );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
     let _ = std::fs::remove_file(&paths[1]);
     // Test casr-san stdin
     let paths = [
