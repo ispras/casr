@@ -74,6 +74,7 @@ crashes.
 It can analyze crashes from different sources:
 
 * AddressSanitizer
+* MemorySanitizer
 * UndefinedBehaviorSanitizer
 * Gdb output
 
@@ -144,6 +145,11 @@ Create report from AddressSanitizer output:
 
     $ clang++ -fsanitize=address -O0 -g casr/tests/casr_tests/test_asan_df.cpp -o test_asan_df
     $ casr-san -o asan.casrep -- ./test_asan_df
+
+Create report from MemorySanitizer output:
+
+    $ clang++ -fsanitize=memory -O0 casr/tests/casr_tests/test_msan.cpp -o test_msan
+    $ casr-san -o msan.casrep -- ./test_msan
 
 Create report from UndefinedBehaviorSanitizer output:
 

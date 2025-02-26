@@ -90,3 +90,4 @@ Lists of classes:
 28. **out-of-memory**. The target has exceeded the memory limit.
 29. **fuzz target exited**. Fuzz target exited.
 30. **timeout**. Timeout after several seconds.
+31. **use-of-uninitialized-value**. The target attempted to access memory that was not initialized.
