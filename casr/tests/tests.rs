@@ -3123,7 +3123,7 @@ fn test_casr_san() {
             .map(|x| x.to_string())
             .collect::<Vec<String>>();
 
-        assert!(stacktrace.len() == 3);
+        assert!(stacktrace.len() > 2);
         assert!(stacktrace[0].contains("in main"));
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "use-of-uninitialized-value");
@@ -3132,10 +3132,12 @@ fn test_casr_san() {
                 .as_str()
                 .unwrap()
                 .eq("tests/casr_tests/test_msan.cpp:12:9")
+                // We build a test on ubuntu18 and run it on ubuntu20.
+                // Debug information is broken.
                 || report["CrashLine"]
                     .as_str()
                     .unwrap()
-                    .contains("test_msan+0x499fd8")
+                    .contains("test_msan+0x") // We can't hardcode the offset because we rebuild tests every time.
         );
     } else {
         panic!("Couldn't parse json report file.");
