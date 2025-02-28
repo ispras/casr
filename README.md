@@ -148,7 +148,7 @@ Create report from AddressSanitizer output:
 
 Create report from MemorySanitizer output:
 
-    $ clang++ -fsanitize=memory -O0 casr/tests/casr_tests/test_msan.cpp -o test_msan
+    $ clang++ -fsanitize=memory -O0 -g casr/tests/casr_tests/test_msan.cpp -o test_msan
     $ casr-san -o msan.casrep -- ./test_msan
 
 Create report from UndefinedBehaviorSanitizer output:

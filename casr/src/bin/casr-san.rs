@@ -211,7 +211,7 @@ fn main() -> Result<()> {
             .map(|l| l.trim_end().to_string())
             .collect();
     } else {
-        // Get ASAN report.
+        // Get ASAN or MSAN report.
         let san_stderr_list: Vec<String> = sanitizers_stderr
             .split('\n')
             .map(|l| l.trim_end().to_string())
@@ -221,34 +221,27 @@ fn main() -> Result<()> {
         let rmsan_start = Regex::new(r"==\d+==\s*WARNING: MemorySanitizer:").unwrap();
         if let Some(report_start) = san_stderr_list
             .iter()
-            .position(|line| rasan_start.is_match(line))
+            .position(|line| rasan_start.is_match(line) || rmsan_start.is_match(line))
         {
-            // Set ASAN report in casr report.
             let report_end = san_stderr_list.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
-            report.asan_report = Vec::from(&san_stderr_list[report_start..report_end]);
-            let context = AsanContext(report.asan_report.clone());
-            let severity = context.severity();
-            if let Ok(severity) = severity {
+            let report_slice = &san_stderr_list[report_start..report_end];
+
+            match rasan_start.is_match(&san_stderr_list[report_start]) {
+                true => report.asan_report = report_slice.to_vec(),
+                false => report.msan_report = report_slice.to_vec(),
+            }
+
+            let context = AsanContext(report_slice.to_vec());
+            if let Ok(severity) = context.severity() {
                 report.execution_class = severity;
             } else {
-                eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
+                eprintln!(
+                    "Couldn't estimate severity. {}",
+                    context.severity().err().unwrap()
+                );
             }
-            report.stacktrace = AsanStacktrace::extract_stacktrace(&report.asan_report.join("\n"))?;
-        } else if let Some(report_start) = san_stderr_list
-            .iter()
-            .position(|line| rmsan_start.is_match(line))
-        {
-            // Set MSAN report in casr report.
-            let report_end = san_stderr_list.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
-            report.msan_report = Vec::from(&san_stderr_list[report_start..report_end]);
-            let context = AsanContext(report.msan_report.clone());
-            let severity = context.severity();
-            if let Ok(severity) = severity {
-                report.execution_class = severity;
-            } else {
-                eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
-            }
-            report.stacktrace = AsanStacktrace::extract_stacktrace(&report.msan_report.join("\n"))?;
+
+            report.stacktrace = AsanStacktrace::extract_stacktrace(&report_slice.join("\n"))?;
         } else {
             // Get termination signal.
             if let Some(signal) = sanitizers_result.status.signal() {
