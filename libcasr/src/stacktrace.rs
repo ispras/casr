@@ -17,7 +17,7 @@ use kodama::{Method, linkage};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write};
-use std::sync::{LazyLock, RwLock};
+use std::sync::RwLock;
 
 // Re-export types from gdb_command for convenient use from Casr library
 /// Represents the information about stack trace.
@@ -28,11 +28,9 @@ pub type DebugInfo = gdb_command::stacktrace::DebugInfo;
 pub type StacktraceEntry = gdb_command::stacktrace::StacktraceEntry;
 
 /// Regular expressions for functions to be ignored.
-pub static STACK_FRAME_FUNCTION_IGNORE_REGEXES: LazyLock<RwLock<Vec<String>>> =
-    LazyLock::new(|| RwLock::new(Vec::new()));
+pub static STACK_FRAME_FUNCTION_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(Vec::new());
 /// Regular expressions for file paths to be ignored.
-pub static STACK_FRAME_FILEPATH_IGNORE_REGEXES: LazyLock<RwLock<Vec<String>>> =
-    LazyLock::new(|| RwLock::new(Vec::new()));
+pub static STACK_FRAME_FILEPATH_IGNORE_REGEXES: RwLock<Vec<String>> = RwLock::new(Vec::new());
 
 /// Threshold for clusters diameter
 pub const THRESHOLD: f64 = 0.3;
@@ -468,7 +466,7 @@ pub mod tests {
 
     use crate::stacktrace::*;
 
-    static INITED_STACKFRAMES_FILTER: LazyLock<RwLock<bool>> = LazyLock::new(|| RwLock::new(false));
+    static INITED_STACKFRAMES_FILTER: RwLock<bool> = RwLock::new(false);
 
     /// Thread-safe initialization of all stackframe filters
     pub fn safe_init_ignore_stack_frames() {
