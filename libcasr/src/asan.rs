@@ -177,6 +177,8 @@ impl Severity for AsanContext {
         }
         if asan_report[0].contains("LeakSanitizer") {
             ExecutionClass::find("memory-leaks")
+        } else if asan_report[0].contains("MemorySanitizer") {
+            ExecutionClass::find("use-of-uninitialized-value")
         } else {
             let summary =
                 Regex::new(r"SUMMARY: *(AddressSanitizer|libFuzzer): ([A-Za-z_\-\(\)]+)").unwrap();

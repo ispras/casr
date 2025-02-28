@@ -132,7 +132,10 @@ fn main() -> Result<()> {
     let python_stderr_list: Vec<String> =
         python_stderr.split('\n').map(|l| l.to_string()).collect();
 
-    let re = Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
+    let re = Regex::new(
+        r"==\d+==\s*(ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer)|WARNING: MemorySanitizer): ",
+    )
+    .unwrap();
     if python_stderr_list.iter().any(|line| re.is_match(line)) {
         let python_stdout = String::from_utf8_lossy(&python_result.stdout);
         let python_stdout_list: Vec<String> =

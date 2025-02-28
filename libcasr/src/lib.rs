@@ -6,6 +6,7 @@
 //! It can analyze crashes from different sources:
 //!
 //! * AddressSanitizer
+//! * MemorySanitizer
 //! * UndefinedBehaviorSanitizer
 //! * Gdb output
 //!
