@@ -3250,7 +3250,7 @@ fn test_casr_san_msan() {
 
     assert!(clang.success());
 
-    let output = Command::new(*EXE_CASR_SAN)
+    let output = Command::new(EXE_CASR_SAN)
         .args(["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
