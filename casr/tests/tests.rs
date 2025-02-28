@@ -12,19 +12,19 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-static EXE_CASR_CORE: &'static str = env!("CARGO_BIN_EXE_casr-core");
-static EXE_CASR_AFL: &'static str = env!("CARGO_BIN_EXE_casr-afl");
-static EXE_CASR_LIBFUZZER: &'static str = env!("CARGO_BIN_EXE_casr-libfuzzer");
-static EXE_CASR_CLUSTER: &'static str = env!("CARGO_BIN_EXE_casr-cluster");
-static EXE_CASR_SAN: &'static str = env!("CARGO_BIN_EXE_casr-san");
-static EXE_CASR_UBSAN: &'static str = env!("CARGO_BIN_EXE_casr-ubsan");
-static EXE_CASR_PYTHON: &'static str = env!("CARGO_BIN_EXE_casr-python");
-static EXE_CASR_LUA: &'static str = env!("CARGO_BIN_EXE_casr-lua");
-static EXE_CASR_JAVA: &'static str = env!("CARGO_BIN_EXE_casr-java");
-static EXE_CASR_JS: &'static str = env!("CARGO_BIN_EXE_casr-js");
-static EXE_CASR_CSHARP: &'static str = env!("CARGO_BIN_EXE_casr-csharp");
-static EXE_CASR_GDB: &'static str = env!("CARGO_BIN_EXE_casr-gdb");
-static PROJECT_DIR: &'static str = env!("CARGO_MANIFEST_DIR");
+static EXE_CASR_CORE: &str = env!("CARGO_BIN_EXE_casr-core");
+static EXE_CASR_AFL: &str = env!("CARGO_BIN_EXE_casr-afl");
+static EXE_CASR_LIBFUZZER: &str = env!("CARGO_BIN_EXE_casr-libfuzzer");
+static EXE_CASR_CLUSTER: &str = env!("CARGO_BIN_EXE_casr-cluster");
+static EXE_CASR_SAN: &str = env!("CARGO_BIN_EXE_casr-san");
+static EXE_CASR_UBSAN: &str = env!("CARGO_BIN_EXE_casr-ubsan");
+static EXE_CASR_PYTHON: &str = env!("CARGO_BIN_EXE_casr-python");
+static EXE_CASR_LUA: &str = env!("CARGO_BIN_EXE_casr-lua");
+static EXE_CASR_JAVA: &str = env!("CARGO_BIN_EXE_casr-java");
+static EXE_CASR_JS: &str = env!("CARGO_BIN_EXE_casr-js");
+static EXE_CASR_CSHARP: &str = env!("CARGO_BIN_EXE_casr-csharp");
+static EXE_CASR_GDB: &str = env!("CARGO_BIN_EXE_casr-gdb");
+static PROJECT_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
 fn abs_path(rpath: &str) -> String {
     // Define paths.
