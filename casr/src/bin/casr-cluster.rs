@@ -243,7 +243,7 @@ fn merge_or_diff(input: &Path, output: &Path, diff: Option<&Path>) -> Result<u64
     })?;
 
     let save_dir = if let Some(diff) = diff {
-        fs::create_dir(diff)?;
+        fs::create_dir_all(diff)?;
         diff
     } else {
         output
