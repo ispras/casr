@@ -22,7 +22,11 @@ jobs:
     - name: Run tests
       run: |
         sudo apt update && sudo apt install -y gdb pip curl python3-dev llvm \
-            openjdk-17-jdk ca-certificates gnupg lua5.4
+            openjdk-17-jdk ca-certificates gnupg lua5.4 liblua5.4-dev
+        wget https://luarocks.org/releases/luarocks-3.11.1.tar.gz && tar zxpf luarocks-3.11.1.tar.gz && \
+            cd luarocks-3.11.1 && ./configure && make && make install && cd .. && rm -rf luarocks-3.11.1.tar.gz luarocks-3.11.1
+        git clone https://github.com/azanegin/luzer.git && \
+            cd luzer && git checkout 77642ba37430eded66d171a68d7e9c3f6347d625 && luarocks build && cd .. && rm -rf luzer
         # Atheris fails to install on Ubuntu 24.04, see https://github.com/google/atheris/issues/82
         # pip3 install atheris
         sudo mkdir -p /etc/apt/keyrings
