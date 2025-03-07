@@ -22,7 +22,7 @@ jobs:
     - name: Run tests
       run: |
         sudo apt update && sudo apt install -y gdb pip curl python3-dev llvm \
-            openjdk-17-jdk ca-certificates gnupg lua5.4 liblua5.4-dev
+            openjdk-17-jdk ca-certificates gnupg lua5.1 liblua5.1-dev
         wget https://luarocks.org/releases/luarocks-3.11.1.tar.gz && tar zxpf luarocks-3.11.1.tar.gz && \
             cd luarocks-3.11.1 && ./configure && make && sudo make install && cd .. && rm -rf luarocks-3.11.1.tar.gz luarocks-3.11.1
         git clone https://github.com/azanegin/luzer.git && \
