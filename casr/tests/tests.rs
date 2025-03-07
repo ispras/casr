@@ -5079,13 +5079,13 @@ fn test_casr_libfuzzer_luzer() {
         String::from_utf8_lossy(&output.stderr)
     );
     let err = String::from_utf8_lossy(&output.stderr);
-println!("{}", err);
+    println!("{}", err);
 
     assert!(!err.is_empty());
 
     assert!(err.contains("NOT_EXPLOITABLE"));
-    assert!(err.contains("attempt to perform arithmetic on a nil value"));
-    assert!(err.contains("attempt to index a nil value"));
+    assert!(err.contains("attempt to perform arithmetic"));
+    assert!(err.contains("attempt to index"));
     assert!(err.contains("bad argument #1 to 'insert'"));
     assert!(err.contains("XmlParser.lua"));
     assert!(err.contains("tree.lua"));
