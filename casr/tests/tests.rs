@@ -5079,6 +5079,7 @@ fn test_casr_libfuzzer_luzer() {
         String::from_utf8_lossy(&output.stderr)
     );
     let err = String::from_utf8_lossy(&output.stderr);
+println!("{}", err);
 
     assert!(!err.is_empty());
 
