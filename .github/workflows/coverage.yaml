@@ -19,16 +19,7 @@ jobs:
     - name: Install Dependences
       run: |
         sudo apt update && sudo apt install -y gdb pip curl python3-dev llvm \
-            openjdk-17-jdk ca-certificates gnupg lua5.4 liblua5.4-dev libcurl4-gnutls-dev
-        wget https://luarocks.org/releases/luarocks-3.11.1.tar.gz && tar zxpf luarocks-3.11.1.tar.gz && \
-            cd luarocks-3.11.1 && ./configure && make && sudo make install && cd .. && rm -rf luarocks-3.11.1.tar.gz luarocks-3.11.1
-        eval $(luarocks path)
-        wget https://github.com/tarantool/luajit/archive/refs/tags/v2.1.0-beta3.tar.gz && \
-            tar zxpf v2.1.0-beta3.tar.gz && rm v2.1.0-beta3.tar.gz && cd luajit-2.1.0-beta3 && \
-            make && sudo make install && sudo ln -sf luajit-2.1.0-beta3 /usr/local/bin/luajit && cd .. && rm -rf luajit-2.1.0-beta3
-        git clone https://github.com/ligurio/luzer.git && \
-            cd luzer && git checkout 6e3276c5e6faf18c8c98637162bea0a23f0cd1d3 && luarocks --local build && cd ..
-        export LUA_CPATH="/home/runner/work/casr/casr/luzer/build.luarocks/luzer/?.so;$LUA_CPATH"
+            openjdk-17-jdk ca-certificates gnupg lua5.4
         pip3 install atheris
         sudo mkdir -p /etc/apt/keyrings
         curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
@@ -54,8 +45,8 @@ jobs:
       run: |
         rustup component add llvm-tools-preview
         cargo +nightly build --all-features --verbose
-        cargo +nightly test --verbose --lib -- --test-threads 1
-        cargo +nightly test --verbose --package casr
+        cargo +nightly test --verbose --lib -- --test-threads 1 --skip test_casr_libfuzzer_luzer
+        cargo +nightly test --verbose --package casr -- --skip test_casr_libfuzzer_luzer
     - name: Collect Coverage
       run: |
         mkdir target/coverage

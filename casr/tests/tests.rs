@@ -5020,10 +5020,6 @@ fn test_casr_lua() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_libfuzzer_luzer() {
-    // if lsb_release::info().unwrap().version != "24.04" {
-    //     return;
-    // }
-
     use std::collections::HashMap;
 
     let paths = [
