@@ -51,7 +51,7 @@ impl<'a> CrashInfo {
         } else {
             args.push(format!("{}.casrep", report_path.display()));
         }
-        if self.at_index.is_none() || self.at_index == Some(0) {
+        if self.at_index.is_none() {
             args.push("--stdin".to_string());
             args.push(self.path.to_str().unwrap().to_string());
         }
