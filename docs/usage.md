@@ -15,7 +15,7 @@ Use `casr-lua` to analyze Lua reports. `casr-afl` can triage crashes found by
 [AFL++](https://github.com/AFLplusplus/AFLplusplus) and AFL-based fuzzer
 [Sharpfuzz](https://github.com/Metalnem/sharpfuzz). `casr-libfuzzer` can triage
 crashes found by [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html)
-(libFuzzer, go-fuzz, Atheris, Jazzer, Jazzer.js, jsfuzz) or by
+(libFuzzer, go-fuzz, Atheris, Jazzer, Jazzer.js, jsfuzz, luzer) or by
 [LibAFL](https://github.com/AFLplusplus/LibAFL) based
 [fuzzers](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers). `casr-dojo`
 allows to upload new and unique CASR reports to
@@ -613,7 +613,7 @@ your project before (via `dotnet build` or `dotnet publish`) and specify `--no-b
 ## casr-libfuzzer
 
 Triage crashes found by libFuzzer based fuzzer
-(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz) or LibAFL based fuzzer
+(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz/luzer) or LibAFL based fuzzer
 
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> -- <ARGS>...
 
@@ -655,7 +655,8 @@ Triage crashes found by libFuzzer based fuzzer
 [libFuzzer](https://www.llvm.org/docs/LibFuzzer.html) based fuzzers
 (C/C++/[go-fuzz](https://github.com/dvyukov/go-fuzz)/[Atheris](https://github.com/google/atheris)/
 [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer)/[Jazzer.js](https://github.com/CodeIntelligenceTesting/jazzer.js)/
-[jsfuzz](https://github.com/fuzzitdev/jsfuzz)) or [LibAFL](https://github.com/AFLplusplus/LibAFL) based
+[jsfuzz](https://github.com/fuzzitdev/jsfuzz)/[luzer](https://github.com/ligurio/luzer))
+or [LibAFL](https://github.com/AFLplusplus/LibAFL) based
 [fuzzers](https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers).
 It is pretty much like `casr-afl`.
 
@@ -681,6 +682,15 @@ Jazzer.js example (Jazzer.js installation [guide](https://github.com/CodeIntelli
     $ sudo npm install xml2js
     $ sudo npm install --save-dev @jazzer.js/core
     $ casr-libfuzzer -i ./xml2js -o casr/tests/tmp_tests_casr/xml2js_fuzzer_out/out -- npx jazzer casr/tests/tmp_tests_casr/xml2js_fuzzer_out/xml2js_fuzzer.js
+
+Luzer example:
+
+    $ unzip casr/tests/casr_tests/lua/xml2lua.zip && cd xml2lua && luarocks --local build && cd .. && rm -rf xml2lua
+    $ git clone https://github.com/azanegin/luzer.git && \
+        cd luzer && git checkout 77642ba37430eded66d171a68d7e9c3f6347d625 && luarocks --local build && cd .. && rm -rf luzer
+    $ eval $(luarocks path)
+    $ mkdir -p casr/tests/tmp_tests_casr/casr_libfuzzer_luzer_out
+    $ casr-libfuzzer -i casr/tests/casr_tests/casrep/luzer_crashes_xml2lua -o casr/tests/tmp_tests_casr/casr_libfuzzer_luzer_out -- casr/tests/casr_tests/lua/stdin_parse_xml.lua
 
 LibAFL example:
 
