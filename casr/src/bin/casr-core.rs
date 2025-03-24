@@ -219,7 +219,7 @@ fn main() -> Result<()> {
     report.pid = pid;
     // Add network connections.
     if let Err(error) = report.add_network_connections() {
-        error!("{}", error.to_string());
+        error!("{}", error);
     }
 
     file_name_to_save.push_str(&format!("_{}", report.date));
@@ -234,17 +234,17 @@ fn main() -> Result<()> {
 
     // Add OS information.
     if let Err(error) = report.add_os_info() {
-        error!("{}. Casr command line: {}", error.to_string(), &casr_cmd);
+        error!("{}. Casr command line: {}", error, &casr_cmd);
     }
 
     // Add process information.
     if let Err(error) = report.add_proc_info() {
-        error!("{}. Casr command line: {}", error.to_string(), &casr_cmd);
+        error!("{}. Casr command line: {}", error, &casr_cmd);
     }
 
     // Add package information.
     if let Err(error) = report.add_package_info() {
-        error!("{}. Casr command line: {}", error.to_string(), &casr_cmd);
+        error!("{}. Casr command line: {}", error, &casr_cmd);
     }
 
     // Drop privileges.
