@@ -320,7 +320,7 @@ Savidov G., Fedotov A. Casr-Cluster: Crash Clustering for Linux Applications. 20
 }
 ```
 
-Andrey Fedotov, Alexey Vishnyakov. CASR: Your Life Vest in a Sea of Crashes. OFFZONE 2023. \[[slides](https://offzone.moscow/upload/iblock/6cc/pujglwwoc8teeol03jwsuirfplm8e4dc.pdf)\] \[[russian&nbsp;video](https://youtu.be/EgEeICZQD9M?si=hiFEwPmDqnh0cEq6)\]
+Andrey Fedotov, Alexey Vishnyakov. CASR: Your Life Vest in a Sea of Crashes. OFFZONE 2023. \[[slides](https://vishnya.xyz/mirror/casr-offzone2023.pdf)\] \[[russian&nbsp;video](https://youtu.be/EgEeICZQD9M?si=hiFEwPmDqnh0cEq6)\]
 
 Yegorov I., Savidov G. Crash Report Accumulation During Continuous Fuzzing with CASR. Ivannikov Memorial Workshop 2024, IEEE, 2024. \[[paper](https://arxiv.org/abs/2405.18174)\] \[[slides](https://sydr-fuzz.github.io/papers/crash-accumulation.pdf)\] \[[russian&nbsp;video](https://www.youtube.com/live/xI1LQS3C7eQ?si=dHNdm4-nZFc2QdQf&t=27620)\]
 
