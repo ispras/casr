@@ -75,6 +75,16 @@ fn main() -> Result<()> {
                 .help("Path prefix to strip from stacktrace"),
         )
         .arg(
+            Arg::new("ld-preload")
+                .long("ld-preload")
+                .env("CASR_PRELOAD")
+                .action(ArgAction::Set)
+                .num_args(1..)
+                .value_name("LIBS")
+                .value_parser(clap::value_parser!(String))
+                .help("Set LD_PRELOAD for the target program without disrupting the CASR process itself")
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .num_args(1..)
@@ -100,6 +110,11 @@ fn main() -> Result<()> {
 
     // Get timeout
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
+
+    // Get ld preload
+    if let Some(ld_preload) = matches.get_many::<String>("ld-preload") {
+        util::set_ld_preload(ld_preload);
+    }
 
     // Run program.
     let mut python_cmd = Command::new(argv[0]);

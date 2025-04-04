@@ -7,8 +7,8 @@ use libcasr::stacktrace::{
     STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES, Stacktrace,
 };
 
-use anyhow::{Context, Result, bail};
-use clap::ArgMatches;
+use anyhow::{bail, Context, Result};
+use clap::{parser::ValuesRef, ArgMatches};
 use copy_dir::copy_dir;
 use gdb_command::stacktrace::StacktraceExt;
 use is_executable::IsExecutable;
@@ -613,4 +613,17 @@ pub fn strip_paths(report: &mut CrashReport, stacktrace: &Stacktrace, prefix: &s
             .collect::<Vec<_>>()
             .join(" ");
     }
+}
+
+/// Set LD_PRELOAD
+///
+/// # Arguments
+///
+/// * `ld_preload` - ld preload
+pub fn set_ld_preload(ld_preload: ValuesRef<'_, String>) {
+    let ld_preload = ld_preload
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>()
+        .join(":");
+    std::env::set_var("LD_PRELOAD", ld_preload);
 }
