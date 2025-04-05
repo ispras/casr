@@ -115,13 +115,12 @@ fn main() -> Result<()> {
     // Get timeout.
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
-    // Get ld preload
-    if let Some(ld_preload) = matches.get_many::<String>("ld-preload") {
-        util::set_ld_preload(ld_preload);
-    }
-
     // Run program.
     let mut csharp_cmd = Command::new(argv[0]);
+    // Set ld preload
+    if let Some(ld_preload) = util::get_ld_preload(&matches) {
+        csharp_cmd.env("LD_PRELOAD", ld_preload);
+    }
     if let Some(ref file) = stdin_file {
         csharp_cmd.stdin(std::fs::File::open(file)?);
     }
