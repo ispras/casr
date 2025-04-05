@@ -7,8 +7,8 @@ use libcasr::stacktrace::{
     STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES, Stacktrace,
 };
 
-use anyhow::{bail, Context, Result};
-use clap::{parser::ValuesRef, ArgMatches};
+use anyhow::{Context, Result, bail};
+use clap::{ArgMatches, parser::ValuesRef};
 use copy_dir::copy_dir;
 use gdb_command::stacktrace::StacktraceExt;
 use is_executable::IsExecutable;
@@ -625,5 +625,7 @@ pub fn set_ld_preload(ld_preload: ValuesRef<'_, String>) {
         .map(|s| s.to_string())
         .collect::<Vec<_>>()
         .join(":");
-    std::env::set_var("LD_PRELOAD", ld_preload);
+    unsafe {
+        std::env::set_var("LD_PRELOAD", ld_preload);
+    }
 }
