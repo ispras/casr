@@ -623,7 +623,7 @@ your project before (via `dotnet build` or `dotnet publish`) and specify `--no-b
 ## casr-libfuzzer
 
 Triage crashes found by libFuzzer based fuzzer
-(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz/luzer) or LibAFL based fuzzer
+(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz) or LibAFL based fuzzer
 
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> -- <ARGS>...
 
