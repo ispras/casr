@@ -415,7 +415,8 @@ fn main() -> Result<()> {
             inputs
                 .par_iter()
                 .filter_map(|input| {
-                    let Ok(input_warnings) = extract_warnings(input, &argv, timeout, &ld_preload) else {
+                    let Ok(input_warnings) = extract_warnings(input, &argv, timeout, &ld_preload)
+                    else {
                         warn!("Failed to run program with input file {:?}", input);
                         *counter.write().unwrap() += 1;
                         return None;
