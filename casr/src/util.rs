@@ -614,3 +614,18 @@ pub fn strip_paths(report: &mut CrashReport, stacktrace: &Stacktrace, prefix: &s
             .join(" ");
     }
 }
+
+/// Get LD_PRELOAD
+///
+/// # Arguments
+///
+/// * `matches` - casr options
+pub fn get_ld_preload(matches: &ArgMatches) -> Option<String> {
+    let ld_preload = matches.get_many::<String>("ld-preload")?;
+    Some(
+        ld_preload
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+            .join(":"),
+    )
+}

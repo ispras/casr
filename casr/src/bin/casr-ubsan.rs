@@ -169,7 +169,7 @@ fn save_report(report: CrashReport, output_dir: &Path, input: &Path) -> Result<(
     let dir_name = input.parent().unwrap().file_name().unwrap();
     let input_name = input.file_name().unwrap();
     let crashline = report.crashline;
-    let crashline = crashline.split('/').last().unwrap();
+    let crashline = crashline.split('/').next_back().unwrap();
     let crashline = crashline.replace(':', "_");
 
     // Copy input

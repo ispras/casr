@@ -8,6 +8,7 @@ use clap::{
 };
 
 use std::collections::HashMap;
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -147,7 +148,10 @@ fn main() -> Result<()> {
     // Get tool.
     let mut envs = HashMap::new();
     let tool = if hint == "python" || hint == "auto" && argv[0].ends_with(".py") {
-        envs.insert("LD_PRELOAD".to_string(), util::get_atheris_lib()?);
+        // NOTE: https://doc.rust-lang.org/std/env/fn.var.html#errors
+        if env::var("CASR_PRELOAD").is_err() {
+            envs.insert("CASR_PRELOAD".to_string(), util::get_atheris_lib()?);
+        }
         "casr-python"
     } else if hint == "java"
         || hint == "auto" && (argv[0].ends_with("jazzer") || argv[0].ends_with("java"))

@@ -26,6 +26,7 @@ jobs:
           export CARGO_TERM_COLOR=always
           export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
           apt-get update && apt-get install -y gdb pip curl python3.12-dev clang llvm build-essential binutils lld lua5.4
+          update-alternatives --set cc /usr/bin/clang
           curl https://sh.rustup.rs -o rustup.sh && chmod +x rustup.sh && \
           ./rustup.sh -y && rm rustup.sh
         run: |
