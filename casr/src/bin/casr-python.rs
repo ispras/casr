@@ -82,7 +82,7 @@ fn main() -> Result<()> {
                 .num_args(1..)
                 .value_name("LIBS")
                 .value_parser(clap::value_parser!(String))
-                .help("Set LD_PRELOAD for the target program without disrupting the CASR process itself")
+                .help("Set LD_PRELOAD for the target program without disrupting the CASR process itself (both ` ` and `:` are valid delimiter)")
         )
         .arg(
             Arg::new("ARGS")

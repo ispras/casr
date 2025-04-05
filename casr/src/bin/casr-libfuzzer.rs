@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
         .version(clap::crate_version!())
-        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz) or LibAFL based fuzzer")
+        .about("Triage crashes found by libFuzzer based fuzzer (C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz/luzer) or LibAFL based fuzzer")
         .term_width(90)
         .arg(
             Arg::new("log-level")

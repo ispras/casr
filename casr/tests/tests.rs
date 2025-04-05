@@ -1249,7 +1249,7 @@ fn test_dest_av_near_null_gdb() {
         .output()
         .expect("failed to start casr-gdb");
 
-    // Test if casr got result.
+    // Test if casr got results.
     assert!(
         output.status.success(),
         "Stdout {}.\n Stderr: {}",

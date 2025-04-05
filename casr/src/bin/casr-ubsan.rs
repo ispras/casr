@@ -34,6 +34,8 @@ use std::sync::RwLock;
 ///
 /// * `timeout` - target program timeout
 ///
+/// * `ld_preload` - LD_PRELOAD value
+///
 /// # Returns value
 ///
 /// Vector of extracted ubsan warnings with crash lines
@@ -41,6 +43,7 @@ fn extract_warnings(
     input: &PathBuf,
     argv: &[&str],
     timeout: u64,
+    ld_preload: &Option<String>,
 ) -> Result<Vec<(UbsanWarning, CrashLine)>> {
     // Get command line argv
     let mut argv = argv.to_owned();
@@ -54,6 +57,10 @@ fn extract_warnings(
     };
     // Run program.
     let mut cmd = Command::new(argv[0]);
+    // Set ld preload
+    if let Some(ld_preload) = ld_preload {
+        cmd.env("LD_PRELOAD", ld_preload);
+    }
     cmd.stdout(Stdio::null()).stderr(Stdio::piped());
     if stdin {
         let Ok(file) = fs::File::open(input) else {
@@ -282,6 +289,16 @@ fn main() -> Result<()> {
                 .help("Remove output project directory if it exists")
         )
         .arg(
+            Arg::new("ld-preload")
+                .long("ld-preload")
+                .env("CASR_PRELOAD")
+                .action(ArgAction::Set)
+                .num_args(1..)
+                .value_name("LIBS")
+                .value_parser(clap::value_parser!(String))
+                .help("Set LD_PRELOAD for the target program without disrupting the CASR process itself (both ` ` and `:` are valid delimiter)")
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .required(false)
@@ -352,6 +369,9 @@ fn main() -> Result<()> {
         .build()
         .unwrap();
 
+    // Get ld preload
+    let ld_preload = util::get_ld_preload(&matches);
+
     // Set ubsan env options
     if let Ok(mut ubsan_options) = env::var("UBSAN_OPTIONS") {
         if ubsan_options.starts_with(',') {
@@ -395,7 +415,7 @@ fn main() -> Result<()> {
             inputs
                 .par_iter()
                 .filter_map(|input| {
-                    let Ok(input_warnings) = extract_warnings(input, &argv, timeout) else {
+                    let Ok(input_warnings) = extract_warnings(input, &argv, timeout, &ld_preload) else {
                         warn!("Failed to run program with input file {:?}", input);
                         *counter.write().unwrap() += 1;
                         return None;

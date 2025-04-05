@@ -71,7 +71,8 @@ Create CASR reports (.casrep) from AddressSanitizer reports
           --strip-path <PREFIX>   Path prefix to strip from stacktrace and crash line [env:
                                   CASR_STRIP_PATH=]
           --ld-preload <LIBS>...  Set LD_PRELOAD for the target program without disrupting the
-                                  CASR process itself [env: CASR_PRELOAD=]
+                                  CASR process itself (both ` ` and `:` are valid delimiter)
+                                  [env: CASR_PRELOAD=]
       -h, --help                  Print help
       -V, --version               Print version
 
@@ -109,6 +110,9 @@ Triage errors found by UndefinedBehaviorSanitizer and create CASR reports (.casr
       -i, --input <INPUT_DIRS>...  Target input directory list
       -o, --output <OUTPUT_DIR>    Output directory with triaged reports
       -f, --force-remove           Remove output project directory if it exists
+          --ld-preload <LIBS>...   Set LD_PRELOAD for the target program without disrupting
+                                   the CASR process itself (both ` ` and `:` are valid
+                                   delimiter) [env: CASR_PRELOAD=]
       -h, --help                   Print help
       -V, --version                Print version
 
@@ -147,7 +151,8 @@ Create CASR reports (.casrep) from python reports
                                   that should be ignored
           --strip-path <PREFIX>   Path prefix to strip from stacktrace [env: CASR_STRIP_PATH=]
           --ld-preload <LIBS>...  Set LD_PRELOAD for the target program without disrupting the
-                                  CASR process itself [env: CASR_PRELOAD=]
+                                  CASR process itself (both ` ` and `:` are valid delimiter)
+                                  [env: CASR_PRELOAD=]
       -h, --help                  Print help
       -V, --version               Print version
 
@@ -178,7 +183,8 @@ Create CASR reports (.casrep) from java reports
           --strip-path <PREFIX>   Path prefix to strip from stacktrace and crash line [env:
                                   CASR_STRIP_PATH=]
           --ld-preload <LIBS>...  Set LD_PRELOAD for the target program without disrupting the
-                                  CASR process itself [env: CASR_PRELOAD=]
+                                  CASR process itself (both ` ` and `:` are valid delimiter)
+                                  [env: CASR_PRELOAD=]
       -h, --help                  Print help
       -V, --version               Print version
 
@@ -207,7 +213,8 @@ Create CASR reports (.casrep) from JavaScript crash reports
           --strip-path <PREFIX>   Path prefix to strip from stacktrace and crash line [env:
                                   CASR_STRIP_PATH=]
           --ld-preload <LIBS>...  Set LD_PRELOAD for the target program without disrupting the
-                                  CASR process itself [env: CASR_PRELOAD=]
+                                  CASR process itself (both ` ` and `:` are valid delimiter)
+                                  [env: CASR_PRELOAD=]
       -h, --help                  Print help
       -V, --version               Print version
 
@@ -236,7 +243,8 @@ Create CASR reports (.casrep) from C# reports
           --strip-path <PREFIX>   Path prefix to strip from stacktrace and crash line [env:
                                   CASR_STRIP_PATH=]
           --ld-preload <LIBS>...  Set LD_PRELOAD for the target program without disrupting the
-                                  CASR process itself [env: CASR_PRELOAD=]
+                                  CASR process itself (both ` ` and `:` are valid delimiter)
+                                  [env: CASR_PRELOAD=]
       -h, --help                  Print help
       -V, --version               Print version
 
@@ -254,17 +262,20 @@ Create CASR reports (.casrep) from Lua reports
       <ARGS>...  Add "-- <path> <arguments>" to run
 
     Options:
-      -o, --output <REPORT>      Path to save report. Path can be a directory, then report
-                                 name is generated
-          --stdout               Print CASR report to stdout
-          --stdin <FILE>         Stdin file for program
-      -t, --timeout <SECONDS>    Timeout (in seconds) for target execution, 0 value means that
-                                 timeout is disabled [default: 0]
-          --ignore <FILE>        File with regular expressions for functions and file paths
-                                 that should be ignored
-          --strip-path <PREFIX>  Path prefix to strip from stacktrace [env: CASR_STRIP_PATH=]
-      -h, --help                 Print help
-      -V, --version              Print version
+      -o, --output <REPORT>       Path to save report. Path can be a directory, then report
+                                  name is generated
+          --stdout                Print CASR report to stdout
+          --stdin <FILE>          Stdin file for program
+      -t, --timeout <SECONDS>     Timeout (in seconds) for target execution, 0 value means
+                                  that timeout is disabled [default: 0]
+          --ignore <FILE>         File with regular expressions for functions and file paths
+                                  that should be ignored
+          --strip-path <PREFIX>   Path prefix to strip from stacktrace [env: CASR_STRIP_PATH=]
+          --ld-preload <LIBS>...  Set LD_PRELOAD for the target program without disrupting the
+                                  CASR process itself (both ` ` and `:` are valid delimiter)
+                                  [env: CASR_PRELOAD=]
+      -h, --help                  Print help
+      -V, --version               Print version
 
 Run casr-lua:
 
@@ -623,7 +634,7 @@ your project before (via `dotnet build` or `dotnet publish`) and specify `--no-b
 ## casr-libfuzzer
 
 Triage crashes found by libFuzzer based fuzzer
-(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz) or LibAFL based fuzzer
+(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz/luzer) or LibAFL based fuzzer
 
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> -- <ARGS>...
 

@@ -49,6 +49,9 @@ pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<
     if let Some(path) = matches.get_one::<String>("ignore") {
         cmd.args(["--ignore", path]);
     }
+    if let Some(ld_preload) = get_ld_preload(matches) {
+        cmd.args(["--ld-preload", &ld_preload]);
+    }
     cmd.arg("--").args(argv);
 
     let output = cmd
