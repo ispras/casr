@@ -144,7 +144,7 @@ impl<'a> CrashInfo {
 /// * `matches` - casr-afl/casr-libfuzzer arguments
 ///
 /// * `crashes` - map of crashes, specified as a HashMap, where
-///               key is crash input file name and value is CrashInfo structure
+///   key is crash input file name and value is CrashInfo structure
 ///
 /// * `gdb_args` - casr-gdb target arguments. If they are empty, casr-gdb won't be launched.
 pub fn fuzzing_crash_triage_pipeline(

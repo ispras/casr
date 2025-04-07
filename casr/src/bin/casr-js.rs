@@ -71,6 +71,16 @@ fn main() -> Result<()> {
                 .help("Path prefix to strip from stacktrace and crash line"),
         )
         .arg(
+            Arg::new("ld-preload")
+                .long("ld-preload")
+                .env("CASR_PRELOAD")
+                .action(ArgAction::Set)
+                .num_args(1..)
+                .value_name("LIBS")
+                .value_parser(clap::value_parser!(String))
+                .help("Set LD_PRELOAD for the target program without disrupting the CASR process itself (both ` ` and `:` are valid delimiter)")
+        )
+        .arg(
             Arg::new("ARGS")
                 .action(ArgAction::Set)
                 .num_args(1..)
@@ -99,6 +109,10 @@ fn main() -> Result<()> {
 
     // Run program.
     let mut js_cmd = Command::new(argv[0]);
+    // Set ld preload
+    if let Some(ld_preload) = util::get_ld_preload(&matches) {
+        js_cmd.env("LD_PRELOAD", ld_preload);
+    }
     if let Some(ref file) = stdin_file {
         js_cmd.stdin(std::fs::File::open(file)?);
     }

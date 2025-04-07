@@ -49,6 +49,9 @@ pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<
     if let Some(path) = matches.get_one::<String>("ignore") {
         cmd.args(["--ignore", path]);
     }
+    if let Some(ld_preload) = get_ld_preload(matches) {
+        cmd.args(["--ld-preload", &ld_preload]);
+    }
     cmd.arg("--").args(argv);
 
     let output = cmd
@@ -613,4 +616,19 @@ pub fn strip_paths(report: &mut CrashReport, stacktrace: &Stacktrace, prefix: &s
             .collect::<Vec<_>>()
             .join(" ");
     }
+}
+
+/// Get LD_PRELOAD
+///
+/// # Arguments
+///
+/// * `matches` - casr options
+pub fn get_ld_preload(matches: &ArgMatches) -> Option<String> {
+    let ld_preload = matches.get_many::<String>("ld-preload")?;
+    Some(
+        ld_preload
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+            .join(":"),
+    )
 }

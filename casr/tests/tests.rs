@@ -1249,7 +1249,7 @@ fn test_dest_av_near_null_gdb() {
         .output()
         .expect("failed to start casr-gdb");
 
-    // Test if casr got result.
+    // Test if casr got results.
     assert!(
         output.status.success(),
         "Stdout {}.\n Stderr: {}",
@@ -4494,7 +4494,7 @@ fn test_casr_java_native_lib() {
             "/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
             &paths[0],
         ])
-        .env("LD_PRELOAD", clang_rt.trim())
+        .env("CASR_PRELOAD", clang_rt.trim())
         .env("LD_LIBRARY_PATH", &paths[3])
         .env("PATH", format!("{}:{}", env!("PATH"), cargo_target_dir))
         .output()
@@ -4593,6 +4593,7 @@ fn test_casr_san_python_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_python_df");
 
+    let _ = std::fs::remove_dir_all(&test_dir);
     let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
@@ -4649,7 +4650,7 @@ fn test_casr_san_python_df() {
 
     let output = Command::new(EXE_CASR_SAN)
         .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
-        .env("LD_PRELOAD", lib_path.to_string())
+        .env("CASR_PRELOAD", lib_path.to_string())
         .args(["--stdout", "--", &paths[2]])
         .output()
         .expect("failed to start casr-san");
@@ -4696,6 +4697,7 @@ fn test_casr_san_atheris_df() {
     let work_dir = abs_path("tests/casr_tests/python");
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_san_atheris_df");
 
+    let _ = std::fs::remove_dir_all(&test_dir);
     let _ = copy_dir(work_dir, &test_dir).unwrap();
 
     let paths = [
@@ -4755,7 +4757,7 @@ fn test_casr_san_atheris_df() {
 
     let output = Command::new(EXE_CASR_SAN)
         .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
-        .env("LD_PRELOAD", lib_path.to_string())
+        .env("CASR_PRELOAD", lib_path.to_string())
         .args(["--stdout", "--", &paths[2], &paths[3]])
         .output()
         .expect("failed to start casr-san");
@@ -4861,7 +4863,7 @@ fn test_casr_python_call_san_df() {
     let bins = Path::new(EXE_CASR_PYTHON).parent().unwrap();
     let output = Command::new(EXE_CASR_PYTHON)
         .env("ASAN_OPTIONS", "detect_leaks=0,symolize=1")
-        .env("LD_PRELOAD", lib_path.to_string())
+        .env("CASR_PRELOAD", lib_path.to_string())
         .env(
             "PATH",
             format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
@@ -5289,7 +5291,7 @@ fn test_casr_js_native() {
 
     let output = Command::new(EXE_CASR_JS)
         .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
-        .env("LD_PRELOAD", clang_rt.trim())
+        .env("CASR_PRELOAD", clang_rt.trim())
         .env(
             "LD_LIBRARY_PATH",
             Path::new(&clang_rt.trim().to_string())
@@ -5416,7 +5418,7 @@ fn test_casr_js_native_jsfuzz() {
 
     let output = Command::new(EXE_CASR_JS)
         .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
-        .env("LD_PRELOAD", clang_rt.trim())
+        .env("CASR_PRELOAD", clang_rt.trim())
         .env(
             "LD_LIBRARY_PATH",
             Path::new(&clang_rt.trim().to_string())
@@ -5543,7 +5545,7 @@ fn test_casr_js_native_jazzer() {
 
     let output = Command::new(EXE_CASR_JS)
         .env("ASAN_OPTIONS", "detect_leaks=0,symbolize=1")
-        .env("LD_PRELOAD", clang_rt.trim())
+        .env("CASR_PRELOAD", clang_rt.trim())
         .env(
             "LD_LIBRARY_PATH",
             Path::new(&clang_rt.trim().to_string())
