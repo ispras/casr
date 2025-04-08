@@ -11,6 +11,8 @@ license = "Apache-2.0"
 exclude = ["/tests"]
 
 [dependencies]
+lettre = "0.11.15"
+secrecy = "0.8"
 shell-words = "1.1"
 anyhow = "1.0"
 clap = { version = "4.5", features = ["wrap_help", "cargo", "env"] }
