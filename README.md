@@ -246,7 +246,7 @@ Triage Jazzer.js crashes with casr-libfuzzer (Jazzer.js installation [guide](htt
 Triage luzer crashes with casr-libfuzzer:
 
     $ unzip casr/tests/casr_tests/lua/xml2lua.zip && cd xml2lua && luarocks --local build && cd .. && rm -rf xml2lua
-    $ luarocks --local install https://gist.githubusercontent.com/ligurio/9743b6c993dabebe5daab721319e1250/raw/4d89cbf031cbd67b52e23dd86e1156f433abbf72/luzer-scm-1.rockspec
+    $ git clone https://github.com/ligurio/luzer.git && cd luzer && luarocks --local build && cd .. && rm -rf luzer
     $ eval $(luarocks path)
     $ casr-libfuzzer -i casr/tests/casr_tests/casrep/luzer_crashes_xml2lua -o casr/tests/tmp_tests_casr/casr_libfuzzer_luzer_out -- casr/tests/casr_tests/lua/stdin_parse_xml.lua
 
