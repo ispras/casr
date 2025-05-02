@@ -17,3 +17,7 @@ pr-run-mode = "skip"
 all-features = true
 # Skip checking whether the specified configuration files are up to date
 allow-dirty = ["ci"]
+
+[dist.github-custom-runners]
+x86_64-unknown-linux-gnu = "ubuntu-22.04"
+aarch64-unknown-linux-gnu = "ubuntu-22.04"
