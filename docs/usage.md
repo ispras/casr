@@ -707,8 +707,9 @@ Jazzer.js example (Jazzer.js installation [guide](https://github.com/CodeIntelli
 Luzer example:
 
     $ unzip casr/tests/casr_tests/lua/xml2lua.zip && cd xml2lua && luarocks --local build && cd .. && rm -rf xml2lua
-    $ git clone https://github.com/ligurio/luzer.git && cd luzer && luarocks --local build && cd .. && rm -rf luzer
-    $ eval $(luarocks path)
+    $ git clone https://github.com/azanegin/luzer.git && \
+            cd luzer && git checkout 77642ba37430eded66d171a68d7e9c3f6347d625 && luarocks --local build && cd .. && rm -rf luzer
+    $ mkdir -p casr/tests/tmp_tests_casr/casr_libfuzzer_luzer_out
     $ casr-libfuzzer -i casr/tests/casr_tests/casrep/luzer_crashes_xml2lua -o casr/tests/tmp_tests_casr/casr_libfuzzer_luzer_out -- casr/tests/casr_tests/lua/stdin_parse_xml.lua
 
 LibAFL example:
