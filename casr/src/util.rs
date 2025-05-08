@@ -1,11 +1,12 @@
 //! Common utility functions.
-extern crate libcasr;
-
-use libcasr::cluster::{Cluster, ReportInfo};
-use libcasr::report::CrashReport;
-use libcasr::stacktrace::{
-    STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES, Stacktrace,
-};
+use std::collections::{HashMap, HashSet};
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output, Stdio};
+use std::sync::RwLock;
+use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use clap::ArgMatches;
@@ -17,14 +18,18 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use simplelog::*;
 use wait_timeout::ChildExt;
 
-use std::collections::{HashMap, HashSet};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
-use std::sync::RwLock;
-use std::time::Duration;
+extern crate libcasr;
+
+use libcasr::{
+    cluster::{Cluster, ReportInfo},
+    cpp::CppException,
+    exception::Exception,
+    report::CrashReport,
+    rust::RustPanic,
+    stacktrace::{
+        STACK_FRAME_FILEPATH_IGNORE_REGEXES, STACK_FRAME_FUNCTION_IGNORE_REGEXES, Stacktrace,
+    },
+};
 
 /// Call casr-san with the provided options
 ///
@@ -76,7 +81,7 @@ pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<
 /// * `matches` - casr options
 ///
 /// * `argv` - executable file options
-pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) -> Result<()> {
+pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[String]) -> Result<()> {
     // Convert report to string.
     let repstr = serde_json::to_string_pretty(&report).unwrap();
 
@@ -631,4 +636,61 @@ pub fn get_ld_preload(matches: &ArgMatches) -> Option<String> {
             .collect::<Vec<_>>()
             .join(":"),
     )
+}
+
+/// Check if required arguments are present
+///
+/// # Arguments
+///
+/// * `matches` - casr options
+///
+/// * `args` - required argument list
+pub fn check_required(matches: &ArgMatches, args: &[&str]) -> Result<()> {
+    let sub = matches.subcommand();
+    for arg in args {
+        if !matches.contains_id(arg) && (sub.is_none() || !sub.unwrap().1.contains_id(arg)) {
+            bail!("the following required arguments were not provided: {}", arg);
+        }
+    }
+    Ok(())
+}
+
+/// Get common report stub
+///
+/// # Arguments
+///
+/// * `argv` - target command line arguments
+///
+/// * `stdin` - target stdin file
+///
+/// # Return value
+///
+/// * Crash report
+pub fn get_report_stub(argv: &[String], stdin: &Option<PathBuf>) -> CrashReport {
+    let mut report = CrashReport::new();
+    report.executable_path = argv[0].to_string();
+    report.proc_cmdline = argv.join(" ");
+    let _ = report.add_os_info();
+    let _ = report.add_proc_environ();
+    if let Some(mut file_path) = stdin.clone() {
+        file_path = file_path.canonicalize().unwrap_or(file_path);
+        report.stdin = file_path.display().to_string();
+    }
+    report
+}
+
+/// Check output for exceptions
+///
+/// # Arguments
+///
+/// * `report` - report to add exception
+///
+/// * `stream` - output for checking
+pub fn check_exception(report: &mut CrashReport, stream: &str) {
+    if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
+        .iter()
+        .find_map(|parse| parse(stream))
+    {
+        report.execution_class = class;
+    }
 }

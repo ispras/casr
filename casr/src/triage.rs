@@ -1,6 +1,10 @@
 //! Post-fuzzing crash analysis module: create, deduplicate, cluster CASR reports
 //! and print overall summary.
-use crate::util::{get_path, initialize_dirs, log_progress};
+use crate::{
+    casr,
+    mode::{DynMode, gdb::GdbMode, python::PythonMode},
+    util::{get_path, initialize_dirs, log_progress},
+};
 
 use std::collections::HashMap;
 use std::fs;
@@ -14,19 +18,17 @@ use log::{debug, error, info, warn};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use walkdir::WalkDir;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Debug, Default)]
 /// Information about crash to reproduce it.
 pub struct CrashInfo {
     /// Path to crash input.
     pub path: PathBuf,
     /// Target command line args.
     pub target_args: Vec<String>,
-    /// Target environment variables.
-    pub envs: HashMap<String, String>,
     /// Input file argument index starting from argv\[1\], None for stdin.
     pub at_index: Option<usize>,
     /// Casr tool that should be run on this crash.
-    pub casr_tool: PathBuf,
+    pub mode: DynMode,
 }
 
 impl<'a> CrashInfo {
@@ -38,15 +40,14 @@ impl<'a> CrashInfo {
     ///
     /// * `timeout` - target program timeout (in seconds)
     pub fn run_casr<T: Into<Option<&'a Path>>>(&self, output_dir: T, timeout: u64) -> Result<()> {
-        let tool = &self.casr_tool;
-        let tool_name = tool.file_name().unwrap().to_str().unwrap();
-        let mut args: Vec<String> = vec!["-o".to_string()];
+        let mut args: Vec<String> =
+            vec!["casr".to_string(), self.mode.to_string(), "-o".to_string()];
         let (report_path, output_dir) = if let Some(out) = output_dir.into() {
             (out.join(self.path.file_name().unwrap()), out)
         } else {
             (self.path.clone(), self.path.parent().unwrap())
         };
-        if tool_name.eq("casr-gdb") {
+        if self.mode.is_mode::<GdbMode>() {
             args.push(format!("{}.gdb.casrep", report_path.display()));
         } else {
             args.push(format!("{}.casrep", report_path.display()));
@@ -60,7 +61,7 @@ impl<'a> CrashInfo {
             args.push(timeout.to_string());
         }
         args.push("--".to_string());
-        if tool_name.eq("casr-python") {
+        if self.mode.is_mode::<PythonMode>() {
             args.push("python3".to_string());
         }
         let offset = args.len();
@@ -70,32 +71,10 @@ impl<'a> CrashInfo {
             args[at_index + offset] = input;
         }
 
-        let mut casr_cmd = Command::new(tool);
-        casr_cmd.args(&args);
-        casr_cmd.envs(&self.envs);
-
-        // Add envs
-        if self.target_args.iter().any(|x| x.eq("-detect_leaks=0")) {
-            let asan_options = std::env::var("ASAN_OPTIONS").unwrap_or_default();
-            casr_cmd.env(
-                "ASAN_OPTIONS",
-                if asan_options.is_empty() {
-                    "detect_leaks=0".to_string()
-                } else {
-                    format!("{asan_options},detect_leaks=0",)
-                },
-            );
-        }
-
-        debug!("{casr_cmd:?}");
-
-        // Get output
-        let casr_output = casr_cmd
-            .output()
-            .with_context(|| format!("Couldn't launch {casr_cmd:?}"))?;
-
-        if !casr_output.status.success() {
-            let err = String::from_utf8_lossy(&casr_output.stderr);
+        debug!("{args:?}");
+        let result = casr::casr(&args, Some(self.mode.clone()));
+        if let Err(err) = result {
+            let err = err.to_string();
             if err.contains("Timeout") {
                 let mut timeout_name = self
                     .path
@@ -127,12 +106,11 @@ impl<'a> CrashInfo {
                     error!("Error occurred while copying the file: {:?}", self.path);
                 }
             } else if err.contains("Program terminated (no crash)") {
-                warn!("{}: No crash on input {}", tool_name, self.path.display());
+                warn!("{}: No crash on input {}", self.mode, self.path.display());
             } else {
                 error!("{} for input: {}", err.trim(), self.path.display());
             }
         }
-
         Ok(())
     }
 }
@@ -200,7 +178,7 @@ pub fn fuzzing_crash_triage_pipeline(
                     if let Err(e) = crash.run_casr(casrep_dir.as_path(), timeout) {
                         // Disable util::log_progress
                         *counter.write().unwrap() = total;
-                        bail!(e);
+                        bail!("{}", e);
                     };
                     *counter.write().unwrap() += 1;
                     Ok::<(), anyhow::Error>(())
@@ -338,7 +316,6 @@ fn summarize_results(
     };
 
     if !gdb_args.is_empty() {
-        let casr_gdb = get_path("casr-gdb")?;
         // Run casr-gdb on uninstrumented binary.
         let crashes: Vec<_> = WalkDir::new(dir)
             .into_iter()
@@ -374,9 +351,8 @@ fn summarize_results(
                             if let Err(e) = (CrashInfo {
                                 path: crash.to_path_buf(),
                                 target_args: gdb_args.to_vec(),
-                                envs: HashMap::new(),
                                 at_index,
-                                casr_tool: casr_gdb.clone(),
+                                mode: DynMode::default(),
                             })
                             .run_casr(None, timeout)
                             {

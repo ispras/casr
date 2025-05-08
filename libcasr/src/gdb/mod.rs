@@ -2,11 +2,15 @@
 use gdb_command::stacktrace::StacktraceExt;
 use regex::Regex;
 
-use super::error::*;
-use super::stacktrace::*;
+use super::{
+    error::Result,
+    stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry},
+};
 
 #[cfg(feature = "exploitable")]
 pub mod exploitable;
+#[cfg(feature = "exploitable")]
+pub mod report;
 
 /// Structure provides an interface for processing the stack trace.
 pub struct GdbStacktrace;

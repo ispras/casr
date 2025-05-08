@@ -1,21 +1,24 @@
-//! Asan module implements `ParseStacktrace`, `Exception` and `Severity` traits for AddressSanitizer
-//! reports.
+//! Asan module implements `ParseStacktrace`, `Exception`, `Severity` and `ReportExtracter` traits
+//! for AddressSanitizer reports.
 use regex::Regex;
 
-use crate::error::*;
-use crate::execution_class::{ExecutionClass, is_near_null};
-use crate::severity::Severity;
-use crate::stacktrace::ParseStacktrace;
-use crate::stacktrace::*;
+use crate::{
+    error::{Error, Result},
+    execution_class::{ExecutionClass, is_near_null},
+    report::ReportExtractor,
+    severity::Severity,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
+};
 
 /// Structure provides an interface for processing the stack trace.
+#[derive(Clone, Debug)]
 pub struct AsanStacktrace;
 
 impl ParseStacktrace for AsanStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let lines: Vec<String> = stream.split('\n').map(|l| l.to_string()).collect();
 
-        let Some(first) = lines.iter().position(|x| x.contains(" #0 ")) else {
+        let Some(first) = lines.iter().position(|x| x.contains("#0 ")) else {
             return Err(Error::Casr(
                 "Couldn't find stack trace in sanitizer's report".to_string(),
             ));
@@ -228,6 +231,113 @@ impl Severity for AsanContext {
                 }
             }
         }
+    }
+}
+
+/// Structure provides an interface for save parsing some sanitizer crash.
+#[derive(Clone, Debug)]
+pub struct SanCrash {
+    context: StacktraceContext,
+}
+
+impl SanCrash {
+    /// Create new `SanCrash` instance from stream
+    pub fn new(stream: String) -> Self {
+        Self {
+            context: StacktraceContext::new(stream, None),
+        }
+    }
+}
+
+impl ReportExtractor for SanCrash {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.context.extract_stacktrace::<AsanStacktrace>()
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.context.parse_stacktrace::<AsanStacktrace>()
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<AsanStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+    fn report(&self) -> Vec<String> {
+        self.context.report()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        AsanContext(self.context.report()).severity()
+    }
+}
+
+/// Structure provides an interface for save parsing AddressSanitizer crash.
+#[derive(Clone, Debug)]
+pub struct AsanCrash {
+    // NOTE: There's no structure inheritance in Rust :(
+    san: SanCrash,
+    stream: String,
+}
+
+impl AsanCrash {
+    /// Create new `AsanCrash` instance from stream
+    pub fn new(stream: &str) -> Result<Option<Self>> {
+        if stream.contains("Cannot set personality") {
+            return Err(Error::Casr(
+                "Cannot set personality (if you are running docker, allow personality syscall in your seccomp profile)".to_string()
+            ));
+        }
+
+        // Detect OOMs.
+        if stream.contains("AddressSanitizer: hard rss limit exhausted") {
+            return Err(Error::Casr(
+                "Out of memory: hard_rss_limit_mb exhausted".to_string(),
+            ));
+        }
+        if stream.contains("AddressSanitizer: out-of-memory") {
+            return Err(Error::Casr("Out of memory".to_string()));
+        }
+
+        if stream.contains("WARNING: MemorySanitizer:") {
+            return Ok(None::<Self>);
+        }
+
+        let report: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
+        let start =
+            Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
+        let Some(start) = report.iter().position(|l| start.is_match(l)) else {
+            return Ok(None::<Self>);
+        };
+
+        let report = &report[start..];
+        if report.is_empty() {
+            return Ok(None::<Self>);
+        }
+
+        Ok(Some(Self {
+            san: SanCrash::new(report.join("\n")),
+            stream: stream.to_string(),
+        }))
+    }
+}
+
+impl ReportExtractor for AsanCrash {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.san.extract_stacktrace()
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.san.parse_stacktrace()
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.san.crash_line()
+    }
+    fn stream(&self) -> &str {
+        &self.stream
+    }
+    fn report(&self) -> Vec<String> {
+        self.san.report()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        self.san.execution_class()
     }
 }
 

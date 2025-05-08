@@ -37,6 +37,7 @@ pub mod go;
 pub mod java;
 pub mod js;
 pub mod lua;
+pub mod msan;
 pub mod python;
 pub mod report;
 pub mod rust;

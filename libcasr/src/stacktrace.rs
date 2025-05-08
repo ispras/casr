@@ -1,6 +1,15 @@
 //! Provides API's for parsing, filtering, deduplication and clustering.
 extern crate kodama;
 
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::{self, Write},
+    sync::RwLock,
+};
+
+use kodama::{Method, linkage};
+use regex::Regex;
+
 use crate::constants::{
     STACK_FRAME_FILEPATH_IGNORE_REGEXES_CPP, STACK_FRAME_FILEPATH_IGNORE_REGEXES_CSHARP,
     STACK_FRAME_FILEPATH_IGNORE_REGEXES_GO, STACK_FRAME_FILEPATH_IGNORE_REGEXES_JAVA,
@@ -11,13 +20,7 @@ use crate::constants::{
     STACK_FRAME_FUNCTION_IGNORE_REGEXES_JS, STACK_FRAME_FUNCTION_IGNORE_REGEXES_LUA,
     STACK_FRAME_FUNCTION_IGNORE_REGEXES_PYTHON, STACK_FRAME_FUNCTION_IGNORE_REGEXES_RUST,
 };
-
 use crate::error::*;
-use kodama::{Method, linkage};
-use regex::Regex;
-use std::collections::{HashMap, HashSet};
-use std::fmt::{self, Write};
-use std::sync::RwLock;
 
 // Re-export types from gdb_command for convenient use from Casr library
 /// Represents the information about stack trace.
@@ -124,6 +127,61 @@ impl CrashLineExt for Stacktrace {
         Err(Error::Casr(
             "Couldn't collect crash line from stack trace".to_string(),
         ))
+    }
+}
+
+/// Structure provides an interface for save parsing some sanitizer crash.
+#[derive(Clone, Debug)]
+pub struct StacktraceContext {
+    stream: String,
+    extracted_stacktrace: Option<Vec<String>>,
+    parsed_stacktrace: Option<Stacktrace>,
+}
+
+impl StacktraceContext {
+    /// Create new `SanCrash` instance from stream
+    pub fn new(stream: String, extracted_stacktrace: Option<Vec<String>>) -> Self {
+        Self {
+            stream,
+            extracted_stacktrace,
+            parsed_stacktrace: None,
+        }
+    }
+    /// Get original stream.
+    pub fn stream(&self) -> &str {
+        &self.stream
+    }
+    /// Extract stack trace.
+    pub fn extract_stacktrace<T: ParseStacktrace>(&mut self) -> Result<Vec<String>> {
+        if let Some(stacktrace) = &self.extracted_stacktrace {
+            Ok(stacktrace.to_vec())
+        } else {
+            let stacktrace = T::extract_stacktrace(&self.stream)?;
+            self.extracted_stacktrace = Some(stacktrace.clone());
+            Ok(stacktrace)
+        }
+    }
+    /// Transform into Stacktrace type.
+    pub fn parse_stacktrace<T: ParseStacktrace>(&mut self) -> Result<Stacktrace> {
+        if let Some(stacktrace) = &self.parsed_stacktrace {
+            Ok(stacktrace.to_vec())
+        } else {
+            let stacktrace = T::parse_stacktrace(&self.extract_stacktrace::<T>()?)?;
+            self.parsed_stacktrace = Some(stacktrace.clone());
+            Ok(stacktrace)
+        }
+    }
+    /// Transform into a vector of lines.
+    pub fn report(&self) -> Vec<String> {
+        self.stream
+            .clone()
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect()
+    }
+    /// Get crash line from stack trace.
+    pub fn crash_line<T: ParseStacktrace>(&mut self) -> Result<CrashLine> {
+        self.parse_stacktrace::<T>()?.crash_line()
     }
 }
 
