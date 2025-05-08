@@ -12,6 +12,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+static EXE_CASR: &str = env!("CARGO_BIN_EXE_casr");
 static EXE_CASR_CORE: &str = env!("CARGO_BIN_EXE_casr-core");
 static EXE_CASR_AFL: &str = env!("CARGO_BIN_EXE_casr-afl");
 static EXE_CASR_LIBFUZZER: &str = env!("CARGO_BIN_EXE_casr-libfuzzer");
@@ -3233,6 +3234,392 @@ fn test_casr_san() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
+fn test_casr_common_san() {
+    // Double free test
+    let paths = [
+        abs_path("tests/casr_tests/test_asan_df.cpp"),
+        abs_path("tests/tmp_tests_casr/test_asan_df"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(EXE_CASR_SAN)
+        .args(["--stdout", "--", &paths[1]])
+        .env("CASR_STRIP_PATH", env::current_dir().unwrap())
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(
+        output.status.success(),
+        "Stdout: {}\n. Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+
+        assert!(stacktrace.len() > 3);
+        assert!(stacktrace[0].contains("free"));
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "double-free");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .eq("tests/casr_tests/test_asan_df.cpp:8:5")
+                // We build a test on ubuntu18 and run it on ubuntu20.
+                // Debug information is broken.
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_asan_df+0x") // We can't hardcode the offset because we rebuild tests every time.
+        );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+    // Stack-buffer-overflow test
+    let paths = [
+        abs_path("tests/casr_tests/test_asan_sbo.cpp"),
+        abs_path("tests/tmp_tests_casr/test_asan_sbo"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(EXE_CASR_SAN)
+        .args(["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let asan_report = report["AsanReport"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+        let sources = report["Source"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+
+        assert!(stacktrace.len() > 2);
+        assert!(stacktrace[0].contains("main"));
+
+        // Sources test
+        assert!(sources[0].contains("    5      {"), "Bad sources");
+        assert!(
+            sources[1].contains("    6          int a[3];"),
+            "Bad sources"
+        );
+        assert!(
+            sources[2].contains("    7          for (int i = 0; i < 4; ++i)"),
+            "Bad sources"
+        );
+        assert!(sources[3].contains("    8          {"), "Bad sources");
+        assert!(
+            sources[4].contains("--->9              a[i] = 1;"),
+            "Bad sources"
+        );
+        assert!(sources[5].contains("    10         }"), "Bad sources");
+        assert!(
+            sources[6].contains("    11         return a[2];"),
+            "Bad sources"
+        );
+        assert!(sources[7].contains("    12     }"), "Bad sources");
+
+        assert!(!asan_report.is_empty() && asan_report[1].contains("WRITE"));
+
+        assert_eq!(severity_type, "EXPLOITABLE");
+        assert_eq!(severity_desc, "stack-buffer-overflow(write)");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_asan_sbo.cpp:9:14")
+                // We build a test on ubuntu18 and run it on ubuntu20.
+                // Debug information is broken.
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_asan_sbo+0x") // We can't hardcode the offset because we rebuild tests every time.
+        );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+    // Memory leaks test
+    let paths = [
+        abs_path("tests/casr_tests/test_asan_leak.cpp"),
+        abs_path("tests/tmp_tests_casr/test_asan_leak"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(EXE_CASR_SAN)
+        .args(["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(
+            3 + 2
+                * (std::env::consts::ARCH == "aarch64"
+                    || lsb_release::info().unwrap().version == "24.04") as usize,
+            report["Stacktrace"].as_array().unwrap().iter().count()
+        );
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "memory-leaks");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("leak.cpp:8:9")
+                // We build a test on ubuntu18 and run it on ubuntu20.
+                // Debug information is broken.
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_asan_leak+0x") // We can't hardcode the offset because we rebuild tests every time.
+        );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    // Test casr-san stdin
+    let paths = [
+        abs_path("tests/casr_tests/test_asan_stdin.cpp"),
+        abs_path("tests/tmp_tests_casr/test_asan_stdin"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let mut tempfile = fs::File::create("/tmp/CasrSanTemp").unwrap();
+    tempfile.write_all(b"2").unwrap();
+    let output = Command::new(EXE_CASR_SAN)
+        .args(["--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    fs::remove_file("/tmp/CasrSanTemp").unwrap();
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let stdin = report["Stdin"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+
+        assert!(stacktrace.len() > 2);
+        assert!(stacktrace[0].contains("main"));
+
+        assert!(stdin.contains("/tmp/CasrSanTemp"));
+        assert_eq!(severity_type, "EXPLOITABLE");
+        assert_eq!(severity_desc, "heap-buffer-overflow(write)");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("stdin.cpp:20:14")
+                // We build a test on ubuntu18 and run it on ubuntu20.
+                // Debug information is broken.
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_asan_stdin+0x") // We can't hardcode the offset because we rebuild tests every time.
+        );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_file(&paths[1]);
+    // Test casr-san ASLR
+    let paths = [
+        abs_path("tests/casr_tests/test_asan_sbo.cpp"),
+        abs_path("tests/tmp_tests_casr/test_asan_sbo"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=address -O0 -g {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output1 = Command::new(EXE_CASR_SAN)
+        .args(["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+    let output2 = Command::new(EXE_CASR_SAN)
+        .args(["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(
+        output1.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        output2.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let re = Regex::new(
+        r"==[0-9]+==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x([0-9a-f]+)",
+    )
+    .unwrap();
+    let _ = std::fs::remove_file(&paths[1]);
+
+    let report1: Result<Value, _> = serde_json::from_slice(&output1.stdout);
+    let report2: Result<Value, _> = serde_json::from_slice(&output2.stdout);
+    if let Ok(rep1) = report1 {
+        if let Ok(rep2) = report2 {
+            let asan1 = rep1["AsanReport"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|x| x.to_string())
+                .next()
+                .unwrap();
+            let first_addr = re
+                .captures(&asan1)
+                .unwrap()
+                .get(1)
+                .unwrap()
+                .as_str()
+                .to_string();
+            let asan2 = rep2["AsanReport"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|x| x.to_string())
+                .next()
+                .unwrap();
+            let second_addr = re
+                .captures(&asan2)
+                .unwrap()
+                .get(1)
+                .unwrap()
+                .as_str()
+                .to_string();
+            assert_eq!(
+                first_addr, second_addr,
+                "Addresses must be equal! {first_addr} != {second_addr}"
+            );
+            return;
+        }
+    }
+    panic!("Couldn't parse json report file.");
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
 fn test_casr_san_msan() {
     let paths = [
         abs_path("tests/casr_tests/test_msan.cpp"),
@@ -4976,6 +5363,47 @@ fn test_casr_cluster_d_python() {
     }
 
     let _ = std::fs::remove_dir_all(&paths[1]);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_common_lua() {
+    let test_dir = abs_path("tests/tmp_tests_casr/test_casr");
+    let test_path = abs_path("tests/casr_tests/lua/test_casr_lua.lua");
+    let _ = std::fs::remove_dir_all(test_dir);
+
+    let output = Command::new(EXE_CASR)
+        .args(["--stdout", "--", &test_path, "lua"])
+        .output()
+        .expect("failed to start casr");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(6, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "attempt to div a 'string' with a 'number'");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_lua.lua:6")
+        );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
 }
 
 #[test]

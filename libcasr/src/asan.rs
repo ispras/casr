@@ -4,6 +4,7 @@ use regex::Regex;
 
 use crate::error::*;
 use crate::execution_class::{ExecutionClass, is_near_null};
+use crate::report::ReportExtractor;
 use crate::severity::Severity;
 use crate::stacktrace::ParseStacktrace;
 use crate::stacktrace::*;
@@ -228,6 +229,112 @@ impl Severity for AsanContext {
                 }
             }
         }
+    }
+}
+
+/// Structure provides an interface for save parsing asan crash.
+#[derive(Clone, Debug)]
+pub struct AsanCrash {
+    message: Vec<String>,
+    extracted_stacktrace: Option<Vec<String>>,
+    parsed_stacktrace: Option<Stacktrace>,
+}
+
+impl AsanCrash {
+    /// Create new `AsanCrash` instance from stream
+    pub fn new(stream: &str) -> Result<Option<Self>> {
+        if stream.contains("Cannot set personality") {
+            return Err(Error::Casr(
+                "Cannot set personality (if you are running docker, allow personality syscall in your seccomp profile)".to_string()
+            ));
+        }
+
+        // Detect OOMs.
+        if stream.contains("AddressSanitizer: hard rss limit exhausted") {
+            return Err(Error::Casr(
+                "Out of memory: hard_rss_limit_mb exhausted".to_string()
+            ));
+        }
+        if stream.contains("AddressSanitizer: out-of-memory") {
+            return Err(Error::Casr("Out of memory".to_string()));
+        }
+
+        if stream.contains("WARNING: MemorySanitizer:") {
+            return Ok(None::<Self>);
+        }
+
+        let lines: Vec<String> = stream
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect();
+        let start =
+            Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
+        let Some(start) = lines.iter().position(|line| start.is_match(line)) else {
+            return Ok(None::<Self>);
+        };
+
+        let end = lines.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
+        let slice = &lines[start..end];
+
+        if slice.is_empty() {
+            return Ok(None::<Self>);
+        }
+
+        Ok(Some(AsanCrash {
+            message: slice[start..end].to_vec(),
+            extracted_stacktrace: None,
+            parsed_stacktrace: None,
+        }))
+    }
+
+    /// Extracting stacktrace with result caching
+    fn extract_stacktrace_internal(&mut self) -> Result<()> {
+        if self.extracted_stacktrace.is_none() {
+            self.extracted_stacktrace = Some(AsanStacktrace::extract_stacktrace(
+                &self.message.join("\n"),
+            )?)
+        }
+        Ok(())
+    }
+
+    /// Parsing stacktrace with result caching
+    fn parse_stacktrace_internal(&mut self) -> Result<()> {
+        self.extract_stacktrace_internal()?;
+        if self.parsed_stacktrace.is_none() {
+            self.parsed_stacktrace = Some(AsanStacktrace::parse_stacktrace(
+                &self.extracted_stacktrace.clone().unwrap(),
+            )?)
+        }
+        Ok(())
+    }
+}
+
+impl ReportExtractor for AsanCrash {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.extract_stacktrace_internal()?;
+        Ok(self.extracted_stacktrace.clone().unwrap())
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.parse_stacktrace_internal()?;
+        Ok(self.parsed_stacktrace.clone().unwrap())
+    }
+    fn report(&self) -> Vec<String> {
+        self.message.clone()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let context = AsanContext(self.message.clone());
+        if let Ok(severity) = context.severity() {
+            Ok(severity)
+        } else {
+            Err(Error::Casr(format!(
+                "Couldn't estimate severity. {}",
+                context.severity().err().unwrap()
+            )))
+        }
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.parse_stacktrace_internal()?;
+        self.parsed_stacktrace.clone().unwrap().crash_line()
     }
 }
 

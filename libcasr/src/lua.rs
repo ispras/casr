@@ -1,6 +1,7 @@
 //! Lua module implements `ParseStacktrace`, `CrashLineExt` and `Severity` traits for Lua reports.
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
+use crate::report::ReportExtractor;
 use crate::severity::Severity;
 use crate::stacktrace::{CrashLine, CrashLineExt, DebugInfo};
 use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
@@ -17,9 +18,9 @@ impl LuaException {
     /// Create new `LuaException` instance from stream
     pub fn new(stream: &str) -> Option<Self> {
         let re = Regex::new(r#"\S+: .+\n\s*stack traceback:\s*\n(?:.*\n)*.+: .+"#).unwrap();
-        let mat = re.find(stream)?;
+        let mtch = re.find(stream)?;
         Some(LuaException {
-            message: mat.as_str().to_string(),
+            message: mtch.as_str().to_string(),
         })
     }
     /// Extract stack trace from lua exception.
@@ -171,6 +172,24 @@ impl Severity for LuaException {
             "",
             "",
         )))
+    }
+}
+
+impl ReportExtractor for LuaException {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        LuaException::extract_stacktrace(self)
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        LuaException::parse_stacktrace(self)
+    }
+    fn report(&self) -> Vec<String> {
+        self.lua_report()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        self.severity()
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        CrashLineExt::crash_line(self)
     }
 }
 
