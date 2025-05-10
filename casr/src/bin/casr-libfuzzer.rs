@@ -176,7 +176,10 @@ fn main() -> Result<()> {
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
         if hint == "san"
-            || hint == "auto" && (sym_list.contains("__asan") || sym_list.contains("runtime.go"))
+            || hint == "auto"
+                && (sym_list.contains("__asan")
+                    || sym_list.contains("__msan")
+                    || sym_list.contains("runtime.go"))
         {
             "casr-san"
         } else {

@@ -196,7 +196,7 @@ fn main() -> Result<()> {
             if let Some(target) = crash_info.target_args.first() {
                 match util::symbols_list(Path::new(target)) {
                     Ok(list) => {
-                        if list.contains("__asan") {
+                        if list.contains("__asan") || list.contains("__msan") {
                             crash_info
                                 .casr_tool
                                 .clone_from(&(util::get_path("casr-san")?))
