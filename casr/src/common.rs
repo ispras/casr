@@ -2,6 +2,7 @@ use crate::util;
 use libcasr::{
     asan::AsanCrash,
     lua::LuaException,
+    msan::MsanCrash,
     report::{CrashReport, ReportExtractor},
 };
 
@@ -17,6 +18,8 @@ use std::process::Command;
 pub enum Mode {
     Lua,
     San,
+    Asan,
+    Msan,
 }
 
 impl Mode {
@@ -24,6 +27,8 @@ impl Mode {
         match mode {
             "lua" => Ok(Mode::Lua),
             "san" => Ok(Mode::San),
+            "asan" => Ok(Mode::Asan),
+            "msan" => Ok(Mode::Msan),
             _ => {
                 bail!("Unexpected mode: {}", mode);
             }
@@ -39,7 +44,11 @@ pub fn get_mode(matches: &ArgMatches, argv: &[&str]) -> Result<Mode> {
         Ok(Mode::Lua)
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
-        if sym_list.contains("__asan") || sym_list.contains("runtime.go") {
+        if sym_list.contains("__asan")
+            || sym_list.contains("__msan")
+            || sym_list.contains("runtime.go")
+        {
+            // NOTE: The exact mode can only be found out by parsing
             Ok(Mode::San)
         } else {
             // TODO: gdb
@@ -71,7 +80,7 @@ pub fn prepare_run_san() {
 
 pub fn prepare_run(mode: &Mode) {
     match mode {
-        Mode::San => {
+        Mode::San | Mode::Asan | Mode::Msan => {
             prepare_run_san();
         }
         _ => {}
@@ -100,7 +109,7 @@ pub fn update_cmd_san(cmd: &mut Command) {
 
 pub fn update_cmd(cmd: &mut Command, mode: &Mode) {
     match mode {
-        Mode::San => {
+        Mode::San | Mode::Asan | Mode::Msan => {
             update_cmd_san(cmd);
         }
         _ => {}
@@ -135,14 +144,36 @@ pub fn get_report_stub(argv: &Vec<&str>, stdin_file: &Option<PathBuf>, mode: &Mo
         Mode::Lua => {
             update_report_stub_lua(&mut report, argv);
         }
-        Mode::San => {
+        Mode::San | Mode::Asan | Mode::Msan => {
             update_report_stub_san(&mut report, stdin_file);
         }
     }
     report
 }
 
-pub fn get_extracter(_stdout: &str, stderr: &str, mode: &Mode) -> Result<Box<dyn ReportExtractor>> {
+pub fn get_san_extracter(
+    _stdout: &str,
+    stderr: &str,
+    mode: &mut Mode,
+) -> Result<Box<dyn ReportExtractor>> {
+    // TODO: adjust mode value
+    if let Some(crash) = AsanCrash::new(stderr)? {
+        *mode = Mode::Asan;
+        Ok(Box::new(crash))
+    } else if let Some(crash) = MsanCrash::new(stderr)? {
+        *mode = Mode::Msan;
+        Ok(Box::new(crash))
+    } else {
+        // TODO: signal
+        bail!("Unexpected output");
+    }
+}
+
+pub fn get_extracter(
+    stdout: &str,
+    stderr: &str,
+    mode: &mut Mode,
+) -> Result<Box<dyn ReportExtractor>> {
     match mode {
         Mode::Lua => {
             let Some(exception) = LuaException::new(stderr) else {
@@ -150,26 +181,36 @@ pub fn get_extracter(_stdout: &str, stderr: &str, mode: &Mode) -> Result<Box<dyn
             };
             Ok(Box::new(exception))
         }
-        Mode::San => {
-            // TODO: adjust mode value
-            if let Some(crash) = AsanCrash::new(stderr)? {
-                Ok(Box::new(crash))
-            } else {
-                bail!("Make me");
-            }
+        Mode::Asan => {
+            let Some(crash) = AsanCrash::new(stderr)? else {
+                bail!("AddressSanitizer crash is not found!");
+            };
+            Ok(Box::new(crash))
         }
+        Mode::Msan => {
+            let Some(crash) = MsanCrash::new(stderr)? else {
+                bail!("MemorySanitizer crash is not found!");
+            };
+            Ok(Box::new(crash))
+        }
+        Mode::San => get_san_extracter(stdout, stderr, mode),
     }
 }
 
 // NOTE: if there were no different report fields this function would not be needed
-pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mode) -> Result<()> {
+pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mode) {
     match mode {
         Mode::Lua => {
             report.lua_report = raw_report;
         }
-        Mode::San => {
+        Mode::Asan => {
             report.asan_report = raw_report;
         }
+        Mode::Msan => {
+            report.msan_report = raw_report;
+        }
+        Mode::San => {
+            // Impossible to be there
+        }
     }
-    Ok(())
 }

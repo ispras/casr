@@ -3234,7 +3234,7 @@ fn test_casr_san() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
-fn test_casr_common_san() {
+fn test_casr_common_asan() {
     // Double free test
     let paths = [
         abs_path("tests/casr_tests/test_asan_df.cpp"),
@@ -3253,7 +3253,7 @@ fn test_casr_common_san() {
     assert!(clang.success());
 
     let output = Command::new(EXE_CASR)
-        .args(["san", "--stdout", "--", &paths[1]])
+        .args(["asan", "--stdout", "--", &paths[1]])
         .env("CASR_STRIP_PATH", env::current_dir().unwrap())
         .output()
         .expect("failed to start casr san");
@@ -3419,7 +3419,7 @@ fn test_casr_common_san() {
     assert!(clang.success());
 
     let output = Command::new(EXE_CASR)
-        .args(["san", "--stdout", "--", &paths[1]])
+        .args(["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr san");
 
@@ -3481,7 +3481,7 @@ fn test_casr_common_san() {
     let mut tempfile = fs::File::create("/tmp/CasrSanTemp").unwrap();
     tempfile.write_all(b"2").unwrap();
     let output = Command::new(EXE_CASR)
-        .args(["san", "--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
+        .args(["--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
         .output()
         .expect("failed to start casr san");
 
@@ -3549,11 +3549,11 @@ fn test_casr_common_san() {
     assert!(clang.success());
 
     let output1 = Command::new(EXE_CASR)
-        .args(["san", "--stdout", "--", &paths[1]])
+        .args(["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr san");
     let output2 = Command::new(EXE_CASR)
-        .args(["san", "--stdout", "--", &paths[1]])
+        .args(["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
 
@@ -3641,6 +3641,73 @@ fn test_casr_san_msan() {
         .args(["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
+
+    assert!(
+        output.status.success(),
+        "Stdout: {}\n. Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let stacktrace = report["Stacktrace"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+
+        assert!(stacktrace.len() > 2);
+        assert!(stacktrace[0].contains("in main"));
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "use-of-uninitialized-value");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .eq("tests/casr_tests/test_msan.cpp:12:9")
+                // We build a test on ubuntu18 and run it on ubuntu20.
+                // Debug information is broken.
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_msan+0x") // We can't hardcode the offset because we rebuild tests every time.
+        );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+    let _ = std::fs::remove_file(&paths[1]);
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_common_msan() {
+    let paths = [
+        abs_path("tests/casr_tests/test_msan.cpp"),
+        abs_path("tests/tmp_tests_casr/test_msan"),
+    ];
+
+    let clang = Command::new("bash")
+        .arg("-c")
+        .arg(format!(
+            "clang++ -fsanitize=memory -O0 {} -o {}",
+            &paths[0], &paths[1]
+        ))
+        .status()
+        .expect("failed to execute clang++");
+
+    assert!(clang.success());
+
+    let output = Command::new(EXE_CASR)
+        .args(["--stdout", "--", &paths[1]])
+        .output()
+        .expect("failed to start casr");
 
     assert!(
         output.status.success(),

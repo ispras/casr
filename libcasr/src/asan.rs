@@ -1,5 +1,5 @@
-//! Asan module implements `ParseStacktrace`, `Exception` and `Severity` traits for AddressSanitizer
-//! reports.
+//! Asan module implements `ParseStacktrace`, `Exception`, `Severity` and `ReportExtracter` traits
+//! for AddressSanitizer reports.
 use regex::Regex;
 
 use crate::error::*;
@@ -232,12 +232,79 @@ impl Severity for AsanContext {
     }
 }
 
-/// Structure provides an interface for save parsing asan crash.
+/// Structure provides an interface for save parsing some sanitizer crash.
 #[derive(Clone, Debug)]
-pub struct AsanCrash {
+pub struct SanCrash {
     message: Vec<String>,
     extracted_stacktrace: Option<Vec<String>>,
     parsed_stacktrace: Option<Stacktrace>,
+}
+
+impl SanCrash {
+    /// Create new `SanCrash` instance from stream
+    pub fn new(message: Vec<String>) -> SanCrash {
+        SanCrash {
+            message: message,
+            extracted_stacktrace: None,
+            parsed_stacktrace: None,
+        }
+    }
+    /// Extracting stacktrace with result caching
+    fn extract_stacktrace_internal(&mut self) -> Result<()> {
+        if self.extracted_stacktrace.is_none() {
+            self.extracted_stacktrace = Some(AsanStacktrace::extract_stacktrace(
+                &self.message.join("\n"),
+            )?)
+        }
+        Ok(())
+    }
+
+    /// Parsing stacktrace with result caching
+    fn parse_stacktrace_internal(&mut self) -> Result<()> {
+        self.extract_stacktrace_internal()?;
+        if self.parsed_stacktrace.is_none() {
+            self.parsed_stacktrace = Some(AsanStacktrace::parse_stacktrace(
+                &self.extracted_stacktrace.clone().unwrap(),
+            )?)
+        }
+        Ok(())
+    }
+}
+
+impl ReportExtractor for SanCrash {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.extract_stacktrace_internal()?;
+        Ok(self.extracted_stacktrace.clone().unwrap())
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.parse_stacktrace_internal()?;
+        Ok(self.parsed_stacktrace.clone().unwrap())
+    }
+    fn report(&self) -> Vec<String> {
+        self.message.clone()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let context = AsanContext(self.message.clone());
+        if let Ok(severity) = context.severity() {
+            Ok(severity)
+        } else {
+            Err(Error::Casr(format!(
+                "Couldn't estimate severity. {}",
+                context.severity().err().unwrap()
+            )))
+        }
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.parse_stacktrace_internal()?;
+        self.parsed_stacktrace.clone().unwrap().crash_line()
+    }
+}
+
+/// Structure provides an interface for save parsing AddressSanitizer crash.
+#[derive(Clone, Debug)]
+pub struct AsanCrash {
+    // NOTE: There's no structure inheritance in Rust :(
+    san_crash: SanCrash,
 }
 
 impl AsanCrash {
@@ -281,60 +348,26 @@ impl AsanCrash {
         }
 
         Ok(Some(AsanCrash {
-            message: slice.to_vec(),
-            extracted_stacktrace: None,
-            parsed_stacktrace: None,
+            san_crash: SanCrash::new(slice.to_vec()),
         }))
-    }
-
-    /// Extracting stacktrace with result caching
-    fn extract_stacktrace_internal(&mut self) -> Result<()> {
-        if self.extracted_stacktrace.is_none() {
-            self.extracted_stacktrace = Some(AsanStacktrace::extract_stacktrace(
-                &self.message.join("\n"),
-            )?)
-        }
-        Ok(())
-    }
-
-    /// Parsing stacktrace with result caching
-    fn parse_stacktrace_internal(&mut self) -> Result<()> {
-        self.extract_stacktrace_internal()?;
-        if self.parsed_stacktrace.is_none() {
-            self.parsed_stacktrace = Some(AsanStacktrace::parse_stacktrace(
-                &self.extracted_stacktrace.clone().unwrap(),
-            )?)
-        }
-        Ok(())
     }
 }
 
 impl ReportExtractor for AsanCrash {
     fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
-        self.extract_stacktrace_internal()?;
-        Ok(self.extracted_stacktrace.clone().unwrap())
+        self.san_crash.extract_stacktrace()
     }
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
-        self.parse_stacktrace_internal()?;
-        Ok(self.parsed_stacktrace.clone().unwrap())
+        self.san_crash.parse_stacktrace()
     }
     fn report(&self) -> Vec<String> {
-        self.message.clone()
+        self.san_crash.report()
     }
     fn execution_class(&self) -> Result<ExecutionClass> {
-        let context = AsanContext(self.message.clone());
-        if let Ok(severity) = context.severity() {
-            Ok(severity)
-        } else {
-            Err(Error::Casr(format!(
-                "Couldn't estimate severity. {}",
-                context.severity().err().unwrap()
-            )))
-        }
+        self.san_crash.execution_class()
     }
     fn crash_line(&mut self) -> Result<CrashLine> {
-        self.parse_stacktrace_internal()?;
-        self.parsed_stacktrace.clone().unwrap().crash_line()
+        self.san_crash.crash_line()
     }
 }
 

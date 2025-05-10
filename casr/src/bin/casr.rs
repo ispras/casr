@@ -103,6 +103,10 @@ fn main() -> Result<()> {
                 .about("Auto define proper way to threat target output (default behavior)"),
             clap::Command::new("san")
                 .about("Threat target output as AddressSanitizer or MemorySanitizer reports"),
+            clap::Command::new("asan")
+                .about("Threat target output as AddressSanitizer reports"),
+            clap::Command::new("msan")
+                .about("Threat target output as MemorySanitizer reports"),
             clap::Command::new("lua")
                 .about("Threat target output as Lua reports")
         ])
@@ -128,7 +132,7 @@ fn main() -> Result<()> {
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
 
     // Get mode
-    let mode = common::get_mode(&matches, &argv)?;
+    let mut mode = common::get_mode(&matches, &argv)?;
 
     // Prepare run
     common::prepare_run(&mode);
@@ -156,10 +160,10 @@ fn main() -> Result<()> {
     let mut report = common::get_report_stub(&argv, &stdin_file, &mode);
 
     // Get report extractor
-    let mut extractor = common::get_extracter(&stdout, &stderr, &mode)?;
+    let mut extractor = common::get_extracter(&stdout, &stderr, &mut mode)?;
 
     // Extract report
-    common::fill_report(&mut report, extractor.report(), &mode)?;
+    common::fill_report(&mut report, extractor.report(), &mode);
     report.stacktrace = extractor.extract_stacktrace()?;
     report.execution_class = extractor.execution_class()?;
     if let Ok(crashline) = extractor.crash_line() {
