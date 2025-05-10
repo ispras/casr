@@ -252,7 +252,7 @@ impl AsanCrash {
         // Detect OOMs.
         if stream.contains("AddressSanitizer: hard rss limit exhausted") {
             return Err(Error::Casr(
-                "Out of memory: hard_rss_limit_mb exhausted".to_string()
+                "Out of memory: hard_rss_limit_mb exhausted".to_string(),
             ));
         }
         if stream.contains("AddressSanitizer: out-of-memory") {

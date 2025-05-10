@@ -1,9 +1,9 @@
 use casr::util;
 use libcasr::{
+    asan::AsanCrash,
     init_ignored_frames,
     lua::LuaException,
     report::{CrashReport, ReportExtractor},
-    asan::AsanCrash,
     stacktrace::CrashLine,
     stacktrace::Filter,
     stacktrace::Stacktrace,
@@ -17,19 +17,37 @@ use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-fn get_mode(matches: &ArgMatches, argv: &Vec<&str>) -> Result<String> {
+#[derive(Debug)]
+enum Mode {
+    Lua,
+    San,
+}
+
+impl Mode {
+    fn new(mode: &str) -> Result<Mode> {
+        match mode {
+            "lua" => Ok(Mode::Lua),
+            "san" => Ok(Mode::San),
+            _ => {
+                bail!("Unexpected mode: {}", mode);
+            }
+        }
+    }
+}
+
+fn get_mode(matches: &ArgMatches, argv: &[&str]) -> Result<Mode> {
     let subcommand = matches.subcommand_name();
     if subcommand.is_some() && subcommand.unwrap() != "auto" {
-       Ok(subcommand.unwrap().to_string())
+        Ok(Mode::new(subcommand.unwrap())?)
     } else if argv[0].ends_with(".lua") {
-        Ok("lua".to_string())
+        Ok(Mode::Lua)
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
         if sym_list.contains("__asan") || sym_list.contains("runtime.go") {
-            Ok("san".to_string())
+            Ok(Mode::San)
         } else {
             // TODO: gdb
-            Ok("PLACEME".to_string())
+            bail!("PLACEME");
         }
     }
 }
@@ -55,9 +73,9 @@ fn prepare_run_san() {
     }
 }
 
-fn prepare_run(mode: &str) {
+fn prepare_run(mode: &Mode) {
     match mode {
-        "san" => {
+        Mode::San => {
             prepare_run_san();
         }
         _ => {}
@@ -84,16 +102,16 @@ fn update_cmd_san(cmd: &mut Command) {
     }
 }
 
-fn update_cmd(cmd: &mut Command, mode: &str) {
+fn update_cmd(cmd: &mut Command, mode: &Mode) {
     match mode {
-        "san" => {
+        Mode::San => {
             update_cmd_san(cmd);
         }
         _ => {}
     }
 }
 
-fn update_report_stub_lua(report: &mut CrashReport, argv: &Vec<&str>) {
+fn update_report_stub_lua(report: &mut CrashReport, argv: &[&str]) {
     if argv.len() > 1 {
         if let Some(fname) = Path::new(argv[0]).file_name() {
             let fname = fname.to_string_lossy();
@@ -111,58 +129,50 @@ fn update_report_stub_san(report: &mut CrashReport, stdin_file: &Option<PathBuf>
     }
 }
 
-fn get_report_stub(argv: &Vec<&str>, stdin_file: &Option<PathBuf>, mode: &str) -> CrashReport {
+fn get_report_stub(argv: &Vec<&str>, stdin_file: &Option<PathBuf>, mode: &Mode) -> CrashReport {
     let mut report = CrashReport::new();
     report.executable_path = argv[0].to_string();
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
     match mode {
-        "lua" => {
-            update_report_stub_lua(&mut report, &argv);
+        Mode::Lua => {
+            update_report_stub_lua(&mut report, argv);
         }
-        "san" => {
-            update_report_stub_san(&mut report, &stdin_file);
+        Mode::San => {
+            update_report_stub_san(&mut report, stdin_file);
         }
-        _ => {}
     }
     report
 }
 
-fn get_extracter(stdout: &str, stderr: &str, mode: &str) -> Result<Box<dyn ReportExtractor>> {
+fn get_extracter(_stdout: &str, stderr: &str, mode: &Mode) -> Result<Box<dyn ReportExtractor>> {
     match mode {
-        "lua" => {
-            let Some(exception) = LuaException::new(&stderr) else {
+        Mode::Lua => {
+            let Some(exception) = LuaException::new(stderr) else {
                 bail!("Lua exception is not found!");
             };
             Ok(Box::new(exception))
         }
-        "san" => {
+        Mode::San => {
             // TODO: adjust mode value
-            if let Some(crash) = AsanCrash::new(&stderr)? {
+            if let Some(crash) = AsanCrash::new(stderr)? {
                 Ok(Box::new(crash))
             } else {
                 bail!("Make me");
             }
         }
-        _ => {
-            // Normal termination.
-            bail!("Program terminated (no crash)");
-        }
     }
 }
 
 // NOTE: if there were no different report fields this function would not be needed
-fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &str) -> Result<()> {
+fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mode) -> Result<()> {
     match mode {
-        "lua" => {
+        Mode::Lua => {
             report.lua_report = raw_report;
         }
-        "san" => {
+        Mode::San => {
             report.asan_report = raw_report;
-        }
-        _ => {
-            bail!("Unexpected mode: {}", mode);
         }
     }
     Ok(())
