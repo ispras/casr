@@ -3252,11 +3252,11 @@ fn test_casr_common_san() {
 
     assert!(clang.success());
 
-    let output = Command::new(EXE_CASR_SAN)
-        .args(["--stdout", "--", &paths[1]])
+    let output = Command::new(EXE_CASR)
+        .args(["san", "--stdout", "--", &paths[1]])
         .env("CASR_STRIP_PATH", env::current_dir().unwrap())
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr san");
 
     assert!(
         output.status.success(),
@@ -3317,10 +3317,10 @@ fn test_casr_common_san() {
 
     assert!(clang.success());
 
-    let output = Command::new(EXE_CASR_SAN)
-        .args(["--stdout", "--", &paths[1]])
+    let output = Command::new(EXE_CASR)
+        .args(["san", "--stdout", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr san");
 
     assert!(
         output.status.success(),
@@ -3418,10 +3418,10 @@ fn test_casr_common_san() {
 
     assert!(clang.success());
 
-    let output = Command::new(EXE_CASR_SAN)
-        .args(["--stdout", "--", &paths[1]])
+    let output = Command::new(EXE_CASR)
+        .args(["san", "--stdout", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr san");
 
     assert!(
         output.status.success(),
@@ -3480,10 +3480,10 @@ fn test_casr_common_san() {
 
     let mut tempfile = fs::File::create("/tmp/CasrSanTemp").unwrap();
     tempfile.write_all(b"2").unwrap();
-    let output = Command::new(EXE_CASR_SAN)
-        .args(["--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
+    let output = Command::new(EXE_CASR)
+        .args(["san", "--stdout", "--stdin", "/tmp/CasrSanTemp", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
+        .expect("failed to start casr san");
 
     assert!(
         output.status.success(),
@@ -3548,12 +3548,12 @@ fn test_casr_common_san() {
 
     assert!(clang.success());
 
-    let output1 = Command::new(EXE_CASR_SAN)
-        .args(["--stdout", "--", &paths[1]])
+    let output1 = Command::new(EXE_CASR)
+        .args(["san", "--stdout", "--", &paths[1]])
         .output()
-        .expect("failed to start casr-san");
-    let output2 = Command::new(EXE_CASR_SAN)
-        .args(["--stdout", "--", &paths[1]])
+        .expect("failed to start casr san");
+    let output2 = Command::new(EXE_CASR)
+        .args(["san", "--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
 
@@ -5373,9 +5373,9 @@ fn test_casr_common_lua() {
     let _ = std::fs::remove_dir_all(test_dir);
 
     let output = Command::new(EXE_CASR)
-        .args(["--stdout", "--", &test_path, "lua"])
+        .args(["lua", "--stdout", "--", &test_path])
         .output()
-        .expect("failed to start casr");
+        .expect("failed to start casr lua");
 
     assert!(
         output.status.success(),

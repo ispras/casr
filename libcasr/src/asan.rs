@@ -281,7 +281,7 @@ impl AsanCrash {
         }
 
         Ok(Some(AsanCrash {
-            message: slice[start..end].to_vec(),
+            message: slice.to_vec(),
             extracted_stacktrace: None,
             parsed_stacktrace: None,
         }))
