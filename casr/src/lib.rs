@@ -7,5 +7,6 @@
 //! Enable `dojo` feature to build `casr-dojo` that can upload new and unique
 //! CASR reports to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo).
 
+pub mod common;
 pub mod triage;
 pub mod util;
