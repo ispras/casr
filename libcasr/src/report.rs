@@ -840,7 +840,7 @@ pub trait ReportExtractor {
     fn report(&self) -> Vec<String>;
 
     /// Get an `ExecutionClass` struct.
-    fn execution_class(&self) -> Result<ExecutionClass>;
+    fn execution_class(&self) -> Option<ExecutionClass>;
 
     /// Get crash line from stack trace
     fn crash_line(&mut self) -> Result<CrashLine>;

@@ -4,7 +4,8 @@ use crate::stacktrace::ParseStacktrace;
 
 use crate::error::{Error, Result};
 use crate::execution_class::ExecutionClass;
-use crate::stacktrace::StacktraceEntry;
+use crate::report::ReportExtractor;
+use crate::stacktrace::{CrashLine, CrashLineExt, Stacktrace, StacktraceEntry};
 use regex::Regex;
 
 /// Structure provides an interface for processing stacktrace from Go panics.
@@ -84,7 +85,34 @@ impl ParseStacktrace for GoStacktrace {
 }
 
 /// Structure provides an interface for parsing Go panic message.
-pub struct GoPanic;
+pub struct GoPanic {
+    message: String,
+    extracted_stacktrace: Vec<String>,
+    parsed_stacktrace: Option<Stacktrace>,
+}
+
+impl GoPanic {
+    /// Create new `GoPanic` instance from stream
+    pub fn new(stream: &str) -> Option<Self> {
+        // If it is possible to extract Go stacktrace, it is Go.
+        let Ok(stacktrace) = GoStacktrace::extract_stacktrace(stream) else {
+            return None;
+        };
+        Some(GoPanic {
+            message: stream.to_string(),
+            extracted_stacktrace: stacktrace,
+            parsed_stacktrace: None,
+        })
+    }
+    /// Parsing stacktrace with result caching
+    fn parse_stacktrace_internal(&mut self) -> Result<()> {
+        if self.parsed_stacktrace.is_none() {
+            self.parsed_stacktrace =
+                Some(GoStacktrace::parse_stacktrace(&self.extracted_stacktrace)?)
+        }
+        Ok(())
+    }
+}
 
 impl Exception for GoPanic {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
@@ -101,6 +129,29 @@ impl Exception for GoPanic {
                 "",
             ))
         })
+    }
+}
+
+impl ReportExtractor for GoPanic {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        Ok(self.extracted_stacktrace.clone())
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.parse_stacktrace_internal()?;
+        Ok(self.parsed_stacktrace.clone().unwrap())
+    }
+    fn report(&self) -> Vec<String> {
+        self.message
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect()
+    }
+    fn execution_class(&self) -> Option<ExecutionClass> {
+        GoPanic::parse_exception(&self.message)
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.parse_stacktrace_internal()?;
+        self.parsed_stacktrace.clone().unwrap().crash_line()
     }
 }
 

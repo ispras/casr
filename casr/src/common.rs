@@ -1,6 +1,7 @@
 use crate::util;
 use libcasr::{
     asan::AsanCrash,
+    go::GoPanic,
     lua::LuaException,
     msan::MsanCrash,
     report::{CrashReport, ReportExtractor},
@@ -16,6 +17,7 @@ use std::process::Command;
 
 #[derive(Debug)]
 pub enum Mode {
+    Go,
     Lua,
     San,
     Asan,
@@ -25,6 +27,7 @@ pub enum Mode {
 impl Mode {
     fn new(mode: &str) -> Result<Mode> {
         match mode {
+            "go" => Ok(Mode::Go),
             "lua" => Ok(Mode::Lua),
             "san" => Ok(Mode::San),
             "asan" => Ok(Mode::Asan),
@@ -80,7 +83,7 @@ pub fn prepare_run_san() {
 
 pub fn prepare_run(mode: &Mode) {
     match mode {
-        Mode::San | Mode::Asan | Mode::Msan => {
+        Mode::San | Mode::Asan | Mode::Msan | Mode::Go => {
             prepare_run_san();
         }
         _ => {}
@@ -109,7 +112,7 @@ pub fn update_cmd_san(cmd: &mut Command) {
 
 pub fn update_cmd(cmd: &mut Command, mode: &Mode) {
     match mode {
-        Mode::San | Mode::Asan | Mode::Msan => {
+        Mode::San | Mode::Asan | Mode::Msan | Mode::Go => {
             update_cmd_san(cmd);
         }
         _ => {}
@@ -144,7 +147,7 @@ pub fn get_report_stub(argv: &Vec<&str>, stdin_file: &Option<PathBuf>, mode: &Mo
         Mode::Lua => {
             update_report_stub_lua(&mut report, argv);
         }
-        Mode::San | Mode::Asan | Mode::Msan => {
+        Mode::San | Mode::Asan | Mode::Msan | Mode::Go => {
             update_report_stub_san(&mut report, stdin_file);
         }
     }
@@ -163,6 +166,9 @@ pub fn get_san_extracter(
     } else if let Some(crash) = MsanCrash::new(stderr)? {
         *mode = Mode::Msan;
         Ok(Box::new(crash))
+    } else if let Some(panic) = GoPanic::new(stderr) {
+        *mode = Mode::Go;
+        Ok(Box::new(panic))
     } else {
         // TODO: signal
         bail!("Unexpected output");
@@ -175,6 +181,13 @@ pub fn get_extracter(
     mode: &mut Mode,
 ) -> Result<Box<dyn ReportExtractor>> {
     match mode {
+        Mode::Go => {
+            if let Some(panic) = GoPanic::new(stderr) {
+                Ok(Box::new(panic))
+            } else {
+                get_san_extracter(stdout, stderr, mode)
+            }
+        }
         Mode::Lua => {
             let Some(exception) = LuaException::new(stderr) else {
                 bail!("Lua exception is not found!");
@@ -200,6 +213,9 @@ pub fn get_extracter(
 // NOTE: if there were no different report fields this function would not be needed
 pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mode) {
     match mode {
+        Mode::Go => {
+            report.go_report = raw_report;
+        }
         Mode::Lua => {
             report.lua_report = raw_report;
         }

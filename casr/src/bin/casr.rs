@@ -101,14 +101,16 @@ fn main() -> Result<()> {
         .subcommands([
             clap::Command::new("auto")
                 .about("Auto define proper way to threat target output (default behavior)"),
+            clap::Command::new("go")
+                .about("Threat target output as Go reports"),
+            clap::Command::new("lua")
+                .about("Threat target output as Lua reports"),
             clap::Command::new("san")
                 .about("Threat target output as AddressSanitizer or MemorySanitizer reports"),
             clap::Command::new("asan")
                 .about("Threat target output as AddressSanitizer reports"),
             clap::Command::new("msan")
                 .about("Threat target output as MemorySanitizer reports"),
-            clap::Command::new("lua")
-                .about("Threat target output as Lua reports")
         ])
         .get_matches();
 
@@ -165,7 +167,9 @@ fn main() -> Result<()> {
     // Extract report
     common::fill_report(&mut report, extractor.report(), &mode);
     report.stacktrace = extractor.extract_stacktrace()?;
-    report.execution_class = extractor.execution_class()?;
+    if let Some(execution_class) = extractor.execution_class() {
+        report.execution_class = execution_class;
+    }
     if let Ok(crashline) = extractor.crash_line() {
         report.crashline = crashline.to_string();
         if let CrashLine::Source(debug) = crashline {

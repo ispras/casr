@@ -185,8 +185,8 @@ impl ReportExtractor for LuaException {
     fn report(&self) -> Vec<String> {
         self.lua_report()
     }
-    fn execution_class(&self) -> Result<ExecutionClass> {
-        self.severity()
+    fn execution_class(&self) -> Option<ExecutionClass> {
+        self.severity().ok()
     }
     fn crash_line(&mut self) -> Result<CrashLine> {
         CrashLineExt::crash_line(self)

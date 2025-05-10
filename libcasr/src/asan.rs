@@ -242,9 +242,9 @@ pub struct SanCrash {
 
 impl SanCrash {
     /// Create new `SanCrash` instance from stream
-    pub fn new(message: Vec<String>) -> SanCrash {
+    pub fn new(message: Vec<String>) -> Self {
         SanCrash {
-            message: message,
+            message,
             extracted_stacktrace: None,
             parsed_stacktrace: None,
         }
@@ -283,16 +283,9 @@ impl ReportExtractor for SanCrash {
     fn report(&self) -> Vec<String> {
         self.message.clone()
     }
-    fn execution_class(&self) -> Result<ExecutionClass> {
+    fn execution_class(&self) -> Option<ExecutionClass> {
         let context = AsanContext(self.message.clone());
-        if let Ok(severity) = context.severity() {
-            Ok(severity)
-        } else {
-            Err(Error::Casr(format!(
-                "Couldn't estimate severity. {}",
-                context.severity().err().unwrap()
-            )))
-        }
+        context.severity().ok()
     }
     fn crash_line(&mut self) -> Result<CrashLine> {
         self.parse_stacktrace_internal()?;
@@ -363,7 +356,7 @@ impl ReportExtractor for AsanCrash {
     fn report(&self) -> Vec<String> {
         self.san_crash.report()
     }
-    fn execution_class(&self) -> Result<ExecutionClass> {
+    fn execution_class(&self) -> Option<ExecutionClass> {
         self.san_crash.execution_class()
     }
     fn crash_line(&mut self) -> Result<CrashLine> {
