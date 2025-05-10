@@ -98,7 +98,7 @@ impl GoPanic {
         let Ok(stacktrace) = GoStacktrace::extract_stacktrace(stream) else {
             return None;
         };
-        Some(GoPanic {
+        Some(Self {
             message: stream.to_string(),
             extracted_stacktrace: stacktrace,
             parsed_stacktrace: None,

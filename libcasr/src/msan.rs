@@ -44,7 +44,7 @@ impl MsanCrash {
             return Ok(None::<Self>);
         }
 
-        Ok(Some(MsanCrash {
+        Ok(Some(Self {
             san_crash: SanCrash::new(slice.to_vec()),
         }))
     }

@@ -2,13 +2,18 @@
 use crate::error::{Error, Result};
 use crate::exception::Exception;
 use crate::execution_class::ExecutionClass;
+use crate::report::ReportExtractor;
 use crate::stacktrace::ParseStacktrace;
-use crate::stacktrace::StacktraceEntry;
+use crate::stacktrace::{CrashLine, CrashLineExt, Stacktrace, StacktraceEntry};
 
 use regex::Regex;
 
-/// Structure provides an interface for parsing rust panic message.
-pub struct RustPanic;
+/// Structure provides an interface for parsing Rust panic message.
+pub struct RustPanic {
+    message: String,
+    extracted_stacktrace: Vec<String>,
+    parsed_stacktrace: Option<Stacktrace>,
+}
 
 impl Exception for RustPanic {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
@@ -98,6 +103,53 @@ impl ParseStacktrace for RustStacktrace {
             stentry.debug.column = col;
         }
         Ok(stentry)
+    }
+}
+
+impl RustPanic {
+    /// Create new `RustPanic` instance from stream
+    pub fn new(stream: &str) -> Option<Self> {
+        // If it is possible to extract Rust stacktrace, it is Rust.
+        let Ok(stacktrace) = RustStacktrace::extract_stacktrace(stream) else {
+            return None;
+        };
+        Some(Self {
+            message: stream.to_string(),
+            extracted_stacktrace: stacktrace,
+            parsed_stacktrace: None,
+        })
+    }
+    /// Parsing stacktrace with result caching
+    fn parse_stacktrace_internal(&mut self) -> Result<()> {
+        if self.parsed_stacktrace.is_none() {
+            self.parsed_stacktrace = Some(RustStacktrace::parse_stacktrace(
+                &self.extracted_stacktrace,
+            )?)
+        }
+        Ok(())
+    }
+}
+
+impl ReportExtractor for RustPanic {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        Ok(self.extracted_stacktrace.clone())
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.parse_stacktrace_internal()?;
+        Ok(self.parsed_stacktrace.clone().unwrap())
+    }
+    fn report(&self) -> Vec<String> {
+        self.message
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect()
+    }
+    fn execution_class(&self) -> Option<ExecutionClass> {
+        RustPanic::parse_exception(&self.message)
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.parse_stacktrace_internal()?;
+        self.parsed_stacktrace.clone().unwrap().crash_line()
     }
 }
 

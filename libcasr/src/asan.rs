@@ -243,7 +243,7 @@ pub struct SanCrash {
 impl SanCrash {
     /// Create new `SanCrash` instance from stream
     pub fn new(message: Vec<String>) -> Self {
-        SanCrash {
+        Self {
             message,
             extracted_stacktrace: None,
             parsed_stacktrace: None,
@@ -340,7 +340,7 @@ impl AsanCrash {
             return Ok(None::<Self>);
         }
 
-        Ok(Some(AsanCrash {
+        Ok(Some(Self {
             san_crash: SanCrash::new(slice.to_vec()),
         }))
     }

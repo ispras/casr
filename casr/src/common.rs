@@ -5,6 +5,7 @@ use libcasr::{
     lua::LuaException,
     msan::MsanCrash,
     report::{CrashReport, ReportExtractor},
+    rust::RustPanic,
 };
 
 use anyhow::{Result, bail};
@@ -19,7 +20,8 @@ use std::process::Command;
 pub enum Mode {
     Go,
     Lua,
-    San,
+    Rust,
+    San, // Intermediate mode
     Asan,
     Msan,
 }
@@ -29,6 +31,7 @@ impl Mode {
         match mode {
             "go" => Ok(Mode::Go),
             "lua" => Ok(Mode::Lua),
+            "rust" => Ok(Mode::Rust),
             "san" => Ok(Mode::San),
             "asan" => Ok(Mode::Asan),
             "msan" => Ok(Mode::Msan),
@@ -83,7 +86,7 @@ pub fn prepare_run_san() {
 
 pub fn prepare_run(mode: &Mode) {
     match mode {
-        Mode::San | Mode::Asan | Mode::Msan | Mode::Go => {
+        Mode::San | Mode::Asan | Mode::Msan | Mode::Go | Mode::Rust => {
             prepare_run_san();
         }
         _ => {}
@@ -112,7 +115,7 @@ pub fn update_cmd_san(cmd: &mut Command) {
 
 pub fn update_cmd(cmd: &mut Command, mode: &Mode) {
     match mode {
-        Mode::San | Mode::Asan | Mode::Msan | Mode::Go => {
+        Mode::San | Mode::Asan | Mode::Msan | Mode::Go | Mode::Rust => {
             update_cmd_san(cmd);
         }
         _ => {}
@@ -147,35 +150,48 @@ pub fn get_report_stub(argv: &Vec<&str>, stdin_file: &Option<PathBuf>, mode: &Mo
         Mode::Lua => {
             update_report_stub_lua(&mut report, argv);
         }
-        Mode::San | Mode::Asan | Mode::Msan | Mode::Go => {
+        Mode::San | Mode::Asan | Mode::Msan | Mode::Go | Mode::Rust => {
             update_report_stub_san(&mut report, stdin_file);
         }
     }
     report
 }
 
-pub fn get_san_extracter(
+pub fn get_san_extractor(
     _stdout: &str,
     stderr: &str,
     mode: &mut Mode,
 ) -> Result<Box<dyn ReportExtractor>> {
-    // TODO: adjust mode value
     if let Some(crash) = AsanCrash::new(stderr)? {
         *mode = Mode::Asan;
         Ok(Box::new(crash))
     } else if let Some(crash) = MsanCrash::new(stderr)? {
         *mode = Mode::Msan;
         Ok(Box::new(crash))
-    } else if let Some(panic) = GoPanic::new(stderr) {
-        *mode = Mode::Go;
-        Ok(Box::new(panic))
     } else {
         // TODO: signal
         bail!("Unexpected output");
     }
 }
 
-pub fn get_extracter(
+// Add only for backward compatibility: casr-san could parse Go and Rust Panics
+pub fn get_legacy_san_extractor(
+    stdout: &str,
+    stderr: &str,
+    mode: &mut Mode,
+) -> Result<Box<dyn ReportExtractor>> {
+    if let Some(panic) = GoPanic::new(stderr) {
+        *mode = Mode::Go;
+        Ok(Box::new(panic))
+    } else if let Some(panic) = RustPanic::new(stderr) {
+        *mode = Mode::Rust;
+        Ok(Box::new(panic))
+    } else {
+        get_san_extractor(stdout, stderr, mode)
+    }
+}
+
+pub fn get_extractor(
     stdout: &str,
     stderr: &str,
     mode: &mut Mode,
@@ -185,7 +201,7 @@ pub fn get_extracter(
             if let Some(panic) = GoPanic::new(stderr) {
                 Ok(Box::new(panic))
             } else {
-                get_san_extracter(stdout, stderr, mode)
+                get_san_extractor(stdout, stderr, mode)
             }
         }
         Mode::Lua => {
@@ -193,6 +209,13 @@ pub fn get_extracter(
                 bail!("Lua exception is not found!");
             };
             Ok(Box::new(exception))
+        }
+        Mode::Rust => {
+            if let Some(panic) = RustPanic::new(stderr) {
+                Ok(Box::new(panic))
+            } else {
+                get_san_extractor(stdout, stderr, mode)
+            }
         }
         Mode::Asan => {
             let Some(crash) = AsanCrash::new(stderr)? else {
@@ -206,7 +229,7 @@ pub fn get_extracter(
             };
             Ok(Box::new(crash))
         }
-        Mode::San => get_san_extracter(stdout, stderr, mode),
+        Mode::San => get_legacy_san_extractor(stdout, stderr, mode),
     }
 }
 
@@ -218,6 +241,9 @@ pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mod
         }
         Mode::Lua => {
             report.lua_report = raw_report;
+        }
+        Mode::Rust => {
+            report.rust_report = raw_report;
         }
         Mode::Asan => {
             report.asan_report = raw_report;

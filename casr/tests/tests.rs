@@ -4093,6 +4093,88 @@ fn test_casr_san_rust_panic() {
 }
 
 #[test]
+#[cfg(target_arch = "x86_64")]
+fn test_casr_common_rust() {
+    let paths = [
+        abs_path("tests/casr_tests/test_rust_panic/fuzz"),
+        abs_path("tests/tmp_tests_casr/test_rust_panic_fuzz"),
+        abs_path(
+            "tests/tmp_tests_casr/test_rust_panic_fuzz/x86_64-unknown-linux\
+            -gnu/release/fuzz_target",
+        ),
+    ];
+
+    let rustup_output = Command::new("rustup")
+        .args(["toolchain", "list"])
+        .output()
+        .expect("failed to execute rustup");
+    let rustup_stdout = String::from_utf8_lossy(&rustup_output.stdout).to_string();
+    let re = Regex::new(r"(?P<toolchain>nightly-\d{4}-\d{2}-\d{2})").unwrap();
+    let toolchain = if let Some(tc) = re.captures(rustup_stdout.as_str()) {
+        tc.name("toolchain").map(|x| x.as_str()).unwrap()
+    } else {
+        "nightly"
+    };
+
+    let cargo = Command::new("cargo")
+        .args([
+            ("+".to_owned() + toolchain).as_str(),
+            "fuzz",
+            "build",
+            "--target",
+            "x86_64-unknown-linux-gnu",
+            "--fuzz-dir",
+            &paths[0],
+            "--target-dir",
+            &paths[1],
+            "-s",
+            "address",
+        ])
+        // Clear env
+        .env("RUSTFLAGS", "")
+        .env("RUSTDOCFLAGS", "")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .expect("failed to execute cargo fuzz build");
+
+    assert!(cargo.success());
+
+    let output = Command::new(EXE_CASR)
+        .args(["--stdout", "--", &paths[2], &paths[2]])
+        .output()
+        .expect("failed to start casr-san");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_short_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let severity_desc = report["CrashSeverity"]["Description"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_short_desc, "RustPanic");
+        assert_eq!(severity_desc, "PanicMessage");
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+
+    let _ = std::fs::remove_dir_all(&paths[1]);
+}
+
+#[test]
 #[ignore]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_sigbus() {

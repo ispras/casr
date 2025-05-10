@@ -1,7 +1,11 @@
 use casr::{common, util};
 use libcasr::{
-    init_ignored_frames, report::CrashReport, stacktrace::CrashLine, stacktrace::Filter,
-    stacktrace::Stacktrace,
+    cpp::CppException,
+    exception::Exception,
+    init_ignored_frames,
+    report::CrashReport,
+    rust::RustPanic,
+    stacktrace::{CrashLine, Filter, Stacktrace},
 };
 
 use anyhow::{Result, bail};
@@ -105,6 +109,8 @@ fn main() -> Result<()> {
                 .about("Threat target output as Go reports"),
             clap::Command::new("lua")
                 .about("Threat target output as Lua reports"),
+            clap::Command::new("rust")
+                .about("Threat target output as Rust reports"),
             clap::Command::new("san")
                 .about("Threat target output as AddressSanitizer or MemorySanitizer reports"),
             clap::Command::new("asan")
@@ -162,7 +168,7 @@ fn main() -> Result<()> {
     let mut report = common::get_report_stub(&argv, &stdin_file, &mode);
 
     // Get report extractor
-    let mut extractor = common::get_extracter(&stdout, &stderr, &mut mode)?;
+    let mut extractor = common::get_extractor(&stdout, &stderr, &mut mode)?;
 
     // Extract report
     common::fill_report(&mut report, extractor.report(), &mode);
@@ -178,6 +184,16 @@ fn main() -> Result<()> {
             }
         }
     }
+
+    // Check for exceptions
+    if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
+        .iter()
+        .find_map(|parse| parse(&stderr))
+    {
+        report.execution_class = class;
+    }
+
+    // Strip paths
     let stacktrace = extractor.parse_stacktrace()?;
     if let Some(path) = matches.get_one::<String>("strip-path") {
         util::strip_paths(&mut report, &stacktrace, path);
