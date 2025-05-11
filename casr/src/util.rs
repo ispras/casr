@@ -632,3 +632,20 @@ pub fn get_ld_preload(matches: &ArgMatches) -> Option<String> {
             .join(":"),
     )
 }
+
+/// Check if required arguments are present
+///
+/// # Arguments
+///
+/// * `matches` - casr options
+///
+/// * `args` - required argument list
+pub fn check_required(matches: &ArgMatches, args: &[&str]) -> Result<()> {
+    let sub = matches.subcommand();
+    for arg in args {
+        if !matches.contains_id(arg) && (sub.is_none() || !sub.unwrap().1.contains_id(arg)) {
+            bail!("The following argument is required: {}", arg);
+        }
+    }
+    Ok(())
+}

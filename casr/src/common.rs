@@ -170,7 +170,8 @@ pub fn get_san_extractor(
         Ok(Box::new(crash))
     } else {
         // TODO: signal
-        bail!("Unexpected output");
+        // Normal termination
+        bail!("Program terminated (no crash)");
     }
 }
 

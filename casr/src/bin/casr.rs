@@ -25,6 +25,7 @@ fn main() -> Result<()> {
                 .long("output")
                 .short('o')
                 .global(true)
+                .group("out")
                 .action(ArgAction::Set)
                 .value_parser(clap::value_parser!(PathBuf))
                 .value_name("REPORT")
@@ -36,13 +37,13 @@ fn main() -> Result<()> {
             Arg::new("stdout")
                 .long("stdout")
                 .global(true)
+                .group("out")
                 .action(ArgAction::SetTrue)
                 .help("Print CASR report to stdout"),
         )
         .group(
             ArgGroup::new("out")
                 .args(["stdout", "output"])
-                //.required(true),
         )
         .arg(
             Arg::new("stdin")
@@ -98,7 +99,6 @@ fn main() -> Result<()> {
                 .action(ArgAction::Set)
                 .num_args(1..)
                 .last(true)
-                //.required(true)
                 .global(true)
                 .help("Add \"-- <path> <arguments>\" to run"),
         )
@@ -122,6 +122,9 @@ fn main() -> Result<()> {
 
     // TODO: manually validate required args: stdout/output, ARGS
     init_ignored_frames!("go", "lua", "rust", "san");
+
+    // Check required args
+    util::check_required(&matches, &["out", "ARGS"])?;
 
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
         util::add_custom_ignored_frames(path)?;

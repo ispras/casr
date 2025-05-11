@@ -4094,7 +4094,7 @@ fn test_casr_san_rust_panic() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
-fn test_casr_common_rust() {
+fn test_casr_common_rust_panic() {
     let paths = [
         abs_path("tests/casr_tests/test_rust_panic/fuzz"),
         abs_path("tests/tmp_tests_casr/test_rust_panic_fuzz"),
