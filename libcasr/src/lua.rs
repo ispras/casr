@@ -12,6 +12,8 @@ use regex::Regex;
 #[derive(Clone, Debug)]
 pub struct LuaException {
     message: String,
+    extracted_stacktrace: Option<Vec<String>>,
+    parsed_stacktrace: Option<Stacktrace>,
 }
 
 impl LuaException {
@@ -19,8 +21,10 @@ impl LuaException {
     pub fn new(stream: &str) -> Option<Self> {
         let re = Regex::new(r#"\S+: .+\n\s*stack traceback:\s*\n(?:.*\n)*.+: .+"#).unwrap();
         let mtch = re.find(stream)?;
-        Some(LuaException {
+        Some(Self {
             message: mtch.as_str().to_string(),
+            extracted_stacktrace: None,
+            parsed_stacktrace: None,
         })
     }
     /// Extract stack trace from lua exception.
@@ -30,6 +34,26 @@ impl LuaException {
     /// Transform lua exception into `Stacktrace` type.
     pub fn parse_stacktrace(&self) -> Result<Stacktrace> {
         LuaStacktrace::parse_stacktrace(&self.extract_stacktrace()?)
+    }
+    /// Extracting stacktrace with result caching
+    fn extract_stacktrace_internal(&mut self) -> Result<()> {
+        if self.extracted_stacktrace.is_none() {
+            self.extracted_stacktrace = Some(LuaStacktrace::extract_stacktrace(
+                &self.message,
+            )?)
+        }
+        Ok(())
+    }
+
+    /// Parsing stacktrace with result caching
+    fn parse_stacktrace_internal(&mut self) -> Result<()> {
+        self.extract_stacktrace_internal()?;
+        if self.parsed_stacktrace.is_none() {
+            self.parsed_stacktrace = Some(LuaStacktrace::parse_stacktrace(
+                &self.extracted_stacktrace.clone().unwrap(),
+            )?)
+        }
+        Ok(())
     }
     /// Get lua exception as a vector of lines.
     pub fn lua_report(&self) -> Vec<String> {
@@ -177,10 +201,12 @@ impl Severity for LuaException {
 
 impl ReportExtractor for LuaException {
     fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
-        LuaException::extract_stacktrace(self)
+        self.extract_stacktrace_internal()?;
+        Ok(self.extracted_stacktrace.clone().unwrap())
     }
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
-        LuaException::parse_stacktrace(self)
+        self.parse_stacktrace_internal()?;
+        Ok(self.parsed_stacktrace.clone().unwrap())
     }
     fn report(&self) -> Vec<String> {
         self.lua_report()
@@ -299,7 +325,10 @@ mod tests {
         );
         assert_eq!(execution_class.description, "");
         assert_eq!(execution_class.explanation, "");
+    }
 
+    #[test]
+    fn test_lua_extractor() {
         let stream = "
             custom-lua-interpreter: (command line):1: crash
             stack traceback:
@@ -310,20 +339,20 @@ mod tests {
                 [C]: at 0x607f3df872e0
         ";
         let exception = LuaException::new(stream);
-        let Some(exception) = exception else {
+        let Some(mut exception) = exception else {
             panic!("{:?}", exception);
         };
 
-        let lines = exception.lua_report();
+        let lines = ReportExtractor::report(&exception);
         assert_eq!(lines.len(), 7);
 
-        let sttr = exception.extract_stacktrace();
+        let sttr = ReportExtractor::extract_stacktrace(&mut exception);
         let Ok(sttr) = sttr else {
             panic!("{}", sttr.err().unwrap());
         };
         assert_eq!(sttr.len(), 2);
 
-        let sttr = exception.parse_stacktrace();
+        let sttr = ReportExtractor::parse_stacktrace(&mut exception);
         let Ok(sttr) = sttr else {
             panic!("{}", sttr.err().unwrap());
         };
@@ -332,15 +361,15 @@ mod tests {
         assert_eq!(sttr[0].debug.line, 1);
         assert_eq!(sttr[0].function, "main chunk".to_string());
 
-        let crashline = exception.crash_line();
+        let crashline = ReportExtractor::crash_line(&mut exception);
         let Ok(crashline) = crashline else {
             panic!("{}", crashline.err().unwrap());
         };
         assert_eq!(crashline.to_string(), "(command line):1");
 
-        let execution_class = exception.severity();
-        let Ok(execution_class) = execution_class else {
-            panic!("{}", execution_class.err().unwrap());
+        let execution_class = ReportExtractor::execution_class(&mut exception);
+        let Some(execution_class) = execution_class else {
+            panic!("Execution class is corrupted");
         };
         assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
         assert_eq!(execution_class.short_description, "crash");
