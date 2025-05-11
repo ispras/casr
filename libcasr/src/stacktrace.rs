@@ -127,6 +127,69 @@ impl CrashLineExt for Stacktrace {
     }
 }
 
+/// Structure provides an interface for save parsing some sanitizer crash.
+#[derive(Clone, Debug)]
+pub struct StacktraceContext {
+    stream: String,
+    extracted_stacktrace: Option<Vec<String>>,
+    parsed_stacktrace: Option<Stacktrace>,
+}
+
+impl StacktraceContext {
+    /// Create new `SanCrash` instance from stream
+    pub fn new(stream: String, extracted_stacktrace: Option<Vec<String>>) -> Self {
+        Self {
+            stream,
+            extracted_stacktrace,
+            parsed_stacktrace: None,
+        }
+    }
+    /// Get original stream
+    pub fn stream(&self) -> &str {
+        &self.stream
+    }
+    /// Extracting stacktrace with result caching
+    fn extract_stacktrace_internal<T: ParseStacktrace>(&mut self) -> Result<()> {
+        if self.extracted_stacktrace.is_none() {
+            self.extracted_stacktrace = Some(T::extract_stacktrace(&self.stream)?)
+        }
+        Ok(())
+    }
+    /// Parsing stacktrace with result caching
+    fn parse_stacktrace_internal<T: ParseStacktrace>(&mut self) -> Result<()> {
+        self.extract_stacktrace_internal::<T>()?;
+        if self.parsed_stacktrace.is_none() {
+            self.parsed_stacktrace = Some(T::parse_stacktrace(
+                &self.extracted_stacktrace.clone().unwrap(),
+            )?)
+        }
+        Ok(())
+    }
+    /// Extract stack trace.
+    pub fn extract_stacktrace<T: ParseStacktrace>(&mut self) -> Result<Vec<String>> {
+        self.extract_stacktrace_internal::<T>()?;
+        Ok(self.extracted_stacktrace.clone().unwrap())
+    }
+    /// Transform into Stacktrace type.
+    pub fn parse_stacktrace<T: ParseStacktrace>(&mut self) -> Result<Stacktrace> {
+        self.parse_stacktrace_internal::<T>()?;
+        Ok(self.parsed_stacktrace.clone().unwrap())
+    }
+    /// Transform into a vector of lines.
+    pub fn report(&self) -> Vec<String> {
+        self.stream
+            .clone()
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect()
+    }
+    /// Get crash line from stack trace.
+    pub fn crash_line<T: ParseStacktrace>(&mut self) -> Result<CrashLine> {
+        self.parse_stacktrace_internal::<T>()?;
+        self.parsed_stacktrace.clone().unwrap().crash_line()
+    }
+}
+
 /// Compute the similarity between 2 stack traces
 ///
 /// # Arguments

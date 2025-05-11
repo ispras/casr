@@ -12,7 +12,7 @@ use crate::stacktrace::*;
 #[derive(Clone, Debug)]
 pub struct MsanCrash {
     // NOTE: There's no structure inheritance in Rust :(
-    san_crash: SanCrash,
+    san: SanCrash,
 }
 
 impl MsanCrash {
@@ -45,25 +45,25 @@ impl MsanCrash {
         }
 
         Ok(Some(Self {
-            san_crash: SanCrash::new(slice.to_vec()),
+            san: SanCrash::new(slice.join("\n")),
         }))
     }
 }
 
 impl ReportExtractor for MsanCrash {
     fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
-        self.san_crash.extract_stacktrace()
+        self.san.extract_stacktrace()
     }
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
-        self.san_crash.parse_stacktrace()
+        self.san.parse_stacktrace()
     }
     fn report(&self) -> Vec<String> {
-        self.san_crash.report()
+        self.san.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
-        self.san_crash.execution_class()
+        self.san.execution_class()
     }
     fn crash_line(&mut self) -> Result<CrashLine> {
-        self.san_crash.crash_line()
+        self.san.crash_line()
     }
 }

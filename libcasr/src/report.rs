@@ -833,7 +833,7 @@ pub trait ReportExtractor {
     /// Extract stack trace.
     fn extract_stacktrace(&mut self) -> Result<Vec<String>>;
 
-    /// Transform into StacktraceEntry type.
+    /// Transform into Stacktrace type.
     fn parse_stacktrace(&mut self) -> Result<Stacktrace>;
 
     /// Transform into a vector of lines.
@@ -842,7 +842,7 @@ pub trait ReportExtractor {
     /// Get an `ExecutionClass` struct.
     fn execution_class(&self) -> Option<ExecutionClass>;
 
-    /// Get crash line from stack trace
+    /// Get crash line from stack trace.
     fn crash_line(&mut self) -> Result<CrashLine>;
 }
 

@@ -4,16 +4,14 @@ use crate::execution_class::ExecutionClass;
 use crate::report::ReportExtractor;
 use crate::severity::Severity;
 use crate::stacktrace::{CrashLine, CrashLineExt, DebugInfo};
-use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
+use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry};
 
 use regex::Regex;
 
 /// Structure provides an interface for save parsing lua exception.
 #[derive(Clone, Debug)]
 pub struct LuaException {
-    message: String,
-    extracted_stacktrace: Option<Vec<String>>,
-    parsed_stacktrace: Option<Stacktrace>,
+    context: StacktraceContext,
 }
 
 impl LuaException {
@@ -22,42 +20,24 @@ impl LuaException {
         let re = Regex::new(r#"\S+: .+\n\s*stack traceback:\s*\n(?:.*\n)*.+: .+"#).unwrap();
         let mtch = re.find(stream)?;
         Some(Self {
-            message: mtch.as_str().to_string(),
-            extracted_stacktrace: None,
-            parsed_stacktrace: None,
+            context: StacktraceContext::new(mtch.as_str().to_string(), None),
         })
+    }
+    /// Get original stream
+    fn stream(&self) -> &str {
+        self.context.stream()
     }
     /// Extract stack trace from lua exception.
     pub fn extract_stacktrace(&self) -> Result<Vec<String>> {
-        LuaStacktrace::extract_stacktrace(&self.message)
+        LuaStacktrace::extract_stacktrace(self.stream())
     }
     /// Transform lua exception into `Stacktrace` type.
     pub fn parse_stacktrace(&self) -> Result<Stacktrace> {
         LuaStacktrace::parse_stacktrace(&self.extract_stacktrace()?)
     }
-    /// Extracting stacktrace with result caching
-    fn extract_stacktrace_internal(&mut self) -> Result<()> {
-        if self.extracted_stacktrace.is_none() {
-            self.extracted_stacktrace = Some(LuaStacktrace::extract_stacktrace(
-                &self.message,
-            )?)
-        }
-        Ok(())
-    }
-
-    /// Parsing stacktrace with result caching
-    fn parse_stacktrace_internal(&mut self) -> Result<()> {
-        self.extract_stacktrace_internal()?;
-        if self.parsed_stacktrace.is_none() {
-            self.parsed_stacktrace = Some(LuaStacktrace::parse_stacktrace(
-                &self.extracted_stacktrace.clone().unwrap(),
-            )?)
-        }
-        Ok(())
-    }
     /// Get lua exception as a vector of lines.
     pub fn lua_report(&self) -> Vec<String> {
-        self.message
+        self.stream()
             .split('\n')
             .map(|s| s.trim().to_string())
             .collect()
@@ -201,12 +181,10 @@ impl Severity for LuaException {
 
 impl ReportExtractor for LuaException {
     fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
-        self.extract_stacktrace_internal()?;
-        Ok(self.extracted_stacktrace.clone().unwrap())
+        self.context.extract_stacktrace::<LuaStacktrace>()
     }
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
-        self.parse_stacktrace_internal()?;
-        Ok(self.parsed_stacktrace.clone().unwrap())
+        self.context.parse_stacktrace::<LuaStacktrace>()
     }
     fn report(&self) -> Vec<String> {
         self.lua_report()
@@ -367,7 +345,7 @@ mod tests {
         };
         assert_eq!(crashline.to_string(), "(command line):1");
 
-        let execution_class = ReportExtractor::execution_class(&mut exception);
+        let execution_class = ReportExtractor::execution_class(&exception);
         let Some(execution_class) = execution_class else {
             panic!("Execution class is corrupted");
         };

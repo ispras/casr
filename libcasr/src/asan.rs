@@ -10,6 +10,7 @@ use crate::stacktrace::ParseStacktrace;
 use crate::stacktrace::*;
 
 /// Structure provides an interface for processing the stack trace.
+#[derive(Clone, Debug)]
 pub struct AsanStacktrace;
 
 impl ParseStacktrace for AsanStacktrace {
@@ -235,61 +236,35 @@ impl Severity for AsanContext {
 /// Structure provides an interface for save parsing some sanitizer crash.
 #[derive(Clone, Debug)]
 pub struct SanCrash {
-    message: Vec<String>,
-    extracted_stacktrace: Option<Vec<String>>,
-    parsed_stacktrace: Option<Stacktrace>,
+    context: StacktraceContext,
 }
 
 impl SanCrash {
     /// Create new `SanCrash` instance from stream
-    pub fn new(message: Vec<String>) -> Self {
+    pub fn new(stream: String) -> Self {
         Self {
-            message,
-            extracted_stacktrace: None,
-            parsed_stacktrace: None,
+            context: StacktraceContext::new(stream, None),
         }
     }
-    /// Extracting stacktrace with result caching
-    fn extract_stacktrace_internal(&mut self) -> Result<()> {
-        if self.extracted_stacktrace.is_none() {
-            self.extracted_stacktrace = Some(AsanStacktrace::extract_stacktrace(
-                &self.message.join("\n"),
-            )?)
-        }
-        Ok(())
+    /// Extract stack trace.
+    pub fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.context.extract_stacktrace::<AsanStacktrace>()
     }
-
-    /// Parsing stacktrace with result caching
-    fn parse_stacktrace_internal(&mut self) -> Result<()> {
-        self.extract_stacktrace_internal()?;
-        if self.parsed_stacktrace.is_none() {
-            self.parsed_stacktrace = Some(AsanStacktrace::parse_stacktrace(
-                &self.extracted_stacktrace.clone().unwrap(),
-            )?)
-        }
-        Ok(())
+    /// Transform into Stacktrace type.
+    pub fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.context.parse_stacktrace::<AsanStacktrace>()
     }
-}
-
-impl ReportExtractor for SanCrash {
-    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
-        self.extract_stacktrace_internal()?;
-        Ok(self.extracted_stacktrace.clone().unwrap())
+    /// Transform into a vector of lines.
+    pub fn report(&self) -> Vec<String> {
+        self.context.report()
     }
-    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
-        self.parse_stacktrace_internal()?;
-        Ok(self.parsed_stacktrace.clone().unwrap())
+    /// Get an `ExecutionClass` struct.
+    pub fn execution_class(&self) -> Option<ExecutionClass> {
+        AsanContext(self.context.report()).severity().ok()
     }
-    fn report(&self) -> Vec<String> {
-        self.message.clone()
-    }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        let context = AsanContext(self.message.clone());
-        context.severity().ok()
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        self.parse_stacktrace_internal()?;
-        self.parsed_stacktrace.clone().unwrap().crash_line()
+    /// Get crash line from stack trace.
+    pub fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<AsanStacktrace>()
     }
 }
 
@@ -297,7 +272,7 @@ impl ReportExtractor for SanCrash {
 #[derive(Clone, Debug)]
 pub struct AsanCrash {
     // NOTE: There's no structure inheritance in Rust :(
-    san_crash: SanCrash,
+    san: SanCrash,
 }
 
 impl AsanCrash {
@@ -341,26 +316,26 @@ impl AsanCrash {
         }
 
         Ok(Some(Self {
-            san_crash: SanCrash::new(slice.to_vec()),
+            san: SanCrash::new(slice.join("\n")),
         }))
     }
 }
 
 impl ReportExtractor for AsanCrash {
     fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
-        self.san_crash.extract_stacktrace()
+        self.san.extract_stacktrace()
     }
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
-        self.san_crash.parse_stacktrace()
+        self.san.parse_stacktrace()
     }
     fn report(&self) -> Vec<String> {
-        self.san_crash.report()
+        self.san.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
-        self.san_crash.execution_class()
+        self.san.execution_class()
     }
     fn crash_line(&mut self) -> Result<CrashLine> {
-        self.san_crash.crash_line()
+        self.san.crash_line()
     }
 }
 

@@ -1,11 +1,12 @@
 //! Go module implements `ParseStacktrace` and `Exception` traits for Go panic output.
-use crate::exception::Exception;
-use crate::stacktrace::ParseStacktrace;
-
 use crate::error::{Error, Result};
+use crate::exception::Exception;
 use crate::execution_class::ExecutionClass;
 use crate::report::ReportExtractor;
-use crate::stacktrace::{CrashLine, CrashLineExt, Stacktrace, StacktraceEntry};
+use crate::stacktrace::{
+    CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+};
+
 use regex::Regex;
 
 /// Structure provides an interface for processing stacktrace from Go panics.
@@ -86,9 +87,7 @@ impl ParseStacktrace for GoStacktrace {
 
 /// Structure provides an interface for parsing Go panic message.
 pub struct GoPanic {
-    message: String,
-    extracted_stacktrace: Vec<String>,
-    parsed_stacktrace: Option<Stacktrace>,
+    context: StacktraceContext,
 }
 
 impl GoPanic {
@@ -99,18 +98,12 @@ impl GoPanic {
             return None;
         };
         Some(Self {
-            message: stream.to_string(),
-            extracted_stacktrace: stacktrace,
-            parsed_stacktrace: None,
+            context: StacktraceContext::new(stream.to_string(), Some(stacktrace)),
         })
     }
-    /// Parsing stacktrace with result caching
-    fn parse_stacktrace_internal(&mut self) -> Result<()> {
-        if self.parsed_stacktrace.is_none() {
-            self.parsed_stacktrace =
-                Some(GoStacktrace::parse_stacktrace(&self.extracted_stacktrace)?)
-        }
-        Ok(())
+    /// Get original stream
+    fn stream(&self) -> &str {
+        self.context.stream()
     }
 }
 
@@ -134,24 +127,19 @@ impl Exception for GoPanic {
 
 impl ReportExtractor for GoPanic {
     fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
-        Ok(self.extracted_stacktrace.clone())
+        self.context.extract_stacktrace::<GoStacktrace>()
     }
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
-        self.parse_stacktrace_internal()?;
-        Ok(self.parsed_stacktrace.clone().unwrap())
+        self.context.parse_stacktrace::<GoStacktrace>()
     }
     fn report(&self) -> Vec<String> {
-        self.message
-            .split('\n')
-            .map(|l| l.trim_end().to_string())
-            .collect()
+        self.context.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
-        GoPanic::parse_exception(&self.message)
+        GoPanic::parse_exception(self.stream())
     }
     fn crash_line(&mut self) -> Result<CrashLine> {
-        self.parse_stacktrace_internal()?;
-        self.parsed_stacktrace.clone().unwrap().crash_line()
+        self.context.crash_line::<GoStacktrace>()
     }
 }
 
