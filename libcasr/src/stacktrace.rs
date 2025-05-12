@@ -148,32 +148,25 @@ impl StacktraceContext {
     pub fn stream(&self) -> &str {
         &self.stream
     }
-    /// Extracting stacktrace with result caching
-    fn extract_stacktrace_internal<T: ParseStacktrace>(&mut self) -> Result<()> {
-        if self.extracted_stacktrace.is_none() {
-            self.extracted_stacktrace = Some(T::extract_stacktrace(&self.stream)?)
-        }
-        Ok(())
-    }
-    /// Parsing stacktrace with result caching
-    fn parse_stacktrace_internal<T: ParseStacktrace>(&mut self) -> Result<()> {
-        self.extract_stacktrace_internal::<T>()?;
-        if self.parsed_stacktrace.is_none() {
-            self.parsed_stacktrace = Some(T::parse_stacktrace(
-                &self.extracted_stacktrace.clone().unwrap(),
-            )?)
-        }
-        Ok(())
-    }
     /// Extract stack trace.
     pub fn extract_stacktrace<T: ParseStacktrace>(&mut self) -> Result<Vec<String>> {
-        self.extract_stacktrace_internal::<T>()?;
-        Ok(self.extracted_stacktrace.clone().unwrap())
+        if let Some(stacktrace) = &self.extracted_stacktrace {
+            Ok(stacktrace.to_vec())
+        } else {
+            let stacktrace = T::extract_stacktrace(&self.stream)?;
+            self.extracted_stacktrace = Some(stacktrace.clone());
+            Ok(stacktrace)
+        }
     }
     /// Transform into Stacktrace type.
     pub fn parse_stacktrace<T: ParseStacktrace>(&mut self) -> Result<Stacktrace> {
-        self.parse_stacktrace_internal::<T>()?;
-        Ok(self.parsed_stacktrace.clone().unwrap())
+        if let Some(stacktrace) = &self.parsed_stacktrace {
+            Ok(stacktrace.to_vec())
+        } else {
+            let stacktrace = T::parse_stacktrace(&self.extract_stacktrace::<T>()?)?;
+            self.parsed_stacktrace = Some(stacktrace.clone());
+            Ok(stacktrace)
+        }
     }
     /// Transform into a vector of lines.
     pub fn report(&self) -> Vec<String> {
@@ -185,8 +178,7 @@ impl StacktraceContext {
     }
     /// Get crash line from stack trace.
     pub fn crash_line<T: ParseStacktrace>(&mut self) -> Result<CrashLine> {
-        self.parse_stacktrace_internal::<T>()?;
-        self.parsed_stacktrace.clone().unwrap().crash_line()
+        self.parse_stacktrace::<T>()?.crash_line()
     }
 }
 

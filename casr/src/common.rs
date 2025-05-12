@@ -2,13 +2,13 @@ use crate::util;
 use libcasr::{
     asan::AsanCrash,
     go::GoPanic,
+    init_ignored_frames,
     lua::LuaException,
     msan::MsanCrash,
     python::PythonException,
     report::{CrashReport, ReportExtractor},
     rust::RustPanic,
     stacktrace::{Filter, Stacktrace},
-    init_ignored_frames,
 };
 
 use anyhow::{Result, bail};
@@ -196,10 +196,7 @@ pub fn get_report_stub(argv: &Vec<&str>, stdin: &Option<PathBuf>, mode: &Mode) -
     report
 }
 
-pub fn get_san_extractor(
-    stderr: &str,
-    mode: &mut Mode,
-) -> Result<Box<dyn ReportExtractor>> {
+pub fn get_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
     if let Some(crash) = AsanCrash::new(stderr)? {
         *mode = Mode::Asan;
         Ok(Box::new(crash))
@@ -214,10 +211,7 @@ pub fn get_san_extractor(
 }
 
 // Add only for backward compatibility: casr-san could parse Go and Rust Panics
-pub fn get_legacy_san_extractor(
-    stderr: &str,
-    mode: &mut Mode,
-) -> Result<Box<dyn ReportExtractor>> {
+pub fn get_legacy_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
     if let Some(panic) = GoPanic::new(stderr) {
         *mode = Mode::Go;
         Ok(Box::new(panic))

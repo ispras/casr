@@ -7,10 +7,7 @@ pub fn stub(subcommand: &str) {
     let args = &args[1..];
 
     // Execute casr
-    let result = Command::new("casr")
-        .arg(subcommand)
-        .args(args)
-        .status();
+    let result = Command::new("casr").arg(subcommand).args(args).status();
 
     // Handle execution result
     match result {
