@@ -316,9 +316,8 @@ mod tests {
                 (command line):1: in main chunk
                 [C]: at 0x607f3df872e0
         ";
-        let exception = LuaException::new(stream);
-        let Some(mut exception) = exception else {
-            panic!("{:?}", exception);
+        let Some(mut exception) = LuaException::new(stream) else {
+            panic!("Can't extract Lua exception");
         };
 
         let lines = ReportExtractor::report(&exception);

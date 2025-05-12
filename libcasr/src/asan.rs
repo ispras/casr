@@ -6,8 +6,9 @@ use crate::error::*;
 use crate::execution_class::{ExecutionClass, is_near_null};
 use crate::report::ReportExtractor;
 use crate::severity::Severity;
-use crate::stacktrace::ParseStacktrace;
-use crate::stacktrace::*;
+use crate::stacktrace::{
+    CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+};
 
 /// Structure provides an interface for processing the stack trace.
 #[derive(Clone, Debug)]

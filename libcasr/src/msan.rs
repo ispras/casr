@@ -6,7 +6,7 @@ use crate::asan::SanCrash;
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
 use crate::report::ReportExtractor;
-use crate::stacktrace::*;
+use crate::stacktrace::{CrashLine, Stacktrace};
 
 /// Structure provides an interface for save parsing MemorySanitizer crash.
 #[derive(Clone, Debug)]

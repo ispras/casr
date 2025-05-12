@@ -109,6 +109,8 @@ fn main() -> Result<()> {
                 .about("Threat target output as Go reports"),
             clap::Command::new("lua")
                 .about("Threat target output as Lua reports"),
+            clap::Command::new("python")
+                .about("Threat target output as Python reports"),
             clap::Command::new("rust")
                 .about("Threat target output as Rust reports"),
             clap::Command::new("san")
@@ -120,10 +122,8 @@ fn main() -> Result<()> {
         ])
         .get_matches();
 
-    // TODO: manually validate required args: stdout/output, ARGS
-    init_ignored_frames!("go", "lua", "rust", "san");
-
     // Check required args
+    // NOTE: Combine `global` and `required` qualifiers is forbidden
     util::check_required(&matches, &["out", "ARGS"])?;
 
     if let Some(path) = matches.get_one::<PathBuf>("ignore") {
@@ -137,7 +137,7 @@ fn main() -> Result<()> {
     };
 
     // Get stdin for target program.
-    let stdin_file = util::stdin_from_matches(&matches)?;
+    let stdin = util::stdin_from_matches(&matches)?;
 
     // Get timeout
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
@@ -154,7 +154,7 @@ fn main() -> Result<()> {
     if let Some(ld_preload) = util::get_ld_preload(&matches) {
         cmd.env("LD_PRELOAD", ld_preload);
     }
-    if let Some(ref file) = stdin_file {
+    if let Some(ref file) = stdin {
         cmd.stdin(std::fs::File::open(file)?);
     }
     if argv.len() > 1 {
@@ -168,7 +168,7 @@ fn main() -> Result<()> {
     let stderr = String::from_utf8_lossy(&result.stderr);
 
     // Create report
-    let mut report = common::get_report_stub(&argv, &stdin_file, &mode);
+    let mut report = common::get_report_stub(&argv, &stdin, &mode);
 
     // Get report extractor
     let mut extractor = common::get_extractor(&stdout, &stderr, &mut mode)?;

@@ -4,8 +4,11 @@ use libcasr::{
     go::GoPanic,
     lua::LuaException,
     msan::MsanCrash,
+    python::PythonException,
     report::{CrashReport, ReportExtractor},
     rust::RustPanic,
+    stacktrace::{Filter, Stacktrace},
+    init_ignored_frames,
 };
 
 use anyhow::{Result, bail};
@@ -20,6 +23,7 @@ use std::process::Command;
 pub enum Mode {
     Go,
     Lua,
+    Python,
     Rust,
     San, // Intermediate mode
     Asan,
@@ -31,6 +35,7 @@ impl Mode {
         match mode {
             "go" => Ok(Mode::Go),
             "lua" => Ok(Mode::Lua),
+            "python" => Ok(Mode::Python),
             "rust" => Ok(Mode::Rust),
             "san" => Ok(Mode::San),
             "asan" => Ok(Mode::Asan),
@@ -46,8 +51,10 @@ pub fn get_mode(matches: &ArgMatches, argv: &[&str]) -> Result<Mode> {
     let subcommand = matches.subcommand_name();
     if subcommand.is_some() && subcommand.unwrap() != "auto" {
         Ok(Mode::new(subcommand.unwrap())?)
-    } else if argv[0].ends_with(".lua") {
+    } else if argv[0].ends_with(".lua") || argv[0].starts_with("lua") {
         Ok(Mode::Lua)
+    } else if argv[0].ends_with(".py") || argv[0].starts_with("python") {
+        Ok(Mode::Python)
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
         if sym_list.contains("__asan")
@@ -86,10 +93,28 @@ pub fn prepare_run_san() {
 
 pub fn prepare_run(mode: &Mode) {
     match mode {
-        Mode::San | Mode::Asan | Mode::Msan | Mode::Go | Mode::Rust => {
+        Mode::Go => {
+            init_ignored_frames!("cpp", "go");
             prepare_run_san();
         }
-        _ => {}
+        Mode::Lua => {
+            init_ignored_frames!("lua");
+        }
+        Mode::Python => {
+            init_ignored_frames!("cpp", "python");
+        }
+        Mode::Rust => {
+            init_ignored_frames!("cpp", "rust");
+            prepare_run_san();
+        }
+        Mode::San => {
+            init_ignored_frames!("cpp", "go", "rust");
+            prepare_run_san();
+        }
+        Mode::Asan | Mode::Msan => {
+            init_ignored_frames!("cpp");
+            prepare_run_san();
+        }
     }
 }
 
@@ -133,14 +158,25 @@ pub fn update_report_stub_lua(report: &mut CrashReport, argv: &[&str]) {
     }
 }
 
-pub fn update_report_stub_san(report: &mut CrashReport, stdin_file: &Option<PathBuf>) {
-    if let Some(mut file_path) = stdin_file.clone() {
+pub fn update_report_stub_python(report: &mut CrashReport, argv: &[&str]) {
+    if argv.len() > 1 {
+        if let Some(fname) = Path::new(argv[0]).file_name() {
+            let fname = fname.to_string_lossy();
+            if fname.starts_with("python") && !fname.ends_with(".py") && argv[1].ends_with(".py") {
+                report.executable_path = argv[1].to_string();
+            }
+        }
+    }
+}
+
+pub fn update_report_stub_san(report: &mut CrashReport, stdin: &Option<PathBuf>) {
+    if let Some(mut file_path) = stdin.clone() {
         file_path = file_path.canonicalize().unwrap_or(file_path);
         report.stdin = file_path.display().to_string();
     }
 }
 
-pub fn get_report_stub(argv: &Vec<&str>, stdin_file: &Option<PathBuf>, mode: &Mode) -> CrashReport {
+pub fn get_report_stub(argv: &Vec<&str>, stdin: &Option<PathBuf>, mode: &Mode) -> CrashReport {
     let mut report = CrashReport::new();
     report.executable_path = argv[0].to_string();
     report.proc_cmdline = argv.join(" ");
@@ -150,15 +186,17 @@ pub fn get_report_stub(argv: &Vec<&str>, stdin_file: &Option<PathBuf>, mode: &Mo
         Mode::Lua => {
             update_report_stub_lua(&mut report, argv);
         }
+        Mode::Python => {
+            update_report_stub_python(&mut report, argv);
+        }
         Mode::San | Mode::Asan | Mode::Msan | Mode::Go | Mode::Rust => {
-            update_report_stub_san(&mut report, stdin_file);
+            update_report_stub_san(&mut report, stdin);
         }
     }
     report
 }
 
 pub fn get_san_extractor(
-    _stdout: &str,
     stderr: &str,
     mode: &mut Mode,
 ) -> Result<Box<dyn ReportExtractor>> {
@@ -177,7 +215,6 @@ pub fn get_san_extractor(
 
 // Add only for backward compatibility: casr-san could parse Go and Rust Panics
 pub fn get_legacy_san_extractor(
-    stdout: &str,
     stderr: &str,
     mode: &mut Mode,
 ) -> Result<Box<dyn ReportExtractor>> {
@@ -188,7 +225,7 @@ pub fn get_legacy_san_extractor(
         *mode = Mode::Rust;
         Ok(Box::new(panic))
     } else {
-        get_san_extractor(stdout, stderr, mode)
+        get_san_extractor(stderr, mode)
     }
 }
 
@@ -202,7 +239,7 @@ pub fn get_extractor(
             if let Some(panic) = GoPanic::new(stderr) {
                 Ok(Box::new(panic))
             } else {
-                get_san_extractor(stdout, stderr, mode)
+                get_san_extractor(stderr, mode)
             }
         }
         Mode::Lua => {
@@ -211,11 +248,18 @@ pub fn get_extractor(
             };
             Ok(Box::new(exception))
         }
+        Mode::Python => {
+            if let Some(exception) = PythonException::new(stdout, stderr)? {
+                Ok(Box::new(exception))
+            } else {
+                get_san_extractor(stderr, mode)
+            }
+        }
         Mode::Rust => {
             if let Some(panic) = RustPanic::new(stderr) {
                 Ok(Box::new(panic))
             } else {
-                get_san_extractor(stdout, stderr, mode)
+                get_san_extractor(stderr, mode)
             }
         }
         Mode::Asan => {
@@ -230,7 +274,7 @@ pub fn get_extractor(
             };
             Ok(Box::new(crash))
         }
-        Mode::San => get_legacy_san_extractor(stdout, stderr, mode),
+        Mode::San => get_legacy_san_extractor(stderr, mode),
     }
 }
 
@@ -242,6 +286,9 @@ pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mod
         }
         Mode::Lua => {
             report.lua_report = raw_report;
+        }
+        Mode::Python => {
+            report.python_report = raw_report;
         }
         Mode::Rust => {
             report.rust_report = raw_report;
