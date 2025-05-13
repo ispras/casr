@@ -1,5 +1,8 @@
 use std::env;
-use std::process::Command;
+use std::ffi::CString;
+use std::str::FromStr;
+
+use nix::unistd;
 
 pub fn stub(subcommand: &str) {
     // Get all command-line arguments
@@ -16,18 +19,15 @@ pub fn stub(subcommand: &str) {
         .to_str()
         .unwrap()
         .to_string();
+    let casr = CString::new(casr).unwrap();
+
+    // Collect argv
+    let mut argv = vec![casr.clone()];
+    argv.push(CString::from_str(subcommand).unwrap());
+    argv.extend(args.iter().map(|arg| CString::from_str(arg).unwrap()));
 
     // Execute casr
-    let result = Command::new(casr).arg(subcommand).args(args).status();
-
-    // Handle execution result
-    match result {
-        Ok(status) => {
-            std::process::exit(status.code().unwrap_or(1));
-        }
-        Err(e) => {
-            eprintln!("Error executing casr: {}", e);
-            std::process::exit(1);
-        }
-    }
+    let Err(e) = unistd::execv(&casr, &argv);
+    eprintln!("Failed to execute {}: {}", casr.to_str().unwrap(), e);
+    std::process::exit(1);
 }
