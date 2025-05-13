@@ -319,17 +319,18 @@ mod tests {
         let Some(mut exception) = LuaException::new(stream) else {
             panic!("Can't extract Lua exception");
         };
+        let exception: &mut dyn ReportExtractor = &mut exception;
 
-        let lines = ReportExtractor::report(&exception);
+        let lines = exception.report();
         assert_eq!(lines.len(), 7);
 
-        let sttr = ReportExtractor::extract_stacktrace(&mut exception);
+        let sttr = exception.extract_stacktrace();
         let Ok(sttr) = sttr else {
             panic!("{}", sttr.err().unwrap());
         };
         assert_eq!(sttr.len(), 2);
 
-        let sttr = ReportExtractor::parse_stacktrace(&mut exception);
+        let sttr = exception.parse_stacktrace();
         let Ok(sttr) = sttr else {
             panic!("{}", sttr.err().unwrap());
         };
@@ -338,13 +339,13 @@ mod tests {
         assert_eq!(sttr[0].debug.line, 1);
         assert_eq!(sttr[0].function, "main chunk".to_string());
 
-        let crashline = ReportExtractor::crash_line(&mut exception);
+        let crashline = exception.crash_line();
         let Ok(crashline) = crashline else {
             panic!("{}", crashline.err().unwrap());
         };
         assert_eq!(crashline.to_string(), "(command line):1");
 
-        let execution_class = ReportExtractor::execution_class(&exception);
+        let execution_class = exception.execution_class();
         let Some(execution_class) = execution_class else {
             panic!("Execution class is corrupted");
         };

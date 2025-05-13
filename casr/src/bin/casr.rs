@@ -101,6 +101,8 @@ fn main() -> Result<()> {
         .subcommands([
             clap::Command::new("auto")
                 .about("Auto define proper way to threat target output (default behavior)"),
+            clap::Command::new("csharp")
+                .about("Threat target output as C# reports"),
             clap::Command::new("go")
                 .about("Threat target output as Go reports"),
             clap::Command::new("lua")
@@ -142,7 +144,7 @@ fn main() -> Result<()> {
     let mut mode = common::get_mode(&matches, &argv)?;
 
     // Prepare run
-    common::prepare_run(&mode);
+    common::prepare_run(&argv, &mode)?;
 
     // Run program.
     let mut cmd = Command::new(argv[0]);

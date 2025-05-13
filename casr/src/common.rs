@@ -1,6 +1,7 @@
 use crate::util;
 use libcasr::{
     asan::AsanCrash,
+    csharp::CSharpException,
     go::GoPanic,
     init_ignored_frames,
     lua::LuaException,
@@ -21,6 +22,7 @@ use std::process::Command;
 
 #[derive(Debug)]
 pub enum Mode {
+    Csharp,
     Go,
     Lua,
     Python,
@@ -33,6 +35,7 @@ pub enum Mode {
 impl Mode {
     fn new(mode: &str) -> Result<Mode> {
         match mode {
+            "csharp" => Ok(Mode::Csharp),
             "go" => Ok(Mode::Go),
             "lua" => Ok(Mode::Lua),
             "python" => Ok(Mode::Python),
@@ -51,9 +54,17 @@ pub fn get_mode(matches: &ArgMatches, argv: &[&str]) -> Result<Mode> {
     let subcommand = matches.subcommand_name();
     if subcommand.is_some() && subcommand.unwrap() != "auto" {
         Ok(Mode::new(subcommand.unwrap())?)
-    } else if argv[0].ends_with(".lua") || argv[0].starts_with("lua") {
+    } else if argv[0].ends_with("dotnet") || argv[0].ends_with("mono") {
+        Ok(Mode::Csharp)
+    } else if argv[0].ends_with(".lua")
+        || argv[0].starts_with("lua")
+        || argv.len() > 1 && argv[1].ends_with(".lua")
+    {
         Ok(Mode::Lua)
-    } else if argv[0].ends_with(".py") || argv[0].starts_with("python") {
+    } else if argv[0].ends_with(".py")
+        || argv[0].starts_with("python")
+        || argv.len() > 1 && argv[1].ends_with(".py")
+    {
         Ok(Mode::Python)
     } else {
         let sym_list = util::symbols_list(Path::new(argv[0]))?;
@@ -70,7 +81,46 @@ pub fn get_mode(matches: &ArgMatches, argv: &[&str]) -> Result<Mode> {
     }
 }
 
-pub fn prepare_run_san() {
+fn prepare_run_csharp(argv: &[&str]) -> Result<()> {
+    // Check that args are valid.
+    if !argv
+        .iter()
+        .any(|x| x.ends_with(".dll") || x.ends_with(".exe") || x.ends_with(".csproj"))
+    {
+        bail!("dotnet/mono target is not specified by .dll, .exe or .csproj executable.");
+    };
+    Ok(())
+}
+
+pub fn prepare_run(argv: &[&str], mode: &Mode) -> Result<()> {
+    match mode {
+        Mode::Csharp => {
+            prepare_run_csharp(argv)?;
+            init_ignored_frames!("csharp", "cpp");
+        }
+        Mode::Go => {
+            init_ignored_frames!("cpp", "go");
+        }
+        Mode::Lua => {
+            init_ignored_frames!("lua");
+        }
+        Mode::Python => {
+            init_ignored_frames!("cpp", "python");
+        }
+        Mode::Rust => {
+            init_ignored_frames!("cpp", "rust");
+        }
+        Mode::San => {
+            init_ignored_frames!("cpp", "go", "rust");
+        }
+        Mode::Asan | Mode::Msan => {
+            init_ignored_frames!("cpp");
+        }
+    }
+    Ok(())
+}
+
+fn update_cmd_san(cmd: &mut Command) {
     // Set rss limit.
     if let Ok(asan_options_str) = env::var("ASAN_OPTIONS") {
         let mut asan_options = asan_options_str.clone();
@@ -81,44 +131,11 @@ pub fn prepare_run_san() {
             asan_options.remove(0);
         }
         asan_options = asan_options.replace("symbolize=0", "symbolize=1");
-        unsafe {
-            std::env::set_var("ASAN_OPTIONS", asan_options);
-        }
+        cmd.env("ASAN_OPTIONS", asan_options);
     } else {
-        unsafe {
-            std::env::set_var("ASAN_OPTIONS", "hard_rss_limit_mb=2048");
-        }
+        cmd.env("ASAN_OPTIONS", "hard_rss_limit_mb=2048");
     }
-}
 
-pub fn prepare_run(mode: &Mode) {
-    match mode {
-        Mode::Go => {
-            init_ignored_frames!("cpp", "go");
-            prepare_run_san();
-        }
-        Mode::Lua => {
-            init_ignored_frames!("lua");
-        }
-        Mode::Python => {
-            init_ignored_frames!("cpp", "python");
-        }
-        Mode::Rust => {
-            init_ignored_frames!("cpp", "rust");
-            prepare_run_san();
-        }
-        Mode::San => {
-            init_ignored_frames!("cpp", "go", "rust");
-            prepare_run_san();
-        }
-        Mode::Asan | Mode::Msan => {
-            init_ignored_frames!("cpp");
-            prepare_run_san();
-        }
-    }
-}
-
-pub fn update_cmd_san(cmd: &mut Command) {
     #[cfg(target_os = "macos")]
     {
         cmd.env("DYLD_NO_PIE", "1");
@@ -140,14 +157,23 @@ pub fn update_cmd_san(cmd: &mut Command) {
 
 pub fn update_cmd(cmd: &mut Command, mode: &Mode) {
     match mode {
-        Mode::San | Mode::Asan | Mode::Msan | Mode::Go | Mode::Rust => {
+        Mode::San | Mode::Asan | Mode::Msan | Mode::Csharp | Mode::Go | Mode::Rust => {
             update_cmd_san(cmd);
         }
         _ => {}
     }
 }
 
-pub fn update_report_stub_lua(report: &mut CrashReport, argv: &[&str]) {
+fn update_report_stub_csharp(report: &mut CrashReport, argv: &[&str]) {
+    // Set executable path (for C# .dll, .csproj (dotnet) or .exe (mono) file).
+    let pos = argv
+        .iter()
+        .position(|x| x.ends_with(".dll") || x.ends_with(".exe") || x.ends_with(".csproj"))
+        .unwrap();
+    report.executable_path = argv.get(pos).unwrap().to_string();
+}
+
+fn update_report_stub_lua(report: &mut CrashReport, argv: &[&str]) {
     if argv.len() > 1 {
         if let Some(fname) = Path::new(argv[0]).file_name() {
             let fname = fname.to_string_lossy();
@@ -158,7 +184,7 @@ pub fn update_report_stub_lua(report: &mut CrashReport, argv: &[&str]) {
     }
 }
 
-pub fn update_report_stub_python(report: &mut CrashReport, argv: &[&str]) {
+fn update_report_stub_python(report: &mut CrashReport, argv: &[&str]) {
     if argv.len() > 1 {
         if let Some(fname) = Path::new(argv[0]).file_name() {
             let fname = fname.to_string_lossy();
@@ -169,7 +195,7 @@ pub fn update_report_stub_python(report: &mut CrashReport, argv: &[&str]) {
     }
 }
 
-pub fn update_report_stub_san(report: &mut CrashReport, stdin: &Option<PathBuf>) {
+fn update_report_stub_san(report: &mut CrashReport, stdin: &Option<PathBuf>) {
     if let Some(mut file_path) = stdin.clone() {
         file_path = file_path.canonicalize().unwrap_or(file_path);
         report.stdin = file_path.display().to_string();
@@ -183,6 +209,9 @@ pub fn get_report_stub(argv: &Vec<&str>, stdin: &Option<PathBuf>, mode: &Mode) -
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
     match mode {
+        Mode::Csharp => {
+            update_report_stub_csharp(&mut report, argv);
+        }
         Mode::Lua => {
             update_report_stub_lua(&mut report, argv);
         }
@@ -196,7 +225,7 @@ pub fn get_report_stub(argv: &Vec<&str>, stdin: &Option<PathBuf>, mode: &Mode) -
     report
 }
 
-pub fn get_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
+fn get_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
     if let Some(crash) = AsanCrash::new(stderr)? {
         *mode = Mode::Asan;
         Ok(Box::new(crash))
@@ -211,7 +240,7 @@ pub fn get_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn Report
 }
 
 // Add only for backward compatibility: casr-san could parse Go and Rust Panics
-pub fn get_legacy_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
+fn get_legacy_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
     if let Some(panic) = GoPanic::new(stderr) {
         *mode = Mode::Go;
         Ok(Box::new(panic))
@@ -229,6 +258,13 @@ pub fn get_extractor(
     mode: &mut Mode,
 ) -> Result<Box<dyn ReportExtractor>> {
     match mode {
+        Mode::Csharp => {
+            if let Some(exception) = CSharpException::new(stderr)? {
+                Ok(Box::new(exception))
+            } else {
+                get_san_extractor(stderr, mode)
+            }
+        }
         Mode::Go => {
             if let Some(panic) = GoPanic::new(stderr) {
                 Ok(Box::new(panic))
@@ -275,6 +311,9 @@ pub fn get_extractor(
 // NOTE: if there were no different report fields this function would not be needed
 pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mode) {
     match mode {
+        Mode::Csharp => {
+            report.csharp_report = raw_report;
+        }
         Mode::Go => {
             report.go_report = raw_report;
         }

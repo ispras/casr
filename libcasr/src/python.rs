@@ -103,28 +103,6 @@ pub struct PythonException {
     exception: String,
 }
 
-impl Exception for PythonException {
-    fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
-        let stderr_list: Vec<String> = stderr
-            .split('\n')
-            .map(|l| l.trim_end().to_string())
-            .collect();
-        let re = Regex::new(r"([\w]+): (.+)").unwrap();
-        stderr_list
-            .iter()
-            .rev()
-            .find_map(|x| re.captures(x))
-            .map(|cap| {
-                ExecutionClass::new((
-                    "NOT_EXPLOITABLE",
-                    cap.get(1).unwrap().as_str(),
-                    cap.get(2).unwrap().as_str(),
-                    "",
-                ))
-            })
-    }
-}
-
 impl PythonException {
     /// Create new `PythonException` instance from Python output
     fn new_from_python(stream: &str) -> Result<Option<Self>> {
@@ -176,6 +154,28 @@ impl PythonException {
         } else {
             Self::new_from_python(stderr)
         }
+    }
+}
+
+impl Exception for PythonException {
+    fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
+        let stderr_list: Vec<String> = stderr
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect();
+        let re = Regex::new(r"([\w]+): (.+)").unwrap();
+        stderr_list
+            .iter()
+            .rev()
+            .find_map(|x| re.captures(x))
+            .map(|cap| {
+                ExecutionClass::new((
+                    "NOT_EXPLOITABLE",
+                    cap.get(1).unwrap().as_str(),
+                    cap.get(2).unwrap().as_str(),
+                    "",
+                ))
+            })
     }
 }
 

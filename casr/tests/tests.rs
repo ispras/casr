@@ -6535,6 +6535,64 @@ fn test_casr_libfuzzer_jazzer_js_xml2js() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
+fn test_casr_common_csharp() {
+    let paths = [
+        abs_path("tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.cs"),
+        abs_path("tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.csproj"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp/test_casr_csharp.cs"),
+        abs_path("tests/tmp_tests_casr/test_casr_csharp/test_casr_csharp.csproj"),
+    ];
+    let _ = std::fs::create_dir_all(&paths[2]);
+    let _ = fs::copy(&paths[0], &paths[3]);
+    let _ = fs::copy(&paths[1], &paths[4]);
+    let Ok(dotnet_path) = which::which("dotnet") else {
+        panic!("No dotnet is found.");
+    };
+
+    let output = Command::new(EXE_CASR)
+        .args([
+            "--stdout",
+            "--",
+            (dotnet_path.to_str().unwrap()),
+            "run",
+            "--project",
+            &paths[4],
+        ])
+        .output()
+        .expect("failed to start casr-csharp");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Result<Value, _> = serde_json::from_slice(&output.stdout);
+    if let Ok(report) = report {
+        let severity_type = report["CrashSeverity"]["Type"].as_str().unwrap();
+        let severity_desc = report["CrashSeverity"]["ShortDescription"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        assert_eq!(3, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(severity_type, "NOT_EXPLOITABLE");
+        assert_eq!(severity_desc, "System.ArgumentException");
+        assert!(
+            report["CrashLine"]
+                .as_str()
+                .unwrap()
+                .contains("test_casr_csharp.cs:14")
+        );
+    } else {
+        panic!("Couldn't parse json report file.");
+    }
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
 fn test_casr_csharp() {
     let paths = [
         abs_path("tests/casr_tests/csharp/test_casr_csharp/test_casr_csharp.cs"),
