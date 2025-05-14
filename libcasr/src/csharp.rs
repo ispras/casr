@@ -129,11 +129,10 @@ impl CSharpException {
     pub fn new(stream: &str) -> Result<Option<Self>> {
         let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
         let re = Regex::new(r"^Unhandled [Ee]xception(?::\n|\. ).*").unwrap();
-        let Some(start) = stream.iter().position(|x| re.is_match(x)) else {
+        let Some(start) = stream.iter().position(|l| re.is_match(l)) else {
             return Ok(None::<Self>);
         };
-        let end = stream.iter().rposition(|x| !x.is_empty()).unwrap() + 1;
-        let report = stream[start..end].to_vec();
+        let report = stream[start..].to_vec();
         Ok(Some(Self {
             context: StacktraceContext::new(report.join("\n"), None),
         }))

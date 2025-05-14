@@ -1,12 +1,12 @@
 //! Asan module implements `ParseStacktrace`, `Exception`, `Severity` and `ReportExtracter` traits
 //! for MemorySanitizer reports.
-use regex::Regex;
-
 use crate::asan::SanCrash;
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
 use crate::report::ReportExtractor;
 use crate::stacktrace::{CrashLine, Stacktrace};
+
+use regex::Regex;
 
 /// Structure provides an interface for save parsing MemorySanitizer crash.
 #[derive(Clone, Debug)]
@@ -28,24 +28,18 @@ impl MsanCrash {
             return Ok(None::<Self>);
         }
 
-        let lines: Vec<String> = stream
-            .split('\n')
-            .map(|l| l.trim_end().to_string())
-            .collect();
+        let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
         let start = Regex::new(r"==\d+==\s*WARNING: MemorySanitizer:").unwrap();
-        let Some(start) = lines.iter().position(|line| start.is_match(line)) else {
+        let Some(start) = stream.iter().position(|l| start.is_match(l)) else {
             return Ok(None::<Self>);
         };
-
-        let end = lines.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
-        let slice = &lines[start..end];
-
-        if slice.is_empty() {
+        let report = &stream[start..];
+        if report.is_empty() {
             return Ok(None::<Self>);
         }
 
         Ok(Some(Self {
-            san: SanCrash::new(slice.join("\n")),
+            san: SanCrash::new(report.join("\n")),
         }))
     }
 }

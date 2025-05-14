@@ -105,6 +105,8 @@ fn main() -> Result<()> {
                 .about("Threat target output as C# reports"),
             clap::Command::new("go")
                 .about("Threat target output as Go reports"),
+            clap::Command::new("js")
+                .about("Threat target output as JS reports"),
             clap::Command::new("lua")
                 .about("Threat target output as Lua reports"),
             clap::Command::new("python")
@@ -128,8 +130,8 @@ fn main() -> Result<()> {
         util::add_custom_ignored_frames(path)?;
     }
     // Get program args.
-    let argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
-        argvs.map(|s| s.as_str()).collect()
+    let mut argv: Vec<String> = if let Some(argv) = matches.get_many::<String>("ARGS") {
+        argv.map(|arg| arg.as_str().to_string()).collect()
     } else {
         bail!("Wrong arguments for starting program");
     };
@@ -144,10 +146,10 @@ fn main() -> Result<()> {
     let mut mode = common::get_mode(&matches, &argv)?;
 
     // Prepare run
-    common::prepare_run(&argv, &mode)?;
+    common::prepare_run(&mut argv, &mode)?;
 
     // Run program.
-    let mut cmd = Command::new(argv[0]);
+    let mut cmd = Command::new(&argv[0]);
     // Set ld preload
     if let Some(ld_preload) = util::get_ld_preload(&matches) {
         cmd.env("LD_PRELOAD", ld_preload);
@@ -200,6 +202,8 @@ fn main() -> Result<()> {
         util::strip_paths(&mut report, &stacktrace, path);
     }
 
-    //Output report
+    // Output report
+    // TODO: rewrite func for &[String]
+    let argv: Vec<&str> = argv.iter().map(|s| s.as_str()).collect();
     util::output_report(&report, &matches, &argv)
 }

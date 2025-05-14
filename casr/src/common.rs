@@ -4,6 +4,7 @@ use libcasr::{
     csharp::CSharpException,
     go::GoPanic,
     init_ignored_frames,
+    js::JsException,
     lua::LuaException,
     msan::MsanCrash,
     python::PythonException,
@@ -24,6 +25,7 @@ use std::process::Command;
 pub enum Mode {
     Csharp,
     Go,
+    Js,
     Lua,
     Python,
     Rust,
@@ -37,6 +39,7 @@ impl Mode {
         match mode {
             "csharp" => Ok(Mode::Csharp),
             "go" => Ok(Mode::Go),
+            "js" => Ok(Mode::Js),
             "lua" => Ok(Mode::Lua),
             "python" => Ok(Mode::Python),
             "rust" => Ok(Mode::Rust),
@@ -50,12 +53,18 @@ impl Mode {
     }
 }
 
-pub fn get_mode(matches: &ArgMatches, argv: &[&str]) -> Result<Mode> {
+pub fn get_mode(matches: &ArgMatches, argv: &[String]) -> Result<Mode> {
     let subcommand = matches.subcommand_name();
     if subcommand.is_some() && subcommand.unwrap() != "auto" {
         Ok(Mode::new(subcommand.unwrap())?)
     } else if argv[0].ends_with("dotnet") || argv[0].ends_with("mono") {
         Ok(Mode::Csharp)
+    } else if argv[0].ends_with(".js")
+        || argv[0].ends_with("node")
+        || argv[0].ends_with("jsfuzz")
+        || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
+    {
+        Ok(Mode::Js)
     } else if argv[0].ends_with(".lua")
         || argv[0].starts_with("lua")
         || argv.len() > 1 && argv[1].ends_with(".lua")
@@ -67,7 +76,7 @@ pub fn get_mode(matches: &ArgMatches, argv: &[&str]) -> Result<Mode> {
     {
         Ok(Mode::Python)
     } else {
-        let sym_list = util::symbols_list(Path::new(argv[0]))?;
+        let sym_list = util::symbols_list(Path::new(&argv[0]))?;
         if sym_list.contains("__asan")
             || sym_list.contains("__msan")
             || sym_list.contains("runtime.go")
@@ -81,7 +90,7 @@ pub fn get_mode(matches: &ArgMatches, argv: &[&str]) -> Result<Mode> {
     }
 }
 
-fn prepare_run_csharp(argv: &[&str]) -> Result<()> {
+fn prepare_run_csharp(argv: &[String]) -> Result<()> {
     // Check that args are valid.
     if !argv
         .iter()
@@ -92,7 +101,30 @@ fn prepare_run_csharp(argv: &[&str]) -> Result<()> {
     Ok(())
 }
 
-pub fn prepare_run(argv: &[&str], mode: &Mode) -> Result<()> {
+fn prepare_run_js(argv: &mut [String]) -> Result<()> {
+    // Adjust argv with absolute path to interpreter/fuzzer
+    if argv.len() > 1 {
+        let fpath = Path::new(&argv[0]);
+        if let Some(fname) = fpath.file_name() {
+            let path_to_tool = if fname == fpath.as_os_str() {
+                let Ok(full_path_to_tool) = which::which(fname) else {
+                    bail!("{} is not found in PATH", argv[0]);
+                };
+                full_path_to_tool
+            } else {
+                fpath.to_path_buf()
+            };
+            if !path_to_tool.exists() {
+                bail!("Could not find the tool in the specified path {}", argv[0]);
+            }
+            // Some ref magic
+            argv[0] = path_to_tool.to_str().unwrap().to_string();
+        }
+    }
+    Ok(())
+}
+
+pub fn prepare_run(argv: &mut [String], mode: &Mode) -> Result<()> {
     match mode {
         Mode::Csharp => {
             prepare_run_csharp(argv)?;
@@ -100,6 +132,10 @@ pub fn prepare_run(argv: &[&str], mode: &Mode) -> Result<()> {
         }
         Mode::Go => {
             init_ignored_frames!("cpp", "go");
+        }
+        Mode::Js => {
+            prepare_run_js(argv)?;
+            init_ignored_frames!("cpp", "js");
         }
         Mode::Lua => {
             init_ignored_frames!("lua");
@@ -164,7 +200,7 @@ pub fn update_cmd(cmd: &mut Command, mode: &Mode) {
     }
 }
 
-fn update_report_stub_csharp(report: &mut CrashReport, argv: &[&str]) {
+fn update_report_stub_csharp(report: &mut CrashReport, argv: &[String]) {
     // Set executable path (for C# .dll, .csproj (dotnet) or .exe (mono) file).
     let pos = argv
         .iter()
@@ -173,9 +209,9 @@ fn update_report_stub_csharp(report: &mut CrashReport, argv: &[&str]) {
     report.executable_path = argv.get(pos).unwrap().to_string();
 }
 
-fn update_report_stub_lua(report: &mut CrashReport, argv: &[&str]) {
+fn update_report_stub_lua(report: &mut CrashReport, argv: &[String]) {
     if argv.len() > 1 {
-        if let Some(fname) = Path::new(argv[0]).file_name() {
+        if let Some(fname) = Path::new(&argv[0]).file_name() {
             let fname = fname.to_string_lossy();
             if fname.starts_with("lua") && !fname.ends_with(".lua") && argv[1].ends_with(".lua") {
                 report.executable_path = argv[1].to_string();
@@ -184,9 +220,27 @@ fn update_report_stub_lua(report: &mut CrashReport, argv: &[&str]) {
     }
 }
 
-fn update_report_stub_python(report: &mut CrashReport, argv: &[&str]) {
+fn update_report_stub_js(report: &mut CrashReport, argv: &[String]) {
     if argv.len() > 1 {
-        if let Some(fname) = Path::new(argv[0]).file_name() {
+        let fpath = Path::new(&argv[0]);
+        if let Some(fname) = fpath.file_name() {
+            let fname = fname.to_string_lossy();
+            if (fname == "node" || fname == "jsfuzz") && argv[1].ends_with(".js") {
+                report.executable_path = argv[1].to_string();
+            } else if argv.len() > 2
+                && fname == "npx"
+                && argv[1] == "jazzer"
+                && argv[2].ends_with(".js")
+            {
+                report.executable_path = argv[2].to_string();
+            }
+        }
+    }
+}
+
+fn update_report_stub_python(report: &mut CrashReport, argv: &[String]) {
+    if argv.len() > 1 {
+        if let Some(fname) = Path::new(&argv[0]).file_name() {
             let fname = fname.to_string_lossy();
             if fname.starts_with("python") && !fname.ends_with(".py") && argv[1].ends_with(".py") {
                 report.executable_path = argv[1].to_string();
@@ -202,7 +256,7 @@ fn update_report_stub_san(report: &mut CrashReport, stdin: &Option<PathBuf>) {
     }
 }
 
-pub fn get_report_stub(argv: &Vec<&str>, stdin: &Option<PathBuf>, mode: &Mode) -> CrashReport {
+pub fn get_report_stub(argv: &[String], stdin: &Option<PathBuf>, mode: &Mode) -> CrashReport {
     let mut report = CrashReport::new();
     report.executable_path = argv[0].to_string();
     report.proc_cmdline = argv.join(" ");
@@ -211,6 +265,9 @@ pub fn get_report_stub(argv: &Vec<&str>, stdin: &Option<PathBuf>, mode: &Mode) -
     match mode {
         Mode::Csharp => {
             update_report_stub_csharp(&mut report, argv);
+        }
+        Mode::Js => {
+            update_report_stub_js(&mut report, argv);
         }
         Mode::Lua => {
             update_report_stub_lua(&mut report, argv);
@@ -272,6 +329,13 @@ pub fn get_extractor(
                 get_san_extractor(stderr, mode)
             }
         }
+        Mode::Js => {
+            if let Some(exception) = JsException::new(stderr)? {
+                Ok(Box::new(exception))
+            } else {
+                get_san_extractor(stderr, mode)
+            }
+        }
         Mode::Lua => {
             let Some(exception) = LuaException::new(stderr) else {
                 bail!("Lua exception is not found!");
@@ -316,6 +380,9 @@ pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mod
         }
         Mode::Go => {
             report.go_report = raw_report;
+        }
+        Mode::Js => {
+            report.js_report = raw_report;
         }
         Mode::Lua => {
             report.lua_report = raw_report;

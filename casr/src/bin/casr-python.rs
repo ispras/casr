@@ -1,5 +1,7 @@
 use casr::stub;
 
-fn main() {
+use anyhow::Result;
+
+fn main() -> Result<()> {
     stub::stub("python")
 }

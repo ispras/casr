@@ -107,16 +107,10 @@ impl PythonException {
     /// Create new `PythonException` instance from Python output
     fn new_from_python(stream: &str) -> Result<Option<Self>> {
         let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
-        let Some(start) = stream.iter().position(|line| line.contains("Traceback ")) else {
+        let Some(start) = stream.iter().position(|l| l.contains("Traceback ")) else {
             return Ok(None::<Self>);
         };
-        let Some(end) = stream.iter().rposition(|s| !s.is_empty()) else {
-            return Err(Error::Casr(
-                "Corrupted output: can't find stderr end".to_string(),
-            ));
-        };
-        let end = end + 1;
-        let report = &stream[start..end];
+        let report = &stream[start..];
         Ok(Some(Self {
             context: StacktraceContext::new(report.join("\n"), None),
             exception: report.last().unwrap().to_string(),
@@ -131,14 +125,7 @@ impl PythonException {
         else {
             return Ok(None::<Self>);
         };
-        // Set python report in casr report.
-        let Some(end) = stream.iter().rposition(|s| !s.is_empty()) else {
-            return Err(Error::Casr(
-                "Corrupted output: can't find stdout end".to_string(),
-            ));
-        };
-        let end = end + 1;
-        let report = &stream[start..end];
+        let report = &stream[start..];
         if report.len() <= 1 {
             return Ok(None::<Self>);
         }

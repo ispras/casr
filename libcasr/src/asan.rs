@@ -1,7 +1,5 @@
 //! Asan module implements `ParseStacktrace`, `Exception`, `Severity` and `ReportExtracter` traits
 //! for AddressSanitizer reports.
-use regex::Regex;
-
 use crate::error::*;
 use crate::execution_class::{ExecutionClass, is_near_null};
 use crate::report::ReportExtractor;
@@ -9,6 +7,8 @@ use crate::severity::Severity;
 use crate::stacktrace::{
     CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
 };
+
+use regex::Regex;
 
 /// Structure provides an interface for processing the stack trace.
 #[derive(Clone, Debug)]
@@ -18,7 +18,7 @@ impl ParseStacktrace for AsanStacktrace {
     fn extract_stacktrace(stream: &str) -> Result<Vec<String>> {
         let lines: Vec<String> = stream.split('\n').map(|l| l.to_string()).collect();
 
-        let Some(first) = lines.iter().position(|x| x.contains(" #0 ")) else {
+        let Some(first) = lines.iter().position(|x| x.contains("#0 ")) else {
             return Err(Error::Casr(
                 "Couldn't find stack trace in sanitizer's report".to_string(),
             ));
@@ -299,25 +299,20 @@ impl AsanCrash {
             return Ok(None::<Self>);
         }
 
-        let lines: Vec<String> = stream
-            .split('\n')
-            .map(|l| l.trim_end().to_string())
-            .collect();
+        let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
         let start =
             Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
-        let Some(start) = lines.iter().position(|line| start.is_match(line)) else {
+        let Some(start) = stream.iter().position(|l| start.is_match(l)) else {
             return Ok(None::<Self>);
         };
 
-        let end = lines.iter().rposition(|s| !s.is_empty()).unwrap() + 1;
-        let slice = &lines[start..end];
-
-        if slice.is_empty() {
+        let report = &stream[start..];
+        if report.is_empty() {
             return Ok(None::<Self>);
         }
 
         Ok(Some(Self {
-            san: SanCrash::new(slice.join("\n")),
+            san: SanCrash::new(report.join("\n")),
         }))
     }
 }
