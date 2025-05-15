@@ -1,30 +1,35 @@
 use crate::util;
 use libcasr::{
     asan::AsanCrash,
+    cpp::CppException,
     csharp::CSharpException,
+    exception::Exception,
     go::GoPanic,
     init_ignored_frames,
+    java::JavaException,
     js::JsException,
     lua::LuaException,
     msan::MsanCrash,
     python::PythonException,
     report::{CrashReport, ReportExtractor},
     rust::RustPanic,
-    stacktrace::{Filter, Stacktrace},
+    stacktrace::{DebugInfo, Filter, Stacktrace},
 };
-
-use anyhow::{Result, bail};
-use clap::ArgMatches;
 
 use std::env;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use anyhow::{Result, bail};
+use clap::ArgMatches;
+use walkdir::WalkDir;
+
 #[derive(Debug)]
 pub enum Mode {
     Csharp,
     Go,
+    Java,
     Js,
     Lua,
     Python,
@@ -39,6 +44,7 @@ impl Mode {
         match mode {
             "csharp" => Ok(Mode::Csharp),
             "go" => Ok(Mode::Go),
+            "java" => Ok(Mode::Java),
             "js" => Ok(Mode::Js),
             "lua" => Ok(Mode::Lua),
             "python" => Ok(Mode::Python),
@@ -59,11 +65,13 @@ pub fn get_mode(matches: &ArgMatches, argv: &[String]) -> Result<Mode> {
         Ok(Mode::new(subcommand.unwrap())?)
     } else if argv[0].ends_with("dotnet") || argv[0].ends_with("mono") {
         Ok(Mode::Csharp)
-    } else if argv[0].ends_with(".js")
-        || argv[0].ends_with("node")
+    } else if argv[0].ends_with("jazzer")
+        || argv[0].ends_with("java")
         || argv[0].ends_with("jsfuzz")
         || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
     {
+        Ok(Mode::Java)
+    } else if argv[0].ends_with(".js") || argv[0].ends_with("node") {
         Ok(Mode::Js)
     } else if argv[0].ends_with(".lua")
         || argv[0].starts_with("lua")
@@ -132,6 +140,9 @@ pub fn prepare_run(argv: &mut [String], mode: &Mode) -> Result<()> {
         }
         Mode::Go => {
             init_ignored_frames!("cpp", "go");
+        }
+        Mode::Java => {
+            init_ignored_frames!("cpp", "java");
         }
         Mode::Js => {
             prepare_run_js(argv)?;
@@ -220,6 +231,27 @@ fn update_report_stub_lua(report: &mut CrashReport, argv: &[String]) {
     }
 }
 
+fn update_report_stub_java(report: &mut CrashReport, argv: &[String]) -> Result<()> {
+    // Set executable path (java class path)
+    if let Some(pos) = argv.iter().position(|arg| {
+        arg.starts_with("-cp")
+            || arg.starts_with("--cp")
+            || arg.starts_with("-class-path")
+            || arg.starts_with("--classpath")
+    }) {
+        report.executable_path = if let Some(classes) = argv[pos].split('=').nth(1) {
+            classes
+        } else {
+            let Some(classes) = argv.get(pos + 1) else {
+                bail!("Class path is empty.");
+            };
+            classes
+        }
+        .to_string();
+    }
+    Ok(())
+}
+
 fn update_report_stub_js(report: &mut CrashReport, argv: &[String]) {
     if argv.len() > 1 {
         let fpath = Path::new(&argv[0]);
@@ -256,7 +288,11 @@ fn update_report_stub_san(report: &mut CrashReport, stdin: &Option<PathBuf>) {
     }
 }
 
-pub fn get_report_stub(argv: &[String], stdin: &Option<PathBuf>, mode: &Mode) -> CrashReport {
+pub fn get_report_stub(
+    argv: &[String],
+    stdin: &Option<PathBuf>,
+    mode: &Mode,
+) -> Result<CrashReport> {
     let mut report = CrashReport::new();
     report.executable_path = argv[0].to_string();
     report.proc_cmdline = argv.join(" ");
@@ -265,6 +301,9 @@ pub fn get_report_stub(argv: &[String], stdin: &Option<PathBuf>, mode: &Mode) ->
     match mode {
         Mode::Csharp => {
             update_report_stub_csharp(&mut report, argv);
+        }
+        Mode::Java => {
+            update_report_stub_java(&mut report, argv)?;
         }
         Mode::Js => {
             update_report_stub_js(&mut report, argv);
@@ -279,7 +318,7 @@ pub fn get_report_stub(argv: &[String], stdin: &Option<PathBuf>, mode: &Mode) ->
             update_report_stub_san(&mut report, stdin);
         }
     }
-    report
+    Ok(report)
 }
 
 fn get_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
@@ -325,6 +364,13 @@ pub fn get_extractor(
         Mode::Go => {
             if let Some(panic) = GoPanic::new(stderr) {
                 Ok(Box::new(panic))
+            } else {
+                get_san_extractor(stderr, mode)
+            }
+        }
+        Mode::Java => {
+            if let Some(exception) = JavaException::new(stderr)? {
+                Ok(Box::new(exception))
             } else {
                 get_san_extractor(stderr, mode)
             }
@@ -384,6 +430,9 @@ pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mod
         Mode::Js => {
             report.js_report = raw_report;
         }
+        Mode::Java => {
+            report.java_report = raw_report;
+        }
         Mode::Lua => {
             report.lua_report = raw_report;
         }
@@ -402,5 +451,60 @@ pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mod
         Mode::San => {
             // Impossible to be there
         }
+    }
+}
+
+pub fn update_sources(
+    report: &mut CrashReport,
+    mut debug: DebugInfo,
+    matches: &ArgMatches,
+    mode: &Mode,
+) {
+    if let Mode::Java = mode {
+        let source_dirs = if let Some(sub) = matches.subcommand_name() {
+            if let Some(sources) = matches
+                .subcommand_matches(sub)
+                .unwrap()
+                .get_many::<PathBuf>("source-dirs")
+            {
+                sources.collect()
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+        if let Some(file) = source_dirs.iter().find_map(|dir| {
+            WalkDir::new(dir)
+                .into_iter()
+                .flatten()
+                .map(|e| e.into_path())
+                .filter(|e| e.is_file())
+                .filter(|e| e.extension().is_some() && e.extension().unwrap() == "java")
+                .find(|x| {
+                    x.file_name()
+                        .unwrap()
+                        .eq(PathBuf::from(&debug.file).file_name().unwrap())
+                })
+        }) {
+            debug.file = file.display().to_string();
+        }
+        if let Some(sources) = CrashReport::sources(&debug) {
+            report.source = sources;
+        }
+    }
+}
+
+pub fn check_exeption(report: &mut CrashReport, stderr: &str, mode: &Mode) {
+    match mode {
+        Mode::Asan | Mode::Msan | Mode::Rust => {
+            if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
+                .iter()
+                .find_map(|parse| parse(stderr))
+            {
+                report.execution_class = class;
+            }
+        }
+        _ => {}
     }
 }

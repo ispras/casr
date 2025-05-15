@@ -1,8 +1,5 @@
 use casr::{common, util};
-use libcasr::{
-    cpp::CppException, exception::Exception, report::CrashReport, rust::RustPanic,
-    stacktrace::CrashLine,
-};
+use libcasr::{report::CrashReport, stacktrace::CrashLine};
 
 use anyhow::{Result, bail};
 use clap::{Arg, ArgAction, ArgGroup};
@@ -105,12 +102,25 @@ fn main() -> Result<()> {
                 .about("Threat target output as C# reports"),
             clap::Command::new("go")
                 .about("Threat target output as Go reports"),
+            clap::Command::new("java")
+                .about("Threat target output as Java reports")
+                .arg(
+                    Arg::new("source-dirs")
+                        .long("source-dirs")
+                        .env("CASR_SOURCE_DIRS")
+                        .action(ArgAction::Set)
+                        .num_args(1..)
+                        .value_delimiter(':')
+                        .value_parser(clap::value_parser!(PathBuf))
+                        .value_name("DIR")
+                        .help("Paths to directories with Java source files (list separated by ':' for env)"),
+                ),
             clap::Command::new("js")
                 .about("Threat target output as JS reports"),
             clap::Command::new("lua")
                 .about("Threat target output as Lua reports"),
             clap::Command::new("python")
-                .about("Threat target output as Python reports"),
+                .about("Threat target output as Python or Atheris reports"),
             clap::Command::new("rust")
                 .about("Threat target output as Rust reports"),
             clap::Command::new("san")
@@ -168,7 +178,7 @@ fn main() -> Result<()> {
     let stderr = String::from_utf8_lossy(&result.stderr);
 
     // Create report
-    let mut report = common::get_report_stub(&argv, &stdin, &mode);
+    let mut report = common::get_report_stub(&argv, &stdin, &mode)?;
 
     // Get report extractor
     let mut extractor = common::get_extractor(&stdout, &stderr, &mut mode)?;
@@ -185,16 +195,13 @@ fn main() -> Result<()> {
             if let Some(sources) = CrashReport::sources(&debug) {
                 report.source = sources;
             }
+            // Modify DebugInfo to find sources (for Java)
+            common::update_sources(&mut report, debug, &matches, &mode);
         }
     }
 
     // Check for exceptions
-    if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
-        .iter()
-        .find_map(|parse| parse(&stderr))
-    {
-        report.execution_class = class;
-    }
+    common::check_exeption(&mut report, &stderr, &mode);
 
     // Strip paths
     let stacktrace = extractor.parse_stacktrace()?;

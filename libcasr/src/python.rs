@@ -110,7 +110,13 @@ impl PythonException {
         let Some(start) = stream.iter().position(|l| l.contains("Traceback ")) else {
             return Ok(None::<Self>);
         };
-        let report = &stream[start..];
+        let Some(end) = stream.iter().rposition(|s| !s.is_empty()) else {
+            return Err(Error::Casr(
+                "Corrupted output: can't find stderr end".to_string(),
+            ));
+        };
+        let end = end + 1;
+        let report = &stream[start..end];
         Ok(Some(Self {
             context: StacktraceContext::new(report.join("\n"), None),
             exception: report.last().unwrap().to_string(),
@@ -125,7 +131,13 @@ impl PythonException {
         else {
             return Ok(None::<Self>);
         };
-        let report = &stream[start..];
+        let Some(end) = stream.iter().rposition(|s| !s.is_empty()) else {
+            return Err(Error::Casr(
+                "Corrupted output: can't find stderr end".to_string(),
+            ));
+        };
+        let end = end + 1;
+        let report = &stream[start..end];
         if report.len() <= 1 {
             return Ok(None::<Self>);
         }
