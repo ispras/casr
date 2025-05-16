@@ -192,7 +192,11 @@ fn main() -> Result<()> {
             .map(|x| x + 1);
 
         // When we triage crashes for binaries, use casr-san.
-        if hint == "san" || hint == "auto" && is_casr_gdb {
+        if hint == "san" {
+            crash_info
+                .casr_tool
+                .clone_from(&(util::get_path("casr-san")?))
+        } else if hint == "auto" && is_casr_gdb {
             if let Some(target) = crash_info.target_args.first() {
                 match util::symbols_list(Path::new(target)) {
                     Ok(list) => {
