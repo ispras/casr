@@ -1,12 +1,10 @@
 use casr::{common, util};
-use libcasr::{report::CrashReport, stacktrace::CrashLine};
 
 use anyhow::{Result, bail};
 use clap::{Arg, ArgAction, ArgGroup};
 
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr")
@@ -100,6 +98,8 @@ fn main() -> Result<()> {
                 .about("Auto define proper way to threat target output (default behavior)"),
             clap::Command::new("csharp")
                 .about("Threat target output as C# reports"),
+            clap::Command::new("gdb")
+                .about("Create report from gdb execution"),
             clap::Command::new("go")
                 .about("Threat target output as Go reports"),
             clap::Command::new("java")
@@ -132,82 +132,34 @@ fn main() -> Result<()> {
         ])
         .get_matches();
 
-    // Check required args
+    // Check required global args
     // NOTE: Combine `global` and `required` qualifiers is forbidden
     util::check_required(&matches, &["out", "ARGS"])?;
-
-    if let Some(path) = matches.get_one::<PathBuf>("ignore") {
-        util::add_custom_ignored_frames(path)?;
-    }
     // Get program args.
     let mut argv: Vec<String> = if let Some(argv) = matches.get_many::<String>("ARGS") {
         argv.map(|arg| arg.as_str().to_string()).collect()
     } else {
         bail!("Wrong arguments for starting program");
     };
-
     // Get stdin for target program.
     let stdin = util::stdin_from_matches(&matches)?;
-
     // Get timeout
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
-
+    // Get ld preload
+    let ld_preload = util::get_ld_preload(&matches);
     // Get mode
     let mut mode = common::get_mode(&matches, &argv)?;
 
     // Prepare run
     common::prepare_run(&mut argv, &mode)?;
 
-    // Run program.
-    let mut cmd = Command::new(&argv[0]);
-    // Set ld preload
-    if let Some(ld_preload) = util::get_ld_preload(&matches) {
-        cmd.env("LD_PRELOAD", ld_preload);
-    }
-    if let Some(ref file) = stdin {
-        cmd.stdin(std::fs::File::open(file)?);
-    }
-    if argv.len() > 1 {
-        cmd.args(&argv[1..]);
-    }
-    // Update mode-dependent characteristics
-    common::update_cmd(&mut cmd, &mode);
-    // Get output
-    let result = util::get_output(&mut cmd, timeout, true)?;
-    let stdout = String::from_utf8_lossy(&result.stdout);
-    let stderr = String::from_utf8_lossy(&result.stderr);
-
-    // Create report
-    let mut report = common::get_report_stub(&argv, &stdin, &mode)?;
-
-    // Get report extractor
-    let mut extractor = common::get_extractor(&stdout, &stderr, &mut mode)?;
-
-    // Extract report
-    common::fill_report(&mut report, extractor.report(), &mode);
-    report.stacktrace = extractor.extract_stacktrace()?;
-    if let Some(execution_class) = extractor.execution_class() {
-        report.execution_class = execution_class;
-    }
-    if let Ok(crashline) = extractor.crash_line() {
-        report.crashline = crashline.to_string();
-        if let CrashLine::Source(debug) = crashline {
-            if let Some(sources) = CrashReport::sources(&debug) {
-                report.source = sources;
-            }
-            // Modify DebugInfo to find sources (for Java)
-            common::update_sources(&mut report, debug, &matches, &mode);
-        }
+    // Set ignored frames
+    if let Some(path) = matches.get_one::<PathBuf>("ignore") {
+        util::add_custom_ignored_frames(path)?;
     }
 
-    // Check for exceptions
-    common::check_exeption(&mut report, &stderr, &mode);
-
-    // Strip paths
-    let stacktrace = extractor.parse_stacktrace()?;
-    if let Some(path) = matches.get_one::<String>("strip-path") {
-        util::strip_paths(&mut report, &stacktrace, path);
-    }
+    // Get report
+    let report = common::pipeline(&matches, &argv, &stdin, timeout, &ld_preload, &mut mode)?;
 
     // Output report
     // TODO: rewrite func for &[String]

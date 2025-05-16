@@ -4,6 +4,8 @@ use libcasr::{
     cpp::CppException,
     csharp::CSharpException,
     exception::Exception,
+    gdb::GdbStacktrace,
+    gdb::exploitable::{GdbContext, MachineInfo},
     go::GoPanic,
     init_ignored_frames,
     java::JavaException,
@@ -13,21 +15,34 @@ use libcasr::{
     python::PythonException,
     report::{CrashReport, ReportExtractor},
     rust::RustPanic,
-    stacktrace::{DebugInfo, Filter, Stacktrace},
+    severity::Severity,
+    stacktrace::{CrashLine, CrashLineExt, DebugInfo, Filter, ParseStacktrace, Stacktrace},
 };
 
 use std::env;
-use std::os::unix::process::CommandExt;
+use std::fs::File;
+use std::io::prelude::*;
+use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use clap::ArgMatches;
+use gdb_command::mappings::*;
+use gdb_command::memory::*;
+use gdb_command::registers::*;
+use gdb_command::siginfo::Siginfo;
+use gdb_command::stacktrace::StacktraceExt;
+use gdb_command::*;
+use goblin::container::Endian;
+use goblin::elf::{Elf, header};
+use regex::Regex;
 use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub enum Mode {
     Csharp,
+    Gdb,
     Go,
     Java,
     Js,
@@ -43,6 +58,7 @@ impl Mode {
     fn new(mode: &str) -> Result<Mode> {
         match mode {
             "csharp" => Ok(Mode::Csharp),
+            "gdb" => Ok(Mode::Gdb),
             "go" => Ok(Mode::Go),
             "java" => Ok(Mode::Java),
             "js" => Ok(Mode::Js),
@@ -92,8 +108,7 @@ pub fn get_mode(matches: &ArgMatches, argv: &[String]) -> Result<Mode> {
             // NOTE: The exact mode can only be found out by parsing
             Ok(Mode::San)
         } else {
-            // TODO: gdb
-            bail!("PLACEME");
+            Ok(Mode::Gdb)
         }
     }
 }
@@ -134,9 +149,15 @@ fn prepare_run_js(argv: &mut [String]) -> Result<()> {
 
 pub fn prepare_run(argv: &mut [String], mode: &Mode) -> Result<()> {
     match mode {
+        Mode::Asan | Mode::Msan => {
+            init_ignored_frames!("cpp");
+        }
         Mode::Csharp => {
             prepare_run_csharp(argv)?;
             init_ignored_frames!("csharp", "cpp");
+        }
+        Mode::Gdb | Mode::Rust => {
+            init_ignored_frames!("cpp", "rust");
         }
         Mode::Go => {
             init_ignored_frames!("cpp", "go");
@@ -154,14 +175,8 @@ pub fn prepare_run(argv: &mut [String], mode: &Mode) -> Result<()> {
         Mode::Python => {
             init_ignored_frames!("cpp", "python");
         }
-        Mode::Rust => {
-            init_ignored_frames!("cpp", "rust");
-        }
         Mode::San => {
             init_ignored_frames!("cpp", "go", "rust");
-        }
-        Mode::Asan | Mode::Msan => {
-            init_ignored_frames!("cpp");
         }
     }
     Ok(())
@@ -281,13 +296,6 @@ fn update_report_stub_python(report: &mut CrashReport, argv: &[String]) {
     }
 }
 
-fn update_report_stub_san(report: &mut CrashReport, stdin: &Option<PathBuf>) {
-    if let Some(mut file_path) = stdin.clone() {
-        file_path = file_path.canonicalize().unwrap_or(file_path);
-        report.stdin = file_path.display().to_string();
-    }
-}
-
 pub fn get_report_stub(
     argv: &[String],
     stdin: &Option<PathBuf>,
@@ -298,6 +306,10 @@ pub fn get_report_stub(
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
+    if let Some(mut file_path) = stdin.clone() {
+        file_path = file_path.canonicalize().unwrap_or(file_path);
+        report.stdin = file_path.display().to_string();
+    }
     match mode {
         Mode::Csharp => {
             update_report_stub_csharp(&mut report, argv);
@@ -314,107 +326,120 @@ pub fn get_report_stub(
         Mode::Python => {
             update_report_stub_python(&mut report, argv);
         }
-        Mode::San | Mode::Asan | Mode::Msan | Mode::Go | Mode::Rust => {
-            update_report_stub_san(&mut report, stdin);
-        }
+        _ => {}
     }
     Ok(report)
 }
 
-fn get_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
+fn get_san_extractor(
+    stderr: &str,
+    signal: Option<i32>,
+    mode: &mut Mode,
+) -> Result<Option<Box<dyn ReportExtractor>>> {
     if let Some(crash) = AsanCrash::new(stderr)? {
         *mode = Mode::Asan;
-        Ok(Box::new(crash))
+        Ok(Some(Box::new(crash)))
     } else if let Some(crash) = MsanCrash::new(stderr)? {
         *mode = Mode::Msan;
-        Ok(Box::new(crash))
+        Ok(Some(Box::new(crash)))
+    } else if signal.is_some() {
+        *mode = Mode::Gdb;
+        // NOTE: Hack
+        Ok(None)
     } else {
-        // TODO: signal
         // Normal termination
         bail!("Program terminated (no crash)");
     }
 }
 
 // Add only for backward compatibility: casr-san could parse Go and Rust Panics
-fn get_legacy_san_extractor(stderr: &str, mode: &mut Mode) -> Result<Box<dyn ReportExtractor>> {
+fn get_legacy_san_extractor(
+    stderr: &str,
+    signal: Option<i32>,
+    mode: &mut Mode,
+) -> Result<Option<Box<dyn ReportExtractor>>> {
     if let Some(panic) = GoPanic::new(stderr) {
         *mode = Mode::Go;
-        Ok(Box::new(panic))
+        Ok(Some(Box::new(panic)))
     } else if let Some(panic) = RustPanic::new(stderr) {
         *mode = Mode::Rust;
-        Ok(Box::new(panic))
+        Ok(Some(Box::new(panic)))
     } else {
-        get_san_extractor(stderr, mode)
+        get_san_extractor(stderr, signal, mode)
     }
 }
 
 pub fn get_extractor(
     stdout: &str,
     stderr: &str,
+    signal: Option<i32>,
     mode: &mut Mode,
-) -> Result<Box<dyn ReportExtractor>> {
+) -> Result<Option<Box<dyn ReportExtractor>>> {
     match mode {
         Mode::Csharp => {
             if let Some(exception) = CSharpException::new(stderr)? {
-                Ok(Box::new(exception))
+                Ok(Some(Box::new(exception)))
             } else {
-                get_san_extractor(stderr, mode)
+                get_san_extractor(stderr, signal, mode)
             }
+        }
+        Mode::Gdb => {
+            bail!("Unsupported extractor!");
         }
         Mode::Go => {
             if let Some(panic) = GoPanic::new(stderr) {
-                Ok(Box::new(panic))
+                Ok(Some(Box::new(panic)))
             } else {
-                get_san_extractor(stderr, mode)
+                get_san_extractor(stderr, signal, mode)
             }
         }
         Mode::Java => {
             if let Some(exception) = JavaException::new(stderr)? {
-                Ok(Box::new(exception))
+                Ok(Some(Box::new(exception)))
             } else {
-                get_san_extractor(stderr, mode)
+                get_san_extractor(stderr, signal, mode)
             }
         }
         Mode::Js => {
             if let Some(exception) = JsException::new(stderr)? {
-                Ok(Box::new(exception))
+                Ok(Some(Box::new(exception)))
             } else {
-                get_san_extractor(stderr, mode)
+                get_san_extractor(stderr, signal, mode)
             }
         }
         Mode::Lua => {
             let Some(exception) = LuaException::new(stderr) else {
                 bail!("Lua exception is not found!");
             };
-            Ok(Box::new(exception))
+            Ok(Some(Box::new(exception)))
         }
         Mode::Python => {
             if let Some(exception) = PythonException::new(stdout, stderr)? {
-                Ok(Box::new(exception))
+                Ok(Some(Box::new(exception)))
             } else {
-                get_san_extractor(stderr, mode)
+                get_san_extractor(stderr, signal, mode)
             }
         }
         Mode::Rust => {
             if let Some(panic) = RustPanic::new(stderr) {
-                Ok(Box::new(panic))
+                Ok(Some(Box::new(panic)))
             } else {
-                get_san_extractor(stderr, mode)
+                get_san_extractor(stderr, signal, mode)
             }
         }
         Mode::Asan => {
             let Some(crash) = AsanCrash::new(stderr)? else {
                 bail!("AddressSanitizer crash is not found!");
             };
-            Ok(Box::new(crash))
+            Ok(Some(Box::new(crash)))
         }
         Mode::Msan => {
             let Some(crash) = MsanCrash::new(stderr)? else {
                 bail!("MemorySanitizer crash is not found!");
             };
-            Ok(Box::new(crash))
+            Ok(Some(Box::new(crash)))
         }
-        Mode::San => get_legacy_san_extractor(stderr, mode),
+        Mode::San => get_legacy_san_extractor(stderr, signal, mode),
     }
 }
 
@@ -424,6 +449,7 @@ pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mod
         Mode::Csharp => {
             report.csharp_report = raw_report;
         }
+        Mode::Gdb => {}
         Mode::Go => {
             report.go_report = raw_report;
         }
@@ -457,16 +483,12 @@ pub fn fill_report(report: &mut CrashReport, raw_report: Vec<String>, mode: &Mod
 pub fn update_sources(
     report: &mut CrashReport,
     mut debug: DebugInfo,
-    matches: &ArgMatches,
+    submatches: &Option<&ArgMatches>,
     mode: &Mode,
 ) {
     if let Mode::Java = mode {
-        let source_dirs = if let Some(sub) = matches.subcommand_name() {
-            if let Some(sources) = matches
-                .subcommand_matches(sub)
-                .unwrap()
-                .get_many::<PathBuf>("source-dirs")
-            {
+        let source_dirs = if let Some(submatches) = submatches {
+            if let Some(sources) = submatches.get_many::<PathBuf>("source-dirs") {
                 sources.collect()
             } else {
                 Vec::new()
@@ -495,16 +517,260 @@ pub fn update_sources(
     }
 }
 
-pub fn check_exeption(report: &mut CrashReport, stderr: &str, mode: &Mode) {
+pub fn check_exception(report: &mut CrashReport, stream: &str, mode: &Mode) {
     match mode {
-        Mode::Asan | Mode::Msan | Mode::Rust => {
+        Mode::Asan | Mode::Msan | Mode::Gdb | Mode::Rust => {
             if let Some(class) = [CppException::parse_exception, RustPanic::parse_exception]
                 .iter()
-                .find_map(|parse| parse(stderr))
+                .find_map(|parse| parse(stream))
             {
                 report.execution_class = class;
             }
         }
         _ => {}
+    }
+}
+
+fn common_pipeline(
+    matches: &ArgMatches,
+    argv: &[String],
+    stdin: &Option<PathBuf>,
+    timeout: u64,
+    ld_preload: &Option<String>,
+    mode: &mut Mode,
+) -> Result<Option<CrashReport>> {
+    // Get subcommand args
+    let submatches = if let Some(name) = matches.subcommand_name() {
+        matches.subcommand_matches(name)
+    } else {
+        None
+    };
+    // Run program.
+    let mut cmd = Command::new(&argv[0]);
+    // Set ld preload
+    if let Some(ld_preload) = ld_preload {
+        cmd.env("LD_PRELOAD", ld_preload);
+    }
+    if let Some(file) = stdin {
+        cmd.stdin(std::fs::File::open(file)?);
+    }
+    if argv.len() > 1 {
+        cmd.args(&argv[1..]);
+    }
+    // Update mode-dependent characteristics
+    update_cmd(&mut cmd, mode);
+    // Get output
+    let result = util::get_output(&mut cmd, timeout, true)?;
+    let stdout = String::from_utf8_lossy(&result.stdout);
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    let signal = result.status.signal();
+
+    // Create report
+    let mut report = get_report_stub(argv, stdin, mode)?;
+
+    // Get report extractor
+    let Some(mut extractor) = get_extractor(&stdout, &stderr, signal, mode)? else {
+        return Ok(None);
+    };
+
+    // Extract report
+    fill_report(&mut report, extractor.report(), mode);
+    report.stacktrace = extractor.extract_stacktrace()?;
+    if let Some(execution_class) = extractor.execution_class() {
+        report.execution_class = execution_class;
+    }
+    if let Ok(crashline) = extractor.crash_line() {
+        report.crashline = crashline.to_string();
+        if let CrashLine::Source(debug) = crashline {
+            if let Some(sources) = CrashReport::sources(&debug) {
+                report.source = sources;
+            }
+            // Modify DebugInfo to find sources (for Java)
+            update_sources(&mut report, debug, &submatches, mode);
+        }
+    }
+    // Strip paths
+    let stacktrace = extractor.parse_stacktrace()?;
+    if let Some(path) = matches.get_one::<String>("strip-path") {
+        util::strip_paths(&mut report, &stacktrace, path);
+    }
+    // Check for exceptions
+    check_exception(&mut report, &stderr, mode);
+
+    Ok(Some(report))
+}
+
+fn gdb_pipeline(
+    matches: &ArgMatches,
+    argv: &[String],
+    stdin: &Option<PathBuf>,
+    timeout: u64,
+    _ld_preload: &Option<String>, // TODO: Add support
+    mode: &mut Mode,
+) -> Result<CrashReport> {
+    let target_path = PathBuf::from(argv[0].clone());
+    if !target_path.exists() {
+        bail!("{} doesn't exist", target_path.to_str().unwrap());
+    }
+    // Prepare machine context
+    let mut header = vec![0u8; 64];
+    // The ELF header is 52 or 64 bytes long for 32-bit and 64-bit binaries respectively.
+    let mut file = File::open(&target_path)
+        .with_context(|| format!("Couldn't open target binary: {}", target_path.display()))?;
+    file.read_exact(&mut header).with_context(|| {
+        format!(
+            "Couldn't read target binary header: {}",
+            target_path.display()
+        )
+    })?;
+    // Elf header
+    let elf_h = Elf::parse_header(&header).with_context(|| {
+        format!(
+            "Couldn't header for target binary: {}",
+            target_path.display()
+        )
+    })?;
+    // Machine info
+    let mut machine = MachineInfo {
+        arch: header::EM_X86_64,
+        endianness: Endian::Little,
+        byte_width: 8,
+    };
+    // Type should be executable or shared object.
+    if elf_h.e_type != header::ET_EXEC && elf_h.e_type != header::ET_DYN {
+        bail!("Target binary type should be executable or shared object");
+    }
+    // Byte width
+    match elf_h.e_ident[4] {
+        1 => machine.byte_width = 4,
+        2 => machine.byte_width = 8,
+        _ => {
+            bail!("Couldn't determine byte_width: {}", elf_h.e_ident[4]);
+        }
+    }
+    // Endianness
+    if let Ok(endianness) = elf_h.endianness() {
+        machine.endianness = endianness;
+    } else {
+        bail!("Couldn't get endianness from target binary");
+    }
+    // Architecture
+    match elf_h.e_machine {
+        header::EM_386
+        | header::EM_ARM
+        | header::EM_X86_64
+        | header::EM_AARCH64
+        | header::EM_RISCV => machine.arch = elf_h.e_machine,
+        _ => {
+            bail!("Unsupported architecture: {}", elf_h.e_machine);
+        }
+    }
+
+    // Run gdb
+    let args: Vec<&str> = argv.iter().map(|s| s.as_str()).collect();
+    let exectype = ExecType::Local(&args);
+    let mut gdb_command = GdbCommand::new(&exectype);
+    let gdb_command = gdb_command
+        .timeout(timeout)
+        .stdin(stdin)
+        .r()
+        .bt()
+        .siginfo()
+        .mappings()
+        .regs()
+        // We need 2 disassembles: one for severity analysis
+        // and another for the report.
+        .mem("$pc", 64)
+        .disassembly();
+
+    // Get output
+    let stdout = gdb_command
+        .raw()
+        .with_context(|| "Unable to get results from gdb")?;
+    let output = String::from_utf8_lossy(&stdout);
+    let result = gdb_command.parse(&output)?;
+
+    // Create report
+    let mut report = get_report_stub(argv, stdin, mode)?;
+
+    // Fill report
+    report.stacktrace = GdbStacktrace::extract_stacktrace(&result[0])?;
+    report.proc_maps = result[2]
+        .split('\n')
+        .skip(3)
+        .map(|x| x.to_string())
+        .collect();
+
+    let siginfo = Siginfo::from_gdb(&result[1]);
+    if let Err(error) = siginfo {
+        let err_str = error.to_string();
+        let re = Regex::new(r"\$\d+ = (0x0|void) doesn't match regex template").unwrap();
+        if err_str.contains(":  doesn't match") || re.is_match(&err_str) {
+            // Normal termination.
+            bail!("Program terminated (no crash)");
+        } else {
+            return Err(error.into());
+        }
+    }
+
+    let context = GdbContext {
+        siginfo: siginfo.unwrap(),
+        mappings: MappedFiles::from_gdb(&result[2])?,
+        registers: Registers::from_gdb(&result[3])?,
+        pc_memory: MemoryObject::from_gdb(&result[4])?,
+        machine,
+        stacktrace: report.stacktrace.clone(),
+    };
+
+    report.set_disassembly(&result[5]);
+
+    let severity = context.severity();
+
+    if let Ok(severity) = severity {
+        report.execution_class = severity;
+    } else {
+        eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
+    }
+
+    report.registers = context.registers;
+
+    let mut stacktrace = GdbStacktrace::parse_stacktrace(&report.stacktrace)?;
+    if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
+        stacktrace.compute_module_offsets(&mfiles);
+    }
+    // Get crash line.
+    if let Ok(crashline) = stacktrace.crash_line() {
+        report.crashline = crashline.to_string();
+        if let CrashLine::Source(debug) = crashline {
+            if let Some(sources) = CrashReport::sources(&debug) {
+                report.source = sources;
+            }
+        }
+    }
+
+    // Check for exceptions
+    if let Some(path) = matches.get_one::<String>("strip-path") {
+        util::strip_paths(&mut report, &stacktrace, path);
+    }
+    // Check for exceptions
+    check_exception(&mut report, &output, mode);
+
+    Ok(report)
+}
+
+pub fn pipeline(
+    matches: &ArgMatches,
+    argv: &[String],
+    stdin: &Option<PathBuf>,
+    timeout: u64,
+    ld_preload: &Option<String>,
+    mode: &mut Mode,
+) -> Result<CrashReport> {
+    if let Mode::Gdb = mode {
+        gdb_pipeline(matches, argv, stdin, timeout, ld_preload, mode)
+    } else if let Some(report) = common_pipeline(matches, argv, stdin, timeout, ld_preload, mode)? {
+        Ok(report)
+    } else {
+        gdb_pipeline(matches, argv, stdin, timeout, ld_preload, mode)
     }
 }
