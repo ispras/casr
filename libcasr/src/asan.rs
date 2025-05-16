@@ -275,6 +275,7 @@ impl ReportExtractor for SanCrash {
 pub struct AsanCrash {
     // NOTE: There's no structure inheritance in Rust :(
     san: SanCrash,
+    stream: String,
 }
 
 impl AsanCrash {
@@ -300,20 +301,21 @@ impl AsanCrash {
             return Ok(None::<Self>);
         }
 
-        let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
+        let report: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
         let start =
             Regex::new(r"==\d+==\s*ERROR: (LeakSanitizer|AddressSanitizer|libFuzzer):").unwrap();
-        let Some(start) = stream.iter().position(|l| start.is_match(l)) else {
+        let Some(start) = report.iter().position(|l| start.is_match(l)) else {
             return Ok(None::<Self>);
         };
 
-        let report = &stream[start..];
+        let report = &report[start..];
         if report.is_empty() {
             return Ok(None::<Self>);
         }
 
         Ok(Some(Self {
             san: SanCrash::new(report.join("\n")),
+            stream: stream.to_string(),
         }))
     }
 }
@@ -329,7 +331,7 @@ impl ReportExtractor for AsanCrash {
         self.san.crash_line()
     }
     fn stream(&self) -> &str {
-        self.san.stream()
+        &self.stream
     }
     fn report(&self) -> Vec<String> {
         self.san.report()

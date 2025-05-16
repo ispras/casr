@@ -144,7 +144,7 @@ impl StacktraceContext {
             parsed_stacktrace: None,
         }
     }
-    /// Get original stream
+    /// Get original stream.
     pub fn stream(&self) -> &str {
         &self.stream
     }

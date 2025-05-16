@@ -191,6 +191,7 @@ fn main() -> Result<()> {
     if let Some(path) = matches.get_one::<String>("strip-path") {
         util::strip_paths(&mut report, &stacktrace, path);
     }
+
     // Check for exceptions
     common::check_exception(&mut report, extractor.stream(), &mode);
 

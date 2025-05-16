@@ -839,7 +839,7 @@ pub trait ReportExtractor {
     /// Get crash line from stack trace.
     fn crash_line(&mut self) -> Result<CrashLine>;
 
-    /// Transform into a string.
+    /// Get original stream.
     fn stream(&self) -> &str;
 
     /// Transform into a vector of lines.
