@@ -4,8 +4,6 @@ use libcasr::{
     cpp::CppException,
     csharp::CSharpException,
     exception::Exception,
-    gdb::GdbStacktrace,
-    gdb::exploitable::{GdbContext, MachineInfo},
     go::GoPanic,
     init_ignored_frames,
     java::JavaException,
@@ -15,28 +13,16 @@ use libcasr::{
     python::PythonException,
     report::{CrashReport, ReportExtractor},
     rust::RustPanic,
-    severity::Severity,
-    stacktrace::{CrashLine, CrashLineExt, DebugInfo, Filter, ParseStacktrace, Stacktrace},
+    stacktrace::{DebugInfo, Filter, Stacktrace},
 };
 
 use std::env;
-use std::fs::File;
-use std::io::prelude::*;
-use std::os::unix::process::{CommandExt, ExitStatusExt};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use clap::ArgMatches;
-use gdb_command::mappings::*;
-use gdb_command::memory::*;
-use gdb_command::registers::*;
-use gdb_command::siginfo::Siginfo;
-use gdb_command::stacktrace::StacktraceExt;
-use gdb_command::*;
-use goblin::container::Endian;
-use goblin::elf::{Elf, header};
-use regex::Regex;
 use walkdir::WalkDir;
 
 #[derive(Debug)]
@@ -528,249 +514,5 @@ pub fn check_exception(report: &mut CrashReport, stream: &str, mode: &Mode) {
             }
         }
         _ => {}
-    }
-}
-
-fn common_pipeline(
-    matches: &ArgMatches,
-    argv: &[String],
-    stdin: &Option<PathBuf>,
-    timeout: u64,
-    ld_preload: &Option<String>,
-    mode: &mut Mode,
-) -> Result<Option<CrashReport>> {
-    // Get subcommand args
-    let submatches = if let Some(name) = matches.subcommand_name() {
-        matches.subcommand_matches(name)
-    } else {
-        None
-    };
-    // Run program.
-    let mut cmd = Command::new(&argv[0]);
-    // Set ld preload
-    if let Some(ld_preload) = ld_preload {
-        cmd.env("LD_PRELOAD", ld_preload);
-    }
-    if let Some(file) = stdin {
-        cmd.stdin(std::fs::File::open(file)?);
-    }
-    if argv.len() > 1 {
-        cmd.args(&argv[1..]);
-    }
-    // Update mode-dependent characteristics
-    update_cmd(&mut cmd, mode);
-    // Get output
-    let result = util::get_output(&mut cmd, timeout, true)?;
-    let stdout = String::from_utf8_lossy(&result.stdout);
-    let stderr = String::from_utf8_lossy(&result.stderr);
-    let signal = result.status.signal();
-
-    // Create report
-    let mut report = get_report_stub(argv, stdin, mode)?;
-
-    // Get report extractor
-    let Some(mut extractor) = get_extractor(&stdout, &stderr, signal, mode)? else {
-        return Ok(None);
-    };
-
-    // Extract report
-    fill_report(&mut report, extractor.report(), mode);
-    report.stacktrace = extractor.extract_stacktrace()?;
-    if let Some(execution_class) = extractor.execution_class() {
-        report.execution_class = execution_class;
-    }
-    if let Ok(crashline) = extractor.crash_line() {
-        report.crashline = crashline.to_string();
-        if let CrashLine::Source(debug) = crashline {
-            if let Some(sources) = CrashReport::sources(&debug) {
-                report.source = sources;
-            }
-            // Modify DebugInfo to find sources (for Java)
-            update_sources(&mut report, debug, &submatches, mode);
-        }
-    }
-    // Strip paths
-    let stacktrace = extractor.parse_stacktrace()?;
-    if let Some(path) = matches.get_one::<String>("strip-path") {
-        util::strip_paths(&mut report, &stacktrace, path);
-    }
-    // Check for exceptions
-    check_exception(&mut report, &stderr, mode);
-
-    Ok(Some(report))
-}
-
-fn gdb_pipeline(
-    matches: &ArgMatches,
-    argv: &[String],
-    stdin: &Option<PathBuf>,
-    timeout: u64,
-    _ld_preload: &Option<String>, // TODO: Add support
-    mode: &mut Mode,
-) -> Result<CrashReport> {
-    let target_path = PathBuf::from(argv[0].clone());
-    if !target_path.exists() {
-        bail!("{} doesn't exist", target_path.to_str().unwrap());
-    }
-    // Prepare machine context
-    let mut header = vec![0u8; 64];
-    // The ELF header is 52 or 64 bytes long for 32-bit and 64-bit binaries respectively.
-    let mut file = File::open(&target_path)
-        .with_context(|| format!("Couldn't open target binary: {}", target_path.display()))?;
-    file.read_exact(&mut header).with_context(|| {
-        format!(
-            "Couldn't read target binary header: {}",
-            target_path.display()
-        )
-    })?;
-    // Elf header
-    let elf_h = Elf::parse_header(&header).with_context(|| {
-        format!(
-            "Couldn't header for target binary: {}",
-            target_path.display()
-        )
-    })?;
-    // Machine info
-    let mut machine = MachineInfo {
-        arch: header::EM_X86_64,
-        endianness: Endian::Little,
-        byte_width: 8,
-    };
-    // Type should be executable or shared object.
-    if elf_h.e_type != header::ET_EXEC && elf_h.e_type != header::ET_DYN {
-        bail!("Target binary type should be executable or shared object");
-    }
-    // Byte width
-    match elf_h.e_ident[4] {
-        1 => machine.byte_width = 4,
-        2 => machine.byte_width = 8,
-        _ => {
-            bail!("Couldn't determine byte_width: {}", elf_h.e_ident[4]);
-        }
-    }
-    // Endianness
-    if let Ok(endianness) = elf_h.endianness() {
-        machine.endianness = endianness;
-    } else {
-        bail!("Couldn't get endianness from target binary");
-    }
-    // Architecture
-    match elf_h.e_machine {
-        header::EM_386
-        | header::EM_ARM
-        | header::EM_X86_64
-        | header::EM_AARCH64
-        | header::EM_RISCV => machine.arch = elf_h.e_machine,
-        _ => {
-            bail!("Unsupported architecture: {}", elf_h.e_machine);
-        }
-    }
-
-    // Run gdb
-    let args: Vec<&str> = argv.iter().map(|s| s.as_str()).collect();
-    let exectype = ExecType::Local(&args);
-    let mut gdb_command = GdbCommand::new(&exectype);
-    let gdb_command = gdb_command
-        .timeout(timeout)
-        .stdin(stdin)
-        .r()
-        .bt()
-        .siginfo()
-        .mappings()
-        .regs()
-        // We need 2 disassembles: one for severity analysis
-        // and another for the report.
-        .mem("$pc", 64)
-        .disassembly();
-
-    // Get output
-    let stdout = gdb_command
-        .raw()
-        .with_context(|| "Unable to get results from gdb")?;
-    let output = String::from_utf8_lossy(&stdout);
-    let result = gdb_command.parse(&output)?;
-
-    // Create report
-    let mut report = get_report_stub(argv, stdin, mode)?;
-
-    // Fill report
-    report.stacktrace = GdbStacktrace::extract_stacktrace(&result[0])?;
-    report.proc_maps = result[2]
-        .split('\n')
-        .skip(3)
-        .map(|x| x.to_string())
-        .collect();
-
-    let siginfo = Siginfo::from_gdb(&result[1]);
-    if let Err(error) = siginfo {
-        let err_str = error.to_string();
-        let re = Regex::new(r"\$\d+ = (0x0|void) doesn't match regex template").unwrap();
-        if err_str.contains(":  doesn't match") || re.is_match(&err_str) {
-            // Normal termination.
-            bail!("Program terminated (no crash)");
-        } else {
-            return Err(error.into());
-        }
-    }
-
-    let context = GdbContext {
-        siginfo: siginfo.unwrap(),
-        mappings: MappedFiles::from_gdb(&result[2])?,
-        registers: Registers::from_gdb(&result[3])?,
-        pc_memory: MemoryObject::from_gdb(&result[4])?,
-        machine,
-        stacktrace: report.stacktrace.clone(),
-    };
-
-    report.set_disassembly(&result[5]);
-
-    let severity = context.severity();
-
-    if let Ok(severity) = severity {
-        report.execution_class = severity;
-    } else {
-        eprintln!("Couldn't estimate severity. {}", severity.err().unwrap());
-    }
-
-    report.registers = context.registers;
-
-    let mut stacktrace = GdbStacktrace::parse_stacktrace(&report.stacktrace)?;
-    if let Ok(mfiles) = MappedFiles::from_gdb(report.proc_maps.join("\n")) {
-        stacktrace.compute_module_offsets(&mfiles);
-    }
-    // Get crash line.
-    if let Ok(crashline) = stacktrace.crash_line() {
-        report.crashline = crashline.to_string();
-        if let CrashLine::Source(debug) = crashline {
-            if let Some(sources) = CrashReport::sources(&debug) {
-                report.source = sources;
-            }
-        }
-    }
-
-    // Check for exceptions
-    if let Some(path) = matches.get_one::<String>("strip-path") {
-        util::strip_paths(&mut report, &stacktrace, path);
-    }
-    // Check for exceptions
-    check_exception(&mut report, &output, mode);
-
-    Ok(report)
-}
-
-pub fn pipeline(
-    matches: &ArgMatches,
-    argv: &[String],
-    stdin: &Option<PathBuf>,
-    timeout: u64,
-    ld_preload: &Option<String>,
-    mode: &mut Mode,
-) -> Result<CrashReport> {
-    if let Mode::Gdb = mode {
-        gdb_pipeline(matches, argv, stdin, timeout, ld_preload, mode)
-    } else if let Some(report) = common_pipeline(matches, argv, stdin, timeout, ld_preload, mode)? {
-        Ok(report)
-    } else {
-        gdb_pipeline(matches, argv, stdin, timeout, ld_preload, mode)
     }
 }

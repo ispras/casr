@@ -1,10 +1,12 @@
 //! JS module implements `ParseStacktrace` and `Exception` traits for JS reports.
-use crate::error::{Error, Result};
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-use crate::report::ReportExtractor;
-use crate::stacktrace::{
-    CrashLine, DebugInfo, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{
+        CrashLine, DebugInfo, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+    },
 };
 
 use regex::Regex;
@@ -256,14 +258,17 @@ impl ReportExtractor for JsException {
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.context.parse_stacktrace::<JsStacktrace>()
     }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<JsStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
         JsException::parse_exception(self.context.stream())
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        self.context.crash_line::<JsStacktrace>()
     }
 }
 

@@ -1,10 +1,10 @@
 //! Python module implements `ParseStacktrace` and `Exception` traits for Python reports.
-use crate::error::*;
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-use crate::report::ReportExtractor;
-use crate::stacktrace::{
-    CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
 };
 
 use regex::Regex;
@@ -185,14 +185,17 @@ impl ReportExtractor for PythonException {
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.context.parse_stacktrace::<PythonStacktrace>()
     }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<PythonStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
         PythonException::parse_exception(&self.exception)
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        self.context.crash_line::<PythonStacktrace>()
     }
 }
 

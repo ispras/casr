@@ -1,11 +1,11 @@
 //! Asan module implements `ParseStacktrace`, `Exception`, `Severity` and `ReportExtracter` traits
 //! for AddressSanitizer reports.
-use crate::error::*;
-use crate::execution_class::{ExecutionClass, is_near_null};
-use crate::report::ReportExtractor;
-use crate::severity::Severity;
-use crate::stacktrace::{
-    CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+use crate::{
+    error::{Error, Result},
+    execution_class::{ExecutionClass, is_near_null},
+    report::ReportExtractor,
+    severity::Severity,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
 };
 
 use regex::Regex;
@@ -247,25 +247,26 @@ impl SanCrash {
             context: StacktraceContext::new(stream, None),
         }
     }
-    /// Extract stack trace.
-    pub fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+}
+
+impl ReportExtractor for SanCrash {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
         self.context.extract_stacktrace::<AsanStacktrace>()
     }
-    /// Transform into Stacktrace type.
-    pub fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.context.parse_stacktrace::<AsanStacktrace>()
     }
-    /// Transform into a vector of lines.
-    pub fn report(&self) -> Vec<String> {
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<AsanStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+    fn report(&self) -> Vec<String> {
         self.context.report()
     }
-    /// Get an `ExecutionClass` struct.
-    pub fn execution_class(&self) -> Option<ExecutionClass> {
+    fn execution_class(&self) -> Option<ExecutionClass> {
         AsanContext(self.context.report()).severity().ok()
-    }
-    /// Get crash line from stack trace.
-    pub fn crash_line(&mut self) -> Result<CrashLine> {
-        self.context.crash_line::<AsanStacktrace>()
     }
 }
 
@@ -324,14 +325,17 @@ impl ReportExtractor for AsanCrash {
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.san.parse_stacktrace()
     }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.san.crash_line()
+    }
+    fn stream(&self) -> &str {
+        self.san.stream()
+    }
     fn report(&self) -> Vec<String> {
         self.san.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
         self.san.execution_class()
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        self.san.crash_line()
     }
 }
 

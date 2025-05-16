@@ -1,10 +1,10 @@
 //! C# module implements `ParseStacktrace` and `Exception` traits for C# reports.
-use crate::error::*;
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-use crate::report::ReportExtractor;
-use crate::stacktrace::{
-    CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
 };
 
 use regex::Regex;
@@ -173,14 +173,17 @@ impl ReportExtractor for CSharpException {
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.context.parse_stacktrace::<CSharpStacktrace>()
     }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<CSharpStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
         CSharpException::parse_exception(self.context.stream())
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        self.context.crash_line::<CSharpStacktrace>()
     }
 }
 

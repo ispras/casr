@@ -1,10 +1,12 @@
 //! Asan module implements `ParseStacktrace`, `Exception`, `Severity` and `ReportExtracter` traits
 //! for MemorySanitizer reports.
-use crate::asan::SanCrash;
-use crate::error::*;
-use crate::execution_class::ExecutionClass;
-use crate::report::ReportExtractor;
-use crate::stacktrace::{CrashLine, Stacktrace};
+use crate::{
+    asan::SanCrash,
+    error::{Error, Result},
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{CrashLine, Stacktrace},
+};
 
 use regex::Regex;
 
@@ -51,13 +53,16 @@ impl ReportExtractor for MsanCrash {
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.san.parse_stacktrace()
     }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.san.crash_line()
+    }
+    fn stream(&self) -> &str {
+        self.san.stream()
+    }
     fn report(&self) -> Vec<String> {
         self.san.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
         self.san.execution_class()
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        self.san.crash_line()
     }
 }

@@ -1,10 +1,10 @@
 //! Go module implements `ParseStacktrace` and `Exception` traits for Go panic output.
-use crate::error::{Error, Result};
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-use crate::report::ReportExtractor;
-use crate::stacktrace::{
-    CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
 };
 
 use regex::Regex;
@@ -132,14 +132,17 @@ impl ReportExtractor for GoPanic {
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.context.parse_stacktrace::<GoStacktrace>()
     }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<GoStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
         GoPanic::parse_exception(self.stream())
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        self.context.crash_line::<GoStacktrace>()
     }
 }
 

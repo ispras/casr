@@ -1,4 +1,6 @@
-use casr::{common, util};
+use casr::{common, run, util};
+
+use libcasr::{report::CrashReport, stacktrace::CrashLine};
 
 use anyhow::{Result, bail};
 use clap::{Arg, ArgAction, ArgGroup};
@@ -147,6 +149,12 @@ fn main() -> Result<()> {
     let timeout = *matches.get_one::<u64>("timeout").unwrap();
     // Get ld preload
     let ld_preload = util::get_ld_preload(&matches);
+    // Get subcommand args
+    let submatches = if let Some(name) = matches.subcommand_name() {
+        matches.subcommand_matches(name)
+    } else {
+        None
+    };
     // Get mode
     let mut mode = common::get_mode(&matches, &argv)?;
 
@@ -159,7 +167,32 @@ fn main() -> Result<()> {
     }
 
     // Get report
-    let report = common::pipeline(&matches, &argv, &stdin, timeout, &ld_preload, &mut mode)?;
+    let (mut report, mut extractor) = run::run(&argv, &stdin, timeout, &ld_preload, &mut mode)?;
+    // Extract report
+    common::fill_report(&mut report, extractor.report(), &mode);
+    report.stacktrace = extractor.extract_stacktrace()?;
+    if let Some(execution_class) = extractor.execution_class() {
+        report.execution_class = execution_class;
+    } else {
+        eprintln!("Couldn't estimate severity.");
+    }
+    if let Ok(crashline) = extractor.crash_line() {
+        report.crashline = crashline.to_string();
+        if let CrashLine::Source(debug) = crashline {
+            if let Some(sources) = CrashReport::sources(&debug) {
+                report.source = sources;
+            }
+            // Modify DebugInfo to find sources (for Java)
+            common::update_sources(&mut report, debug, &submatches, &mode);
+        }
+    }
+    // Strip paths
+    let stacktrace = extractor.parse_stacktrace()?;
+    if let Some(path) = matches.get_one::<String>("strip-path") {
+        util::strip_paths(&mut report, &stacktrace, path);
+    }
+    // Check for exceptions
+    common::check_exception(&mut report, extractor.stream(), &mode);
 
     // Output report
     // TODO: rewrite func for &[String]

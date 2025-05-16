@@ -1,10 +1,10 @@
 //! Rust module implements `Exception` traits for Rust panic messages.
-use crate::error::{Error, Result};
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-use crate::report::ReportExtractor;
-use crate::stacktrace::{
-    CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
 };
 
 use regex::Regex;
@@ -129,14 +129,17 @@ impl ReportExtractor for RustPanic {
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.context.parse_stacktrace::<RustStacktrace>()
     }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<RustStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
         RustPanic::parse_exception(self.stream())
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        self.context.crash_line::<RustStacktrace>()
     }
 }
 

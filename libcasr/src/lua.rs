@@ -186,14 +186,17 @@ impl ReportExtractor for LuaException {
     fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
         self.context.parse_stacktrace::<LuaStacktrace>()
     }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        CrashLineExt::crash_line(self)
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
     fn report(&self) -> Vec<String> {
         self.lua_report()
     }
     fn execution_class(&self) -> Option<ExecutionClass> {
         self.severity().ok()
-    }
-    fn crash_line(&mut self) -> Result<CrashLine> {
-        CrashLineExt::crash_line(self)
     }
 }
 
