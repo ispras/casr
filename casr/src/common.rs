@@ -1,4 +1,5 @@
-use crate::util;
+use crate::mode::Mode;
+
 use libcasr::{
     asan::AsanCrash,
     cpp::CppException,
@@ -24,80 +25,6 @@ use std::process::Command;
 use anyhow::{Result, bail};
 use clap::ArgMatches;
 use walkdir::WalkDir;
-
-#[derive(Debug)]
-pub enum Mode {
-    Csharp,
-    Gdb,
-    Go,
-    Java,
-    Js,
-    Lua,
-    Python,
-    Rust,
-    San, // Intermediate mode
-    Asan,
-    Msan,
-}
-
-impl Mode {
-    fn new(mode: &str) -> Result<Mode> {
-        match mode {
-            "csharp" => Ok(Mode::Csharp),
-            "gdb" => Ok(Mode::Gdb),
-            "go" => Ok(Mode::Go),
-            "java" => Ok(Mode::Java),
-            "js" => Ok(Mode::Js),
-            "lua" => Ok(Mode::Lua),
-            "python" => Ok(Mode::Python),
-            "rust" => Ok(Mode::Rust),
-            "san" => Ok(Mode::San),
-            "asan" => Ok(Mode::Asan),
-            "msan" => Ok(Mode::Msan),
-            _ => {
-                bail!("Unexpected mode: {}", mode);
-            }
-        }
-    }
-}
-
-pub fn get_mode(matches: &ArgMatches, argv: &[String]) -> Result<Mode> {
-    let subcommand = matches.subcommand_name();
-    if subcommand.is_some() && subcommand.unwrap() != "auto" {
-        Ok(Mode::new(subcommand.unwrap())?)
-    } else if argv[0].ends_with("dotnet") || argv[0].ends_with("mono") {
-        Ok(Mode::Csharp)
-    } else if argv[0].ends_with("jazzer")
-        || argv[0].ends_with("java")
-        || argv[0].ends_with("jsfuzz")
-        || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
-    {
-        Ok(Mode::Java)
-    } else if argv[0].ends_with(".js") || argv[0].ends_with("node") {
-        Ok(Mode::Js)
-    } else if argv[0].ends_with(".lua")
-        || argv[0].starts_with("lua")
-        || argv.len() > 1 && argv[1].ends_with(".lua")
-    {
-        Ok(Mode::Lua)
-    } else if argv[0].ends_with(".py")
-        || argv[0].starts_with("python")
-        || argv.len() > 1 && argv[1].ends_with(".py")
-    {
-        Ok(Mode::Python)
-    } else {
-        let sym_list = util::symbols_list(Path::new(&argv[0]))?;
-        if sym_list.contains("__asan")
-            || sym_list.contains("__msan")
-            || sym_list.contains("runtime.go")
-        {
-            // NOTE: The exact mode can only be found out by parsing
-            Ok(Mode::San)
-        } else {
-            Ok(Mode::Gdb)
-        }
-    }
-}
 
 fn prepare_run_csharp(argv: &[String]) -> Result<()> {
     // Check that args are valid.

@@ -8,6 +8,7 @@
 //! CASR reports to [DefectDojo](https://github.com/DefectDojo/django-DefectDojo).
 
 pub mod common;
+pub mod mode;
 pub mod run;
 pub mod stub;
 pub mod triage;

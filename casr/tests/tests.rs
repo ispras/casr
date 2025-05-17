@@ -4070,7 +4070,7 @@ fn test_casr_libfuzzer() {
     let err = String::from_utf8_lossy(&output.stderr);
     assert!(!err.is_empty());
 
-    assert!(err.contains("casr-san: No crash on input"));
+    assert!(err.contains("san: No crash on input"));
     assert!(err.contains("1 out of memory seeds are saved to"));
     assert!(err.contains("EXPLOITABLE"));
     assert!(err.contains("NOT_EXPLOITABLE"));
@@ -4160,7 +4160,7 @@ fn test_casr_libfuzzer() {
     let err = String::from_utf8_lossy(&output.stderr);
     assert!(!err.is_empty());
 
-    assert!(err.contains("casr-san: No crash on input"));
+    assert!(err.contains("san: No crash on input"));
     assert!(err.contains("1 out of memory seeds are saved to"));
     assert!(err.contains("EXPLOITABLE"));
     assert!(err.contains("NOT_EXPLOITABLE"));

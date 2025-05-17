@@ -1,7 +1,7 @@
-use casr::stub;
+use casr::{mode::Mode, stub};
 
 use anyhow::Result;
 
 fn main() -> Result<()> {
-    stub::stub("san")
+    stub::stub(Mode::San)
 }
