@@ -1,6 +1,6 @@
 use crate::{common, common::Mode, util};
 use libcasr::{
-    gdb::{GdbCrash, exploitable::MachineInfo},
+    gdb::{exploitable::MachineInfo, report::GdbCrash},
     report::{CrashReport, ReportExtractor},
 };
 
