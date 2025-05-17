@@ -76,7 +76,7 @@ pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<
 /// * `matches` - casr options
 ///
 /// * `argv` - executable file options
-pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) -> Result<()> {
+pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[String]) -> Result<()> {
     // Convert report to string.
     let repstr = serde_json::to_string_pretty(&report).unwrap();
 
@@ -631,4 +631,21 @@ pub fn get_ld_preload(matches: &ArgMatches) -> Option<String> {
             .collect::<Vec<_>>()
             .join(":"),
     )
+}
+
+/// Check if required arguments are present
+///
+/// # Arguments
+///
+/// * `matches` - casr options
+///
+/// * `args` - required argument list
+pub fn check_required(matches: &ArgMatches, args: &[&str]) -> Result<()> {
+    let sub = matches.subcommand();
+    for arg in args {
+        if !matches.contains_id(arg) && (sub.is_none() || !sub.unwrap().1.contains_id(arg)) {
+            bail!("The following argument is required: {}", arg);
+        }
+    }
+    Ok(())
 }

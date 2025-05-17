@@ -127,6 +127,61 @@ impl CrashLineExt for Stacktrace {
     }
 }
 
+/// Structure provides an interface for save parsing some sanitizer crash.
+#[derive(Clone, Debug)]
+pub struct StacktraceContext {
+    stream: String,
+    extracted_stacktrace: Option<Vec<String>>,
+    parsed_stacktrace: Option<Stacktrace>,
+}
+
+impl StacktraceContext {
+    /// Create new `SanCrash` instance from stream
+    pub fn new(stream: String, extracted_stacktrace: Option<Vec<String>>) -> Self {
+        Self {
+            stream,
+            extracted_stacktrace,
+            parsed_stacktrace: None,
+        }
+    }
+    /// Get original stream.
+    pub fn stream(&self) -> &str {
+        &self.stream
+    }
+    /// Extract stack trace.
+    pub fn extract_stacktrace<T: ParseStacktrace>(&mut self) -> Result<Vec<String>> {
+        if let Some(stacktrace) = &self.extracted_stacktrace {
+            Ok(stacktrace.to_vec())
+        } else {
+            let stacktrace = T::extract_stacktrace(&self.stream)?;
+            self.extracted_stacktrace = Some(stacktrace.clone());
+            Ok(stacktrace)
+        }
+    }
+    /// Transform into Stacktrace type.
+    pub fn parse_stacktrace<T: ParseStacktrace>(&mut self) -> Result<Stacktrace> {
+        if let Some(stacktrace) = &self.parsed_stacktrace {
+            Ok(stacktrace.to_vec())
+        } else {
+            let stacktrace = T::parse_stacktrace(&self.extract_stacktrace::<T>()?)?;
+            self.parsed_stacktrace = Some(stacktrace.clone());
+            Ok(stacktrace)
+        }
+    }
+    /// Transform into a vector of lines.
+    pub fn report(&self) -> Vec<String> {
+        self.stream
+            .clone()
+            .split('\n')
+            .map(|l| l.trim_end().to_string())
+            .collect()
+    }
+    /// Get crash line from stack trace.
+    pub fn crash_line<T: ParseStacktrace>(&mut self) -> Result<CrashLine> {
+        self.parse_stacktrace::<T>()?.crash_line()
+    }
+}
+
 /// Compute the similarity between 2 stack traces
 ///
 /// # Arguments

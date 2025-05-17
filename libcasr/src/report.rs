@@ -828,6 +828,27 @@ impl fmt::Display for CrashReport {
     }
 }
 
+/// Extract CASR report data from stdout/stderr.
+pub trait ReportExtractor {
+    /// Extract stack trace.
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>>;
+
+    /// Transform into Stacktrace type.
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace>;
+
+    /// Get crash line from stack trace.
+    fn crash_line(&mut self) -> Result<CrashLine>;
+
+    /// Get original stream.
+    fn stream(&self) -> &str;
+
+    /// Transform into a vector of lines.
+    fn report(&self) -> Vec<String>;
+
+    /// Get an `ExecutionClass` struct.
+    fn execution_class(&self) -> Result<ExecutionClass>;
+}
+
 /// Deduplicate `CrashReport`'s
 ///
 /// # Arguments
