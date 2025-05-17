@@ -634,7 +634,7 @@ your project before (via `dotnet build` or `dotnet publish`) and specify `--no-b
 ## casr-libfuzzer
 
 Triage crashes found by libFuzzer based fuzzer
-(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz/luzer) or LibAFL based fuzzer
+(C/C++/go-fuzz/Atheris/Jazzer/Jazzer.js/jsfuzz) or LibAFL based fuzzer
 
     Usage: casr-libfuzzer [OPTIONS] --output <OUTPUT_DIR> -- <ARGS>...
 
@@ -788,6 +788,17 @@ name = "load_fuzzer 2023-06-07T16:47:18+03:00"
 
 [test]
 test_type = "CASR DAST Report"
+```
+Also `casr-dojo` can send email notifications about newly uploaded findings. To enable this feature, add a `[mail]` section to your TOML configuration file:
+
+```toml
+[mail]
+smtp_server = "your.smtp.server.com"                                # SMTP server
+port = 465                                                          # SMTP port
+use_ssl = true                                                      # Whether to use SSL (default: false, except when port is 465)
+email = "sender@example.com"                                        # Sender email address
+password = "$ENV_VAR_NAME"                                          # Password for the email address (can use environment variables with $ prefix)
+recipients = ["recipient1@example.com", "recipient2@example.com"]   # List of recipients to send the notification to
 ```
 
 CASR must be built with `dojo` feature via `cargo install -F dojo casr` or
