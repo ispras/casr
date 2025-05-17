@@ -76,7 +76,7 @@ pub fn call_casr_san(matches: &ArgMatches, argv: &[&str], name: &str) -> Result<
 /// * `matches` - casr options
 ///
 /// * `argv` - executable file options
-pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[&str]) -> Result<()> {
+pub fn output_report(report: &CrashReport, matches: &ArgMatches, argv: &[String]) -> Result<()> {
     // Convert report to string.
     let repstr = serde_json::to_string_pretty(&report).unwrap();
 

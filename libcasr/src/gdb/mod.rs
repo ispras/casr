@@ -1,5 +1,5 @@
 //! Gdb module implements `ParseStacktrace`, `Exception` and `Severity` traits for Gdb output.
-use crate::{
+use super::{
     error::{Error, Result},
     execution_class::ExecutionClass,
     gdb::exploitable::{GdbContext, MachineInfo},
@@ -138,7 +138,7 @@ impl ReportExtractor for GdbCrash {
     fn report(&self) -> Vec<String> {
         self.report.clone()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        self.context.severity().ok()
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        self.context.severity()
     }
 }

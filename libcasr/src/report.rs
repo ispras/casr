@@ -846,7 +846,7 @@ pub trait ReportExtractor {
     fn report(&self) -> Vec<String>;
 
     /// Get an `ExecutionClass` struct.
-    fn execution_class(&self) -> Option<ExecutionClass>;
+    fn execution_class(&self) -> Result<ExecutionClass>;
 }
 
 /// Deduplicate `CrashReport`'s

@@ -64,7 +64,7 @@ impl ReportExtractor for MsanCrash {
     fn report(&self) -> Vec<String> {
         self.san.report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
+    fn execution_class(&self) -> Result<ExecutionClass> {
         self.san.execution_class()
     }
 }

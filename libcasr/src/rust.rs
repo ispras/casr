@@ -138,8 +138,11 @@ impl ReportExtractor for RustPanic {
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        RustPanic::parse_exception(self.stream())
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = RustPanic::parse_exception(self.stream()) else {
+            return Err(Error::Casr("Rust panic is not found!".to_string()));
+        };
+        Ok(class)
     }
 }
 

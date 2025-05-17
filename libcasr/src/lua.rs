@@ -195,8 +195,8 @@ impl ReportExtractor for LuaException {
     fn report(&self) -> Vec<String> {
         self.lua_report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        self.severity().ok()
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        self.severity()
     }
 }
 
@@ -349,8 +349,11 @@ mod tests {
         assert_eq!(crashline.to_string(), "(command line):1");
 
         let execution_class = exception.execution_class();
-        let Some(execution_class) = execution_class else {
-            panic!("Execution class is corrupted");
+        let Ok(execution_class) = execution_class else {
+            panic!(
+                "Execution class is corrupted: {}",
+                execution_class.err().unwrap()
+            );
         };
         assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
         assert_eq!(execution_class.short_description, "crash");

@@ -182,8 +182,11 @@ impl ReportExtractor for CSharpException {
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        CSharpException::parse_exception(self.context.stream())
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = CSharpException::parse_exception(self.context.stream()) else {
+            return Err(Error::Casr("C# exception is not found!".to_string()));
+        };
+        Ok(class)
     }
 }
 
@@ -458,8 +461,11 @@ Unhandled exception. System.ArgumentException: 1111 ---> System.IO.IOException: 
         );
 
         let execution_class = exception.execution_class();
-        let Some(execution_class) = execution_class else {
-            panic!("Execution class is corrupted");
+        let Ok(execution_class) = execution_class else {
+            panic!(
+                "Execution class is corrupted: {}",
+                execution_class.err().unwrap()
+            );
         };
         assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
         assert_eq!(

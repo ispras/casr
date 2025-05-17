@@ -265,8 +265,8 @@ impl ReportExtractor for SanCrash {
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        AsanContext(self.context.report()).severity().ok()
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        AsanContext(self.context.report()).severity()
     }
 }
 
@@ -336,7 +336,7 @@ impl ReportExtractor for AsanCrash {
     fn report(&self) -> Vec<String> {
         self.san.report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
+    fn execution_class(&self) -> Result<ExecutionClass> {
         self.san.execution_class()
     }
 }

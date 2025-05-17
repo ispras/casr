@@ -176,8 +176,11 @@ impl ReportExtractor for JavaException {
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        JavaException::parse_exception(self.context.stream())
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = JavaException::parse_exception(self.context.stream()) else {
+            return Err(Error::Casr("Java exception is not found!".to_string()));
+        };
+        Ok(class)
     }
 }
 
@@ -351,8 +354,11 @@ mod tests {
         assert_eq!(crashline.to_string(), "Test1.java:33",);
 
         let execution_class = exception.execution_class();
-        let Some(execution_class) = execution_class else {
-            panic!("Execution class is corrupted");
+        let Ok(execution_class) = execution_class else {
+            panic!(
+                "Execution class is corrupted: {}",
+                execution_class.err().unwrap()
+            );
         };
         assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
         assert_eq!(execution_class.short_description, "LowLevelException");

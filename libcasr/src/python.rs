@@ -194,8 +194,11 @@ impl ReportExtractor for PythonException {
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        PythonException::parse_exception(&self.exception)
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = PythonException::parse_exception(&self.exception) else {
+            return Err(Error::Casr("Python exception is not found!".to_string()));
+        };
+        Ok(class)
     }
 }
 
@@ -362,8 +365,11 @@ mod tests {
         );
 
         let execution_class = exception.execution_class();
-        let Some(execution_class) = execution_class else {
-            panic!("Execution class is corrupted");
+        let Ok(execution_class) = execution_class else {
+            panic!(
+                "Execution class is corrupted: {}",
+                execution_class.err().unwrap()
+            );
         };
         assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
         assert_eq!(execution_class.short_description, "ZeroDivisionError");

@@ -141,8 +141,11 @@ impl ReportExtractor for GoPanic {
     fn report(&self) -> Vec<String> {
         self.context.report()
     }
-    fn execution_class(&self) -> Option<ExecutionClass> {
-        GoPanic::parse_exception(self.stream())
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = GoPanic::parse_exception(self.stream()) else {
+            return Err(Error::Casr("Go panic is not found!".to_string()));
+        };
+        Ok(class)
     }
 }
 

@@ -171,10 +171,14 @@ fn main() -> Result<()> {
     // Extract report
     common::fill_report(&mut report, extractor.report(), &mode);
     report.stacktrace = extractor.extract_stacktrace()?;
-    if let Some(execution_class) = extractor.execution_class() {
-        report.execution_class = execution_class;
-    } else {
-        eprintln!("Couldn't estimate severity.");
+    let execution_class = extractor.execution_class();
+    match execution_class {
+        Ok(execution_class) => {
+            report.execution_class = execution_class;
+        }
+        Err(err) => {
+            eprintln!("Couldn't estimate severity. {}", err);
+        }
     }
     if let Ok(crashline) = extractor.crash_line() {
         report.crashline = crashline.to_string();
@@ -196,7 +200,5 @@ fn main() -> Result<()> {
     common::check_exception(&mut report, extractor.stream(), &mode);
 
     // Output report
-    // TODO: rewrite func for &[String]
-    let argv: Vec<&str> = argv.iter().map(|s| s.as_str()).collect();
     util::output_report(&report, &matches, &argv)
 }
