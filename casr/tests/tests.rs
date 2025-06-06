@@ -5021,6 +5021,126 @@ fn test_casr_lua() {
 
 #[test]
 #[cfg(target_arch = "x86_64")]
+fn test_casr_libfuzzer_luzer() {
+    use std::collections::HashMap;
+
+    let paths = [
+        abs_path("tests/casr_tests/casrep/luzer_crashes_xml2lua"),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_luzer/casr_libfuzzer_luzer_out"),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_luzer/stdin_parse_xml.lua"),
+        abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_luzer/xml2lua"),
+    ];
+
+    let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::remove_file(&paths[2]);
+    let _ = fs::remove_dir_all(&paths[3]);
+    let _ = fs::create_dir_all(abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_luzer"));
+
+    fs::copy(
+        abs_path("tests/casr_tests/lua/stdin_parse_xml.lua"),
+        &paths[2],
+    )
+    .unwrap();
+
+    Command::new("unzip")
+        .arg(abs_path("tests/casr_tests/lua/xml2lua.zip"))
+        .current_dir(abs_path("tests/tmp_tests_casr/test_casr_libfuzzer_luzer"))
+        .stdout(Stdio::null())
+        .status()
+        .expect("failed to unzip xml2lua.zip");
+
+    let Ok(luarocks_path) = which::which("luarocks") else {
+        panic!("No luarocks is found.");
+    };
+
+    let luarocks = Command::new(&luarocks_path)
+        .current_dir(&paths[3])
+        .args(["--local", "build"])
+        .output()
+        .expect("failed to run luarocks build");
+    assert!(
+        luarocks.status.success(),
+        "Stdout: {}.\n Stderr: {}",
+        String::from_utf8_lossy(&luarocks.stdout),
+        String::from_utf8_lossy(&luarocks.stderr)
+    );
+
+    let bins = Path::new(EXE_CASR_LIBFUZZER).parent().unwrap();
+    let mut cmd = Command::new(EXE_CASR_LIBFUZZER);
+    cmd.args(["-i", &paths[0], "-o", &paths[1], "--", &paths[2]])
+        .env(
+            "PATH",
+            format!("{}:{}", bins.display(), std::env::var("PATH").unwrap()),
+        );
+    let output = cmd.output().expect("failed to start casr-libfuzzer");
+
+    assert!(
+        output.status.success(),
+        "Stdout {}.\n Stderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let err = String::from_utf8_lossy(&output.stderr);
+    println!("{}", err);
+
+    assert!(!err.is_empty());
+
+    assert!(err.contains("NOT_EXPLOITABLE"));
+    assert!(err.contains("attempt to perform arithmetic"));
+    assert!(err.contains("attempt to index"));
+    assert!(err.contains("bad argument #1 to 'insert'"));
+    assert!(err.contains("XmlParser.lua"));
+    assert!(err.contains("tree.lua"));
+
+    let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
+    let unique_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("unique")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(unique_cnt, 3, "Invalid number of deduplicated reports");
+
+    let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
+    let clusters_cnt = re
+        .captures(&err)
+        .unwrap()
+        .name("clusters")
+        .map(|x| x.as_str())
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    assert_eq!(clusters_cnt, 3, "Invalid number of clusters");
+
+    let mut storage: HashMap<String, u32> = HashMap::new();
+    for entry in fs::read_dir(&paths[1]).unwrap() {
+        let e = entry.unwrap().path();
+        let fname = e.file_name().unwrap().to_str().unwrap();
+        if fname.starts_with("cl") && e.is_dir() {
+            for file in fs::read_dir(e).unwrap() {
+                let mut e = file.unwrap().path();
+                if e.is_file() && e.extension().is_some() && e.extension().unwrap() == "casrep" {
+                    e = e.with_extension("");
+                }
+                let fname = e.file_name().unwrap().to_str().unwrap();
+                if let Some(v) = storage.get_mut(fname) {
+                    *v += 1;
+                } else {
+                    storage.insert(fname.to_string(), 1);
+                }
+            }
+        }
+    }
+
+    assert!(storage.values().all(|x| *x > 1));
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
 fn test_casr_js() {
     let test_dir = abs_path("tests/tmp_tests_casr/test_casr_js");
     let test_path = abs_path("tests/casr_tests/js/test_casr_js.js");
