@@ -355,11 +355,12 @@ impl DefectDojoClient {
 
         // Upload crash seed.
         let mut crash_path = path.with_extension("");
-        if let Some(ext) = crash_path.extension() {
-            if ext == "gdb" {
-                crash_path = crash_path.with_extension("");
-            }
+        if let Some(ext) = crash_path.extension()
+            && ext == "gdb"
+        {
+            crash_path = crash_path.with_extension("");
         }
+
         if crash_path.exists() {
             self.upload_file(&crash_path, ".txt", "Crash seed", id)
                 .await?;

@@ -279,14 +279,14 @@ impl CrashReport {
         let mut ss_cmd = Command::new("ss");
         ss_cmd.arg("-tuap");
         let ss_out = ss_cmd.output()?;
-        if ss_out.status.success() {
-            if let Ok(network_info) = String::from_utf8(ss_out.stdout) {
-                self.network_connections = network_info
-                    .split_terminator('\n')
-                    .map(|s| s.to_string())
-                    .filter(|s| s.contains(&format!("pid={}", self.pid)))
-                    .collect();
-            }
+        if ss_out.status.success()
+            && let Ok(network_info) = String::from_utf8(ss_out.stdout)
+        {
+            self.network_connections = network_info
+                .split_terminator('\n')
+                .map(|s| s.to_string())
+                .filter(|s| s.contains(&format!("pid={}", self.pid)))
+                .collect();
         }
 
         Ok(())
@@ -300,18 +300,18 @@ impl CrashReport {
             let mut info_cmd = Command::new("sh");
             info_cmd.arg("-c").arg("lsb_release -sir");
             let info_out = info_cmd.output()?;
-            if info_out.status.success() {
-                if let Ok(info) = String::from_utf8(info_out.stdout) {
-                    info.split('\n').enumerate().for_each(|(i, s)| match i {
-                        0 => {
-                            self.os = s.trim().to_string();
-                        }
-                        1 => {
-                            self.os_release = s.trim().to_string();
-                        }
-                        _ => {}
-                    });
-                }
+            if info_out.status.success()
+                && let Ok(info) = String::from_utf8(info_out.stdout)
+            {
+                info.split('\n').enumerate().for_each(|(i, s)| match i {
+                    0 => {
+                        self.os = s.trim().to_string();
+                    }
+                    1 => {
+                        self.os_release = s.trim().to_string();
+                    }
+                    _ => {}
+                });
             }
         }
         #[cfg(target_os = "macos")]
@@ -339,19 +339,20 @@ impl CrashReport {
         let mut uname_cmd = Command::new("sh");
         uname_cmd.arg("-c").arg("uname -a");
         let uname_out = uname_cmd.output()?;
-        if uname_out.status.success() {
-            if let Ok(uname) = String::from_utf8(uname_out.stdout) {
-                self.uname = uname.trim().to_string();
-            }
+        if uname_out.status.success()
+            && let Ok(uname) = String::from_utf8(uname_out.stdout)
+        {
+            self.uname = uname.trim().to_string();
         }
+
         // Get Architecture for Debian based only. TODO: rpm.
         let mut dpkg_cmd = Command::new("sh");
         dpkg_cmd.arg("-c").arg("dpkg --print-architecture");
         let dpkg_out = dpkg_cmd.output()?;
-        if dpkg_out.status.success() {
-            if let Ok(dpkg) = String::from_utf8(dpkg_out.stdout) {
-                self.architecture = dpkg.trim().to_string();
-            }
+        if dpkg_out.status.success()
+            && let Ok(dpkg) = String::from_utf8(dpkg_out.stdout)
+        {
+            self.architecture = dpkg.trim().to_string();
         }
 
         Ok(())
@@ -388,12 +389,12 @@ impl CrashReport {
         for entry in fs::read_dir(&path)? {
             let entry = entry?;
             let path = entry.path();
-            if let Ok(file) = fs::read_link(path) {
-                if !file.starts_with("/dev/pts/") {
-                    let f = file.to_str().unwrap().to_string();
-                    if !f.contains("socket:") {
-                        self.proc_fd.push(f);
-                    }
+            if let Ok(file) = fs::read_link(path)
+                && !file.starts_with("/dev/pts/")
+            {
+                let f = file.to_str().unwrap().to_string();
+                if !f.contains("socket:") {
+                    self.proc_fd.push(f);
                 }
             }
         }
@@ -495,40 +496,37 @@ impl CrashReport {
                 .arg("-c")
                 .arg(format!("dpkg -S {}", &path.to_str().unwrap()));
             let dpkg_out = dpkg_cmd.output()?;
-            if dpkg_out.status.success() {
-                if let Ok(mut package) = String::from_utf8(dpkg_out.stdout) {
-                    if let Some(index) = package.find(':') {
-                        package.truncate(index);
-                        self.package = package;
+            if dpkg_out.status.success()
+                && let Ok(mut package) = String::from_utf8(dpkg_out.stdout)
+                && let Some(index) = package.find(':')
+            {
+                package.truncate(index);
+                self.package = package;
 
-                        // Extra info about package.
-                        let mut dpkgl_cmd = Command::new("sh");
-                        dpkgl_cmd.arg("-c").arg(format!("dpkg -l {}", self.package));
-                        let dpkgl_out = dpkgl_cmd.output()?;
-                        if dpkgl_out.status.success() {
-                            if let Ok(info) = String::from_utf8(dpkgl_out.stdout) {
-                                if let Some((_, info)) = info.rsplit_once('\n') {
-                                    info.split_whitespace().enumerate().for_each(
-                                        |(i, e)| match i {
-                                            0 | 1 => {}
-                                            2 => {
-                                                self.package_version = e.to_string();
-                                            }
-                                            3 => {
-                                                self.package_architecture = e.to_string();
-                                            }
-                                            _ => {
-                                                self.package_description.push_str(e);
-                                                self.package_description.push(' ');
-                                            }
-                                        },
-                                    );
-                                    self.package_description =
-                                        self.package_description.trim().to_string();
-                                }
+                // Extra info about package.
+                let mut dpkgl_cmd = Command::new("sh");
+                dpkgl_cmd.arg("-c").arg(format!("dpkg -l {}", self.package));
+                let dpkgl_out = dpkgl_cmd.output()?;
+                if dpkgl_out.status.success()
+                    && let Ok(info) = String::from_utf8(dpkgl_out.stdout)
+                    && let Some((_, info)) = info.rsplit_once('\n')
+                {
+                    info.split_whitespace()
+                        .enumerate()
+                        .for_each(|(i, e)| match i {
+                            0 | 1 => {}
+                            2 => {
+                                self.package_version = e.to_string();
                             }
-                        }
-                    }
+                            3 => {
+                                self.package_architecture = e.to_string();
+                            }
+                            _ => {
+                                self.package_description.push_str(e);
+                                self.package_description.push(' ');
+                            }
+                        });
+                    self.package_description = self.package_description.trim().to_string();
                 }
             }
         }

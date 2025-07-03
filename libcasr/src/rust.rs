@@ -63,7 +63,7 @@ impl ParseStacktrace for RustStacktrace {
         let mut stentry = StacktraceEntry::default();
 
         let Some(caps) = re.captures(entry.as_ref()) else {
-            return Err(Error::Casr(format!("Couldn't parse entry {}", entry)));
+            return Err(Error::Casr(format!("Couldn't parse entry {entry}")));
         };
 
         let num = caps.get(1).unwrap().as_str();

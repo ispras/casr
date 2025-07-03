@@ -130,14 +130,15 @@ fn main() -> Result<()> {
     // Create report.
     let mut report = CrashReport::new();
     report.executable_path = argv[0].to_string();
-    if argv.len() > 1 {
-        if let Some(fname) = Path::new(argv[0]).file_name() {
-            let fname = fname.to_string_lossy();
-            if fname.starts_with("python") && !fname.ends_with(".py") && argv[1].ends_with(".py") {
-                report.executable_path = argv[1].to_string();
-            }
+    if argv.len() > 1
+        && let Some(fname) = Path::new(argv[0]).file_name()
+    {
+        let fname = fname.to_string_lossy();
+        if fname.starts_with("python") && !fname.ends_with(".py") && argv[1].ends_with(".py") {
+            report.executable_path = argv[1].to_string();
         }
     }
+
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
@@ -169,11 +170,10 @@ fn main() -> Result<()> {
             report.stacktrace =
                 PythonStacktrace::extract_stacktrace(&report.python_report.join("\n"))?;
             // Get exception from python report.
-            if report.python_report.len() > 1 {
-                if let Some(exception) = PythonException::parse_exception(&report.python_report[1])
-                {
-                    report.execution_class = exception;
-                }
+            if report.python_report.len() > 1
+                && let Some(exception) = PythonException::parse_exception(&report.python_report[1])
+            {
+                report.execution_class = exception;
             }
         } else {
             // Call casr-san
@@ -204,10 +204,10 @@ fn main() -> Result<()> {
     let stacktrace = PythonStacktrace::parse_stacktrace(&report.stacktrace)?;
     if let Ok(crash_line) = stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
-        if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = CrashReport::sources(&debug) {
-                report.source = sources;
-            }
+        if let CrashLine::Source(debug) = crash_line
+            && let Some(sources) = CrashReport::sources(&debug)
+        {
+            report.source = sources;
         }
     }
 

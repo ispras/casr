@@ -152,11 +152,12 @@ fn gen_report(
     }
     // Get crashline and source
     report.crashline = crashline.to_string();
-    if let CrashLine::Source(debug) = crashline {
-        if let Some(sources) = CrashReport::sources(debug) {
-            report.source = sources;
-        }
+    if let CrashLine::Source(debug) = crashline
+        && let Some(sources) = CrashReport::sources(debug)
+    {
+        report.source = sources;
     }
+
     report
 }
 
