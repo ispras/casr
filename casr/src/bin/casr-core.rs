@@ -219,7 +219,7 @@ fn main() -> Result<()> {
     report.pid = pid;
     // Add network connections.
     if let Err(error) = report.add_network_connections() {
-        error!("{}", error);
+        error!("{error}");
     }
 
     file_name_to_save.push_str(&format!("_{}", report.date));
