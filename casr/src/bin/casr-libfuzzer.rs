@@ -205,14 +205,14 @@ fn main() -> Result<()> {
     let mut is_libafl_based = false;
     let crash_filter = if crash_files
         .iter()
-        .any(|(fname, _)| fname.starts_with("crash-") || fname.starts_with("leak-"))
+        .any(|(fname, _)| fname.ends_with(".metadata"))
     {
+        is_libafl_based = true;
+        |arg: &(&std::string::String, &PathBuf)| !arg.0.starts_with(".")
+    } else {
         |arg: &(&std::string::String, &PathBuf)| {
             arg.0.starts_with("crash-") || arg.0.starts_with("leak-")
         }
-    } else {
-        is_libafl_based = true;
-        |arg: &(&std::string::String, &PathBuf)| !arg.0.starts_with(".")
     };
 
     // Get input file argument index.
