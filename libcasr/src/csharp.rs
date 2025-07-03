@@ -1,9 +1,13 @@
 //! C# module implements `ParseStacktrace` and `Exception` traits for C# reports.
-use crate::error::*;
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
 use regex::Regex;
+
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
+};
 
 /// Structure provides an interface for processing the stack trace.
 pub struct CSharpStacktrace;
@@ -116,7 +120,24 @@ impl ParseStacktrace for CSharpStacktrace {
 }
 
 /// Structure provides an interface for parsing c# exception message.
-pub struct CSharpException;
+pub struct CSharpException {
+    context: StacktraceContext,
+}
+
+impl CSharpException {
+    /// Create new `CSharpException` instance from stream
+    pub fn new(stream: &str) -> Result<Option<Self>> {
+        let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
+        let re = Regex::new(r"^Unhandled [Ee]xception(?::\n|\. ).*").unwrap();
+        let Some(start) = stream.iter().position(|l| re.is_match(l)) else {
+            return Ok(None::<Self>);
+        };
+        let report = stream[start..].to_vec();
+        Ok(Some(Self {
+            context: StacktraceContext::new(report.join("\n"), None),
+        }))
+    }
+}
 
 impl Exception for CSharpException {
     fn parse_exception(stream: &str) -> Option<ExecutionClass> {
@@ -142,6 +163,30 @@ impl Exception for CSharpException {
             description: message.to_string(),
             explanation: "".to_string(),
         })
+    }
+}
+
+impl ReportExtractor for CSharpException {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.context.extract_stacktrace::<CSharpStacktrace>()
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.context.parse_stacktrace::<CSharpStacktrace>()
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<CSharpStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+    fn report(&self) -> Vec<String> {
+        self.context.report()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = CSharpException::parse_exception(self.context.stream()) else {
+            return Err(Error::Casr("C# exception is not found!".to_string()));
+        };
+        Ok(class)
     }
 }
 
@@ -356,5 +401,78 @@ Unhandled exception. System.ArgumentException: 1111 ---> System.IO.IOException: 
             "f6b2b0ea894844dc83a96f9504d8f570".to_string()
         );
         assert_eq!(stacktrace[3].debug.line, 0);
+    }
+
+    #[test]
+    fn test_csharp_extractor() {
+        let stream = "
+            Unhandled exception. System.ArgumentException: Parameter cannot be null
+               at Program.f2() in /test_casr_csharp/test_casr_csharp.cs:line 14
+               at Program.f1() in /test_casr_csharp/test_casr_csharp.cs:line 10
+               at Program.Main(String[] args) in /test_casr_csharp/test_casr_csharp.cs:line 6";
+
+        let Ok(Some(mut exception)) = CSharpException::new(stream) else {
+            panic!("Can't extract CSharp exception");
+        };
+
+        let lines = exception.report();
+        assert_eq!(lines.len(), 4);
+
+        let sttr = exception.extract_stacktrace();
+        let Ok(sttr) = sttr else {
+            panic!("{}", sttr.err().unwrap());
+        };
+        assert_eq!(sttr.len(), 3);
+
+        let sttr = ReportExtractor::parse_stacktrace(&mut exception);
+        let Ok(sttr) = sttr else {
+            panic!("{}", sttr.err().unwrap());
+        };
+        assert_eq!(sttr.len(), 3);
+
+        assert_eq!(
+            sttr[0].debug.file,
+            "/test_casr_csharp/test_casr_csharp.cs".to_string()
+        );
+        assert_eq!(sttr[0].debug.line, 14);
+        assert_eq!(sttr[0].function, "Program.f2()".to_string());
+
+        assert_eq!(
+            sttr[1].debug.file,
+            "/test_casr_csharp/test_casr_csharp.cs".to_string()
+        );
+        assert_eq!(sttr[1].debug.line, 10);
+        assert_eq!(sttr[1].function, "Program.f1()".to_string());
+
+        assert_eq!(
+            sttr[2].debug.file,
+            "/test_casr_csharp/test_casr_csharp.cs".to_string()
+        );
+        assert_eq!(sttr[2].debug.line, 6);
+        assert_eq!(sttr[2].function, "Program.Main(String[] args)".to_string());
+
+        let crashline = exception.crash_line();
+        let Ok(crashline) = crashline else {
+            panic!("{}", crashline.err().unwrap());
+        };
+        assert_eq!(
+            crashline.to_string(),
+            "/test_casr_csharp/test_casr_csharp.cs:14",
+        );
+
+        let execution_class = exception.execution_class();
+        let Ok(execution_class) = execution_class else {
+            panic!(
+                "Execution class is corrupted: {}",
+                execution_class.err().unwrap()
+            );
+        };
+        assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
+        assert_eq!(
+            execution_class.short_description,
+            "System.ArgumentException"
+        );
+        assert_eq!(execution_class.description, "Parameter cannot be null");
+        assert_eq!(execution_class.explanation, "");
     }
 }

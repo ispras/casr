@@ -1,5 +1,12 @@
-use casr::triage::{CrashInfo, fuzzing_crash_triage_pipeline};
-use casr::util;
+use casr::{
+    mode::{DynMode, csharp::CSharpMode},
+    triage::{CrashInfo, fuzzing_crash_triage_pipeline},
+    util,
+};
+
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
 use clap::{
@@ -7,10 +14,6 @@ use clap::{
     error::{ContextKind, ContextValue, ErrorKind},
 };
 use log::error;
-
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-afl")
@@ -26,11 +29,12 @@ fn main() -> Result<()> {
                 .value_parser(["info", "debug"])
                 .help("Logging level")
         )
-        .arg(Arg::new("jobs")
-            .long("jobs")
-            .short('j')
-            .action(ArgAction::Set)
-            .help("Number of parallel jobs for generating CASR reports [default: half of cpu cores]")
+        .arg(
+            Arg::new("jobs")
+                .long("jobs")
+                .short('j')
+                .action(ArgAction::Set)
+                .help("Number of parallel jobs for generating CASR reports [default: half of cpu cores]")
             .value_parser(clap::value_parser!(u32).range(1..)))
         .arg(
             Arg::new("timeout")
@@ -109,7 +113,7 @@ fn main() -> Result<()> {
                 .value_name("HINT")
                 .action(ArgAction::Set)
                 .default_value("auto")
-                .value_parser(["auto", "gdb", "san", "csharp"])
+                .value_parser(["auto", "gdb", "san", "asan", "msan", "csharp"])
                 .help("Hint to force run casr-HINT tool to analyze crashes")
         )
         .arg(
@@ -134,7 +138,10 @@ fn main() -> Result<()> {
         Vec::new()
     };
 
-    let hint = matches.get_one::<String>("hint").unwrap();
+    let hint = matches
+        .get_one::<String>("hint")
+        .as_ref()
+        .map(|x| x.as_str());
     let input = matches.get_one::<PathBuf>("input").unwrap();
     let afl_dir = input.join("crashes").is_dir();
     let ignore_cmdline = matches.get_flag("ignore-cmdline") || afl_dir;
@@ -173,17 +180,10 @@ fn main() -> Result<()> {
                 continue;
             }
         };
-        crash_info.casr_tool = if hint == "csharp"
-            || hint == "auto"
-                && !crash_info.target_args.is_empty()
-                && (crash_info.target_args[0].ends_with("dotnet")
-                    || crash_info.target_args[0].ends_with("mono"))
-        {
+        crash_info.mode = DynMode::try_from((hint, &crash_info.target_args))?;
+        if crash_info.mode.is_mode::<CSharpMode>() {
             is_casr_gdb = false;
-            util::get_path("casr-csharp")?
-        } else {
-            util::get_path("casr-gdb")?
-        };
+        }
         crash_info.at_index = crash_info
             .target_args
             .iter()
@@ -191,30 +191,9 @@ fn main() -> Result<()> {
             .position(|s| s.contains("@@"))
             .map(|x| x + 1);
 
-        // When we triage crashes for binaries, use casr-san.
-        if hint == "san" {
-            crash_info
-                .casr_tool
-                .clone_from(&(util::get_path("casr-san")?))
-        } else if hint == "auto" && is_casr_gdb {
-            if let Some(target) = crash_info.target_args.first() {
-                match util::symbols_list(Path::new(target)) {
-                    Ok(list) => {
-                        if list.contains("__asan") || list.contains("__msan") {
-                            crash_info
-                                .casr_tool
-                                .clone_from(&(util::get_path("casr-san")?))
-                        }
-                    }
-                    Err(e) => {
-                        error!("{e}");
-                        continue;
-                    }
-                }
-            } else {
-                error!("Cmdline is empty. Path: {:?}", path.join("cmdline"));
-                continue;
-            }
+        if is_casr_gdb && crash_info.target_args.is_empty() {
+            error!("Cmdline is empty. Path: {:?}", path.join("cmdline"));
+            continue;
         }
 
         // Push crash paths.

@@ -1,30 +1,35 @@
 //! Lua module implements `ParseStacktrace`, `CrashLineExt` and `Severity` traits for Lua reports.
+use regex::Regex;
+
 use crate::error::*;
 use crate::execution_class::ExecutionClass;
+use crate::report::ReportExtractor;
 use crate::severity::Severity;
 use crate::stacktrace::{CrashLine, CrashLineExt, DebugInfo};
-use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceEntry};
-
-use regex::Regex;
+use crate::stacktrace::{ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry};
 
 /// Structure provides an interface for save parsing lua exception.
 #[derive(Clone, Debug)]
 pub struct LuaException {
-    message: String,
+    context: StacktraceContext,
 }
 
 impl LuaException {
     /// Create new `LuaException` instance from stream
     pub fn new(stream: &str) -> Option<Self> {
         let re = Regex::new(r#"\S+: .+\n\s*stack traceback:\s*\n(?:.*\n)*.+: .+"#).unwrap();
-        let mat = re.find(stream)?;
-        Some(LuaException {
-            message: mat.as_str().to_string(),
+        let mtch = re.find(stream)?;
+        Some(Self {
+            context: StacktraceContext::new(mtch.as_str().to_string(), None),
         })
+    }
+    /// Get original stream
+    fn stream(&self) -> &str {
+        self.context.stream()
     }
     /// Extract stack trace from lua exception.
     pub fn extract_stacktrace(&self) -> Result<Vec<String>> {
-        LuaStacktrace::extract_stacktrace(&self.message)
+        LuaStacktrace::extract_stacktrace(self.stream())
     }
     /// Transform lua exception into `Stacktrace` type.
     pub fn parse_stacktrace(&self) -> Result<Stacktrace> {
@@ -32,7 +37,7 @@ impl LuaException {
     }
     /// Get lua exception as a vector of lines.
     pub fn lua_report(&self) -> Vec<String> {
-        self.message
+        self.stream()
             .split('\n')
             .map(|s| s.trim().to_string())
             .collect()
@@ -174,6 +179,27 @@ impl Severity for LuaException {
     }
 }
 
+impl ReportExtractor for LuaException {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.context.extract_stacktrace::<LuaStacktrace>()
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.context.parse_stacktrace::<LuaStacktrace>()
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        CrashLineExt::crash_line(self)
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+    fn report(&self) -> Vec<String> {
+        self.lua_report()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        self.severity()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,7 +306,10 @@ mod tests {
         );
         assert_eq!(execution_class.description, "");
         assert_eq!(execution_class.explanation, "");
+    }
 
+    #[test]
+    fn test_lua_extractor() {
         let stream = "
             custom-lua-interpreter: (command line):1: crash
             stack traceback:
@@ -290,12 +319,12 @@ mod tests {
                 (command line):1: in main chunk
                 [C]: at 0x607f3df872e0
         ";
-        let exception = LuaException::new(stream);
-        let Some(exception) = exception else {
-            panic!("{exception:?}");
+        let Some(mut exception) = LuaException::new(stream) else {
+            panic!("Can't extract Lua exception");
         };
+        let exception: &mut dyn ReportExtractor = &mut exception;
 
-        let lines = exception.lua_report();
+        let lines = exception.report();
         assert_eq!(lines.len(), 7);
 
         let sttr = exception.extract_stacktrace();
@@ -319,9 +348,12 @@ mod tests {
         };
         assert_eq!(crashline.to_string(), "(command line):1");
 
-        let execution_class = exception.severity();
+        let execution_class = exception.execution_class();
         let Ok(execution_class) = execution_class else {
-            panic!("{}", execution_class.err().unwrap());
+            panic!(
+                "Execution class is corrupted: {}",
+                execution_class.err().unwrap()
+            );
         };
         assert_eq!(execution_class.severity, "NOT_EXPLOITABLE");
         assert_eq!(execution_class.short_description, "crash");

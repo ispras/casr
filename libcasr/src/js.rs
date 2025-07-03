@@ -1,13 +1,36 @@
 //! JS module implements `ParseStacktrace` and `Exception` traits for JS reports.
-use crate::error::{Error, Result};
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-use crate::stacktrace::{DebugInfo, ParseStacktrace, Stacktrace, StacktraceEntry};
-
 use regex::Regex;
 
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{
+        CrashLine, DebugInfo, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry,
+    },
+};
+
 /// Structure provides an interface for parsing JS exception message.
-pub struct JsException;
+pub struct JsException {
+    context: StacktraceContext,
+}
+
+impl JsException {
+    /// Create new `JsException` instance from stream
+    pub fn new(stream: &str) -> Result<Option<Self>> {
+        let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
+        let re = Regex::new(r"^(?:.*Error:(?:\s+.*)?|Thrown at:)$").unwrap();
+        let Some(start) = stream.iter().position(|l| re.is_match(l)) else {
+            return Ok(None::<Self>);
+        };
+        let mut report = stream[start..].to_vec();
+        report.retain(|l| !l.is_empty() && (l.starts_with("at") || l.contains("Error:")));
+        Ok(Some(Self {
+            context: StacktraceContext::new(report.join("\n"), None),
+        }))
+    }
+}
 
 impl Exception for JsException {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
@@ -228,13 +251,37 @@ impl ParseStacktrace for JsStacktrace {
     }
 }
 
+impl ReportExtractor for JsException {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.context.extract_stacktrace::<JsStacktrace>()
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.context.parse_stacktrace::<JsStacktrace>()
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<JsStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+    fn report(&self) -> Vec<String> {
+        self.context.report()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = JsException::parse_exception(self.context.stream()) else {
+            return Err(Error::Casr("JS exception is not found!".to_string()));
+        };
+        Ok(class)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stacktrace::{CrashLineExt, Filter, tests::safe_init_ignore_stack_frames};
+    use crate::stacktrace::{Filter, tests::safe_init_ignore_stack_frames};
 
     #[test]
-    fn test_js_stacktrace() {
+    fn test_js_extractor() {
         let stream = r#"Uncaught ReferenceError: var is not defined
     at new Uint8Array (<anonymous>)
     at Object.decode (/fuzz/node_modules/jpeg-js/lib/decoder.js:1110:13)
@@ -295,30 +342,40 @@ Uncaught ReferenceError: var is not defined
             "at handler (:3:10)",
         ];
 
-        let Some(exception) = JsException::parse_exception(stream) else {
-            panic!("Couldn't get JS exception");
+        let Ok(Some(mut exception)) = JsException::new(stream) else {
+            panic!("Can't extract JS exception");
         };
-        assert_eq!(exception.short_description, "ReferenceError");
-        assert_eq!(exception.description, "var is not defined");
+
+        let execution_class = exception.execution_class();
+        let Ok(execution_class) = execution_class else {
+            panic!(
+                "Execution class is corrupted: {}",
+                execution_class.err().unwrap()
+            );
+        };
+        assert_eq!(execution_class.short_description, "ReferenceError");
+        assert_eq!(execution_class.description, "var is not defined");
 
         let trace = raw_stacktrace
             .iter()
             .map(|e| e.to_string())
             .collect::<Vec<String>>();
-        let bt = JsStacktrace::extract_stacktrace(stream).unwrap();
-        assert_eq!(bt, trace);
-
-        let sttr = JsStacktrace::parse_stacktrace(&bt);
-        if sttr.is_err() {
+        let sttr = exception.extract_stacktrace();
+        let Ok(sttr) = sttr else {
             panic!("{}", sttr.err().unwrap());
-        }
-        let mut stacktrace = sttr.unwrap();
+        };
+        assert_eq!(sttr, trace);
+
+        let sttr = exception.parse_stacktrace();
+        let Ok(mut sttr) = sttr else {
+            panic!("{}", sttr.err().unwrap());
+        };
 
         safe_init_ignore_stack_frames();
-        stacktrace.filter();
+        sttr.filter();
 
         // Check crashline
-        let crash_line = stacktrace.crash_line();
+        let crash_line = exception.crash_line();
         if let Ok(crash_line) = crash_line {
             assert_eq!(
                 crash_line.to_string(),
@@ -328,64 +385,58 @@ Uncaught ReferenceError: var is not defined
             panic!("{}", crash_line.err().unwrap());
         }
 
-        assert_eq!(stacktrace.len(), 9);
+        assert_eq!(sttr.len(), 9);
         assert_eq!(
-            stacktrace[0].debug.file,
+            sttr[0].debug.file,
             "/fuzz/node_modules/jpeg-js/lib/decoder.js".to_string()
         );
-        assert_eq!(stacktrace[0].debug.line, 1110);
-        assert_eq!(stacktrace[0].debug.column, 13);
-        assert_eq!(stacktrace[0].function, "Object.decode".to_string());
-        assert_eq!(stacktrace[1].debug.file, "/fuzz/FuzzTarget.js".to_string());
-        assert_eq!(stacktrace[1].debug.line, 6);
-        assert_eq!(stacktrace[1].debug.column, 14);
-        assert_eq!(stacktrace[1].function, "fuzz".to_string());
+        assert_eq!(sttr[0].debug.line, 1110);
+        assert_eq!(sttr[0].debug.column, 13);
+        assert_eq!(sttr[0].function, "Object.decode".to_string());
+        assert_eq!(sttr[1].debug.file, "/fuzz/FuzzTarget.js".to_string());
+        assert_eq!(sttr[1].debug.line, 6);
+        assert_eq!(sttr[1].debug.column, 14);
+        assert_eq!(sttr[1].function, "fuzz".to_string());
         assert_eq!(
-            stacktrace[2].debug.file,
+            sttr[2].debug.file,
             "/fuzz/node_modules/fuzzer/core/core.ts".to_string()
         );
-        assert_eq!(stacktrace[2].debug.line, 335);
-        assert_eq!(stacktrace[2].debug.column, 15);
-        assert_eq!(stacktrace[2].function, "result".to_string());
+        assert_eq!(sttr[2].debug.line, 335);
+        assert_eq!(sttr[2].debug.column, 15);
+        assert_eq!(sttr[2].function, "result".to_string());
         assert_eq!(
-            stacktrace[3].debug.file,
+            sttr[3].debug.file,
             "/home/user/test_js_stacktrace/main.js".to_string()
         );
-        assert_eq!(stacktrace[3].debug.line, 1);
-        assert_eq!(stacktrace[3].debug.column, 2017);
-        assert_eq!(stacktrace[3].function, "Worker.fuzz [as fn]".to_string());
+        assert_eq!(sttr[3].debug.line, 1);
+        assert_eq!(sttr[3].debug.column, 2017);
+        assert_eq!(sttr[3].function, "Worker.fuzz [as fn]".to_string());
         assert_eq!(
-            stacktrace[4].debug.file,
+            sttr[4].debug.file,
             "/home/user/.nvm/versions/node/v16.15.1/lib/node_modules/fuzzer/build/src/worker.js"
                 .to_string()
         );
-        assert_eq!(stacktrace[4].debug.line, 55);
-        assert_eq!(stacktrace[4].debug.column, 30);
-        assert_eq!(stacktrace[4].function, "process.<anonymous>".to_string());
+        assert_eq!(sttr[4].debug.line, 55);
+        assert_eq!(sttr[4].debug.column, 30);
+        assert_eq!(sttr[4].function, "process.<anonymous>".to_string());
+        assert_eq!(sttr[5].debug.file, "/home/user/node/offset.js".to_string());
+        assert_eq!(sttr[5].debug.line, 3);
+        assert_eq!(sttr[5].debug.column, 37);
+        assert_eq!(sttr[5].function, "".to_string());
+        assert_eq!(sttr[6].debug.file, "/home/user/node/offset.js".to_string());
+        assert_eq!(sttr[6].debug.line, 3);
+        assert_eq!(sttr[6].debug.column, 7);
+        assert_eq!(sttr[6].function, "eval".to_string());
+        assert_eq!(sttr[7].debug.file, "/fuzz/FuzzTarget.js".to_string());
+        assert_eq!(sttr[7].debug.line, 12);
+        assert_eq!(sttr[7].debug.column, 13);
+        assert_eq!(sttr[7].function, "eval at g".to_string());
         assert_eq!(
-            stacktrace[5].debug.file,
-            "/home/user/node/offset.js".to_string()
-        );
-        assert_eq!(stacktrace[5].debug.line, 3);
-        assert_eq!(stacktrace[5].debug.column, 37);
-        assert_eq!(stacktrace[5].function, "".to_string());
-        assert_eq!(
-            stacktrace[6].debug.file,
-            "/home/user/node/offset.js".to_string()
-        );
-        assert_eq!(stacktrace[6].debug.line, 3);
-        assert_eq!(stacktrace[6].debug.column, 7);
-        assert_eq!(stacktrace[6].function, "eval".to_string());
-        assert_eq!(stacktrace[7].debug.file, "/fuzz/FuzzTarget.js".to_string());
-        assert_eq!(stacktrace[7].debug.line, 12);
-        assert_eq!(stacktrace[7].debug.column, 13);
-        assert_eq!(stacktrace[7].function, "eval at g".to_string());
-        assert_eq!(
-            stacktrace[8].debug.file,
+            sttr[8].debug.file,
             "/.svelte-kit/runtime/components/layout.svelte".to_string()
         );
-        assert_eq!(stacktrace[8].debug.line, 8);
-        assert_eq!(stacktrace[8].debug.column, 41);
-        assert_eq!(stacktrace[8].function, "eval".to_string());
+        assert_eq!(sttr[8].debug.line, 8);
+        assert_eq!(sttr[8].debug.column, 41);
+        assert_eq!(sttr[8].function, "eval".to_string());
     }
 }

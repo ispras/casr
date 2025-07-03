@@ -1,16 +1,19 @@
-use casr::triage::{CrashInfo, fuzzing_crash_triage_pipeline};
-use casr::util;
-
-use anyhow::{Result, bail};
-use clap::{
-    Arg, ArgAction,
-    error::{ContextKind, ContextValue, ErrorKind},
+use casr::{
+    mode::{DynMode, lua::LuaMode, python::PythonMode},
+    triage::{CrashInfo, fuzzing_crash_triage_pipeline},
+    util,
 };
 
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use anyhow::{Result, bail};
+use clap::{
+    Arg, ArgAction,
+    error::{ContextKind, ContextValue, ErrorKind},
+};
 
 fn main() -> Result<()> {
     let matches = clap::Command::new("casr-libfuzzer")
@@ -109,7 +112,9 @@ fn main() -> Result<()> {
                 .value_name("HINT")
                 .action(ArgAction::Set)
                 .default_value("auto")
-                .value_parser(["auto", "gdb", "java", "js", "python", "san"])
+                .value_parser(
+                    ["auto", "go", "gdb", "java", "js", "python", "rust", "san", "asan", "msan"]
+                )
                 .help("Hint to force run casr-HINT tool to analyze crashes")
         )
         .arg(
@@ -129,8 +134,8 @@ fn main() -> Result<()> {
     let input_dir = matches.get_one::<PathBuf>("input").unwrap().as_path();
 
     // Get fuzz target args.
-    let mut argv: Vec<&str> = if let Some(argvs) = matches.get_many::<String>("ARGS") {
-        argvs.map(|v| v.as_str()).collect()
+    let mut argv: Vec<String> = if let Some(argv) = matches.get_many::<String>("ARGS") {
+        argv.map(|arg| arg.as_str().to_string()).collect()
     } else {
         bail!("Invalid fuzz target arguments");
     };
@@ -143,54 +148,16 @@ fn main() -> Result<()> {
     };
 
     // Get hint
-    let hint = matches.get_one::<String>("hint").unwrap();
+    let hint = matches
+        .get_one::<String>("hint")
+        .as_ref()
+        .map(|x| x.as_str());
+    // Get mode
+    let mode = DynMode::try_from((hint, &argv))?;
 
-    // Get tool.
-    let mut envs = HashMap::new();
-    let tool = if hint == "python" || hint == "auto" && argv[0].ends_with(".py") {
-        // NOTE: https://doc.rust-lang.org/std/env/fn.var.html#errors
-        if env::var("CASR_PRELOAD").is_err() {
-            envs.insert("CASR_PRELOAD".to_string(), util::get_atheris_lib()?);
-        }
-        "casr-python"
-    } else if hint == "java"
-        || hint == "auto" && (argv[0].ends_with("jazzer") || argv[0].ends_with("java"))
-    {
-        "casr-java"
-    } else if hint == "js"
-        || hint == "auto"
-            && (argv[0].ends_with(".js")
-                || argv[0].ends_with("node")
-                || argv.len() > 1 && argv[0].ends_with("npx") && argv[1] == "jazzer"
-                || argv[0].ends_with("jsfuzz"))
-    {
-        "casr-js"
-    } else if hint == "lua"
-        || hint == "auto"
-            && (argv[0].ends_with(".lua")
-                || argv[0] == "lua"
-                || argv[0] == "luajit"
-                || argv.len() > 1 && argv[1].ends_with(".lua"))
-    {
-        "casr-lua"
-    } else {
-        let sym_list = util::symbols_list(Path::new(argv[0]))?;
-        if hint == "san"
-            || hint == "auto"
-                && (sym_list.contains("__asan")
-                    || sym_list.contains("__msan")
-                    || sym_list.contains("runtime.go"))
-        {
-            "casr-san"
-        } else {
-            "casr-gdb"
-        }
-    };
-    let tool_path = util::get_path(tool)?;
-
-    if !gdb_args.is_empty() && tool != "casr-gdb" && tool != "casr-san" {
-        bail!(
-            "casr-gdb-args option is provided with incompatible tool. This option can be used with casr-san or casr-gdb."
+    if !gdb_args.is_empty() && !mode.is_gdb_compatible() {
+        eprintln!(
+            "casr-gdb-args option is provided with incompatible tool. This option can be used with Sanitizers or GDB."
         );
     }
 
@@ -218,12 +185,39 @@ fn main() -> Result<()> {
     // Get input file argument index.
     let at_index = if let Some(idx) = argv.iter().skip(1).position(|s| s.contains("@@")) {
         Some(idx + 1)
-    } else if is_libafl_based || tool.eq("casr-lua") {
+    } else if is_libafl_based || mode.is_mode::<LuaMode>() {
         None
     } else {
-        argv.push("@@");
+        argv.push("@@".to_string());
         Some(argv.len() - 1)
     };
+
+    // Modify env
+    let mut envs = HashMap::new();
+    // Set PRELOAD for Python
+    if mode.is_mode::<PythonMode>() {
+        // NOTE: https://doc.rust-lang.org/std/env/fn.var.html#errors
+        if env::var("CASR_PRELOAD").is_err() {
+            envs.insert("CASR_PRELOAD".to_string(), util::get_atheris_lib()?);
+        }
+    }
+    if argv.iter().any(|x| x.eq("-detect_leaks=0")) {
+        let asan_options = std::env::var("ASAN_OPTIONS").unwrap_or_default();
+        envs.insert(
+            "ASAN_OPTIONS".to_string(),
+            if asan_options.is_empty() {
+                "detect_leaks=0".to_string()
+            } else {
+                format!("{asan_options},detect_leaks=0",)
+            },
+        );
+    }
+    // Set env once
+    unsafe {
+        for (key, val) in envs {
+            env::set_var(key, val);
+        }
+    }
 
     // Get all crashes.
     let crashes: HashMap<String, CrashInfo> = crash_files
@@ -235,9 +229,8 @@ fn main() -> Result<()> {
                 CrashInfo {
                     path: p.to_path_buf(),
                     target_args: argv.iter().map(|x| x.to_string()).collect(),
-                    envs: envs.clone(),
                     at_index,
-                    casr_tool: tool_path.clone(),
+                    mode: mode.clone(),
                 },
             )
         })

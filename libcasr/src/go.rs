@@ -1,11 +1,13 @@
 //! Go module implements `ParseStacktrace` and `Exception` traits for Go panic output.
-use crate::exception::Exception;
-use crate::stacktrace::ParseStacktrace;
-
-use crate::error::{Error, Result};
-use crate::execution_class::ExecutionClass;
-use crate::stacktrace::StacktraceEntry;
 use regex::Regex;
+
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
+};
 
 /// Structure provides an interface for processing stacktrace from Go panics.
 pub struct GoStacktrace;
@@ -84,7 +86,26 @@ impl ParseStacktrace for GoStacktrace {
 }
 
 /// Structure provides an interface for parsing Go panic message.
-pub struct GoPanic;
+pub struct GoPanic {
+    context: StacktraceContext,
+}
+
+impl GoPanic {
+    /// Create new `GoPanic` instance from stream
+    pub fn new(stream: &str) -> Option<Self> {
+        // If it is possible to extract Go stacktrace, it is Go.
+        let Ok(stacktrace) = GoStacktrace::extract_stacktrace(stream) else {
+            return None;
+        };
+        Some(Self {
+            context: StacktraceContext::new(stream.to_string(), Some(stacktrace)),
+        })
+    }
+    /// Get original stream
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+}
 
 impl Exception for GoPanic {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
@@ -101,6 +122,30 @@ impl Exception for GoPanic {
                 "",
             ))
         })
+    }
+}
+
+impl ReportExtractor for GoPanic {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.context.extract_stacktrace::<GoStacktrace>()
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.context.parse_stacktrace::<GoStacktrace>()
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<GoStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+    fn report(&self) -> Vec<String> {
+        self.context.report()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = GoPanic::parse_exception(self.stream()) else {
+            return Err(Error::Casr("Go panic is not found!".to_string()));
+        };
+        Ok(class)
     }
 }
 

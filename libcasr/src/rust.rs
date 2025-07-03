@@ -1,14 +1,18 @@
 //! Rust module implements `Exception` traits for Rust panic messages.
-use crate::error::{Error, Result};
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-use crate::stacktrace::ParseStacktrace;
-use crate::stacktrace::StacktraceEntry;
-
 use regex::Regex;
 
-/// Structure provides an interface for parsing rust panic message.
-pub struct RustPanic;
+use crate::{
+    error::{Error, Result},
+    exception::Exception,
+    execution_class::ExecutionClass,
+    report::ReportExtractor,
+    stacktrace::{CrashLine, ParseStacktrace, Stacktrace, StacktraceContext, StacktraceEntry},
+};
+
+/// Structure provides an interface for parsing Rust panic message.
+pub struct RustPanic {
+    context: StacktraceContext,
+}
 
 impl Exception for RustPanic {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
@@ -98,6 +102,47 @@ impl ParseStacktrace for RustStacktrace {
             stentry.debug.column = col;
         }
         Ok(stentry)
+    }
+}
+
+impl RustPanic {
+    /// Create new `RustPanic` instance from stream
+    pub fn new(stream: &str) -> Option<Self> {
+        // If it is possible to extract Rust stacktrace, it is Rust.
+        let Ok(stacktrace) = RustStacktrace::extract_stacktrace(stream) else {
+            return None;
+        };
+        Some(Self {
+            context: StacktraceContext::new(stream.to_string(), Some(stacktrace)),
+        })
+    }
+    /// Get original stream
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+}
+
+impl ReportExtractor for RustPanic {
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>> {
+        self.context.extract_stacktrace::<RustStacktrace>()
+    }
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace> {
+        self.context.parse_stacktrace::<RustStacktrace>()
+    }
+    fn crash_line(&mut self) -> Result<CrashLine> {
+        self.context.crash_line::<RustStacktrace>()
+    }
+    fn stream(&self) -> &str {
+        self.context.stream()
+    }
+    fn report(&self) -> Vec<String> {
+        self.context.report()
+    }
+    fn execution_class(&self) -> Result<ExecutionClass> {
+        let Some(class) = RustPanic::parse_exception(self.stream()) else {
+            return Err(Error::Casr("Rust panic is not found!".to_string()));
+        };
+        Ok(class)
     }
 }
 

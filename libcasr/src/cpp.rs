@@ -1,8 +1,7 @@
 //! Cpp module implements `Exception` trait for C++ exception messages.
-use crate::exception::Exception;
-use crate::execution_class::ExecutionClass;
-
 use regex::Regex;
+
+use crate::{exception::Exception, execution_class::ExecutionClass};
 
 /// Structure provides an interface for parsing C++ exception message.
 pub struct CppException;
