@@ -104,25 +104,25 @@ impl DefectDojoClient {
         };
 
         // Get existing entity.
-        info!("Trying to find existing {}", entity_name);
+        info!("Trying to find existing {entity_name}");
         let response = self.request(GET, &url)?.query(&query).send().await?;
         let results = get_results(response).await?;
         if !results.is_empty() {
             let id = get_result_id(&results[0])?;
-            info!("Found existing {} with id={}", entity_name, id);
+            info!("Found existing {entity_name} with id={id}");
             return Ok(id);
         }
 
         // Create new entity.
-        info!("Didn't find {} - creating a new one", entity_name);
+        info!("Didn't find {entity_name} - creating a new one");
         let response = self.request(POST, &url)?.json(toml).send().await?;
         if let Err(e) = response.error_for_status_ref() {
             error!("{}", response.text().await?);
-            bail!("{}", e);
+            bail!("{e}");
         }
         let json: serde_json::Value = response.json().await?;
         let id = get_result_id(&json)?;
-        info!("Created new {} with id={}", entity_name, id);
+        info!("Created new {entity_name} with id={id}");
         Ok(id)
     }
 
@@ -161,16 +161,16 @@ impl DefectDojoClient {
                 let response = self.request(GET, &file_url)?.send().await?;
                 if let Err(e) = response.error_for_status_ref() {
                     error!("{}", response.text().await?);
-                    bail!("{}", e);
+                    bail!("{e}");
                 }
                 let report = response.json::<CrashReport>().await;
                 if let Err(e) = report {
-                    error!("Failed to parse CASR report {}: {}", file_url, e);
+                    error!("Failed to parse CASR report {file_url}: {e}");
                     return Ok(None);
                 }
                 let hash = compute_report_hash(&report.unwrap(), &file_url);
                 if let Err(e) = hash {
-                    error!("{}", e);
+                    error!("{e}");
                     return Ok(None);
                 }
                 return Ok(Some(hash.unwrap()));
@@ -198,7 +198,7 @@ impl DefectDojoClient {
         let response = self.request(POST, &url)?.multipart(form).send().await?;
         if let Err(e) = response.error_for_status_ref() {
             error!("{}", response.text().await?);
-            bail!("{}", e);
+            bail!("{e}");
         }
         Ok(())
     }
@@ -329,14 +329,11 @@ impl DefectDojoClient {
         }
         let response: serde_json::Value = response.json().await?;
         let id = get_result_id(&response)?;
-        debug!("Created new finding '{}' with id={}", title, id);
+        debug!("Created new finding '{title}' with id={id}");
 
         // Upload CASR report.
         self.upload_file(&path, "casrep.json", "CASR", id).await?;
-        debug!(
-            "Uploaded CASR report for finding '{}' with id={}",
-            title, id
-        );
+        debug!("Uploaded CASR report for finding '{title}' with id={id}");
 
         // Upload additional CASR report from GDB.
         if gdb.is_some() {
@@ -347,10 +344,7 @@ impl DefectDojoClient {
                 id,
             )
             .await?;
-            debug!(
-                "Uploaded CASR GDB report for finding '{}' with id={}",
-                title, id
-            );
+            debug!("Uploaded CASR GDB report for finding '{title}' with id={id}");
         }
 
         // Upload crash seed.
@@ -364,7 +358,7 @@ impl DefectDojoClient {
         if crash_path.exists() {
             self.upload_file(&crash_path, ".txt", "Crash seed", id)
                 .await?;
-            debug!("Uploaded crash seed for finding '{}' with id={}", title, id);
+            debug!("Uploaded crash seed for finding '{title}' with id={id}");
         }
 
         Ok(())
@@ -786,7 +780,7 @@ async fn main() -> Result<()> {
                 toml::Value::String(test_type_name.to_string()),
             );
             test_type.insert("dynamic_tool".to_string(), toml::Value::Boolean(true));
-            info!("Getting id for test type '{}'", test_type_name);
+            info!("Getting id for test type '{test_type_name}'");
             let test_type_id = client.get_or_create_entity(&test_type, "test_type").await?;
             test.insert("test_type".to_string(), toml::Value::Integer(test_type_id));
         }
@@ -823,10 +817,7 @@ async fn main() -> Result<()> {
     ]);
 
     // Wait for findings responses.
-    info!(
-        "Getting all active, false positive, and out of scope findings for {}",
-        product_name
-    );
+    info!("Getting all active, false positive, and out of scope findings for {product_name}");
     let mut findings = Vec::new();
     let mut tasks = tokio::task::JoinSet::new();
     tasks.spawn(async move { get_findings_ids(active).await });
@@ -913,7 +904,7 @@ async fn main() -> Result<()> {
             break;
         };
         if let Err(e) = r? {
-            error!("{}", e);
+            error!("{e}");
         }
     }
 

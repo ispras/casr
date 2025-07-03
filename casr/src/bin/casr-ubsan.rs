@@ -71,7 +71,7 @@ fn extract_warnings(
     if argv.len() > 1 {
         cmd.args(&argv[1..]);
     }
-    debug!("Run: {:?}", cmd);
+    debug!("Run: {cmd:?}");
 
     // Get output
     let output = util::get_output(&mut cmd, timeout, false)?;
@@ -134,7 +134,7 @@ fn gen_report(
         true
     };
     let args = argv.join(" ");
-    debug!("Generating report for {:?}", args);
+    debug!("Generating report for {args:?}");
     // Create report
     let mut report = report.clone();
     report.proc_cmdline = args;
@@ -418,7 +418,7 @@ fn main() -> Result<()> {
                 .filter_map(|input| {
                     let Ok(input_warnings) = extract_warnings(input, &argv, timeout, &ld_preload)
                     else {
-                        warn!("Failed to run program with input file {:?}", input);
+                        warn!("Failed to run program with input file {input:?}");
                         *counter.write().unwrap() += 1;
                         return None;
                     };
