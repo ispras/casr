@@ -87,7 +87,7 @@ impl<'a> CrashInfo {
             );
         }
 
-        debug!("{:?}", casr_cmd);
+        debug!("{casr_cmd:?}");
 
         // Get output
         let casr_output = casr_cmd
