@@ -649,7 +649,10 @@ pub fn check_required(matches: &ArgMatches, args: &[&str]) -> Result<()> {
     let sub = matches.subcommand();
     for arg in args {
         if !matches.contains_id(arg) && (sub.is_none() || !sub.unwrap().1.contains_id(arg)) {
-            bail!("the following required arguments were not provided: {}", arg);
+            bail!(
+                "the following required arguments were not provided: {}",
+                arg
+            );
         }
     }
     Ok(())
