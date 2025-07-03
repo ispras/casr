@@ -87,7 +87,7 @@ impl SarifReport {
             .iter()
             .position(|item| item.1 == class.short_description)
         {
-            format!("F{:0>2}", pos)
+            format!("F{pos:0>2}")
         } else {
             let s = format!("G{}", self.current_id);
             s

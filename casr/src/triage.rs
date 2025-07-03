@@ -87,7 +87,7 @@ impl<'a> CrashInfo {
             );
         }
 
-        debug!("{:?}", casr_cmd);
+        debug!("{casr_cmd:?}");
 
         // Get output
         let casr_output = casr_cmd
@@ -294,10 +294,10 @@ pub fn fuzzing_crash_triage_pipeline(
 
             // Remove reports from deduplication phase. They are in clusters now.
             for casrep in fs::read_dir(casrep_dir)?.flatten().map(|e| e.path()) {
-                if let Some(ext) = casrep.extension() {
-                    if ext == "casrep" {
-                        let _ = fs::remove_file(casrep);
-                    }
+                if let Some(ext) = casrep.extension()
+                    && ext == "casrep"
+                {
+                    let _ = fs::remove_file(casrep);
                 }
             }
         }

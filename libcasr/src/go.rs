@@ -42,7 +42,7 @@ impl ParseStacktrace for GoStacktrace {
             lines
         };
 
-        if lines.len() % 2 != 0 {
+        if !lines.len().is_multiple_of(2) {
             return Err(Error::Casr(
                 "Go stacktrace line count should be even".to_string(),
             ));

@@ -241,7 +241,7 @@ pub fn log_progress(processed_items: &RwLock<usize>, total: usize) {
         }
 
         if current > 0 && current > cnt {
-            info!("Progress: {}/{}", current, total);
+            info!("Progress: {current}/{total}");
         }
         cnt = current;
         std::thread::sleep(std::time::Duration::from_millis(1000));
@@ -277,9 +277,9 @@ pub fn get_output(command: &mut Command, timeout: u64, error_on_timeout: bool) -
         {
             let _ = child.kill();
             if error_on_timeout {
-                bail!("Timeout: {:?}", command);
+                bail!("Timeout: {command:?}");
             } else {
-                warn!("Timeout: {:?}", command);
+                warn!("Timeout: {command:?}");
             }
         }
         Ok(child.wait_with_output()?)

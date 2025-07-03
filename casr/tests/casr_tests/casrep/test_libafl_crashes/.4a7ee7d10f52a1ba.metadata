@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "map": {
+      "29153451966339223567383453531242564296": [
+        29153451966339223567383453531242564296,
+        {
+          "input_reached_ets": [
+            [
+              4,
+              "file",
+              48
+            ]
+          ],
+          "ets_trace": [
+            574684,
+            726816,
+            843807,
+            119171
+          ],
+          "is_interesting_ets": false,
+          "is_interesting_map": false,
+          "is_crash": true,
+          "is_timeout": false
+        }
+      ],
+      "313070053792960467557664641622089894488": [
+        313070053792960467557664641622089894488,
+        {
+          "comprehensive_factor": 0.396,
+          "capability": 0.0
+        }
+      ]
+    }
+  },
+  "exec_time": null,
+  "executions": 27206
+}

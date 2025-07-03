@@ -80,8 +80,7 @@ impl CrashLineExt for UbsanWarning {
                     })
                 } else {
                     Err(Error::Casr(format!(
-                        "Couldn't collect crashline from stack trace: {:?}",
-                        crashline
+                        "Couldn't collect crashline from stack trace: {crashline:?}",
                     )))
                 }
             } else {
@@ -241,7 +240,7 @@ SUMMARY: UndefinedBehaviorSanitizer: nullptr-with-nonzero-offset /tarantool/src/
 SUMMARY: UndefinedBehaviorSanitizer: unsigned-integer-overflow /openjpeg/src/lib/openjp2/j2k.c:10085:46 in";
         // Check warning extract
         let warnings = extract_ubsan_warnings(stderr);
-        assert_eq!(warnings.len(), 4, "{:?}", warnings);
+        assert_eq!(warnings.len(), 4, "{warnings:?}");
 
         // Check warning
         let warning = &warnings[0];

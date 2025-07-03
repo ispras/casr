@@ -130,14 +130,15 @@ fn main() -> Result<()> {
     // Create report.
     let mut report = CrashReport::new();
     report.executable_path = argv[0].to_string();
-    if argv.len() > 1 {
-        if let Some(fname) = Path::new(argv[0]).file_name() {
-            let fname = fname.to_string_lossy();
-            if fname.starts_with("lua") && !fname.ends_with(".lua") && argv[1].ends_with(".lua") {
-                report.executable_path = argv[1].to_string();
-            }
+    if argv.len() > 1
+        && let Some(fname) = Path::new(argv[0]).file_name()
+    {
+        let fname = fname.to_string_lossy();
+        if fname.starts_with("lua") && !fname.ends_with(".lua") && argv[1].ends_with(".lua") {
+            report.executable_path = argv[1].to_string();
         }
     }
+
     report.proc_cmdline = argv.join(" ");
     let _ = report.add_os_info();
     let _ = report.add_proc_environ();
@@ -153,10 +154,10 @@ fn main() -> Result<()> {
     report.execution_class = exception.severity()?;
     if let Ok(crashline) = exception.crash_line() {
         report.crashline = crashline.to_string();
-        if let CrashLine::Source(debug) = crashline {
-            if let Some(sources) = CrashReport::sources(&debug) {
-                report.source = sources;
-            }
+        if let CrashLine::Source(debug) = crashline
+            && let Some(sources) = CrashReport::sources(&debug)
+        {
+            report.source = sources;
         }
     }
     let stacktrace = exception.parse_stacktrace()?;

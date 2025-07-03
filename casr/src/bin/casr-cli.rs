@@ -1013,11 +1013,12 @@ fn print_summary(dir: &Path, unique_crash_line: bool, strip_path: Option<&String
         println!("==> <{}>", filename.magenta());
         for info in cluster_hash.values() {
             let mut path = info.0.last().unwrap().clone();
-            if let Some(prefix) = strip_path {
-                if let Ok(stripped) = Path::new(&path).strip_prefix(prefix) {
-                    path = stripped.display().to_string();
-                }
+            if let Some(prefix) = strip_path
+                && let Ok(stripped) = Path::new(&path).strip_prefix(prefix)
+            {
+                path = stripped.display().to_string();
             }
+
             if ubsan {
                 // /path/to/report.casrep: Description: crashline (path:line:column)
                 println!("{}: {}", path, info.0[0]);
@@ -1082,11 +1083,12 @@ fn process_report(
         return None;
     };
     let mut report = report.to_string();
-    if let Some(prefix) = strip_path {
-        if let Ok(stripped) = Path::new(&report).strip_prefix(prefix) {
-            report = stripped.display().to_string();
-        }
+    if let Some(prefix) = strip_path
+        && let Ok(stripped) = Path::new(&report).strip_prefix(prefix)
+    {
+        report = stripped.display().to_string();
     }
+
     let Ok(jreport): Result<Value, _> = serde_json::from_reader(BufReader::new(file)) else {
         return None;
     };

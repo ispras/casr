@@ -3191,43 +3191,44 @@ fn test_casr_san() {
 
     let report1: Result<Value, _> = serde_json::from_slice(&output1.stdout);
     let report2: Result<Value, _> = serde_json::from_slice(&output2.stdout);
-    if let Ok(rep1) = report1 {
-        if let Ok(rep2) = report2 {
-            let asan1 = rep1["AsanReport"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|x| x.to_string())
-                .next()
-                .unwrap();
-            let first_addr = re
-                .captures(&asan1)
-                .unwrap()
-                .get(1)
-                .unwrap()
-                .as_str()
-                .to_string();
-            let asan2 = rep2["AsanReport"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|x| x.to_string())
-                .next()
-                .unwrap();
-            let second_addr = re
-                .captures(&asan2)
-                .unwrap()
-                .get(1)
-                .unwrap()
-                .as_str()
-                .to_string();
-            assert_eq!(
-                first_addr, second_addr,
-                "Addresses must be equal! {first_addr} != {second_addr}"
-            );
-            return;
-        }
+    if let Ok(rep1) = report1
+        && let Ok(rep2) = report2
+    {
+        let asan1 = rep1["AsanReport"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .next()
+            .unwrap();
+        let first_addr = re
+            .captures(&asan1)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str()
+            .to_string();
+        let asan2 = rep2["AsanReport"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x.to_string())
+            .next()
+            .unwrap();
+        let second_addr = re
+            .captures(&asan2)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str()
+            .to_string();
+        assert_eq!(
+            first_addr, second_addr,
+            "Addresses must be equal! {first_addr} != {second_addr}"
+        );
+        return;
     }
+
     panic!("Couldn't parse json report file.");
 }
 
@@ -4216,7 +4217,7 @@ fn test_casr_libfuzzer() {
         .unwrap();
 
     assert_eq!(
-        format!("{:.2}", sil_score),
+        format!("{sil_score:.2}"),
         "0.38",
         "Invalid cluster silhouette score"
     );

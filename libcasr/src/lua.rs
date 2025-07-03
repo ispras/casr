@@ -137,7 +137,7 @@ impl CrashLineExt for LuaException {
             }
         }
         let Some(cap) = cap else {
-            return Err(Error::Casr(format!("Crashline is not found: {:?}", lines)));
+            return Err(Error::Casr(format!("Crashline is not found: {lines:?}")));
         };
         let file = cap.get(1).unwrap().as_str().to_string();
         let line = cap.get(2).unwrap().as_str();
@@ -197,7 +197,7 @@ mod tests {
         ";
         let exception = LuaException::new(stream);
         let Some(exception) = exception else {
-            panic!("{:?}", exception);
+            panic!("{exception:?}");
         };
 
         let lines = exception.lua_report();
@@ -292,7 +292,7 @@ mod tests {
         ";
         let exception = LuaException::new(stream);
         let Some(exception) = exception else {
-            panic!("{:?}", exception);
+            panic!("{exception:?}");
         };
 
         let lines = exception.lua_report();

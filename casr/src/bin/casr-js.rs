@@ -181,10 +181,10 @@ fn main() -> Result<()> {
     let stacktrace = JsStacktrace::parse_stacktrace(&report.stacktrace)?;
     if let Ok(crash_line) = stacktrace.crash_line() {
         report.crashline = crash_line.to_string();
-        if let CrashLine::Source(debug) = crash_line {
-            if let Some(sources) = CrashReport::sources(&debug) {
-                report.source = sources;
-            }
+        if let CrashLine::Source(debug) = crash_line
+            && let Some(sources) = CrashReport::sources(&debug)
+        {
+            report.source = sources;
         }
     }
 
