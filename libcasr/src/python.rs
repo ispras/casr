@@ -39,7 +39,6 @@ impl ParseStacktrace for PythonStacktrace {
         .unwrap();
         Ok(stacktrace[first..first + last]
             .iter()
-            .skip(1)
             .rev()
             .map(|s| s.trim().to_string())
             .filter(|s| re.is_match(s))
