@@ -12,7 +12,8 @@ pub struct RustPanic;
 
 impl Exception for RustPanic {
     fn parse_exception(stderr: &str) -> Option<ExecutionClass> {
-        let rexception = Regex::new(r"thread '.+?' (((\(\d+\)) )|)panicked at (?:'(.*)'|.+?:\n(.*))").unwrap();
+        let rexception =
+            Regex::new(r"thread '.+?' (\(\d+\) |)panicked at (?:'(.*)'|.+?:\n(.*))").unwrap();
         let captures = rexception.captures(stderr)?;
         let message = if let Some(message) = captures.get(1) {
             message.as_str()
