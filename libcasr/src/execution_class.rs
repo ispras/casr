@@ -1,11 +1,11 @@
 //! Execution_class module contains the `ExecutionClass` structure which holds an information
 //! about crash severity. `CLASSES` holds raw instances of ExecutionClass structure.
-use crate::error;
-
 use std::fmt;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+
+use crate::error;
 
 /// Classified information about program's execution.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

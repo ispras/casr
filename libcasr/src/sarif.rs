@@ -1,5 +1,9 @@
 //! Sarif module contains `Sarif` struct that contains multiple `CrashReport`
 //! structs in SARIF format.
+use std::path::{Path, PathBuf};
+
+use lexiclean::Lexiclean;
+use serde_json::{Map, Value};
 
 use crate::{
     error::{Error, Result},
@@ -8,12 +12,6 @@ use crate::{
     report::CrashReport,
     stacktrace::{Filter, Stacktrace},
 };
-
-use serde_json::{Map, Value};
-
-use std::path::{Path, PathBuf};
-
-use lexiclean::Lexiclean;
 
 /// CASR CrashReports in SARIF format.
 #[derive(Clone, Debug, Default)]

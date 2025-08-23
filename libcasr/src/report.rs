@@ -1,37 +1,32 @@
 //! Report contains the main struct `CrashReport` with all information about crash.
-use crate::asan::AsanStacktrace;
-use crate::csharp::CSharpStacktrace;
-use crate::error;
-use crate::error::*;
-use crate::execution_class::*;
-use crate::gdb::GdbStacktrace;
-use crate::go::GoStacktrace;
-use crate::java::JavaStacktrace;
-use crate::js::JsStacktrace;
-use crate::lua::LuaStacktrace;
-use crate::python::PythonStacktrace;
-use crate::rust::RustStacktrace;
-use crate::stacktrace::*;
-use chrono::prelude::*;
-use gdb_command::mappings::{MappedFiles, MappedFilesExt};
-use gdb_command::registers::Registers;
-use gdb_command::stacktrace::StacktraceExt;
-use regex::Regex;
-use std::fmt;
-use std::fs;
-use std::fs::File;
-use std::io::BufReader;
-use std::io::prelude::*;
-use std::path::PathBuf;
-use std::process::Command;
+use std::{
+    fmt, fs,
+    fs::File,
+    io::{BufReader, prelude::*},
+    path::PathBuf,
+    process::Command,
+};
 
+use chrono::prelude::*;
+use gdb_command::{
+    mappings::{MappedFiles, MappedFilesExt},
+    registers::Registers,
+    stacktrace::StacktraceExt,
+};
+use regex::Regex;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    asan::AsanStacktrace, csharp::CSharpStacktrace, error, error::*, execution_class::*,
+    gdb::GdbStacktrace, go::GoStacktrace, java::JavaStacktrace, js::JsStacktrace,
+    lua::LuaStacktrace, python::PythonStacktrace, rust::RustStacktrace, stacktrace::*,
+};
 
 /// Represents the information about program termination.
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Default, Clone, Debug)]
-pub struct CrashReport {
+pub struct CasrReport {
     /// Pid of crashed process.
     #[cfg_attr(feature = "serde", serde(skip))]
     pub pid: i32,
@@ -265,8 +260,11 @@ pub struct CrashReport {
     pub source: Vec<String>,
 }
 
-impl CrashReport {
-    /// Create new `CrashReport`
+/// Type alias for `CasrReport` for backward capability.
+pub type CrashReport = CasrReport;
+
+impl CasrReport {
+    /// Create new `CasrReport`
     pub fn new() -> Self {
         let mut report: CrashReport = Default::default();
         let local: DateTime<Local> = Local::now();
@@ -824,6 +822,27 @@ impl fmt::Display for CrashReport {
 
         write!(f, "{}", report.trim())
     }
+}
+
+/// Extract CASR report data from stdout/stderr.
+pub trait ReportExtractor {
+    /// Extract stack trace.
+    fn extract_stacktrace(&mut self) -> Result<Vec<String>>;
+
+    /// Transform into Stacktrace type.
+    fn parse_stacktrace(&mut self) -> Result<Stacktrace>;
+
+    /// Get crash line from stack trace.
+    fn crash_line(&mut self) -> Result<CrashLine>;
+
+    /// Get original stream.
+    fn stream(&self) -> &str;
+
+    /// Transform into a vector of lines.
+    fn report(&self) -> Vec<String>;
+
+    /// Get an `ExecutionClass` struct.
+    fn execution_class(&self) -> Result<ExecutionClass>;
 }
 
 /// Deduplicate `CrashReport`'s

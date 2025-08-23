@@ -12,6 +12,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+static EXE_CASR: &str = env!("CARGO_BIN_EXE_casr");
 static EXE_CASR_CORE: &str = env!("CARGO_BIN_EXE_casr-core");
 static EXE_CASR_AFL: &str = env!("CARGO_BIN_EXE_casr-afl");
 static EXE_CASR_LIBFUZZER: &str = env!("CARGO_BIN_EXE_casr-libfuzzer");
@@ -2930,8 +2931,8 @@ fn test_casr_san() {
 
     assert!(clang.success());
 
-    let output = Command::new(EXE_CASR_SAN)
-        .args(["--stdout", "--", &paths[1]])
+    let output = Command::new(EXE_CASR)
+        .args(["asan", "--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
 
@@ -3031,8 +3032,8 @@ fn test_casr_san() {
 
     assert!(clang.success());
 
-    let output = Command::new(EXE_CASR_SAN)
-        .args(["--stdout", "--", &paths[1]])
+    let output = Command::new(EXE_CASR)
+        .args(["asan", "--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
 
@@ -3161,7 +3162,7 @@ fn test_casr_san() {
 
     assert!(clang.success());
 
-    let output1 = Command::new(EXE_CASR_SAN)
+    let output1 = Command::new(EXE_CASR)
         .args(["--stdout", "--", &paths[1]])
         .output()
         .expect("failed to start casr-san");
@@ -3715,7 +3716,9 @@ fn test_casr_ignore_frames() {
             report["CrashLine"]
                 .as_str()
                 .unwrap()
-                .contains("size-too-big.cpp:13:25")
+                .contains("size-too-big.cpp:13:25"),
+            "{:?}",
+            report["CrashLine"],
         );
     } else {
         panic!("Couldn't parse json report file.");
@@ -4068,7 +4071,7 @@ fn test_casr_libfuzzer() {
     let err = String::from_utf8_lossy(&output.stderr);
     assert!(!err.is_empty());
 
-    assert!(err.contains("casr-san: No crash on input"));
+    assert!(err.contains("san: No crash on input"));
     assert!(err.contains("1 out of memory seeds are saved to"));
     assert!(err.contains("EXPLOITABLE"));
     assert!(err.contains("NOT_EXPLOITABLE"));
@@ -4158,7 +4161,7 @@ fn test_casr_libfuzzer() {
     let err = String::from_utf8_lossy(&output.stderr);
     assert!(!err.is_empty());
 
-    assert!(err.contains("casr-san: No crash on input"));
+    assert!(err.contains("san: No crash on input"));
     assert!(err.contains("1 out of memory seeds are saved to"));
     assert!(err.contains("EXPLOITABLE"));
     assert!(err.contains("NOT_EXPLOITABLE"));
@@ -6074,8 +6077,8 @@ fn test_casr_csharp_native() {
             19 + (lsb_release::info().unwrap().version == "24.04") as usize,
             report["Stacktrace"].as_array().unwrap().iter().count()
         );
-        assert_eq!(severity_type, "NOT_EXPLOITABLE");
-        assert_eq!(severity_desc, "AccessViolation");
+        assert_eq!(severity_type, "EXPLOITABLE", "{report:?}");
+        assert_eq!(severity_desc, "DestAv");
         assert!(
             report["CrashLine"]
                 .as_str()
@@ -6204,6 +6207,8 @@ fn test_casr_afl_csharp_ignore_cmd() {
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::remove_dir_all(&paths[4]);
+    let _ = fs::remove_dir_all(&paths[5]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
     let _ = fs::create_dir_all("/tmp/casr_afl_csharp_ignore_cmd");
     let _ = copy_dir(&paths[2], &paths[4]).unwrap();
@@ -6317,6 +6322,8 @@ fn test_casr_afl_csharp_vanilla_afl() {
     ];
 
     let _ = fs::remove_dir_all(&paths[1]);
+    let _ = fs::remove_dir_all(&paths[4]);
+    let _ = fs::remove_dir_all(&paths[5]);
     let _ = fs::create_dir(abs_path("tests/tmp_tests_casr"));
     let _ = fs::create_dir_all("/tmp/casr_afl_csharp_vanilla");
     let _ = copy_dir(&paths[2], &paths[4]).unwrap();

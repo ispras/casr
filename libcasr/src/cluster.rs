@@ -1,9 +1,7 @@
 //! Provides API's for cluster manipulating.
-use crate::error::*;
-use crate::stacktrace::*;
+use std::{collections::HashMap, path::PathBuf};
 
-use std::collections::HashMap;
-use std::path::PathBuf;
+use crate::{error::*, stacktrace::*};
 
 /// Represents the information about CASR report: path, stacktrace and crashline
 pub type ReportInfo = (PathBuf, (Stacktrace, String));
