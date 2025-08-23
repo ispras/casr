@@ -1,3 +1,4 @@
+//! Stream module implements `Mode` trait for python.
 use std::{
     any::Any,
     path::{Path, PathBuf},
@@ -15,7 +16,7 @@ use libcasr::{
 
 use super::{Mode, RunResult, san::SanMode};
 
-// TODO: docs
+/// Structure provides an interface for making all language depended actions.
 #[derive(Clone, Debug, Default)]
 pub struct PythonMode {
     san: SanMode,

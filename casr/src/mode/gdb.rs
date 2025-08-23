@@ -1,3 +1,4 @@
+//! Stream module implements `Mode` trait for gdb.
 use std::any::Any;
 
 use anyhow::{Result, bail};
@@ -15,7 +16,7 @@ use crate::{
 
 use super::{Mode, RunResult};
 
-// TODO: docs
+/// Structure provides an interface for making all language depended actions.
 #[derive(Clone, Debug, Default)]
 pub struct GdbMode {}
 

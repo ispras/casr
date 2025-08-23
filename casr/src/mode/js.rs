@@ -1,3 +1,4 @@
+//! Stream module implements `Mode` trait for lua.
 use std::{
     any::Any,
     path::{Path, PathBuf},
@@ -17,7 +18,7 @@ use crate::util;
 
 use super::{Mode, RunResult, san::SanMode};
 
-// TODO: docs
+/// Structure provides an interface for making all language depended actions.
 #[derive(Clone, Debug, Default)]
 pub struct JsMode {
     san: SanMode,

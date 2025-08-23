@@ -1,3 +1,4 @@
+//! Stream module implements `Mode` trait for csharp.
 use std::{any::Any, path::PathBuf, process::Command};
 
 use anyhow::{Result, bail};
@@ -11,7 +12,7 @@ use libcasr::{
 
 use super::{Mode, RunResult, san::SanMode};
 
-// TODO: docs
+/// Structure provides an interface for making all language depended actions.
 #[derive(Clone, Debug, Default)]
 pub struct CSharpMode {
     san: SanMode,

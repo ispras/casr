@@ -1,3 +1,4 @@
+//! Stream module implements `Mode` trait for sanitizers.
 use std::{any::Any, env, os::unix::process::CommandExt, process::Command};
 
 use anyhow::{Result, bail};
@@ -16,7 +17,7 @@ use crate::util;
 
 use super::{Mode, RunResult, asan::AsanMode, go::GoMode, msan::MsanMode, rust::RustMode};
 
-// TODO: docs
+/// Structure provides an interface for making all language depended actions.
 #[derive(Clone, Debug, Default)]
 pub struct SanMode {}
 

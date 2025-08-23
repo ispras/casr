@@ -1,3 +1,4 @@
+//! Provides API's for running target program and parsing output.
 pub mod asan;
 pub mod csharp;
 pub mod gdb;
@@ -37,17 +38,21 @@ use self::{
 
 type RunResult = (Box<dyn ReportExtractor>, Box<dyn Mode>);
 
-// TODO: docs
+/// Auxiliary trait for making all language depended actions.
 pub trait Mode: ModeClone + Send + Sync {
+    /// Prepare environment to program running.
     fn pre_action(&self, _argv: &mut [String]) -> Result<()> {
         Ok(())
     }
+    /// Modify command line as needed.
     fn update_cmd(&self, _cmd: &mut Command) -> Result<()> {
         Ok(())
     }
+    /// Get corresponding `Runner` entry.
     fn get_runner(&self) -> Box<dyn Runner> {
         Box::new(StreamRunner {})
     }
+    /// Get `RunResult` entry
     fn get_extractor(
         &self,
         _stdout: &str,
@@ -56,10 +61,13 @@ pub trait Mode: ModeClone + Send + Sync {
     ) -> Result<Option<RunResult>> {
         Ok(None)
     }
+    /// Get base `CrashReport` entry with filled common field.
     fn get_report_stub(&self, argv: &[String], stdin: &Option<PathBuf>) -> Result<CrashReport> {
         Ok(util::get_report_stub(argv, stdin))
     }
+    /// Fill language depended CASR report field.
     fn fill_report(&self, _report: &mut CrashReport, _raw_report: Vec<String>) {}
+    /// Fill CASR report `source` field if necessary,
     fn update_sources(
         &self,
         _report: &mut CrashReport,
@@ -67,11 +75,15 @@ pub trait Mode: ModeClone + Send + Sync {
         _submatches: &Option<&ArgMatches>,
     ) {
     }
+    /// Add exception info in CASR report if it exists.
     fn check_exception(&self, _report: &mut CrashReport, _stream: &str) {}
+    /// Convert to `str`
     fn literal(&self) -> &str;
+    /// Convert to `Any`
     fn as_any(&self) -> &dyn Any;
 }
 
+/// Auxiliary trait for `Mode` cloning
 pub trait ModeClone {
     fn clone_box(&self) -> Box<dyn Mode>;
 }
@@ -91,23 +103,28 @@ impl Clone for Box<dyn Mode> {
     }
 }
 
+/// Run program and extract CASR report info.
 #[derive(Clone)]
 pub struct DynMode {
     mode: Box<dyn Mode>,
 }
 
 impl DynMode {
+    /// Create new entry
     pub fn new<T: Mode + Default + 'static>() -> Self {
         Self {
             mode: Box::new(T::default()),
         }
     }
+    /// Prepare environment to program running.
     pub fn pre_action(&self, argv: &mut [String]) -> Result<()> {
         self.mode.pre_action(argv)
     }
+    /// Modify command line as needed.
     pub fn update_cmd(&self, cmd: &mut Command) -> Result<()> {
         self.mode.update_cmd(cmd)
     }
+    /// Get `ReportExtractor` entry
     pub fn get_extractor(
         &mut self,
         stdout: &str,
@@ -120,12 +137,15 @@ impl DynMode {
         self.mode = mode;
         Ok(Some(extractor))
     }
+    /// Get base `CrashReport` entry with filled common field.
     pub fn get_report_stub(&self, argv: &[String], stdin: &Option<PathBuf>) -> Result<CrashReport> {
         self.mode.get_report_stub(argv, stdin)
     }
+    /// Fill language depended CASR report field.
     pub fn fill_report(&self, report: &mut CrashReport, raw_report: Vec<String>) {
         self.mode.fill_report(report, raw_report)
     }
+    /// Fill CASR report `source` field if necessary,
     pub fn update_sources(
         &self,
         report: &mut CrashReport,
@@ -134,9 +154,11 @@ impl DynMode {
     ) {
         self.mode.update_sources(report, debug, submatches)
     }
+    /// Add exception info in CASR report if it exists.
     pub fn check_exception(&self, report: &mut CrashReport, stream: &str) {
         self.mode.check_exception(report, stream)
     }
+    /// Run target program
     pub fn run(
         &mut self,
         argv: &[String],

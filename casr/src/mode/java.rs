@@ -1,3 +1,4 @@
+//! Stream module implements `Mode` trait for java.
 use std::{any::Any, path::PathBuf, process::Command};
 
 use anyhow::{Result, bail};
@@ -16,7 +17,7 @@ use crate::util;
 
 use super::{Mode, RunResult, san::SanMode};
 
-// TODO: docs
+/// Structure provides an interface for making all language depended actions.
 #[derive(Clone, Debug, Default)]
 pub struct JavaMode {
     san: SanMode,

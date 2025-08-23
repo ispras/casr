@@ -1,3 +1,5 @@
+//! Stream module implements `Runner` trait for program where all needed CASR report info can be
+//! extracted from in standard streams.
 use std::{os::unix::process::ExitStatusExt, path::PathBuf, process::Command};
 
 use anyhow::Result;
@@ -8,7 +10,7 @@ use crate::{mode::DynMode, util};
 
 use super::Runner;
 
-// TODO: Docs
+/// Structure provides an interface for running program.
 pub struct StreamRunner {}
 
 impl Runner for StreamRunner {

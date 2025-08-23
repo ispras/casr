@@ -1,3 +1,5 @@
+//! Stream module implements `Runner` trait for program where all needed CASR report info can be
+//! extracted from in gdb.
 use std::{fs::File, io::Read, path::PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -16,7 +18,7 @@ use crate::{mode::DynMode, util};
 
 use super::Runner;
 
-// TODO: Docs
+/// Structure provides an interface for running program.
 pub struct GdbRunner {}
 
 impl Runner for GdbRunner {

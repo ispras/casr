@@ -1,3 +1,4 @@
+//! Provides API's for running program.
 pub mod gdb;
 pub mod stream;
 
@@ -9,8 +10,9 @@ use libcasr::report::{CrashReport, ReportExtractor};
 
 use crate::mode::DynMode;
 
-// TODO: Docs
+/// Run program
 pub trait Runner {
+    /// Run target program and extract base CASR report info
     fn run(
         &self,
         _mode: &mut DynMode,
