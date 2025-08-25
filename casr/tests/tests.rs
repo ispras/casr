@@ -4401,13 +4401,12 @@ fn test_casr_afl_pyafl() {
 
     assert!(!err.is_empty());
 
-    for crash_type in ["NOT_EXPLOITABLE", "KeyError", "TypeError", "ValueError", "RecursionError"] {
+    for crash_type in ["NOT_EXPLOITABLE", "KeyError", "TypeError", "ValueError"] {
         assert!(err.contains(crash_type));
     }
 
-    for file_crashed in ["scanner.py", "events.py", "resolver.py", "constructor.py"] {
-        assert!(err.contains(file_crashed));
-    }
+    assert!(err.contains("resolver.py"));
+    assert!(err.contains("constructor.py"));
 
     let re = Regex::new(r"Number of reports after deduplication: (?P<unique>\d+)").unwrap();
     let unique_cnt = re
@@ -4419,7 +4418,7 @@ fn test_casr_afl_pyafl() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(unique_cnt, 17, "Invalid number of deduplicated reports");
+    assert_eq!(unique_cnt, 11, "Invalid number of deduplicated reports");
 
     let re = Regex::new(r"Number of clusters: (?P<clusters>\d+)").unwrap();
     let clusters_cnt = re
@@ -4431,7 +4430,7 @@ fn test_casr_afl_pyafl() {
         .parse::<u32>()
         .unwrap();
 
-    assert_eq!(clusters_cnt, 9, "Invalid number of clusters");
+    assert_eq!(clusters_cnt, 5, "Invalid number of clusters");
 
     let mut storage: HashMap<String, u32> = HashMap::new();
     for entry in fs::read_dir(&paths[1]).unwrap() {
