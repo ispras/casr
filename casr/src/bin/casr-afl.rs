@@ -181,6 +181,13 @@ fn main() -> Result<()> {
         {
             is_casr_gdb = false;
             util::get_path("casr-csharp")?
+        } else if hint == "python"
+            || hint == "auto"
+                && !crash_info.target_args.is_empty()
+                && crash_info.target_args[0].ends_with(".py")
+        {
+            is_casr_gdb = false;
+            util::get_path("casr-python")?
         } else {
             util::get_path("casr-gdb")?
         };

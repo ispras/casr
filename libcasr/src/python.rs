@@ -19,7 +19,7 @@ impl ParseStacktrace for PythonStacktrace {
             .collect::<Vec<String>>();
         let Some(first) = stacktrace
             .iter()
-            .position(|line| line.starts_with("Traceback "))
+            .position(|line| line.contains("Traceback "))
         else {
             return Err(Error::Casr(
                 "Couldn't find traceback in python report".to_string(),
