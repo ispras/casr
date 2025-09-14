@@ -1,4 +1,4 @@
-//! Gdb module implements `ParseStacktrace`, `Exception` and `Severity` traits for Gdb output.
+//! Gdb module implements `ReportExtractor` traits for Gdb output.
 use std::collections::HashMap;
 
 use gdb_command::{
@@ -39,8 +39,7 @@ impl GdbCrash {
         let Ok(stream) = cmd.raw() else {
             return Err(Error::Casr("Unable to get results from gdb".to_string()));
         };
-        let stream = String::from_utf8_lossy(&stream);
-        let stream = stream.to_string();
+        let stream = String::from_utf8_lossy(&stream).to_string();
         let report = cmd.parse(&stream)?;
         // Create GdbContext
         let stacktrace = GdbStacktrace::extract_stacktrace(&report[0])?;

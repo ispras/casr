@@ -105,7 +105,7 @@ pub struct PythonException {
 
 impl PythonException {
     /// Create new `PythonException` instance from Python output
-    fn new_from_python(stream: &str) -> Result<Option<Self>> {
+    fn from_python(stream: &str) -> Result<Option<Self>> {
         let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
         let Some(start) = stream.iter().position(|l| l.contains("Traceback ")) else {
             return Ok(None::<Self>);
@@ -123,7 +123,7 @@ impl PythonException {
         }))
     }
     /// Create new `PythonException` instance from Atheris output
-    fn new_from_atheris(stream: &str) -> Result<Option<Self>> {
+    fn from_atheris(stream: &str) -> Result<Option<Self>> {
         let stream: Vec<String> = stream.split('\n').map(|l| l.trim().to_string()).collect();
         let Some(start) = stream
             .iter()
@@ -149,9 +149,9 @@ impl PythonException {
     /// Create new `PythonException` instance from stream
     pub fn new(stdout: &str, stderr: &str) -> Result<Option<Self>> {
         if stderr.contains("== ERROR: libFuzzer: ") {
-            Self::new_from_atheris(stdout)
+            Self::from_atheris(stdout)
         } else {
-            Self::new_from_python(stderr)
+            Self::from_python(stderr)
         }
     }
 }
