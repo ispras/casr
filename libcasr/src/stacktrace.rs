@@ -407,9 +407,9 @@ impl Filter for Stacktrace {
         // Remove trusted functions from stack trace
         *self = std::mem::take(self)
             .into_iter()
-            .filter(|entry| (entry.function.is_empty() || !rfunction.is_match(&entry.function)))
-            .filter(|entry| (entry.module.is_empty() || !rfile.is_match(&entry.module)))
-            .filter(|entry| (entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file)))
+            .filter(|entry| entry.function.is_empty() || !rfunction.is_match(&entry.function))
+            .filter(|entry| entry.module.is_empty() || !rfile.is_match(&entry.module))
+            .filter(|entry| entry.debug.file.is_empty() || !rfile.is_match(&entry.debug.file))
             .collect();
         // Find repeating intervals in stacktrace
         let mut vec = get_interval_repetitions(self);
