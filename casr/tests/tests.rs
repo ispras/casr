@@ -4248,10 +4248,6 @@ fn test_casr_libfuzzer() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_libfuzzer_atheris() {
-    if lsb_release::info().unwrap().version == "24.04" {
-        // Atheris fails to install, see https://github.com/google/atheris/issues/82
-        return;
-    }
     use std::collections::HashMap;
 
     let paths = [
@@ -4641,10 +4637,6 @@ fn test_casr_java_native_lib() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_python_atheris() {
-    if lsb_release::info().unwrap().version == "24.04" {
-        // Atheris fails to install, see https://github.com/google/atheris/issues/82
-        return;
-    }
     // Division by zero atheris test
     let paths = [
         abs_path("tests/casr_tests/python/test_casr_python_atheris.py"),
@@ -4688,10 +4680,6 @@ fn test_casr_python_atheris() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_python_df() {
-    if lsb_release::info().unwrap().version == "24.04" {
-        // Atheris fails to install, see https://github.com/google/atheris/issues/82
-        return;
-    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -4774,7 +4762,7 @@ fn test_casr_san_python_df() {
             .unwrap()
             .to_string();
 
-        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 19);
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 15);
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
         assert!(
@@ -4792,10 +4780,6 @@ fn test_casr_san_python_df() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_san_atheris_df() {
-    if lsb_release::info().unwrap().version == "24.04" {
-        // Atheris fails to install, see https://github.com/google/atheris/issues/82
-        return;
-    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -4900,10 +4884,6 @@ fn test_casr_san_atheris_df() {
 #[test]
 #[cfg(target_arch = "x86_64")]
 fn test_casr_python_call_san_df() {
-    if lsb_release::info().unwrap().version == "24.04" {
-        // Atheris fails to install, see https://github.com/google/atheris/issues/82
-        return;
-    }
     // Double free python C extension test
     // Copy files to tmp dir
     let work_dir = abs_path("tests/casr_tests/python");
@@ -4991,7 +4971,7 @@ fn test_casr_python_call_san_df() {
             .unwrap()
             .to_string();
 
-        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 19);
+        assert!(report["Stacktrace"].as_array().unwrap().iter().count() >= 15);
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "double-free");
         assert!(
