@@ -534,13 +534,17 @@ pub fn load_cluster(dir: &Path, jobs: usize) -> Result<Cluster> {
 /// * `dir` - out directory
 ///
 /// * `cluster_can_exist` - bail if cluster folder exists
-pub fn save_clusters(clusters: &HashMap<usize, Cluster>, dir: &Path, cluster_can_exist: bool) -> Result<()> {
+pub fn save_clusters(
+    clusters: &HashMap<usize, Cluster>,
+    dir: &Path,
+    cluster_can_exist: bool,
+) -> Result<()> {
     for cluster in clusters.values() {
         let cdir = format!("{}/cl{}", &dir.display(), cluster.number);
         if !cluster_can_exist && Path::new(&cdir).exists() {
             bail!("Cluster directory {} already exists, aborting", cdir);
         }
-        
+
         fs::create_dir_all(&cdir)?;
         for casrep in cluster.paths() {
             fs::copy(
