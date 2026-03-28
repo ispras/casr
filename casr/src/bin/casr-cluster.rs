@@ -75,7 +75,7 @@ fn make_clusters(
     // Get clusters
     let (clusters, before, after) = Cluster::cluster_reports(&casreps, 0, dedup)?;
     // Save clusters
-    util::save_clusters(&clusters, outpath)?;
+    util::save_clusters(&clusters, outpath, false)?;
 
     Ok((clusters.len(), before, after))
 }
@@ -524,7 +524,7 @@ fn hierarchical_accumulation(
             )?;
         }
     }
-    util::save_clusters(&news, dir)?;
+    util::save_clusters(&news, dir, true)?;
     Ok((moved, removed, news.len(), before, before - deduplicated))
 }
 
