@@ -210,6 +210,7 @@ pub fn cluster(mut matrix: Vec<f64>, len: usize) -> Result<Vec<usize>> {
     // Counter for new clusters, which are formed as unions of previous ones
     let mut counter = len;
 
+    #[allow(clippy::explicit_counter_loop)]
     for step in dendrogram.steps() {
         // Break if threshold is reached
         if step.dissimilarity >= THRESHOLD {
@@ -230,7 +231,7 @@ pub fn cluster(mut matrix: Vec<f64>, len: usize) -> Result<Vec<usize>> {
 
     // Sort clusters by keys
     let mut clusters = clusters.into_iter().collect::<Vec<_>>();
-    clusters.sort_by(|a, b| a.0.cmp(&b.0));
+    clusters.sort_by_key(|a| a.0);
 
     // Flatten resulting clusters and reverse numbers
     let mut flat_clusters = vec![0; len];
