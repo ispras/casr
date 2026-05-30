@@ -15,14 +15,6 @@ CASR &ndash; collect crash (or UndefinedBehaviorSanitizer error) reports, triage
 It is based on ideas from [exploitable](https://github.com/jfoote/exploitable) and
 [apport](https://github.com/canonical/apport).
 
-CASR is maintained by:
-
-* [Andrey Fedotov](https://github.com/anfedotoff) \<splashgitar@gmail.com\>
-* [Alexey Vishnyakov](https://github.com/SweetVishnya) \<pmvishnya@gmail.com\>
-* [Georgy Savidov](https://github.com/Avgor46) \<gsavidov@gmail.com\>
-* [Ilya Yegorov](https://github.com/hkctkuy) \<hkctkuy@gmail.com\>
-* [Darya Parygina](https://github.com/PaDarochek) \<pa_darochek@ispras.ru\>
-
 ## Overview
 
 CASR is a set of tools that allows you to collect crash reports in different
