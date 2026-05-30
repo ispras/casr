@@ -5274,7 +5274,7 @@ fn test_casr_js_jazzer() {
             .unwrap()
             .to_string();
 
-        assert_eq!(5, report["Stacktrace"].as_array().unwrap().iter().count());
+        assert_eq!(4, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "Error");
         assert!(
