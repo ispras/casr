@@ -235,13 +235,7 @@ impl DefectDojoClient {
         let (num_severity, severity) = match report.execution_class.severity.as_str() {
             "EXPLOITABLE" => ("S0", "Critical"),
             "PROBABLY_EXPLOITABLE" => ("S1", "High"),
-            "NOT_EXPLOITABLE" => {
-                if report.ubsan_report.is_empty() {
-                    ("S2", "Medium")
-                } else {
-                    ("S3", "Low")
-                }
-            }
+            "NOT_EXPLOITABLE" if report.ubsan_report.is_empty() => ("S2", "Medium"),
             _ => ("S3", "Low"),
         };
         let mut finding = serde_json::Map::new();

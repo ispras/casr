@@ -877,7 +877,7 @@ fn print_summary(dir: &Path, unique_crash_line: bool, strip_path: Option<&String
             clusters.push((cluster.to_path_buf(), filename[2..].parse::<i32>().unwrap()));
         }
     }
-    clusters.sort_by(|a, b| a.1.cmp(&b.1));
+    clusters.sort_by_key(|a| a.1);
     if clusters.is_empty()
         && fs::read_dir(dir)
             .unwrap()
