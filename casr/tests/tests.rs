@@ -5141,10 +5141,10 @@ fn test_casr_js() {
                 .as_str()
                 .unwrap()
                 .contains("test_casr_js.js:3:")
-            || report["CrashLine"]
-                .as_str()
-                .unwrap()
-                .contains("test_casr_js.js:4:")
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_casr_js.js:4:")
         );
     } else {
         panic!("Couldn't parse json report file.");
@@ -5286,10 +5286,10 @@ fn test_casr_js_jazzer() {
                 .as_str()
                 .unwrap()
                 .contains("test_casr_js_jazzer.js:3:")
-            || report["CrashLine"]
-                .as_str()
-                .unwrap()
-                .contains("test_casr_js_jazzer.js:4:")
+                || report["CrashLine"]
+                    .as_str()
+                    .unwrap()
+                    .contains("test_casr_js_jazzer.js:4:")
         );
     } else {
         panic!("Couldn't parse json report file.");
