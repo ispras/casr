@@ -5273,6 +5273,7 @@ fn test_casr_js_jazzer() {
         assert_eq!(4, report["Stacktrace"].as_array().unwrap().iter().count());
         assert_eq!(severity_type, "NOT_EXPLOITABLE");
         assert_eq!(severity_desc, "Error");
+        eprintln!("{}", report["CrashLine"]);
         assert!(
             report["CrashLine"]
                 .as_str()
